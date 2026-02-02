@@ -1,11 +1,236 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>TESTE OK</title>
+  <meta charset="UTF-8" />
+  <title>SaaS Fiscal – Demonstração</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6fb;
+      margin: 0;
+      padding: 0;
+      color: #1f2937;
+    }
+
+    header {
+      background: #0a2540;
+      color: #fff;
+      padding: 30px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header p {
+      margin-top: 8px;
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 25px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 22px;
+      color: #0a2540;
+    }
+
+    .info-box {
+      background: #eef2ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
+
+    .info-box p {
+      margin: 6px 0;
+      font-weight: bold;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      font-size: 16px;
+      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+    }
+
+    button {
+      margin-top: 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 6px;
+      background: #fef2f2;
+      display: none;
+    }
+
+    .result h3 {
+      margin-top: 0;
+      color: #991b1b;
+    }
+
+    .highlight {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+    .guidance {
+      background: #ecfeff;
+      padding: 20px;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 14px;
+      color: #64748b;
+      margin: 40px 0 20px;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>FUNCIONOU</h1>
-  <p>Este é o novo index.html ativo.</p>
+
+  <header>
+    <h1>SaaS Fiscal – Demonstração</h1>
+    <p>Exemplo prático de análise fiscal automática para contadores</p>
+  </header>
+
+  <div class="container">
+
+    <div class="card">
+      <h2>Caso analisado</h2>
+
+      <div class="info-box">
+        <p>Tipo de empresa: Loja Pet</p>
+        <p>Regime: Simples Nacional</p>
+        <p>Faturamento mensal: R$ 180.000</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Simulador de impacto</h2>
+
+      <label for="percentual">
+        Percentual estimado de produtos com ICMS-ST (%):
+      </label>
+
+      <input
+        type="number"
+        id="percentual"
+        placeholder="Ex: 12"
+      />
+
+      <button onclick="simular()">
+        Simular impacto fiscal
+      </button>
+
+      <div id="resultado" class="result">
+        <h3>Erro identificado</h3>
+        <p>
+          Produtos com <strong>ICMS-ST</strong> foram considerados novamente
+          na base do Simples Nacional.
+        </p>
+        <p>
+          Esse erro é comum e geralmente passa despercebido no <strong>PGDAS-D</strong>.
+        </p>
+
+        <h3>Impacto financeiro</h3>
+        <p>
+          Pago a mais no mês:
+          <span class="highlight" id="mensal"></span>
+        </p>
+        <p>
+          Pago a mais em 12 meses:
+          <span class="highlight" id="anual"></span>
+        </p>
+      </div>
+    </div>
+
+    <div class="card guidance">
+      <h2>Orientação do sistema</h2>
+      <p>
+        ✔ Revisar a classificação de produtos sujeitos à Substituição Tributária.
+      </p>
+      <p>
+        ✔ Ajustar a base declarada no PGDAS-D para evitar duplicidade de ICMS.
+      </p>
+      <p>
+        ✔ Auditoria recorrente evita perdas silenciosas ao longo do ano.
+      </p>
+    </div>
+
+  </div>
+
+  <footer>
+    Demonstração educacional • Valores estimados • SaaS Fiscal
+  </footer>
+
+  <script>
+    function simular() {
+      const percentual = Number(
+        document.getElementById("percentual").value
+      );
+
+      if (!percentual || percentual <= 0) {
+        alert("Informe um percentual válido.");
+        return;
+      }
+
+      const faturamento = 180000;
+      const aliquotaMedia = 0.04; // 4% estimado
+      const baseIndevida = faturamento * (percentual / 100);
+      const pagoAMaisMensal = baseIndevida * aliquotaMedia;
+      const pagoAMaisAnual = pagoAMaisMensal * 12;
+
+      document.getElementById("mensal").innerText =
+        "R$ " + pagoAMaisMensal.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+
+      document.getElementById("anual").innerText =
+        "R$ " + pagoAMaisAnual.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+
+      document.getElementById("resultado").style.display = "block";
+    }
+  </script>
+
 </body>
 </html>
