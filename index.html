@@ -1,11 +1,86 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>SaaS Fiscal — Demonstração</title>
+  <meta charset="UTF-8">
+  <title>SaaS Fiscal – Demonstração</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 40px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 8px;
+    }
+    h1 {
+      color: #1f2937;
+    }
+    h2 {
+      color: #111827;
+      margin-top: 30px;
+    }
+    .box {
+      background: #eef2ff;
+      padding: 20px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
+    .highlight {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+    .cta {
+      margin-top: 30px;
+      padding: 15px;
+      background: #111827;
+      color: #ffffff;
+      text-align: center;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>SaaS Fiscal</h1>
-  <p>Demonstração inicial para contadores.</p>
+
+<div class="container">
+  <h1>SaaS Fiscal – Demonstração</h1>
+  <p>Exemplo prático de análise fiscal automática para contadores.</p>
+
+  <h2>Caso analisado</h2>
+  <div class="box">
+    <p><strong>Tipo de empresa:</strong> Loja Pet</p>
+    <p><strong>Regime:</strong> Simples Nacional</p>
+    <p><strong>Faturamento mensal:</strong> R$ 180.000</p>
+  </div>
+
+  <h2>Erro identificado</h2>
+  <div class="box">
+    <p>Produtos com <strong>ICMS-ST</strong> foram considerados novamente na base do Simples.</p>
+    <p>Esse erro é comum e geralmente passa despercebido no PGDAS-D.</p>
+  </div>
+
+  <h2>Impacto financeiro</h2>
+  <div class="box">
+    <p><span class="highlight">Pago a mais no mês:</span> R$ 4.320</p>
+    <p><span class="highlight">Pago a mais em 12 meses:</span> R$ 51.840</p>
+  </div>
+
+  <h2>Orientação do sistema</h2>
+  <div class="box">
+    <p>Revisar a classificação de produtos sujeitos à Substituição Tributária.</p>
+    <p>Ajustar a base declarada no PGDAS-D para evitar duplicidade.</p>
+  </div>
+
+  <div class="cta">
+    Demonstração conceitual — versão com XML real disponível na próxima etapa
+  </div>
+</div>
+
 </body>
 </html>
+
