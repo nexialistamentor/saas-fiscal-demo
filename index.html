@@ -1,103 +1,59 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Simulador Fiscal – Demonstração</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      padding: 40px;
-    }
-    .box {
-      background: #fff;
-      padding: 25px;
-      max-width: 600px;
-      margin: auto;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    h1 {
-      color: #2c3e50;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: bold;
-    }
-    input {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-    }
-    button {
-      margin-top: 20px;
-      padding: 12px;
-      width: 100%;
-      background: #2c3e50;
-      color: #fff;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .resultado {
-      margin-top: 25px;
-      padding: 15px;
-      background: #f0f0f0;
-      border-radius: 6px;
-    }
-    .perda {
-      color: #c0392b;
-      font-weight: bold;
-      font-size: 18px;
-    }
-  </style>
-</head>
 
 <body>
-  <div class="box">
-    <h1>Simulador Fiscal</h1>
-    <p>Demonstração simplificada de possível pagamento indevido no Simples Nacional.</p>
 
-    <label>Faturamento mensal (R$)</label>
-    <input type="number" id="faturamento">
+<h1>SaaS Fiscal — Simulador de Perdas Tributárias</h1>
+<p>Simulação educativa para identificar possíveis pagamentos indevidos.</p>
 
-    <label>% de faturamento com ICMS-ST</label>
-    <input type="number" id="st" value="20">
+<div class="caixa">
+  <label>Tipo de empresa</label>
+  <select id="tipo">
+    <option>Loja</option>
+    <option>Clínica</option>
+    <option>Prestadora de serviços</option>
+  </select>
 
-    <label>Alíquota efetiva do Simples (%)</label>
-    <input type="number" id="aliquota" value="6">
+  <label>Regime tributário</label>
+  <select id="regime">
+    <option>Simples Nacional</option>
+  </select>
 
-    <button onclick="simular()">Simular agora</button>
+  <label>Faturamento mensal (R$)</label>
+  <input type="number" id="faturamento" placeholder="Ex: 180000">
 
-    <div class="resultado" id="resultado"></div>
-  </div>
+  <label>Percentual de ICMS-ST no faturamento (%)</label>
+  <input type="number" id="icmsst" placeholder="Ex: 20">
 
-  <script>
-    function simular() {
-      const faturamento = Number(document.getElementById("faturamento").value);
-      const st = Number(document.getElementById("st").value) / 100;
-      const aliquota = Number(document.getElementById("aliquota").value) / 100;
+  <label>Alíquota média do Simples (%)</label>
+  <input type="number" id="aliquota" placeholder="Ex: 6">
 
-      if (!faturamento) {
-        alert("Informe o faturamento mensal.");
-        return;
-      }
+  <button onclick="simular()">Simular agora</button>
+</div>
 
-      const baseErrada = faturamento;
-      const baseCorreta = faturamento * (1 - st);
+<div class="resultado" id="resultado"></div>
 
-      const pago = baseErrada * aliquota;
-      const correto = baseCorreta * aliquota;
-      const perda = pago - correto;
+<script>
+function simular() {
+  const faturamento = Number(document.getElementById("faturamento").value);
+  const icmsst = Number(document.getElementById("icmsst").value);
+  const aliquota = Number(document.getElementById("aliquota").value);
 
-      document.getElementById("resultado").innerHTML = `
-        <p>Imposto pago: R$ ${pago.toFixed(2)}</p>
-        <p>Imposto correto: R$ ${correto.toFixed(2)}</p>
-        <p class="perda">Possível valor pago a mais: R$ ${perda.toFixed(2)}</p>
-      `;
-    }
-  </script>
+  if (!faturamento || !icmsst || !aliquota) {
+    alert("Preencha todos os campos.");
+    return;
+  }
+
+  const baseErrada = faturamento * (icmsst / 100);
+  const pagoIndevido = baseErrada * (aliquota / 100);
+
+  document.getElementById("resultado").innerHTML = `
+    <h2>Resultado da simulação</h2>
+    <p><strong>Valor possivelmente pago a mais no mês:</strong></p>
+    <h3 style="color:red">R$ ${pagoIndevido.toFixed(2)}</h3>
+    <p>Este valor ocorre quando produtos com ICMS-ST entram novamente no cálculo do Simples.</p>
+    <p><em>Simulação educativa. Confirmação exige análise fiscal detalhada.</em></p>
+  `;
+}
+</script>
+
 </body>
-</html>
 
