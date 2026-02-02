@@ -1,86 +1,119 @@
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>SaaS Fiscal – Demonstração</title>
+  <meta charset="UTF-8" />
+  <title>Simulador Fiscal — Demonstração</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f7fa;
-      margin: 0;
+      background: #f5f6fa;
       padding: 40px;
-    }
-    .container {
-      max-width: 800px;
-      margin: auto;
-      background: #ffffff;
-      padding: 30px;
-      border-radius: 8px;
+      color: #333;
     }
     h1 {
-      color: #1f2937;
-    }
-    h2 {
-      color: #111827;
-      margin-top: 30px;
+      color: #2c3e50;
     }
     .box {
-      background: #eef2ff;
-      padding: 20px;
-      border-radius: 6px;
+      background: #fff;
+      padding: 25px;
+      max-width: 600px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
       margin-top: 15px;
-    }
-    .highlight {
-      color: #b91c1c;
       font-weight: bold;
     }
-    .cta {
+    select, input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px;
+      width: 100%;
+      background: #2c3e50;
+      color: #fff;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .resultado {
       margin-top: 30px;
-      padding: 15px;
-      background: #111827;
-      color: #ffffff;
-      text-align: center;
-      border-radius: 6px;
+      padding: 20px;
+      background: #fff3cd;
+      border-left: 6px solid #f39c12;
+      display: none;
+    }
+    .impacto {
+      color: #c0392b;
       font-weight: bold;
+      font-size: 18px;
     }
   </style>
 </head>
+
 <body>
 
-<div class="container">
-  <h1>SaaS Fiscal – Demonstração</h1>
-  <p>Exemplo prático de análise fiscal automática para contadores.</p>
+  <h1>Simulador Fiscal — Demonstração</h1>
+  <p>Descubra se sua empresa pode estar pagando imposto a mais.</p>
 
-  <h2>Caso analisado</h2>
   <div class="box">
-    <p><strong>Tipo de empresa:</strong> Loja Pet</p>
-    <p><strong>Regime:</strong> Simples Nacional</p>
-    <p><strong>Faturamento mensal:</strong> R$ 180.000</p>
+    <label>Tipo de negócio</label>
+    <select id="negocio">
+      <option>Loja Pet</option>
+      <option>Clínica Odontológica</option>
+      <option>Clínica Ortodôntica</option>
+      <option>Comércio em Geral</option>
+      <option>Prestador de Serviços</option>
+    </select>
+
+    <label>Regime tributário</label>
+    <select id="regime">
+      <option>Simples Nacional</option>
+      <option>Não sei informar</option>
+    </select>
+
+    <label>Faturamento mensal aproximado</label>
+    <select id="faturamento">
+      <option>Até R$ 100.000</option>
+      <option>Entre R$ 100.000 e R$ 300.000</option>
+      <option>Acima de R$ 300.000</option>
+    </select>
+
+    <label>Estado (UF)</label>
+    <input type="text" id="estado" placeholder="Ex: PA, SP, MG" />
+
+    <button onclick="analisar()">Analisar agora</button>
   </div>
 
-  <h2>Erro identificado</h2>
-  <div class="box">
-    <p>Produtos com <strong>ICMS-ST</strong> foram considerados novamente na base do Simples.</p>
-    <p>Esse erro é comum e geralmente passa despercebido no PGDAS-D.</p>
+  <div class="resultado" id="resultado">
+    <h2>⚠️ Alerta Fiscal Identificado</h2>
+    <p>
+      Com base no perfil informado, há <strong>alta probabilidade</strong> de
+      erro de enquadramento ou pagamento indevido de imposto.
+    </p>
+    <p class="impacto">
+      Impacto financeiro estimado: R$ 3.000 a R$ 7.000 por mês
+    </p>
+    <p>
+      Esse tipo de erro costuma passar despercebido na rotina contábil.
+    </p>
+    <p>
+      Próximo passo: validar com dados reais.
+    </p>
   </div>
 
-  <h2>Impacto financeiro</h2>
-  <div class="box">
-    <p><span class="highlight">Pago a mais no mês:</span> R$ 4.320</p>
-    <p><span class="highlight">Pago a mais em 12 meses:</span> R$ 51.840</p>
-  </div>
-
-  <h2>Orientação do sistema</h2>
-  <div class="box">
-    <p>Revisar a classificação de produtos sujeitos à Substituição Tributária.</p>
-    <p>Ajustar a base declarada no PGDAS-D para evitar duplicidade.</p>
-  </div>
-
-  <div class="cta">
-    Demonstração conceitual — versão com XML real disponível na próxima etapa
-  </div>
-</div>
+  <script>
+    function analisar() {
+      document.getElementById("resultado").style.display = "block";
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+  </script>
 
 </body>
 </html>
-
