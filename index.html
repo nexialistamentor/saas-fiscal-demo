@@ -1,35 +1,33 @@
-
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Simulador Fiscal — Demonstração</title>
+  <meta charset="UTF-8">
+  <title>Simulador Fiscal – Demonstração</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f6fa;
+      background: #f5f5f5;
       padding: 40px;
-      color: #333;
-    }
-    h1 {
-      color: #2c3e50;
     }
     .box {
       background: #fff;
       padding: 25px;
       max-width: 600px;
+      margin: auto;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2c3e50;
     }
     label {
       display: block;
       margin-top: 15px;
       font-weight: bold;
     }
-    select, input {
+    input {
       width: 100%;
-      padding: 10px;
+      padding: 8px;
       margin-top: 5px;
     }
     button {
@@ -43,13 +41,12 @@
       cursor: pointer;
     }
     .resultado {
-      margin-top: 30px;
-      padding: 20px;
-      background: #fff3cd;
-      border-left: 6px solid #f39c12;
-      display: none;
+      margin-top: 25px;
+      padding: 15px;
+      background: #f0f0f0;
+      border-radius: 6px;
     }
-    .impacto {
+    .perda {
       color: #c0392b;
       font-weight: bold;
       font-size: 18px;
@@ -58,62 +55,49 @@
 </head>
 
 <body>
-
-  <h1>Simulador Fiscal — Demonstração</h1>
-  <p>Descubra se sua empresa pode estar pagando imposto a mais.</p>
-
   <div class="box">
-    <label>Tipo de negócio</label>
-    <select id="negocio">
-      <option>Loja Pet</option>
-      <option>Clínica Odontológica</option>
-      <option>Clínica Ortodôntica</option>
-      <option>Comércio em Geral</option>
-      <option>Prestador de Serviços</option>
-    </select>
+    <h1>Simulador Fiscal</h1>
+    <p>Demonstração simplificada de possível pagamento indevido no Simples Nacional.</p>
 
-    <label>Regime tributário</label>
-    <select id="regime">
-      <option>Simples Nacional</option>
-      <option>Não sei informar</option>
-    </select>
+    <label>Faturamento mensal (R$)</label>
+    <input type="number" id="faturamento">
 
-    <label>Faturamento mensal aproximado</label>
-    <select id="faturamento">
-      <option>Até R$ 100.000</option>
-      <option>Entre R$ 100.000 e R$ 300.000</option>
-      <option>Acima de R$ 300.000</option>
-    </select>
+    <label>% de faturamento com ICMS-ST</label>
+    <input type="number" id="st" value="20">
 
-    <label>Estado (UF)</label>
-    <input type="text" id="estado" placeholder="Ex: PA, SP, MG" />
+    <label>Alíquota efetiva do Simples (%)</label>
+    <input type="number" id="aliquota" value="6">
 
-    <button onclick="analisar()">Analisar agora</button>
-  </div>
+    <button onclick="simular()">Simular agora</button>
 
-  <div class="resultado" id="resultado">
-    <h2>⚠️ Alerta Fiscal Identificado</h2>
-    <p>
-      Com base no perfil informado, há <strong>alta probabilidade</strong> de
-      erro de enquadramento ou pagamento indevido de imposto.
-    </p>
-    <p class="impacto">
-      Impacto financeiro estimado: R$ 3.000 a R$ 7.000 por mês
-    </p>
-    <p>
-      Esse tipo de erro costuma passar despercebido na rotina contábil.
-    </p>
-    <p>
-      Próximo passo: validar com dados reais.
-    </p>
+    <div class="resultado" id="resultado"></div>
   </div>
 
   <script>
-    function analisar() {
-      document.getElementById("resultado").style.display = "block";
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    function simular() {
+      const faturamento = Number(document.getElementById("faturamento").value);
+      const st = Number(document.getElementById("st").value) / 100;
+      const aliquota = Number(document.getElementById("aliquota").value) / 100;
+
+      if (!faturamento) {
+        alert("Informe o faturamento mensal.");
+        return;
+      }
+
+      const baseErrada = faturamento;
+      const baseCorreta = faturamento * (1 - st);
+
+      const pago = baseErrada * aliquota;
+      const correto = baseCorreta * aliquota;
+      const perda = pago - correto;
+
+      document.getElementById("resultado").innerHTML = `
+        <p>Imposto pago: R$ ${pago.toFixed(2)}</p>
+        <p>Imposto correto: R$ ${correto.toFixed(2)}</p>
+        <p class="perda">Possível valor pago a mais: R$ ${perda.toFixed(2)}</p>
+      `;
     }
   </script>
-
 </body>
 </html>
+
