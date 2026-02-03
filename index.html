@@ -1,51 +1,26 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>SaaS Fiscal</title>
-</head>
+<script>
+function impactoSemelhante() {
 
-<body>
+  const faturamento = 180000;
+  const aliquota = 0.064;
 
-  <h1>SaaS Fiscal – Demonstração</h1>
+  const percentual = Number(
+    document.getElementById("percentual").value
+  );
 
-  <label>Percentual estimado de produtos com ICMS-ST (%)</label><br>
-  <input id="percentual" type="number" placeholder="Ex: 12"><br><br>
+  if (isNaN(percentual) || percentual <= 0) {
+    alert("Digite um percentual válido");
+    return;
+  }
 
-  <button onclick="simularImpacto()">Simular impacto fiscal</button>
+  const base = faturamento * (percentual / 100);
+  const mensal = base * aliquota;
+  const anual = mensal * 12;
 
-  <div id="resultado" style="display:none;">
-    <p>Pago a mais no mês: <strong><span id="mensal"></span></strong></p>
-    <p>Pago a mais em 12 meses: <strong><span id="anual"></span></strong></p>
-  </div>
+  document.getElementById("mensal").innerText =
+    "R$ " + mensal.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 
-  <script>
-    function simularImpacto() {
-      const faturamento = 180000;
-      const aliquota = 0.04;
-
-      const percentual = Number(
-        document.getElementById("percentual").value
-      );
-
-      if (isNaN(percentual) || percentual <= 0) {
-        alert("Digite um percentual válido");
-        return;
-      }
-
-      const base = faturamento * (percentual / 100);
-      const mensal = base * aliquota;
-      const anual = mensal * 12;
-
-      document.getElementById("mensal").innerText =
-        mensal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-      document.getElementById("anual").innerText =
-        anual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-      document.getElementById("resultado").style.display = "block";
-    }
-  </script>
-
-</body>
-</html>
+  document.getElementById("anual").innerText =
+    "R$ " + anual.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+}
+</script>
