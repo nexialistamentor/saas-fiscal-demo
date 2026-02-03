@@ -13,7 +13,7 @@
     }
 
     .container {
-      max-width: 560px;
+      max-width: 600px;
       margin: auto;
       background: #ffffff;
       padding: 30px;
@@ -27,7 +27,7 @@
 
     p {
       color: #555;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
       line-height: 1.5;
     }
 
@@ -37,6 +37,7 @@
       margin-bottom: 6px;
     }
 
+    select,
     input {
       width: 100%;
       padding: 10px;
@@ -94,11 +95,19 @@
   <div class="container">
     <h1>Simulador de Impacto do ICMS-ST</h1>
 
-    <p>
-      Muitos negócios pagam ICMS-ST embutido nos produtos sem perceber
-      o impacto real no caixa.  
-      Este simulador faz uma <strong>estimativa inicial</strong>
-      para tornar esse custo visível.
+    <label for="perfil">
+      Selecione seu perfil
+    </label>
+
+    <select id="perfil">
+      <option value="cliente">Sou empresário / gestor</option>
+      <option value="contador">Sou contador / profissional fiscal</option>
+    </select>
+
+    <p id="textoPerfil">
+      Este simulador ajuda a visualizar quanto o ICMS-ST
+      pode estar impactando o caixa do seu negócio
+      ao longo do tempo.
     </p>
 
     <label for="percentual">
@@ -119,6 +128,28 @@
   </div>
 
   <script>
+    const textos = {
+      cliente: `
+        Este simulador mostra uma estimativa do custo
+        que o ICMS-ST pode estar gerando no seu caixa,
+        mesmo quando o imposto não aparece de forma clara.
+      `,
+      contador: `
+        Este simulador oferece uma visão preliminar
+        do impacto financeiro do ICMS-ST,
+        considerando parâmetros médios de mercado
+        e podendo servir como ponto de partida
+        para análise técnica mais aprofundada.
+      `
+    };
+
+    const perfilSelect = document.getElementById("perfil");
+    const textoPerfil = document.getElementById("textoPerfil");
+
+    perfilSelect.addEventListener("change", () => {
+      textoPerfil.innerHTML = textos[perfilSelect.value];
+    });
+
     function simular() {
       const percentualInput = document.getElementById("percentual");
       const resultado = document.getElementById("resultado");
@@ -149,15 +180,15 @@
         <strong>R$ ${impactoAnual.toFixed(2)}</strong><br>
 
         <div class="alerta">
-          ⚠️ Este valor é apenas uma estimativa média.
-          O impacto real pode ser maior ou menor dependendo
-          da classificação fiscal dos produtos.
+          ⚠️ Este valor é apenas uma estimativa.
+          O impacto real depende da correta
+          classificação fiscal dos produtos.
         </div>
 
         <div class="cta">
           <strong>Próximo passo recomendado:</strong><br>
-          Uma análise fiscal baseada nos seus XMLs
-          pode identificar valores pagos a mais
+          Uma análise baseada em XMLs fiscais
+          pode identificar pagamentos indevidos
           e oportunidades reais de recuperação.
         </div>
       `;
