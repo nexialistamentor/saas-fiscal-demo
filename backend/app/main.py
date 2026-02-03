@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 
-app = FastAPI(title="SaaS Fiscal API")
+app = FastAPI(title="API Fiscal SaaS")
 
 @app.get("/")
 def root():
-    return {"message": "SaaS Fiscal API online"}
+    return {"message": "API Fiscal SaaS online"}
 
 @app.get("/health")
 def health_check():
