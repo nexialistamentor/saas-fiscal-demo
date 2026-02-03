@@ -2,12 +2,100 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>SaaS Fiscal – Demo</title>
+  <title>SaaS Fiscal – Simulador</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 600px;
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin-bottom: 15px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background: #2b6cb0;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2c5282;
+    }
+
+    .resultado {
+      margin-top: 20px;
+      padding: 15px;
+      background: #edf2f7;
+      border-radius: 4px;
+    }
+  </style>
 </head>
+
 <body>
 
-  <h1>SaaS Fiscal – Demo</h1>
-  <p>Base limpa carregada com sucesso.</p>
+  <div class="container">
+    <h1>SaaS Fiscal – Demo</h1>
+    <p>Simulador simples de impacto financeiro com ICMS-ST.</p>
+
+    <label>Percentual estimado de produtos com ICMS-ST (%)</label>
+    <input type="number" id="percentual" placeholder="Ex: 12" />
+
+    <button onclick="simular()">Simular impacto</button>
+
+    <div id="resultado" class="resultado"></div>
+  </div>
+
+  <script>
+    function simular() {
+      const faturamentoMensal = 180000;
+      const aliquotaST = 0.064;
+
+      const percentual = Number(document.getElementById("percentual").value);
+
+      if (isNaN(percentual) || percentual <= 0) {
+        document.getElementById("resultado").innerHTML =
+          "<strong>Digite um percentual válido.</strong>";
+        return;
+      }
+
+      const baseST = faturamentoMensal * (percentual / 100);
+      const impactoMensal = baseST * aliquotaST;
+      const impactoAnual = impactoMensal * 12;
+
+      document.getElementById("resultado").innerHTML = `
+        <p><strong>Impacto mensal estimado:</strong> R$ ${impactoMensal.toFixed(2)}</p>
+        <p><strong>Impacto anual estimado:</strong> R$ ${impactoAnual.toFixed(2)}</p>
+      `;
+    }
+  </script>
 
 </body>
 </html>
