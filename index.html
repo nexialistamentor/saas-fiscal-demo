@@ -13,7 +13,7 @@
     }
 
     .container {
-      max-width: 600px;
+      max-width: 620px;
       margin: auto;
       background: #ffffff;
       padding: 30px;
@@ -87,6 +87,22 @@
     .cta strong {
       color: #0e7490;
     }
+
+    .xml-box {
+      margin-top: 25px;
+      padding: 18px;
+      border: 2px dashed #94a3b8;
+      border-radius: 6px;
+      background: #f8fafc;
+      text-align: center;
+      color: #475569;
+    }
+
+    .xml-box small {
+      display: block;
+      margin-top: 6px;
+      color: #64748b;
+    }
   </style>
 </head>
 
@@ -95,10 +111,7 @@
   <div class="container">
     <h1>Simulador de Impacto do ICMS-ST</h1>
 
-    <label for="perfil">
-      Selecione seu perfil
-    </label>
-
+    <label for="perfil">Selecione seu perfil</label>
     <select id="perfil">
       <option value="cliente">Sou empresário / gestor</option>
       <option value="contador">Sou contador / profissional fiscal</option>
@@ -120,11 +133,18 @@
       placeholder="Ex: 10, 15, 25"
     >
 
-    <button onclick="simular()">
-      Ver impacto estimado no caixa
-    </button>
+    <button onclick="simular()">Ver impacto estimado no caixa</button>
 
     <div id="resultado" class="resultado"></div>
+
+    <!-- GANCHO XML -->
+    <div class="xml-box">
+      📄 Em breve: análise automática por XML fiscal<br>
+      <small>
+        Upload de XMLs permitirá identificar valores pagos a mais,
+        inconsistências de ICMS-ST e oportunidades reais de recuperação.
+      </small>
+    </div>
   </div>
 
   <script>
@@ -138,8 +158,8 @@
         Este simulador oferece uma visão preliminar
         do impacto financeiro do ICMS-ST,
         considerando parâmetros médios de mercado
-        e podendo servir como ponto de partida
-        para análise técnica mais aprofundada.
+        e servindo como ponto de partida
+        para análise técnica aprofundada.
       `
     };
 
