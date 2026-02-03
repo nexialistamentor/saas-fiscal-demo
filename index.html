@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>SaaS Fiscal – Demonstração</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <title>Simulador de Impacto do ICMS-ST</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f2f4f8;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
       padding: 40px;
     }
 
@@ -18,7 +18,7 @@
       background: #ffffff;
       padding: 30px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
     h1 {
@@ -26,8 +26,8 @@
     }
 
     p {
-      margin-bottom: 20px;
       color: #555;
+      margin-bottom: 20px;
     }
 
     label {
@@ -39,8 +39,8 @@
     input {
       width: 100%;
       padding: 10px;
-      margin-bottom: 15px;
       font-size: 16px;
+      margin-bottom: 15px;
     }
 
     button {
@@ -55,34 +55,42 @@
     }
 
     button:hover {
-      background: #1e4fd6;
+      background: #1e4fd8;
     }
 
     .resultado {
       margin-top: 20px;
-      font-size: 16px;
+      background: #f1f5f9;
+      padding: 15px;
+      border-radius: 4px;
     }
   </style>
 </head>
 
 <body>
+
   <div class="container">
-    <h1>SaaS Fiscal – Demonstração</h1>
-    <p>Simulador simples de impacto financeiro com ICMS-ST.</p>
+    <h1>Simulador de Impacto do ICMS-ST</h1>
+    <p>
+      Estime de forma simples quanto o ICMS-ST pode estar impactando
+      o caixa do seu negócio ao longo do tempo.
+    </p>
 
     <label for="percentual">
-      Percentual estimado de produtos com ICMS-ST (%)
+      Aproximadamente quantos % dos seus produtos têm ICMS-ST?
     </label>
 
     <input
       type="number"
       id="percentual"
-      placeholder="Ex: 15"
-    />
+      placeholder="Ex: 10, 15, 25"
+    >
 
-    <button onclick="simular()">Simular impacto</button>
+    <button onclick="simular()">
+      Ver impacto estimado no caixa
+    </button>
 
-    <div class="resultado" id="resultado"></div>
+    <div id="resultado" class="resultado"></div>
   </div>
 
   <script>
@@ -97,7 +105,7 @@
         return;
       }
 
-      // Valores fixos para DEMO
+      // Valores fixos apenas para demonstração
       const faturamentoMensal = 120000;
       const aliquotaMedia = 0.12;
 
@@ -107,12 +115,16 @@
       const impactoAnual = impactoMensal * 12;
 
       resultado.innerHTML = `
-        <strong>Impacto mensal estimado:</strong>
-        R$ ${impactoMensal.toFixed(2)}<br>
-        <strong>Impacto anual estimado:</strong>
-        R$ ${impactoAnual.toFixed(2)}
+        <strong>Impacto financeiro estimado</strong><br><br>
+        Custo mensal aproximado: <strong>R$ ${impactoMensal.toFixed(2)}</strong><br>
+        Custo anual aproximado: <strong>R$ ${impactoAnual.toFixed(2)}</strong><br><br>
+        <small>
+          Valores estimados com base em parâmetros médios.
+          Para análise precisa, é necessária auditoria fiscal.
+        </small>
       `;
     }
   </script>
+
 </body>
 </html>
