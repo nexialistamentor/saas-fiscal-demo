@@ -13,7 +13,7 @@
     }
 
     .container {
-      max-width: 620px;
+      max-width: 640px;
       margin: auto;
       background: #ffffff;
       padding: 30px;
@@ -54,6 +54,7 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      margin-top: 10px;
     }
 
     button:hover {
@@ -78,7 +79,7 @@
 
     .cta {
       margin-top: 20px;
-      padding: 15px;
+      padding: 18px;
       background: #ecfeff;
       border-left: 4px solid #06b6d4;
       font-size: 15px;
@@ -88,20 +89,21 @@
       color: #0e7490;
     }
 
-    .xml-box {
-      margin-top: 25px;
+    .lead-box {
+      margin-top: 20px;
       padding: 18px;
-      border: 2px dashed #94a3b8;
-      border-radius: 6px;
       background: #f8fafc;
-      text-align: center;
-      color: #475569;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
     }
 
-    .xml-box small {
-      display: block;
-      margin-top: 6px;
-      color: #64748b;
+    .lead-confirmacao {
+      margin-top: 15px;
+      background: #ecfdf5;
+      border-left: 4px solid #10b981;
+      padding: 12px;
+      color: #065f46;
+      display: none;
     }
   </style>
 </head>
@@ -137,13 +139,32 @@
 
     <div id="resultado" class="resultado"></div>
 
-    <!-- GANCHO XML -->
-    <div class="xml-box">
-      📄 Em breve: análise automática por XML fiscal<br>
-      <small>
-        Upload de XMLs permitirá identificar valores pagos a mais,
-        inconsistências de ICMS-ST e oportunidades reais de recuperação.
-      </small>
+    <!-- CTA DE CAPTAÇÃO -->
+    <div class="cta">
+      <strong>Quer saber o valor real?</strong><br>
+      Uma análise baseada nos seus XMLs fiscais pode identificar
+      pagamentos indevidos e oportunidades reais de recuperação.
+    </div>
+
+    <div class="lead-box">
+      <label for="contato">
+        Deixe seu e-mail ou WhatsApp para receber orientações
+      </label>
+
+      <input
+        type="text"
+        id="contato"
+        placeholder="Ex: email@empresa.com ou (99) 99999-9999"
+      >
+
+      <button onclick="registrarLead()">
+        Quero uma análise real
+      </button>
+
+      <div id="confirmacao" class="lead-confirmacao">
+        ✔️ Recebemos seu contato.  
+        Em breve você receberá orientações para análise fiscal.
+      </div>
     </div>
   </div>
 
@@ -157,9 +178,8 @@
       contador: `
         Este simulador oferece uma visão preliminar
         do impacto financeiro do ICMS-ST,
-        considerando parâmetros médios de mercado
-        e servindo como ponto de partida
-        para análise técnica aprofundada.
+        considerando parâmetros médios
+        e servindo como ponto de partida técnico.
       `
     };
 
@@ -181,7 +201,6 @@
         return;
       }
 
-      // Valores fixos apenas para DEMONSTRAÇÃO
       const faturamentoMensal = 120000;
       const aliquotaMedia = 0.12;
 
@@ -192,26 +211,31 @@
 
       resultado.innerHTML = `
         <strong>Impacto financeiro estimado</strong><br><br>
-
         • Custo mensal aproximado:
         <strong>R$ ${impactoMensal.toFixed(2)}</strong><br>
-
         • Custo anual aproximado:
         <strong>R$ ${impactoAnual.toFixed(2)}</strong><br>
 
         <div class="alerta">
-          ⚠️ Este valor é apenas uma estimativa.
-          O impacto real depende da correta
-          classificação fiscal dos produtos.
-        </div>
-
-        <div class="cta">
-          <strong>Próximo passo recomendado:</strong><br>
-          Uma análise baseada em XMLs fiscais
-          pode identificar pagamentos indevidos
-          e oportunidades reais de recuperação.
+          ⚠️ Estimativa média. O valor real depende
+          da correta classificação fiscal dos produtos.
         </div>
       `;
+    }
+
+    function registrarLead() {
+      const contato = document.getElementById("contato").value;
+      const confirmacao = document.getElementById("confirmacao");
+
+      if (!contato || contato.length < 5) {
+        alert("Informe um contato válido.");
+        return;
+      }
+
+      // MOCK de captação (sem backend)
+      console.log("Lead capturado:", contato);
+
+      confirmacao.style.display = "block";
     }
   </script>
 
