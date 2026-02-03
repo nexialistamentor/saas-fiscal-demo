@@ -13,7 +13,7 @@
     }
 
     .container {
-      max-width: 600px;
+      max-width: 640px;
       background: #ffffff;
       padding: 30px;
       border-radius: 8px;
@@ -21,23 +21,31 @@
     }
 
     h1 {
-      margin-bottom: 10px;
+      margin-bottom: 5px;
     }
 
     p {
       margin-bottom: 15px;
+      color: #444;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
     }
 
     input {
       width: 100%;
       padding: 10px;
+      margin-top: 5px;
       margin-bottom: 15px;
       font-size: 16px;
     }
 
     button {
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       font-size: 16px;
       background: #2b6cb0;
       color: white;
@@ -62,11 +70,17 @@
 <body>
 
   <div class="container">
-    <h1>SaaS Fiscal – Demo</h1>
-    <p>Simulador simples de impacto financeiro com ICMS-ST.</p>
+    <h1>SaaS Fiscal – Demonstração</h1>
+    <p>Simulador de impacto financeiro com ICMS-ST.</p>
 
-    <label>Percentual estimado de produtos com ICMS-ST (%)</label>
-    <input type="number" id="percentual" placeholder="Ex: 12" />
+    <label>Faturamento mensal (R$)</label>
+    <input type="number" id="faturamento" placeholder="Ex: 180000" />
+
+    <label>Percentual de produtos com ICMS-ST (%)</label>
+    <input type="number" id="percentual" placeholder="Ex: 15" />
+
+    <label>Alíquota média de ICMS-ST (%)</label>
+    <input type="number" id="aliquota" placeholder="Ex: 6.4" />
 
     <button onclick="simular()">Simular impacto</button>
 
@@ -75,19 +89,22 @@
 
   <script>
     function simular() {
-      const faturamentoMensal = 180000;
-      const aliquotaST = 0.064;
-
+      const faturamento = Number(document.getElementById("faturamento").value);
       const percentual = Number(document.getElementById("percentual").value);
+      const aliquota = Number(document.getElementById("aliquota").value) / 100;
 
-      if (isNaN(percentual) || percentual <= 0) {
+      if (
+        isNaN(faturamento) || faturamento <= 0 ||
+        isNaN(percentual) || percentual <= 0 ||
+        isNaN(aliquota) || aliquota <= 0
+      ) {
         document.getElementById("resultado").innerHTML =
-          "<strong>Digite um percentual válido.</strong>";
+          "<strong>Preencha todos os campos corretamente.</strong>";
         return;
       }
 
-      const baseST = faturamentoMensal * (percentual / 100);
-      const impactoMensal = baseST * aliquotaST;
+      const baseST = faturamento * (percentual / 100);
+      const impactoMensal = baseST * aliquota;
       const impactoAnual = impactoMensal * 12;
 
       document.getElementById("resultado").innerHTML = `
