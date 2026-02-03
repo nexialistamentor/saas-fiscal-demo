@@ -4,53 +4,10 @@
   <meta charset="UTF-8">
   <title>SaaS Fiscal – Demonstração</title>
 </head>
-
 <body>
 
-  <h1>SaaS Fiscal – Demonstração</h1>
-
-  <label>
-    Percentual estimado de produtos com ICMS-ST (%):
-    <input type="number" id="percentual" placeholder="Ex: 12">
-  </label>
-
-  <br><br>
-
-  <button onclick="impactoSemelhante()">
-    Simular impacto fiscal
-  </button>
-
-  <br><br>
-
-  <p>Pago a mais no mês: <strong id="mensal">R$ 0,00</strong></p>
-  <p>Pago a mais em 12 meses: <strong id="anual">R$ 0,00</strong></p>
-
-  <!-- JavaScript SEMPRE no final do body -->
-  <script>
-    function impactoSemelhante() {
-      const faturamento = 180000;
-      const aliquota = 0.064;
-
-      const percentual = Number(
-        document.getElementById("percentual").value
-      );
-
-      if (isNaN(percentual) || percentual <= 0) {
-        alert("Digite um percentual válido");
-        return;
-      }
-
-      const base = faturamento * (percentual / 100);
-      const mensal = base * aliquota;
-      const anual = mensal * 12;
-
-      document.getElementById("mensal").innerText =
-        mensal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-      document.getElementById("anual").innerText =
-        anual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    }
-  </script>
+  <h1>TESTE OK</h1>
+  <p>Se você está vendo isso, o GitHub Pages está funcionando.</p>
 
 </body>
 </html>
