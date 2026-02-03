@@ -97,30 +97,33 @@
 
         <div class="resultado" id="resultado"></div>
     </div>
+<script>
+function simular() {
+  const percentualInput = document.getElementById("percentual");
+  const resultado = document.getElementById("resultado");
 
-    <script>
-        function simular() {
-            const percentual = document.getElementById("percentual").value;
-            const resultado = document.getElementById("resultado");
+  const percentual = Number(percentualInput.value);
 
-            if (percentual === "" || percentual < 0) {
-                resultado.innerHTML = "Informe um percentual válido.";
-                return;
-            }
+ if (isNaN(percentual) || percentual <= 0) {
+  resultado.innerHTML = "Informe um percentual válido.";
+  return;
 
-            // Valores fixos apenas para DEMO
-            const faturamentoMensal = 120000;
-            const aliquotaMedia = 0.12;
+  }
 
-            const impactoMensal = faturamentoMensal * (percentual / 100) * aliquotaMedia;
-            const impactoAnual = impactoMensal * 12;
+  // Valores fixos para DEMO
+  const faturamentoMensal = 120000;
+  const aliquotaMedia = 0.12;
 
-            resultado.innerHTML = `
-                Impacto mensal estimado: R$ ${impactoMensal.toFixed(2)} <br>
-                Impacto anual estimado: R$ ${impactoAnual.toFixed(2)}
-            `;
-        }
-    </script>
+  const impactoMensal = faturamentoMensal * (percentual / 100) * aliquotaMedia;
+  const impactoAnual = impactoMensal * 12;
 
+  resultado.innerHTML = `
+    <strong>Impacto mensal estimado:</strong> R$ ${impactoMensal.toFixed(2)}<br>
+    <strong>Impacto anual estimado:</strong> R$ ${impactoAnual.toFixed(2)}
+  `;
+}
+</script>
+
+  
 </body>
 </html>
