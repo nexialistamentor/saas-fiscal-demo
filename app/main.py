@@ -16,9 +16,14 @@ from app.security import hash_senha, verificar_senha, criar_token, get_usuario_a
 import os
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+def startup():
+    models.Base.metadata.create_all(bind=engine)
 # Cria tabelas automaticamente
 
-models.Base.metadata.create_all(bind=engine)
+# models.Base.metadata.create_all(bind=engine)
 
 # ===============================
 # CRIAR PLANO BASICO SE NÃO EXISTIR
@@ -26,21 +31,21 @@ models.Base.metadata.create_all(bind=engine)
 
 from app.database import SessionLocal
 
-db = SessionLocal()
+# db = SessionLocal()
 
-plano_existente = db.query(models.Plano).filter(
-    models.Plano.nome == "Basico"
-).first()
+# plano_existente = db.query(models.Plano).filter(
+#     models.Plano.nome == "Basico"
+# ).first()
 
-if not plano_existente:
-    plano = models.Plano(
-        nome="Basico",
-        limite_cnpjs=3
-    )
-    db.add(plano)
-    db.commit()
+# if not plano_existente:
+#     plano = models.Plano(
+#         nome="Basico",
+#         limite_cnpjs=3
+#     )
+#     db.add(plano)
+#     db.commit()
 
-db.close()
+# db.close()
 
 
 
