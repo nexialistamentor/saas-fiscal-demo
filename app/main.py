@@ -6,7 +6,7 @@ import os
 
 from app.database import engine, SessionLocal, get_db
 from app import models
-from app.routers.auth_router import router as auth_router
+from app.auth_router import router as auth_router
 from app.xml_service import ler_xml_unico
 from app.schemas.user_schema import UserCreate, UserResponse
 from app.security import hash_senha, verificar_senha, criar_token, get_usuario_atual
