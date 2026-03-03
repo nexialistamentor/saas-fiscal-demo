@@ -146,4 +146,4 @@ def criar_planos(db: Session = Depends(get_db)):
 
     db.commit()
 
-   return {"mensagem": "Planos criados com sucesso"}
+    return {"mensagem": "Planos criados com sucesso"}
