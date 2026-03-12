@@ -9,7 +9,7 @@ if sys.platform == "win32":
         return _orig_get_context(method)
     multiprocessing.get_context = _patched_get_context
 
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, Request
+from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
@@ -20,6 +20,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.database import engine, get_db
 from app import models
+from app.models import DocumentoFiscal, ItemFiscal  # registro para create_all
 from app.auth_router import router as auth_router
 from app.routes.fiscal_router import router as fiscal_router
 from app.routes.lote_router import router as lote_router
@@ -56,6 +57,14 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+admin_router = APIRouter()
+
+
+@admin_router.get("/admin/create-tables")
+def create_tables():
+    models.Base.metadata.create_all(bind=engine)
+    return {"status": "tables created"}
+
 
 @app.middleware("http")
 async def add_security_headers(request, call_next):
@@ -84,6 +93,7 @@ app.include_router(inteligencia_router)
 app.include_router(dashboard_router)
 app.include_router(assistente_router)
 app.include_router(metrics_router)
+app.include_router(admin_router)
 
 
 def run_migrations():
