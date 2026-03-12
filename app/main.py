@@ -100,13 +100,8 @@ async def startup():
     models.Base.metadata.create_all(bind=engine)
     run_migrations()
 
-    # inicia scheduler em background (não bloqueia a API)
-    asyncio.create_task(
-        scheduler.iniciar_loop(
-            empresa_id=1,
-            intervalo_segundos=300  # 5 minutos
-        )
-    )
+    # Scheduler desativado temporariamente para estabilizar o banco
+    # asyncio.create_task(scheduler.iniciar_loop(empresa_id=1, intervalo_segundos=300))
 
 
 @app.get("/")
