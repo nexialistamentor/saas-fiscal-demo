@@ -97,8 +97,8 @@ def run_migrations():
 
 @app.on_event("startup")
 async def startup():
-    run_migrations()  # cria coluna se não existir
-    models.Base.metadata.create_all(bind=engine)  # cria tabelas se necessário
+    models.Base.metadata.create_all(bind=engine)
+    run_migrations()
 
     # inicia scheduler em background (não bloqueia a API)
     asyncio.create_task(
