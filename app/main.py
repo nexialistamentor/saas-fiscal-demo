@@ -86,8 +86,8 @@ app.include_router(assistente_router)
 app.include_router(metrics_router)
 
 
-@app.on_event("startup")
 def run_migrations():
+    """Cria coluna regime_tributario se não existir."""
     with engine.begin() as conn:
         conn.execute(text("""
             ALTER TABLE empresas
@@ -97,8 +97,8 @@ def run_migrations():
 
 @app.on_event("startup")
 async def startup():
-    # cria tabelas se necessário
-    models.Base.metadata.create_all(bind=engine)
+    run_migrations()  # cria coluna se não existir
+    models.Base.metadata.create_all(bind=engine)  # cria tabelas se necessário
 
     # inicia scheduler em background (não bloqueia a API)
     asyncio.create_task(
