@@ -8,7 +8,8 @@ def gerar_ranking_restituicao(db: Session, empresa_id: int):
         SELECT
             i.ncm,
             SUM(i.valor_st) AS st_pago,
-            SUM(i.base_st) AS base_st
+            SUM(i.base_st) AS base_st,
+            COUNT(*) AS volume_operacoes
         FROM itens_fiscais i
         INNER JOIN documentos_fiscais d ON i.documento_id = d.id
         WHERE d.empresa_id = :empresa_id
