@@ -7,6 +7,8 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 engine_kwargs: dict = {"pool_pre_ping": True}
 if "sqlite" in DATABASE_URL:
     engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    engine_kwargs["connect_args"] = {"sslmode": "require"}
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 
