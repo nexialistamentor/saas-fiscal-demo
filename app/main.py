@@ -53,6 +53,13 @@ app = FastAPI(
     swagger_ui_parameters={"syntaxHighlight.theme": "obsidian"}
 )
 
+# Migração: adiciona coluna regime_tributario se não existir (PostgreSQL no Railway)
+with engine.begin() as conn:
+    conn.execute(text("""
+        ALTER TABLE empresas
+        ADD COLUMN IF NOT EXISTS regime_tributario VARCHAR(50);
+    """))
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
