@@ -37,7 +37,7 @@ from app.database import get_db
 from app import models
 from sqlalchemy.orm import Session
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 
@@ -55,3 +55,36 @@ def get_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depends
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
 
     return usuario
+
+
+def verificar_acesso_relatorio(relatorio: "models.RelatorioAnalise", usuario: "models.User", db: Session) -> None:
+    """
+    Multi-tenant: garante que o relatório pertence ao usuário (via user_id ou empresa).
+    Levanta 403 se não tiver acesso.
+    """
+    if relatorio.user_id == usuario.id:
+        return
+    if relatorio.empresa_id:
+        verificar_empresa_do_usuario(relatorio.empresa_id, usuario, db)
+        return
+    raise HTTPException(status_code=403, detail="Acesso negado ao relatório")
+
+
+def verificar_empresa_do_usuario(empresa_id: int | None, usuario: "models.User", db: Session) -> "models.Empresa":
+    """
+    Multi-tenant: garante que a empresa pertence ao usuário logado.
+    Levanta 403 se a empresa não for do usuário.
+    Retorna a Empresa se válida.
+    """
+    if empresa_id is None:
+        raise HTTPException(status_code=403, detail="Recurso sem empresa associada")
+    empresa = db.query(models.Empresa).filter(
+        models.Empresa.id == empresa_id,
+        models.Empresa.user_id == usuario.id
+    ).first()
+    if not empresa:
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso negado: empresa não pertence ao usuário"
+        )
+    return empresa

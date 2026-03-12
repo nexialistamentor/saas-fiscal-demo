@@ -1,0 +1,262 @@
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+
+from app import models
+from app.database import get_db
+from app.routes.imposto_router import DadosImposto
+from app.security import get_usuario_atual, verificar_empresa_do_usuario
+from app.services.analysis_orchestrator import executar_analise_xml
+from app.services.registro_analise_service import executar_e_registrar_analise_xml
+from app.services.usage_service import LimiteAnalisesAtingidoError
+from app.services.assistente_service import (
+    _obter_dados_fiscais_planejamento,
+    _obter_dados_fiscais_recuperacao,
+    simular_planejamento_tributario,
+    simular_recuperacao_tributaria,
+)
+from app.services.insights_engine import InsightEngine
+from app.services.pdf_report_service import gerar_pdf_imposto, gerar_pdf_relatorio
+from app.services.imposto_service import calcular_imposto_simples
+from app.services.score_global_tributario_service import calcular_score_global_tributario
+from app.services.engine_resultado_service import EngineResultadoService
+from app.xml_security import validar_upload_xml
+
+router = APIRouter()
+
+ANALYSIS_TYPES = ("tax_recovery", "tax_planning")  # mei_tax: use POST /mei_tax e GET /mei_tax/{id}
+
+
+@router.get("/empresas/{empresa_id}/engines")
+def resultados_engines(
+    empresa_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
+    service = EngineResultadoService(db)
+    return service.listar_por_empresa(empresa_id)
+
+
+@router.post("/gerar-relatorio")
+async def gerar_relatorio(
+    file: UploadFile = File(...),
+    empresa_id: int | None = None,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    """Retorna o relatório fiscal estruturado (preview JSON). Persiste em relatorios_analise."""
+    xml_bytes = await validar_upload_xml(file)
+    user_id = usuario_atual.id
+    limite_analises = 100
+    if usuario_atual.plano:
+        limite_analises = getattr(usuario_atual.plano, "limite_analises", 100) or 100
+    if empresa_id:
+        verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
+        emp = db.query(models.Empresa).filter(models.Empresa.id == empresa_id).first()
+        user_id = emp.user_id if emp else usuario_atual.id
+    relatorio_obj = None
+    if user_id:
+        try:
+            relatorio_obj, analise = executar_e_registrar_analise_xml(
+                db, xml_bytes, user_id, empresa_id, limite_analises=limite_analises
+            )
+        except LimiteAnalisesAtingidoError as e:
+            raise HTTPException(status_code=429, detail=str(e))
+    else:
+        analise = executar_analise_xml(xml_bytes)
+    relatorio = _montar_relatorio(analise, empresa_id, db)
+    if relatorio_obj:
+        relatorio["relatorio_id"] = relatorio_obj.id
+    return relatorio
+
+
+def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dict:
+    """Monta o relatório estruturado a partir da análise para PDF ou JSON."""
+    score = None
+    if empresa_id:
+        score_dict = calcular_score_global_tributario(db, empresa_id)
+        score = score_dict.get("score_global_tributario")
+        if score is not None:
+            score = round(score, 2)
+
+    previsao = analise.get("previsao_recuperacao") or {}
+    valor_estimado = previsao.get("potencial_recuperacao_nota", 0)
+
+    insights_raw = analise.get("insights") or []
+    insights = [
+        i.get("descricao") or i.get("tipo", str(i))
+        for i in insights_raw
+        if isinstance(i, dict)
+    ]
+
+    return {
+        "empresa_id": empresa_id,
+        "potencial_recuperacao": {"valor_estimado": valor_estimado},
+        "insights": insights,
+        "score_global": score,
+    }
+
+
+@router.post("/relatorio-pdf")
+async def relatorio_pdf(
+    file: UploadFile = File(...),
+    empresa_id: int | None = None,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    """Gera e retorna o relatório fiscal em PDF para download. Persiste em relatorios_analise."""
+    xml_bytes = await validar_upload_xml(file)
+    user_id = usuario_atual.id
+    limite_analises = 100
+    if usuario_atual.plano:
+        limite_analises = getattr(usuario_atual.plano, "limite_analises", 100) or 100
+    if empresa_id:
+        verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
+        emp = db.query(models.Empresa).filter(models.Empresa.id == empresa_id).first()
+        user_id = emp.user_id if emp else usuario_atual.id
+    relatorio_obj = None
+    if user_id:
+        try:
+            relatorio_obj, analise = executar_e_registrar_analise_xml(
+                db, xml_bytes, user_id, empresa_id, limite_analises=limite_analises
+            )
+        except LimiteAnalisesAtingidoError as e:
+            raise HTTPException(status_code=429, detail=str(e))
+    else:
+        analise = executar_analise_xml(xml_bytes)
+    relatorio = _montar_relatorio(analise, empresa_id, db)
+    if relatorio_obj:
+        relatorio["relatorio_id"] = relatorio_obj.id
+    pdf = gerar_pdf_relatorio(relatorio)
+
+    return StreamingResponse(
+        iter([pdf.getvalue()]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=relatorio-fiscal.pdf"},
+    )
+
+
+@router.get("/{analysis_type}")
+def obter_relatorio_por_tipo(
+    analysis_type: str,
+    usuario_atual: models.User = Depends(get_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """
+    Libera relatório após pagamento. Fluxo unificado: empresa → planejamento → recuperação.
+    Rotas: /relatorio/tax_recovery | /relatorio/tax_planning
+    MEI: POST /relatorio/mei_tax → GET /relatorio/mei_tax/{id}
+    """
+    if analysis_type not in ANALYSIS_TYPES:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Tipo inválido. Use: {', '.join(ANALYSIS_TYPES)}",
+        )
+    if not usuario_atual.consulta_paga:
+        raise HTTPException(
+            status_code=402,
+            detail="Libere a análise fiscal para acessar o relatório.",
+        )
+
+    empresa_id = usuario_atual.empresas[0].id if usuario_atual.empresas else None
+    pergunta_placeholder = ""
+
+    if analysis_type == "tax_recovery":
+        dados = _obter_dados_fiscais_recuperacao(pergunta_placeholder, usuario_atual, db)
+        if dados:
+            resultado = simular_recuperacao_tributaria(dados)
+            return {"analysis_type": "tax_recovery", "relatorio": resultado}
+        if empresa_id:
+            engine = InsightEngine(db)
+            resultado = engine.gerar_insights_empresa(empresa_id)
+            return {"analysis_type": "tax_recovery", "relatorio": resultado}
+        raise HTTPException(
+            status_code=400,
+            detail="Vincule uma empresa com NF-e ou informe faturamento para gerar o relatório.",
+        )
+
+    if analysis_type == "tax_planning":
+        dados = _obter_dados_fiscais_planejamento(pergunta_placeholder, usuario_atual, db)
+        if dados:
+            resultado = simular_planejamento_tributario(dados)
+            return {"analysis_type": "tax_planning", "relatorio": resultado}
+        raise HTTPException(
+            status_code=400,
+            detail="Informe o faturamento ou vincule uma empresa com NF-e.",
+        )
+
+
+@router.post("/mei_tax")
+async def gerar_relatorio_mei_tax(
+    dados: DadosImposto,
+    usuario_atual: models.User = Depends(get_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """
+    Gera e persiste relatório MEI/CPF. Retorna o ID para download via GET /relatorio/mei_tax/{id}.
+    Fluxo: assistente → pagamento → POST /relatorio/mei_tax.
+    """
+    if not usuario_atual.consulta_paga:
+        raise HTTPException(
+            status_code=402,
+            detail="Libere a análise fiscal para acessar o relatório.",
+        )
+    resultado = calcular_imposto_simples(
+        faturamento=dados.faturamento_mensal,
+        despesas=dados.despesas,
+        tipo=dados.tipo_usuario,
+    )
+    rel = models.RelatorioAnalise(
+        user_id=usuario_atual.id,
+        analysis_type="mei_tax",
+        status="ok",
+        resultado_json=resultado,
+    )
+    db.add(rel)
+    db.commit()
+    db.refresh(rel)
+    return {"id": rel.id}
+
+
+@router.get("/mei_tax/{relatorio_id}")
+async def buscar_relatorio_mei_tax(
+    relatorio_id: int,
+    usuario_atual: models.User = Depends(get_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Busca relatório MEI/CPF por ID (retorna PDF)."""
+    rel = db.query(models.RelatorioAnalise).filter(
+        models.RelatorioAnalise.id == relatorio_id,
+        models.RelatorioAnalise.user_id == usuario_atual.id,
+        models.RelatorioAnalise.analysis_type == "mei_tax",
+    ).first()
+    if not rel:
+        raise HTTPException(status_code=404, detail="Relatório não encontrado.")
+    resultado = rel.resultado_json
+    pdf = gerar_pdf_imposto(resultado)
+    return StreamingResponse(
+        iter([pdf.getvalue()]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=relatorio-mei.pdf"},
+    )
+
+
+@router.post("/imposto-pdf")
+async def imposto_pdf(dados: DadosImposto):
+    """
+    Gera PDF com cálculo detalhado de imposto (MEI ou CPF/autônomo).
+    Fluxo: /imposto/calcular → preview → pagamento → /relatorio/imposto-pdf.
+    Conteúdo: cálculo completo, orientação de pagamento, resumo fiscal, insight.
+    """
+    resultado = calcular_imposto_simples(
+        faturamento=dados.faturamento_mensal,
+        despesas=dados.despesas,
+        tipo=dados.tipo_usuario,
+    )
+    pdf = gerar_pdf_imposto(resultado)
+    return StreamingResponse(
+        iter([pdf.getvalue()]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=relatorio-imposto.pdf"},
+    )

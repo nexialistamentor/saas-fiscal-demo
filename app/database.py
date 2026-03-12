@@ -1,19 +1,11 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
 
-# Carrega variáveis do .env
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL não encontrada no .env")
+DATABASE_URL = "sqlite:///./test.db"
 
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True
+    connect_args={"check_same_thread": False}
 )
 
 SessionLocal = sessionmaker(
