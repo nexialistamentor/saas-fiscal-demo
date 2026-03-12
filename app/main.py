@@ -20,7 +20,9 @@ from slowapi.errors import RateLimitExceeded
 
 from app.database import engine, get_db
 from app import models
-from app.models import DocumentoFiscal, ItemFiscal  # registro para create_all
+
+# IMPORTAR EXPLICITAMENTE OS MODELOS (registro para create_all)
+from app.models import DocumentoFiscal, ItemFiscal
 from app.auth_router import router as auth_router
 from app.routes.fiscal_router import router as fiscal_router
 from app.routes.lote_router import router as lote_router
@@ -62,6 +64,8 @@ admin_router = APIRouter()
 
 @admin_router.get("/admin/create-tables")
 def create_tables():
+    # IMPORTAR EXPLICITAMENTE OS MODELOS para o SQLAlchemy registrá-los
+    from app.models import DocumentoFiscal, ItemFiscal  # noqa: F401
     models.Base.metadata.create_all(bind=engine)
     return {"status": "tables created"}
 
