@@ -18,6 +18,11 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
+# Importa modelos para registrar tabelas no Base.metadata
+from app import models  # noqa: F401, E402
+
+Base.metadata.create_all(bind=engine)
+
 from typing import Generator
 
 def get_db() -> Generator:
