@@ -82,8 +82,12 @@ def fix_plano_column():
             ALTER TABLE usuarios
             ADD COLUMN IF NOT EXISTS plano_id INTEGER;
         """))
+        conn.execute(text("""
+            ALTER TABLE usuarios
+            ADD COLUMN IF NOT EXISTS consulta_paga BOOLEAN DEFAULT false;
+        """))
         conn.commit()
-    return {"status": "plano_id added"}
+    return {"status": "usuarios fixed"}
 
 
 @app.middleware("http")
