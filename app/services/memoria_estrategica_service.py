@@ -1,4 +1,5 @@
 from sqlalchemy import text
+from datetime import datetime
 
 
 def registrar_snapshot_inteligencia(
@@ -17,13 +18,15 @@ def registrar_snapshot_inteligencia(
             empresa_id,
             score_global,
             risco_tributario,
-            maturidade_tributaria
+            maturidade_tributaria,
+            criado_em
         )
         VALUES (
             :empresa_id,
             :score_global,
             :risco,
-            :maturidade
+            :maturidade,
+            :criado_em
         )
     """)
 
@@ -33,7 +36,8 @@ def registrar_snapshot_inteligencia(
             "empresa_id": empresa_id,
             "score_global": score_global,
             "risco": risco,
-            "maturidade": maturidade
+            "maturidade": maturidade,
+            "criado_em": datetime.utcnow()
         }
     )
 
