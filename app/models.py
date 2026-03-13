@@ -29,8 +29,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-
-    plano_id = Column(Integer, ForeignKey("planos.id"))
+    plano_id = Column(Integer, nullable=True)
     consulta_paga = Column(Boolean, default=False, nullable=False)
 
     plano = relationship("Plano", back_populates="usuarios")
