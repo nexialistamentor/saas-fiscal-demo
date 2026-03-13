@@ -52,7 +52,7 @@ app = FastAPI(
     title="SaaS Fiscal Inteligente",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url=None,
+    redoc_url="/redoc",
     swagger_ui_parameters={"syntaxHighlight.theme": "obsidian"}
 )
 
