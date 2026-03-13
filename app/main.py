@@ -75,6 +75,17 @@ def create_tables():
     return {"status": "tables created"}
 
 
+@admin_router.get("/admin/fix-usuarios-plano")
+def fix_plano_column():
+    with engine.connect() as conn:
+        conn.execute(text("""
+            ALTER TABLE usuarios
+            ADD COLUMN IF NOT EXISTS plano_id INTEGER;
+        """))
+        conn.commit()
+    return {"status": "plano_id added"}
+
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     """Headers de segurança HTTP: XSS, clickjacking, MIME sniffing, HSTS."""
