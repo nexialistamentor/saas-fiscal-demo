@@ -10,7 +10,13 @@ if "sqlite" in DATABASE_URL:
 else:
     engine_kwargs["connect_args"] = {"sslmode": "require"}
 
-engine = create_engine(DATABASE_URL, **engine_kwargs)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=0,
+    **engine_kwargs
+)
 
 SessionLocal = sessionmaker(
     autocommit=False,
