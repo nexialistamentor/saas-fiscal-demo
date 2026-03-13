@@ -4,6 +4,8 @@ from sqlalchemy import text
 
 def gerar_ranking_restituicao(db: Session, empresa_id: int):
 
+    db.rollback()
+
     query = text("""
         SELECT
             i.ncm,
