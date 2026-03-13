@@ -149,6 +149,11 @@ class InsightEngine:
 
         insights.extend(self._analisar_impacto_financeiro(empresa_id))
 
+        self.db.query(Insight).filter(
+            Insight.empresa_id == empresa_id
+        ).delete()
+        self.db.flush()
+
         for item in insights:
             registro_insight = Insight(
                 empresa_id=empresa_id,
