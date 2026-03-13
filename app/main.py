@@ -30,6 +30,7 @@ from app.routes.relatorio_router import router as relatorio_router
 from app.routes.imposto_router import router as imposto_router
 from app.routes.metrics_router import router as metrics_router
 from app.routes.auditoria import router as auditoria_router
+from app.routes.estoque_dashboard import router as estoque_dashboard_router
 from app.routers.st_router import router as st_router
 from app.routers.insights_router import router as insights_router
 from app.routers.empresa_router import router as empresa_router
@@ -102,6 +103,7 @@ app.include_router(dashboard_router)
 app.include_router(assistente_router)
 app.include_router(metrics_router)
 app.include_router(auditoria_router, prefix="/estoque")
+app.include_router(estoque_dashboard_router, prefix="/estoque")
 app.include_router(admin_router)
 
 
