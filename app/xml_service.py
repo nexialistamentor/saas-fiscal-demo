@@ -106,6 +106,7 @@ def ler_xml_unico(caminho_xml: str):
 
         ncm = _extrair_texto(prod, "nfe:NCM", ns)
         cfop = _extrair_texto(prod, "nfe:CFOP", ns)
+        qcom = _extrair_texto(prod, "nfe:qCom", ns)
         valor_produto = _extrair_texto(prod, "nfe:vProd", ns)
         base_icms, valor_icms, base_st, valor_st = _extrair_valor_icms_detalhe(
             det, ns
@@ -114,6 +115,7 @@ def ler_xml_unico(caminho_xml: str):
         itens.append({
             "ncm": ncm,
             "cfop": cfop,
+            "quantidade": _parse_float(qcom) if qcom else 1,
             "valor_produto": valor_produto,
             "base_icms": base_icms,
             "valor_icms": valor_icms,
@@ -245,6 +247,7 @@ def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
             documento_id=documento.id,
             ncm=item_data.get("ncm"),
             cfop=item_data.get("cfop"),
+            quantidade=item_data.get("quantidade"),
             valor_produto=item_data.get("valor_produto"),
             base_icms=item_data.get("base_icms"),
             valor_icms=item_data.get("valor_icms"),

@@ -29,6 +29,7 @@ from app.routes.lote_router import router as lote_router
 from app.routes.relatorio_router import router as relatorio_router
 from app.routes.imposto_router import router as imposto_router
 from app.routes.metrics_router import router as metrics_router
+from app.routes.auditoria import router as auditoria_router
 from app.routers.st_router import router as st_router
 from app.routers.insights_router import router as insights_router
 from app.routers.empresa_router import router as empresa_router
@@ -100,16 +101,24 @@ app.include_router(inteligencia_router)
 app.include_router(dashboard_router)
 app.include_router(assistente_router)
 app.include_router(metrics_router)
+app.include_router(auditoria_router, prefix="/estoque")
 app.include_router(admin_router)
 
 
 def run_migrations():
-    """Cria coluna regime_tributario se não existir."""
+    """Cria colunas e tabelas adicionais se não existirem."""
     with engine.begin() as conn:
         conn.execute(text("""
             ALTER TABLE empresas
             ADD COLUMN IF NOT EXISTS regime_tributario VARCHAR(50);
         """))
+        # quantidade em itens_fiscais
+        from sqlalchemy import inspect
+        insp = inspect(engine)
+        if "itens_fiscais" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("itens_fiscais")]
+            if "quantidade" not in cols:
+                conn.execute(text("ALTER TABLE itens_fiscais ADD COLUMN quantidade REAL"))
 
 
 @app.on_event("startup")

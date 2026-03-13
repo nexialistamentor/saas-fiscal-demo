@@ -87,6 +87,7 @@ class ItemFiscal(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     documento_id = Column(Integer, ForeignKey("documentos_fiscais.id"))
+    quantidade = Column(Float, nullable=True)
     ncm = Column(String, nullable=True)
     cfop = Column(String, nullable=True)
     valor_produto = Column(Float, nullable=True)
@@ -223,6 +224,25 @@ class UsoPlataforma(Base):
 
 # =========================
 # RESULTADO DAS ENGINES (histórico para análise e dashboards)
+# =========================
+# =========================
+# AUDITORIA ESTOQUE (comparação fiscal x ERP)
+# =========================
+class AuditoriaEstoque(Base):
+    __tablename__ = "auditoria_estoque"
+
+    id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, nullable=True)
+    ncm = Column(String(20), nullable=True)
+    estoque_fiscal = Column(Float, nullable=True)
+    estoque_erp = Column(Float, nullable=True)
+    diferenca = Column(Float, nullable=True)
+    risco_desvio = Column(Integer, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+# =========================
+# RESULTADO DAS ENGINES
 # =========================
 class EngineResultado(Base):
     __tablename__ = "engine_resultados"
