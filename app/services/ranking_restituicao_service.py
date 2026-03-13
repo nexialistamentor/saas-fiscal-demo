@@ -33,7 +33,7 @@ def gerar_ranking_restituicao(db: Session, empresa_id: int):
 
         st_devida = base_st * aliquota
 
-        restituicao = st_pago - st_devida
+        restituicao = max(st_pago - st_devida, 0)
 
         ranking.append({
             "ncm": ncm,
