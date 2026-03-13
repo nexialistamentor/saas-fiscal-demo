@@ -65,6 +65,8 @@ def processar_xml_e_calcular_icms_st(caminho_xml: Path):
 
         # Consulta MVA no banco (passando UF para usar tabela_mva)
         mva = carregar_mva(ncm, uf_operacao)
+        if mva is None:
+            continue  # Não calcula ST quando MVA não encontrada
         base_st = MotorFiscal.calcular_base_st(valor, mva)
         icms_proprio = MotorFiscal.calcular_icms_proprio(valor, ALIQUOTA_ICMS_PADRAO)
         icms_st_devido = MotorFiscal.calcular_icms_st(

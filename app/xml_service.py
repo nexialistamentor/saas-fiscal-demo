@@ -180,6 +180,8 @@ def enriquecer_st_se_necessario(dados: dict, analise: dict) -> None:
             continue
 
         mva = mva_doc or carregar_mva(ncm, uf)
+        if mva is None:
+            continue
         base_st_calc = MotorFiscal.calcular_base_st(valor_prod, mva)
         icms_proprio = MotorFiscal.calcular_icms_proprio(valor_prod, ALIQUOTA_ICMS_PADRAO)
         icms_st_calc = MotorFiscal.calcular_icms_st(

@@ -116,13 +116,13 @@ class MotorFiscal:
         """Estima a restituição quando st_pago > st_devida."""
         if st_pago < 0 or st_devida < 0:
             return 0.0
-        restituicao = st_pago - st_devida
+        restituicao = max(st_pago - st_devida, 0)
         return max(0.0, round(restituicao, 2))
 
 
-def carregar_mva(ncm: str, uf: str | None = None) -> float:
+def carregar_mva(ncm: str, uf: str | None = None) -> float | None:
     """Consulta MVA na base normativa (tabela_mva) ou fallback em mva.json.
-    Quando uf é informado, usa regras estaduais do banco. Retorna 0.30 se não encontrar."""
+    Quando uf é informado, usa regras estaduais do banco. Retorna None se não encontrar."""
     db = SessionLocal()
 
     if uf:
@@ -148,6 +148,7 @@ def carregar_mva(ncm: str, uf: str | None = None) -> float:
     if path.exists():
         with open(path, "r", encoding="utf-8") as f:
             dados = json.load(f)
-            return float(dados.get(ncm, 0.30))
+            valor = dados.get(ncm)
+            return float(valor) if valor is not None else None
 
-    return 0.30
+    return None

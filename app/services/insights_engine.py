@@ -471,6 +471,8 @@ class InsightEngine:
                 continue
 
             mva_presumida = carregar_mva(venda.ncm)
+            if mva_presumida is None:
+                continue
             if mva_presumida <= 0:
                 continue
 

@@ -47,6 +47,8 @@ class STAnalyzer:
             if valor_produto <= 0:
                 continue
             mva = carregar_mva(ncm)
+            if mva is None:
+                continue
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)
             icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, ALIQUOTA_ICMS_PADRAO)
             icms_st = MotorFiscal.calcular_icms_st(base_st, ALIQUOTA_ICMS_PADRAO, icms_proprio)
@@ -93,6 +95,8 @@ class STAnalyzer:
             if valor_produto <= 0:
                 continue
             mva = carregar_mva(ncm)
+            if mva is None:
+                continue
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)
             icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, ALIQUOTA_ICMS_PADRAO)
             icms_st = MotorFiscal.calcular_icms_st(base_st, ALIQUOTA_ICMS_PADRAO, icms_proprio)
@@ -154,6 +158,8 @@ class STAnalyzer:
             if valor_produto <= 0:
                 continue
             mva = carregar_mva(ncm)
+            if mva is None:
+                continue
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)
             icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, ALIQUOTA_ICMS_PADRAO)
             icms_st = MotorFiscal.calcular_icms_st(base_st, ALIQUOTA_ICMS_PADRAO, icms_proprio)
