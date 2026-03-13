@@ -64,9 +64,12 @@ admin_router = APIRouter()
 
 @admin_router.get("/admin/create-tables")
 def create_tables():
-    # IMPORTAR EXPLICITAMENTE OS MODELOS para o SQLAlchemy registrá-los
-    from app.models import DocumentoFiscal, ItemFiscal  # noqa: F401
+    import app.models
+
+    from app.models import DocumentoFiscal, ItemFiscal
+
     models.Base.metadata.create_all(bind=engine)
+
     return {"status": "tables created"}
 
 
