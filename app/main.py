@@ -116,6 +116,25 @@ def fix_planos():
     return {"status": "planos fixed"}
 
 
+@admin_router.get("/admin/debug-insights-mva")
+def debug_insights_mva(empresa_id: int):
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT tipo, valor_estimado
+            FROM insights
+            WHERE empresa_id = :empresa_id
+              AND tipo = 'DISTORCAO_MVA_REAL'
+            ORDER BY id DESC
+        """), {"empresa_id": empresa_id}).fetchall()
+
+    return {
+        "empresa_id": empresa_id,
+        "count": len(rows),
+        "sum": float(sum(float(r[1] or 0) for r in rows)),
+        "rows": [{"tipo": r[0], "valor_estimado": float(r[1] or 0)} for r in rows]
+    }
+
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     """Headers de segurança HTTP: XSS, clickjacking, MIME sniffing, HSTS."""
