@@ -1,6 +1,6 @@
 from sqlalchemy import func
 from datetime import datetime
-from app.models import NotaFiscalItem, DocumentoFiscal, Empresa, EngineResultado, RelatorioAnalise
+from app.models import NotaFiscalItem, DocumentoFiscal, Empresa, EngineResultado, RelatorioAnalise, Insight
 from app.services.motor_predicao_tributaria import prever_impacto_st
 from app.motor_fiscal import carregar_mva
 from app.services.tabela_normativa_service import buscar_mva
@@ -148,6 +148,20 @@ class InsightEngine:
         insights.extend(self._analisar_ranking_estrategico(empresa_id))
 
         insights.extend(self._analisar_impacto_financeiro(empresa_id))
+
+        for item in insights:
+            registro_insight = Insight(
+                empresa_id=empresa_id,
+                relatorio_analise_id=relatorio_analise_id,
+                tipo=item.get("tipo", "INSIGHT_GENERICO"),
+                valor_estimado=float(item.get("valor_estimado", 0) or 0),
+                impacto=item.get("impacto"),
+                descricao=item.get("descricao"),
+                recomendacao=item.get("recomendacao"),
+                ncm=item.get("ncm"),
+                payload_json=item
+            )
+            self.db.add(registro_insight)
 
         score = calcular_score_global_tributario(self.db, empresa_id)
         risco = calcular_risco_tributario(self.db, empresa_id)
