@@ -90,6 +90,21 @@ def fix_plano_column():
     return {"status": "usuarios fixed"}
 
 
+@admin_router.get("/admin/liberar-consulta")
+def liberar_consulta(email: str):
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                UPDATE usuarios
+                SET consulta_paga = true
+                WHERE email = :email
+            """),
+            {"email": email}
+        )
+        conn.commit()
+    return {"status": "consulta liberada", "email": email}
+
+
 @admin_router.get("/admin/fix-planos")
 def fix_planos():
     with engine.connect() as conn:
