@@ -90,6 +90,17 @@ def fix_plano_column():
     return {"status": "usuarios fixed"}
 
 
+@admin_router.get("/admin/fix-planos")
+def fix_planos():
+    with engine.connect() as conn:
+        conn.execute(text("""
+            ALTER TABLE planos
+            ADD COLUMN IF NOT EXISTS limite_analises INTEGER DEFAULT 100;
+        """))
+        conn.commit()
+    return {"status": "planos fixed"}
+
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     """Headers de segurança HTTP: XSS, clickjacking, MIME sniffing, HSTS."""
