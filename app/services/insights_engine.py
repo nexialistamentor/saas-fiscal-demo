@@ -183,7 +183,7 @@ class InsightEngine:
         for nome, resultado in resultados_engines.items():
             registro = EngineResultado(
                 empresa_id=empresa_id,
-                relatorio_analise_id=relatorio_analise_id,
+                relatorio_analise_id=None,
                 engine_nome=nome,
                 resultado=resultado,
                 criado_em=datetime.utcnow()
