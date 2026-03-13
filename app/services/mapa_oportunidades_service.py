@@ -32,7 +32,7 @@ def gerar_mapa_oportunidades(db: Session, empresa_id: int):
         if tipo == "PRODUTO_COM_RESTITUICAO_RELEVANTE":
             mapa["restituicao_st"] += valor
 
-        if tipo == "DISTORCAO_MVA":
+        if tipo in ("DISTORCAO_MVA", "DISTORCAO_MVA_REAL"):
             mapa["mva_distorcida"] += valor
 
         if tipo == "ESTOQUE_COM_ST":
