@@ -3,6 +3,7 @@ import json
 import logging
 import random
 import signal
+import threading
 import time
 
 from app.motor_fiscal import analisar_xml
@@ -134,7 +135,8 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
         return fallback
 
     if hasattr(signal, "SIGALRM"):
-        signal.signal(signal.SIGALRM, timeout_handler)
+        if threading.current_thread() is threading.main_thread():
+            signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(3)
 
     if tipo == "tax_planning":
