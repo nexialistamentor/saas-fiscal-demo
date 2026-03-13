@@ -190,6 +190,25 @@ class RelatorioAnalise(Base):
 
 
 # =========================
+# INSIGHT
+# =========================
+class Insight(Base):
+    __tablename__ = "insights"
+
+    id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    relatorio_analise_id = Column(Integer, ForeignKey("relatorios_analise.id"), nullable=True, index=True)
+    tipo = Column(String, nullable=False, index=True)
+    valor_estimado = Column(Float, nullable=True, default=0)
+    impacto = Column(String, nullable=True)
+    descricao = Column(String, nullable=True)
+    recomendacao = Column(String, nullable=True)
+    ncm = Column(String, nullable=True, index=True)
+    payload_json = Column(JSON, nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+
+
+# =========================
 # SNAPSHOT MÉTRICAS (histórico de desempenho das engines)
 # =========================
 class MetricasSnapshot(Base):
