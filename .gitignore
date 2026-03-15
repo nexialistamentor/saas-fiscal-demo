@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+test.db
+*.sqlite3
+
+relatorio_apos_pagamento.pdf
+relatorio_payload.json
+
+node_modules/
+dist/

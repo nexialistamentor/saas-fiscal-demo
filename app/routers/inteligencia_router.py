@@ -61,7 +61,9 @@ def mapa_oportunidades(
     usuario_atual: models.User = Depends(get_usuario_atual),
 ):
     verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return gerar_mapa_oportunidades(db, empresa_id)
+    mapa = gerar_mapa_oportunidades(db, empresa_id)
+    mapa["consulta_paga"] = usuario_atual.consulta_paga
+    return mapa
 
 
 @inteligencia_router.get("/creditos/{empresa_id}")

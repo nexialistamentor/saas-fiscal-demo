@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import models
@@ -25,6 +26,15 @@ from app.xml_security import validar_upload_xml
 router = APIRouter()
 
 ANALYSIS_TYPES = ("tax_recovery", "tax_planning")  # mei_tax: use POST /mei_tax e GET /mei_tax/{id}
+
+
+def _pagamento_confirmado(usuario: models.User, perfil_id: int, db: Session) -> bool:
+    """
+    Verifica se o usuário pagou para acessar o relatório completo do perfil.
+    Atualmente usa consulta_paga no usuário. Futuro: tabela consultas_pagamento por perfil.
+    """
+    verificar_empresa_do_usuario(perfil_id, usuario, db)
+    return bool(usuario.consulta_paga)
 
 
 @router.get("/empresas/{empresa_id}/engines")
@@ -98,6 +108,71 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
     }
 
 
+class GerarRelatorioRequest(BaseModel):
+    """Payload para gerar relatório completo (pós-pagamento)."""
+    perfil_id: int
+
+
+def _gerar_pdf_relatorio_completo(perfil_id: int, db: Session):
+    """Orquestra geração do PDF do relatório completo a partir do mapa de oportunidades."""
+    from app.services.mapa_oportunidades_service import gerar_mapa_oportunidades
+    from app.services.score_global_tributario_service import calcular_score_global_tributario
+
+    mapa = gerar_mapa_oportunidades(db, perfil_id)
+    score_dict = calcular_score_global_tributario(db, perfil_id)
+    score = score_dict.get("score_global_tributario")
+    rows = db.query(models.Insight).filter(models.Insight.empresa_id == perfil_id).limit(20).all()
+    insights = [r.descricao or r.tipo for r in rows if r.descricao or r.tipo] or ["Análise fiscal disponível."]
+
+    relatorio = {
+        "empresa_id": perfil_id,
+        "potencial_recuperacao": {"valor_estimado": mapa.get("restituicao_st", 0) or 0},
+        "insights": insights,
+        "score_global": round(score, 2) if score is not None else None,
+    }
+    return gerar_pdf_relatorio(relatorio)
+
+
+@router.post("/gerar")
+async def gerar_relatorio(
+    payload: GerarRelatorioRequest,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    """
+    Gera e retorna o relatório completo em PDF. Protegido por paywall.
+    POST /relatorio/gerar — fluxo: checkout → pagamento → este endpoint.
+    """
+    if not _pagamento_confirmado(usuario_atual, payload.perfil_id, db):
+        raise HTTPException(status_code=402, detail="Pagamento necessário")
+    pdf = _gerar_pdf_relatorio_completo(payload.perfil_id, db)
+    return StreamingResponse(
+        iter([pdf.getvalue()]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=relatorio-fiscal.pdf"},
+    )
+
+
+@router.get("/relatorio-pdf/{perfil_id}")
+async def download_relatorio_pdf(
+    perfil_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    """
+    Baixa o relatório fiscal em PDF. Exige pagamento confirmado.
+    GET /relatorio/relatorio-pdf/{perfil_id}
+    """
+    if not _pagamento_confirmado(usuario_atual, perfil_id, db):
+        raise HTTPException(status_code=402, detail="Pagamento necessário")
+    pdf = _gerar_pdf_relatorio_completo(perfil_id, db)
+    return StreamingResponse(
+        iter([pdf.getvalue()]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=relatorio-fiscal.pdf"},
+    )
+
+
 @router.post("/relatorio-pdf")
 async def relatorio_pdf(
     file: UploadFile = File(...),
@@ -105,7 +180,12 @@ async def relatorio_pdf(
     db: Session = Depends(get_db),
     usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    """Gera e retorna o relatório fiscal em PDF para download. Persiste em relatorios_analise."""
+    """Gera e retorna o relatório fiscal em PDF para download. Persiste em relatorios_analise. Exige consulta_paga."""
+    if not usuario_atual.consulta_paga:
+        raise HTTPException(
+            status_code=403,
+            detail="Pagamento necessário para acessar o relatório.",
+        )
     xml_bytes = await validar_upload_xml(file)
     user_id = usuario_atual.id
     limite_analises = 100
