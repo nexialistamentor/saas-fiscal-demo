@@ -26,7 +26,7 @@ const dadosNCM = [
 
 function App() {
   const perfisDisponiveis = [
-    { tipo: "empresa", id: 5, nome: "Empresa" },
+    { tipo: "empresa", id: 4, nome: "Empresa" },
     { tipo: "cpf", id: 1, nome: "Pessoa Física" }
   ]
   const [perfilAtual, setPerfilAtual] = React.useState(perfisDisponiveis[0])

@@ -10,6 +10,7 @@ if sys.platform == "win32":
     multiprocessing.get_context = _patched_get_context
 
 from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
@@ -56,6 +57,14 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     swagger_ui_parameters={"syntaxHighlight.theme": "obsidian"}
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.state.limiter = limiter
@@ -169,14 +178,15 @@ app.include_router(admin_router)
 
 def run_migrations():
     """Cria colunas e tabelas adicionais se não existirem."""
+    from sqlalchemy import inspect
+    insp = inspect(engine)
     with engine.begin() as conn:
-        conn.execute(text("""
-            ALTER TABLE empresas
-            ADD COLUMN IF NOT EXISTS regime_tributario VARCHAR(50);
-        """))
+        # regime_tributario em empresas (SQLite não suporta ADD COLUMN IF NOT EXISTS)
+        if "empresas" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("empresas")]
+            if "regime_tributario" not in cols:
+                conn.execute(text("ALTER TABLE empresas ADD COLUMN regime_tributario VARCHAR(50)"))
         # quantidade em itens_fiscais
-        from sqlalchemy import inspect
-        insp = inspect(engine)
         if "itens_fiscais" in insp.get_table_names():
             cols = [c["name"] for c in insp.get_columns("itens_fiscais")]
             if "quantidade" not in cols:
@@ -301,3 +311,7 @@ def criar_planos(
     db.commit()
 
     return {"mensagem": "Planos criados com sucesso"}
+
+
+# CORS_OUTERMOST_FIX
+app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173'], allow_credentials=False, allow_methods=['*'], allow_headers=['*'])
