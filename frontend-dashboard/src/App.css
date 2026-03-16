@@ -12,14 +12,42 @@ body{
 
 .topbar{
   display:flex;
-  justify-content:space-between;
   align-items:center;
+  justify-content:space-between;
+  width:100%;
   margin-bottom:30px;
 }
 
-.topbar h1{
-  margin:0;
+.hero{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  text-align:center;
+}
+
+.hero h1{
+  margin:0 auto;
   font-size:28px;
+}
+
+@media (max-width:768px){
+  .hero{
+    display:flex;
+    justify-content:center;
+  }
+  .hero h1{
+    width:100%;
+    max-width:320px;
+    margin:0 auto 4px;
+    font-size:1.9rem;
+    line-height:1.08;
+    letter-spacing:-0.2px;
+    text-align:center;
+  }
+  .overview-card{
+    max-width:92%;
+    margin:0 auto 16px;
+  }
 }
 
 .topbar p{
@@ -204,23 +232,26 @@ body{
   height:300px;
 }
 
-.profile-switcher{
-  margin-top: 8px;
-  margin-bottom: 16px;
+.profile-toggle{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  margin:6px 0 10px;
 }
 
-.profile-switcher select {
-  font-size: 14px;
-  padding: 6px 12px;
-  max-width: 220px;
-  margin: 0 auto;
-  display: block;
-  width: 100%;
-  border: 1px solid #dbe1ea;
-  border-radius: 12px;
-  background: white;
-  color: #0f172a;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+.profile-toggle button{
+  border:1px solid #d1d5db;
+  background:#f5f7fa;
+  padding:6px 14px;
+  border-radius:8px;
+  font-size:13px;
+  cursor:pointer;
+}
+
+.profile-toggle button.active{
+  background:#1f3a8a;
+  color:white;
+  border-color:#1f3a8a;
 }
 
 .perfil-badge{

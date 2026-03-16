@@ -26,7 +26,7 @@ const dadosNCM = [
 
 function App() {
   const perfisDisponiveis = [
-    { tipo: "empresa", id: 4, nome: "Empresa" },
+    { tipo: "empresa", id: 4, nome: "Perfil" },
     { tipo: "cpf", id: 1, nome: "Pessoa Física" }
   ]
   const [perfilAtual, setPerfilAtual] = React.useState(perfisDisponiveis[0])
@@ -163,27 +163,23 @@ function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div>
+        <div className="hero">
           <h1>Plataforma de Inteligência Tributária em Tempo Real</h1>
         </div>
 
         <button className="menu-btn">☰</button>
       </header>
 
-      <div className="profile-switcher">
-        <select
-          value={perfilAtual.tipo}
-          onChange={(e) => {
-            const novoPerfil = perfisDisponiveis.find(p => p.tipo === e.target.value)
-            setPerfilAtual(novoPerfil)
-          }}
-        >
-          {perfisDisponiveis.map((p) => (
-            <option key={p.tipo} value={p.tipo}>
-              {p.nome}
-            </option>
-          ))}
-        </select>
+      <div className="profile-toggle">
+        {perfisDisponiveis.map((p) => (
+          <button
+            key={p.tipo}
+            className={perfilAtual.tipo === p.tipo ? "active" : ""}
+            onClick={() => setPerfilAtual(p)}
+          >
+            {p.nome}
+          </button>
+        ))}
       </div>
 
       <main className="dashboard">
