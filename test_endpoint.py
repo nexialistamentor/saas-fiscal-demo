@@ -3,7 +3,7 @@ from app.main import app
 
 client = TestClient(app)
 
-token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0ZUBlbXByZXNhLmNvbSIsImV4cCI6MTc3MzY4NjEyN30.Yu4cmkw7Qy9HV7yDwy04qCP2fU1NJ6ej6c4r0-jn7Lw"
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0ZUBlbXByZXNhLmNvbSIsImV4cCI6MTc3MzcwOTAxMX0.GyZLptxD1pc8ch7P71C76kYZF-Provv9zWKNRPp52SQ"
 
 r = client.get(
     "/inteligencia/mapa-oportunidades/4",
