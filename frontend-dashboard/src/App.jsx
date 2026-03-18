@@ -160,6 +160,23 @@ function App() {
     },
   ]
 
+  async function enviarXML(file) {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("empresa_id", idPerfil)
+
+    const resp = await fetch(`${API_BASE}/fiscal/analisar-xml?empresa_id=${idPerfil}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getToken()}`
+      },
+      body: formData
+    })
+
+    const data = await resp.json()
+    console.log("JOB:", data)
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -181,6 +198,11 @@ function App() {
           </button>
         ))}
       </div>
+      <input
+        type="file"
+        accept=".xml"
+        onChange={(e) => enviarXML(e.target.files[0])}
+      />
 
       <main className="dashboard">
         <section className="hero-card">
