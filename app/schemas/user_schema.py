@@ -12,3 +12,13 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserSession(BaseModel):
+    id: int
+    email: EmailStr
+    plano_id: int | None = None
+    consulta_paga: bool
+
+    class Config:
+        from_attributes = True

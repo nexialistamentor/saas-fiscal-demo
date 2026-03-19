@@ -4,14 +4,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app import models
-from app.schemas.user_schema import UserCreate, UserResponse
+from app.schemas.user_schema import UserCreate, UserResponse, UserSession
 from app.security import hash_senha, verificar_senha, criar_token, get_usuario_atual
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/register", response_model=UserResponse)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
+def register_user(user: UserCreate, db: Session = Depends(get_db)) -> UserResponse:
 
     existing_user = db.query(models.User).filter(
         models.User.email == user.email
@@ -46,7 +46,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
-):
+) -> dict[str, str]:
 
     usuario = db.query(models.User).filter(
         models.User.email == form_data.username
@@ -61,3 +61,8 @@ def login(
     token = criar_token({"sub": usuario.email})
 
     return {"access_token": token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=UserSession)
+def me(usuario_atual: models.User = Depends(get_usuario_atual)) -> UserSession:
+    return usuario_atual

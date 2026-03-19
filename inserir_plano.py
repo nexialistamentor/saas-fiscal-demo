@@ -3,10 +3,27 @@ import sqlite3
 conn = sqlite3.connect("test.db")
 cur = conn.cursor()
 
-cur.execute("INSERT INTO planos (nome, limite_cnpjs) VALUES (?, ?)", ("Basico", 5))
-conn.commit()
+try:
+    cur.execute(
+        "INSERT INTO planos (nome, limite_cnpjs, limite_analises) VALUES (?, ?, ?)",
+        ("Basico", 5, 100),
+    )
+    print("Basico criado")
 
-cur.execute("SELECT * FROM planos;")
-print("PLANOS:", cur.fetchall())
+    cur.execute(
+        "INSERT INTO planos (nome, limite_cnpjs, limite_analises) VALUES (?, ?, ?)",
+        ("Pro", 20, 1000),
+    )
+    print("Pro criado")
+
+    cur.execute(
+        "INSERT INTO planos (nome, limite_cnpjs, limite_analises) VALUES (?, ?, ?)",
+        ("Ilimitado", 999, 999999),
+    )
+    print("Ilimitado criado")
+
+    conn.commit()
+except sqlite3.IntegrityError:
+    print("Planos já existentes")
 
 conn.close()

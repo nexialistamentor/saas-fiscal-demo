@@ -1,8 +1,16 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import "./App.css"
 import useDashboardData from "./hooks/useDashboardData"
 import RelatorioPDFButton from "./components/RelatorioPDFButton"
-import { API_BASE, getToken } from "./config"
+import {
+  API_BASE,
+  getToken,
+  isAuthenticated,
+  isDemoSession,
+  login,
+  clearToken,
+  loginDemo
+} from "./config"
 import {
   ResponsiveContainer,
   LineChart,
@@ -25,6 +33,12 @@ const dadosNCM = [
 ]
 
 function App() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [usuario, setUsuario] = useState(null)
+  const [erroLogin, setErroLogin] = useState(null)
+  const [verificandoSessao, setVerificandoSessao] = useState(true)
+
   const perfisDisponiveis = [
     { tipo: "empresa", id: 4, nome: "Perfil" },
     { tipo: "cpf", id: 1, nome: "Pessoa Física" }
@@ -89,6 +103,74 @@ function App() {
     }
   }
 
+  async function handleLogin(e) {
+    e.preventDefault()
+    try {
+      if (email === "demo@demo.com") {
+        loginDemo()
+      } else {
+        await login(email, password)
+      }
+      window.location.reload()
+    } catch (err) {
+      setErroLogin("Credenciais inválidas")
+    }
+  }
+
+  function handleLogout() {
+    clearToken()
+    window.location.reload()
+  }
+
+  useEffect(() => {
+    async function validarSessao() {
+      if (!isAuthenticated()) {
+        setVerificandoSessao(false)
+        return
+      }
+
+      try {
+        if (isDemoSession()) {
+          setUsuario({
+            id: 0,
+            email: "demo@demo.com",
+            plano_id: 3,
+            consulta_paga: true
+          })
+          setVerificandoSessao(false)
+          return
+        }
+
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${getToken()}`
+          }
+        })
+
+        if (res.ok) {
+          const usuarioJson = await res.json()
+          setUsuario(usuarioJson)
+        }
+
+        if (!res.ok) {
+          clearToken()
+        }
+      } catch {
+        clearToken()
+      }
+
+      setVerificandoSessao(false)
+    }
+
+    validarSessao()
+  }, [])
+
+  const planoId = usuario?.plano_id ?? null
+  const acessoBasico = planoId === 1
+  const acessoPro = planoId === 2
+  const acessoIlimitado = planoId === 3
+  const podeUploadXML = acessoPro || acessoIlimitado
+
   const historicoValido = historico.some((item) => (item.score_global ?? 0) > 0)
 
   const dadosEvolucao = historicoValido
@@ -103,6 +185,38 @@ function App() {
         { mes: "P4", recuperacao: 48 },
         { mes: "P5", recuperacao: 52 },
       ]
+
+  if (verificandoSessao) {
+    return <p style={{ padding: 40 }}>Validando sessão...</p>
+  }
+
+  if (!isAuthenticated()) {
+    return (
+      <div style={{ padding: 40 }}>
+        <h2>Login</h2>
+
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <input
+            type="password"
+            placeholder="senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <button type="submit">Entrar</button>
+
+          {erroLogin && <p>{erroLogin}</p>}
+        </form>
+      </div>
+    )
+  }
 
   if (loading) {
     return <p style={{ padding: 40 }}>Carregando dados fiscais...</p>
@@ -174,6 +288,29 @@ function App() {
     })
 
     const data = await resp.json()
+
+    if (data.job_id) {
+      console.log("JOB CRIADO:", data)
+
+      const intervalo = setInterval(async () => {
+        const statusResp = await fetch(`${API_BASE}/fiscal/analise/status/${data.job_id}`, {
+          headers: {
+            Authorization: `Bearer ${getToken()}`
+          }
+        })
+
+        const statusData = await statusResp.json()
+        console.log("JOB STATUS:", statusData)
+
+        if (statusData.status === "finished") {
+          clearInterval(intervalo)
+          console.log("JOB RESULTADO FINAL:", statusData.result)
+        }
+      }, 2000)
+
+      return
+    }
+
     console.log("JOB:", data)
   }
 
@@ -184,7 +321,7 @@ function App() {
           <h1>Plataforma de Inteligência Tributária em Tempo Real</h1>
         </div>
 
-        <button className="menu-btn">☰</button>
+        <button onClick={handleLogout}>Sair</button>
       </header>
 
       <div className="profile-toggle">
@@ -198,11 +335,19 @@ function App() {
           </button>
         ))}
       </div>
-      <input
-        type="file"
-        accept=".xml"
-        onChange={(e) => enviarXML(e.target.files[0])}
-      />
+      {podeUploadXML && (
+        <input
+          type="file"
+          accept=".xml"
+          onChange={(e) => enviarXML(e.target.files[0])}
+        />
+      )}
+
+      {!podeUploadXML && (
+        <div style={{ marginTop: 20 }}>
+          <p>Upload de XML disponível apenas em planos superiores.</p>
+        </div>
+      )}
 
       <main className="dashboard">
         <section className="hero-card">

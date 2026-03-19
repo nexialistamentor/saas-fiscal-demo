@@ -12,71 +12,54 @@ from app.database import SessionLocal
 
 
 def analisar_xml(xml_bytes: bytes) -> dict:
-    """Analisa XML de NF-e e extrai CNPJ emitente, destinatário, valor total, ICMS-ST e MVA."""
+    """Analisa XML de NF-e reaproveitando o parser central de xml_service."""
     try:
-        root = ET.fromstring(xml_bytes)
-        ns = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
+        from app.xml_service import ler_xml_unico
 
-        emitente = root.find(".//nfe:emit/nfe:CNPJ", ns)
-        destinatario = root.find(".//nfe:dest/nfe:CNPJ", ns)
-        valor_total = root.find(".//nfe:ICMSTot/nfe:vNF", ns)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xml") as tmp:
+            tmp.write(xml_bytes)
+            caminho_tmp = tmp.name
 
-        # UF emitente e destinatário (para consulta normativa / MVA por estado)
-        uf_emit = root.findtext(".//nfe:emit/nfe:enderEmit/nfe:UF", namespaces=ns)
-        uf_dest = root.findtext(".//nfe:dest/nfe:enderDest/nfe:UF", namespaces=ns)
-        uf_operacao = uf_dest if uf_dest else uf_emit
+        try:
+            dados = ler_xml_unico(caminho_tmp)
 
-        # Extrair ICMS-ST: NF-e usa ICMS10, ICMS30 ou ICMS70 (não existe tag ICMSST)
-        # Totais: ICMSTot/vBCST e vST
-        base_st = root.find(".//nfe:ICMSTot/nfe:vBCST", ns)
-        icms_st_total = root.find(".//nfe:ICMSTot/nfe:vST", ns)
-        # MVA e ST por item: buscar em ICMS10, ICMS30, ICMS70
-        mva = None
-        for tag in ("ICMS10", "ICMS30", "ICMS70"):
-            el = root.find(f".//nfe:{tag}/nfe:pMVAST", ns)
-            if el is not None and el.text:
-                mva = el
-                break
-        if mva is None:
-            # Fallback: qualquer elemento pMVAST (namespace padrão)
-            for el in root.iter():
-                if el.tag.endswith("}pMVAST") and el.text:
-                    mva = el
-                    break
-        icms_st_item = (
-            root.find(".//nfe:ICMS10/nfe:vICMSST", ns)
-            or root.find(".//nfe:ICMS30/nfe:vICMSST", ns)
-            or root.find(".//nfe:ICMS70/nfe:vICMSST", ns)
-        )
-        icms_st = icms_st_total if icms_st_total is not None else icms_st_item
+            itens = dados.get("itens", []) or []
+            primeiro_item_com_st = next(
+                (
+                    item for item in itens
+                    if item.get("base_st") is not None or item.get("valor_st") is not None
+                ),
+                {}
+            )
 
-        # Chave NF-e (infProt/chNFe ou Id do infNFe)
-        inf_prot = root.find(".//nfe:infProt", ns)
-        inf_nfe = root.find(".//nfe:infNFe", ns)
-        chave_nfe = None
-        if inf_prot is not None:
-            el_chave = inf_prot.find("nfe:chNFe", ns)
-            chave_nfe = el_chave.text if el_chave is not None else None
-        if chave_nfe is None and inf_nfe is not None:
-            id_attr = inf_nfe.get("Id")
-            if id_attr and id_attr.startswith("NFe"):
-                chave_nfe = id_attr[3:]
-
-        resultado = {
-            "chave_nfe": chave_nfe,
-            "cnpj_emitente": emitente.text if emitente is not None else None,
-            "cnpj_destinatario": destinatario.text if destinatario is not None else None,
-            "valor_total_nota": valor_total.text if valor_total is not None else None,
-            "uf_emit": uf_emit,
-            "uf_dest": uf_dest,
-            "uf_operacao": uf_operacao,
-            "mva_utilizada": mva.text if mva is not None else None,
-            "mva_percentual": mva.text if mva is not None else None,
-            "base_st": base_st.text if base_st is not None else None,
-            "icms_st": icms_st.text if icms_st is not None else None,
-        }
-
-        return resultado
+            return {
+                "chave_nfe": dados.get("chave_nfe"),
+                "cnpj_emitente": dados.get("cnpj"),
+                "cnpj_destinatario": (
+                    next(
+                        (
+                            item for item in [
+                                dados.get("cnpj_destinatario"),
+                                dados.get("cpf_destinatario"),
+                                dados.get("documento_destinatario")
+                            ]
+                            if item
+                        ),
+                        None
+                    )
+                ),
+                "valor_total_nota": dados.get("valor_total"),
+                "uf_emit": dados.get("uf_emit"),
+                "uf_dest": dados.get("uf_dest"),
+                "uf_operacao": dados.get("uf_dest") or dados.get("uf_emit"),
+                "mva_utilizada": dados.get("mva_utilizada"),
+                "mva_percentual": dados.get("mva_utilizada"),
+                "base_st": primeiro_item_com_st.get("base_st"),
+                "icms_st": primeiro_item_com_st.get("valor_st"),
+            }
+        finally:
+            if os.path.exists(caminho_tmp):
+                os.remove(caminho_tmp)
 
     except Exception as e:
         return {"erro": str(e)}
