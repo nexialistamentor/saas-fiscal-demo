@@ -26,23 +26,21 @@ body{
 }
 
 .hero h1{
-  margin:0 auto;
-  font-size:28px;
+  font-size:20px;
+  line-height:1.2;
+  margin-bottom:8px;
+}
+
+@media (min-width:768px){
+  .hero h1{
+    font-size:28px;
+  }
 }
 
 @media (max-width:768px){
   .hero{
     display:flex;
     justify-content:center;
-  }
-  .hero h1{
-    width:100%;
-    max-width:320px;
-    margin:0 auto 4px;
-    font-size:1.9rem;
-    line-height:1.08;
-    letter-spacing:-0.2px;
-    text-align:center;
   }
   .overview-card{
     max-width:92%;
@@ -434,15 +432,6 @@ body{
 
   .hero{
     justify-content:flex-start;
-    text-align:left;
-  }
-
-  .hero h1{
-    max-width:240px;
-    margin:0;
-    font-size:1.05rem;
-    line-height:1.15;
-    letter-spacing:-0.3px;
     text-align:left;
   }
 
