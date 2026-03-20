@@ -420,3 +420,36 @@ body{
   border-left:4px solid #1e88e5;
   background:rgba(30,136,229,0.08);
 }
+
+@media (max-width: 768px){
+  .app{
+    padding:16px;
+  }
+
+  .topbar{
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:20px;
+  }
+
+  .hero{
+    justify-content:flex-start;
+    text-align:left;
+  }
+
+  .hero h1{
+    max-width:240px;
+    margin:0;
+    font-size:1.05rem;
+    line-height:1.15;
+    letter-spacing:-0.3px;
+    text-align:left;
+  }
+
+  .topbar button{
+    flex-shrink:0;
+    padding:8px 12px;
+    font-size:14px;
+    border-radius:10px;
+  }
+}
