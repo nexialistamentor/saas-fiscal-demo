@@ -7,7 +7,7 @@ import {
   getToken,
   isAuthenticated,
   isDemoSession,
-  login,
+  setToken,
   clearToken,
   loginDemo
 } from "./config"
@@ -104,15 +104,38 @@ function App() {
     }
   }
 
-  async function handleLogin(e) {
+  const handleLogin = async (e) => {
     e.preventDefault()
+    setErroLogin(null)
     try {
       if (email === "demo@demo.com") {
         loginDemo()
-      } else {
-        await login(email, password)
+        window.location.reload()
+        return
       }
-      window.location.reload()
+
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          username: email,
+          password: password
+        })
+      })
+
+      const data = await response.json()
+      console.log("LOGIN RESPONSE:", data)
+
+      if (!response.ok) {
+        setErroLogin("Credenciais inválidas")
+        return
+      }
+      if (data.access_token) {
+        setToken(data.access_token)
+        window.location.reload()
+      }
     } catch (err) {
       setErroLogin("Credenciais inválidas")
     }
