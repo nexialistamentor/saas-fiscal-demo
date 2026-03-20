@@ -10,7 +10,6 @@ if sys.platform == "win32":
     multiprocessing.get_context = _patched_get_context
 
 from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
@@ -58,17 +57,16 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "https://frontend-dashboard-gi88o7pm4-nexialistamentors-projects.vercel.app",
-]
+from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "https://frontend-dashboard-sooty.vercel.app",
+        "https://frontend-dashboard-b42wtc2v1-nexialistamentors-projects.vercel.app",
+        "https://frontend-dashboard-mipqze5my-nexialistamentors-projects.vercel.app",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
