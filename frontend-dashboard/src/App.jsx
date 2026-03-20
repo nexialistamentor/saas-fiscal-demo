@@ -237,6 +237,28 @@ function App() {
     return <p style={{ padding: 40 }}>Carregando dados fiscais...</p>
   }
 
+  // Evita crash (#310): React não renderiza objetos como filhos de nós DOM.
+  if (
+    data !== null &&
+    data !== undefined &&
+    (typeof data !== "object" || Array.isArray(data))
+  ) {
+    return (
+      <div style={{ padding: 40 }}>
+        <p style={{ marginBottom: 12 }}>Debug — payload do mapa (formato inesperado):</p>
+        <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, background: "#f5f5f5", padding: 16 }}>
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      </div>
+    )
+  }
+
+  function textoSeguro(value) {
+    if (value == null) return "—"
+    if (typeof value === "object") return JSON.stringify(value)
+    return String(value)
+  }
+
   const cardsDashboard = [
     {
       id: "restituicao-st",
@@ -420,21 +442,25 @@ function App() {
         <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
           <h3>Resultado da Análise XML</h3>
 
-          <p><strong>Chave NF-e:</strong> {df?.chave_nfe}</p>
-          <p><strong>CNPJ Emitente:</strong> {df?.cnpj_emitente}</p>
-          <p><strong>Valor Nota:</strong> R$ {df?.valor_total_nota}</p>
-          <p><strong>ICMS-ST:</strong> R$ {df?.icms_st}</p>
+          <p><strong>Chave NF-e:</strong> {textoSeguro(df?.chave_nfe)}</p>
+          <p><strong>CNPJ Emitente:</strong> {textoSeguro(df?.cnpj_emitente)}</p>
+          <p><strong>Valor Nota:</strong> R$ {textoSeguro(df?.valor_total_nota)}</p>
+          <p><strong>ICMS-ST:</strong> R$ {textoSeguro(df?.icms_st)}</p>
 
           <h4>Insights</h4>
           <ul>
             {(ra?.insights ?? []).map((i, idx) => (
-              <li key={idx}>{typeof i === "string" ? i : (i.descricao ?? i.tipo ?? String(i))}</li>
+              <li key={idx}>
+                {typeof i === "string"
+                  ? i
+                  : textoSeguro(i?.descricao ?? i?.tipo ?? i)}
+              </li>
             ))}
           </ul>
 
           <h4>Recuperação Estimada</h4>
           <p>
-            R$ {ra?.previsao_recuperacao?.potencial_recuperacao_nota}
+            R$ {textoSeguro(ra?.previsao_recuperacao?.potencial_recuperacao_nota)}
           </p>
         </div>
         )

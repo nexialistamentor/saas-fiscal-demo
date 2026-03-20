@@ -84,7 +84,18 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
         const historicoJson = await resHistorico.json()
         const tendenciaJson = resTendencia.ok ? await resTendencia.json() : null
 
-        setData(mapaJson)
+        const mapaSeguro =
+          mapaJson != null && typeof mapaJson === "object" && !Array.isArray(mapaJson)
+            ? mapaJson
+            : null
+        if (mapaSeguro == null) {
+          console.warn(
+            "[Dashboard] mapa-oportunidades formato inesperado (debug):",
+            JSON.stringify(mapaJson)
+          )
+        }
+        setData(mapaSeguro ?? {})
+
         setHistorico(Array.isArray(historicoJson) ? historicoJson : [])
         setTendencia(tendenciaJson ?? { tendencia: "insuficiente" })
 
