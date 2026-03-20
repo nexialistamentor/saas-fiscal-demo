@@ -8,8 +8,6 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    console.log("HOOK DASHBOARD EXECUTANDO", { tipoPerfil, idPerfil })
-
     const token = getToken()
     const sessionDemo = isDemoSession(token)
 
@@ -53,12 +51,6 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
         const baseURL = `${API_BASE}/inteligencia`
 
         const urlMapa = `${baseURL}/mapa-oportunidades/${idPerfil}`
-        console.log("CHAMANDO API DASHBOARD", {
-          urlMapa,
-          urlHistorico: `${baseURL}/historico-inteligencia/${idPerfil}`,
-          urlTendencia: `${baseURL}/tendencia-inteligencia/${idPerfil}`,
-          token: TOKEN ? "presente" : "ausente"
-        })
         const [resMapa, resHistorico, resTendencia] = await Promise.all([
           fetch(urlMapa, { headers }),
           fetch(`${baseURL}/historico-inteligencia/${idPerfil}`, { headers }),
