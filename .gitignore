@@ -12,3 +12,4 @@ relatorio_payload.json
 node_modules/
 dist/
 test.db
+.vercel

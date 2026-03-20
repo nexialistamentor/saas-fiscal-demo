@@ -1,5 +1,10 @@
-const raw = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
-export const API_BASE = String(raw).replace(/\/$/, "")
+const raw = import.meta.env.VITE_API_URL;
+
+if (!raw) {
+  throw new Error("VITE_API_URL não definida no build");
+}
+
+export const API_BASE = raw;
 
 const TOKEN_KEY = "auth_token"
 export const DEMO_TOKEN = "demo_admin"
@@ -9,11 +14,11 @@ export function getToken() {
 }
 
 export function setToken(token) {
-  localStorage.setItem(TOKEN_KEY, token)
+  return localStorage.setItem(TOKEN_KEY, token)
 }
 
 export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY)
+  return localStorage.removeItem(TOKEN_KEY)
 }
 
 export function isAuthenticated() {
