@@ -7,8 +7,8 @@ import {
   getToken,
   isAuthenticated,
   isDemoSession,
-  setToken,
   clearToken,
+  login,
   loginDemo
 } from "./config"
 import {
@@ -107,6 +107,7 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault()
     setErroLogin(null)
+
     try {
       if (email === "demo@demo.com") {
         loginDemo()
@@ -114,28 +115,8 @@ function App() {
         return
       }
 
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          username: email,
-          password: password
-        })
-      })
-
-      const data = await response.json()
-      console.log("LOGIN RESPONSE:", data)
-
-      if (!response.ok) {
-        setErroLogin("Credenciais inválidas")
-        return
-      }
-      if (data.access_token) {
-        setToken(data.access_token)
-        window.location.reload()
-      }
+      await login(email, password)
+      window.location.reload()
     } catch (err) {
       setErroLogin("Credenciais inválidas")
     }
