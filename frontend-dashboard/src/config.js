@@ -1,4 +1,5 @@
-export const API_BASE = "http://127.0.0.1:8000"
+const raw = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
+export const API_BASE = String(raw).replace(/\/$/, "")
 
 const TOKEN_KEY = "auth_token"
 export const DEMO_TOKEN = "demo_admin"

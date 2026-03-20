@@ -73,6 +73,7 @@ function App() {
     })) ?? []
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutErro, setCheckoutErro] = useState(null)
+  const [resultadoXML, setResultadoXML] = useState(null)
 
   async function iniciarCheckout(e) {
     e.preventDefault()
@@ -150,6 +151,20 @@ function App() {
         if (res.ok) {
           const usuarioJson = await res.json()
           setUsuario(usuarioJson)
+          const er = await fetch(`${API_BASE}/empresas/`, {
+            headers: { Authorization: `Bearer ${getToken()}` }
+          })
+          if (er.ok) {
+            const list = await er.json()
+            if (Array.isArray(list) && list.length > 0) {
+              const e = list[0]
+              setPerfilAtual({
+                tipo: "empresa",
+                id: e.id,
+                nome: e.razao_social || `Empresa #${e.id}`
+              })
+            }
+          }
         }
 
         if (!res.ok) {
@@ -169,7 +184,7 @@ function App() {
   const acessoBasico = planoId === 1
   const acessoPro = planoId === 2
   const acessoIlimitado = planoId === 3
-  const podeUploadXML = acessoPro || acessoIlimitado
+  const podeUploadXML = acessoBasico || acessoPro || acessoIlimitado
 
   const historicoValido = historico.some((item) => (item.score_global ?? 0) > 0)
 
@@ -289,9 +304,16 @@ function App() {
 
     const data = await resp.json()
 
-    if (data.job_id) {
-      console.log("JOB CRIADO:", data)
+    if (data.status === "finished" && data.result?.relatorio_id != null) {
+      setResultadoXML({
+        relatorio_id: data.result.relatorio_id,
+        tem_resultado: data.result.tem_resultado,
+        carregado: false
+      })
+      return
+    }
 
+    if (data.job_id) {
       const intervalo = setInterval(async () => {
         const statusResp = await fetch(`${API_BASE}/fiscal/analise/status/${data.job_id}`, {
           headers: {
@@ -300,19 +322,52 @@ function App() {
         })
 
         const statusData = await statusResp.json()
-        console.log("JOB STATUS:", statusData)
 
         if (statusData.status === "finished") {
           clearInterval(intervalo)
-          console.log("JOB RESULTADO FINAL:", statusData.result)
+          setResultadoXML({
+            relatorio_id: statusData.result?.relatorio_id,
+            tem_resultado: statusData.result?.tem_resultado,
+            carregado: false
+          })
         }
       }, 2000)
 
       return
     }
-
-    console.log("JOB:", data)
   }
+
+  async function carregarRelatorioSeguro(relatorio_id) {
+    try {
+      const res = await fetch(`${API_BASE}/relatorio/${relatorio_id}`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      })
+
+      const data = await res.json()
+
+      if (data.status === "bloqueado") {
+        return
+      }
+
+      setResultadoXML(prev => ({
+        ...prev,
+        dados: data,
+        carregado: true
+      }))
+    } catch (e) {
+      console.error("Erro ao carregar relatório seguro")
+    }
+  }
+
+  useEffect(() => {
+    if (!data?.consulta_paga) return
+    if (!resultadoXML?.relatorio_id) return
+    if (resultadoXML?.carregado) return
+
+    carregarRelatorioSeguro(resultadoXML.relatorio_id)
+  }, [data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
 
   return (
     <div className="app">
@@ -348,6 +403,42 @@ function App() {
           <p>Upload de XML disponível apenas em planos superiores.</p>
         </div>
       )}
+
+      {resultadoXML && !data?.consulta_paga && (
+        <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
+          <h3>Análise concluída</h3>
+          <p>Seu XML foi processado com sucesso.</p>
+          <p>Foram identificados elementos fiscais que podem compor um diagnóstico técnico.</p>
+          <p>Desbloqueie o relatório completo para visualizar detalhes, fundamentos e valores recuperáveis.</p>
+        </div>
+      )}
+
+      {resultadoXML?.carregado && data?.consulta_paga && (() => {
+        const ra = resultadoXML.dados?.resultado ?? resultadoXML.dados
+        const df = ra?.dados_fiscais
+        return (
+        <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
+          <h3>Resultado da Análise XML</h3>
+
+          <p><strong>Chave NF-e:</strong> {df?.chave_nfe}</p>
+          <p><strong>CNPJ Emitente:</strong> {df?.cnpj_emitente}</p>
+          <p><strong>Valor Nota:</strong> R$ {df?.valor_total_nota}</p>
+          <p><strong>ICMS-ST:</strong> R$ {df?.icms_st}</p>
+
+          <h4>Insights</h4>
+          <ul>
+            {(ra?.insights ?? []).map((i, idx) => (
+              <li key={idx}>{typeof i === "string" ? i : (i.descricao ?? i.tipo ?? String(i))}</li>
+            ))}
+          </ul>
+
+          <h4>Recuperação Estimada</h4>
+          <p>
+            R$ {ra?.previsao_recuperacao?.potencial_recuperacao_nota}
+          </p>
+        </div>
+        )
+      })()}
 
       <main className="dashboard">
         <section className="hero-card">

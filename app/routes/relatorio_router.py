@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import models
+from app.models import RelatorioAnalise
 from app.database import get_db
 from app.routes.imposto_router import DadosImposto
 from app.security import get_usuario_atual, verificar_empresa_do_usuario
@@ -78,7 +79,11 @@ async def gerar_relatorio(
     relatorio = _montar_relatorio(analise, empresa_id, db)
     if relatorio_obj:
         relatorio["relatorio_id"] = relatorio_obj.id
-    return relatorio
+    return {
+        "status": "processado",
+        "mensagem": "Análise concluída. Desbloqueie o relatório completo para visualizar os detalhes.",
+        "relatorio_id": relatorio.get("relatorio_id"),
+    }
 
 
 def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dict:
@@ -215,6 +220,39 @@ async def relatorio_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=relatorio-fiscal.pdf"},
     )
+
+
+@router.get("/{relatorio_id:int}")
+def obter_relatorio(
+    relatorio_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    rel = db.query(RelatorioAnalise).filter(RelatorioAnalise.id == relatorio_id).first()
+
+    if not rel:
+        raise HTTPException(status_code=404, detail="Relatório não encontrado")
+
+    if rel.user_id != usuario_atual.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    # Fallback para base atual: RelatorioAnalise não possui consulta_paga.
+    # Se no futuro existir coluna por relatório, ela terá prioridade.
+    consulta_paga_relatorio = getattr(rel, "consulta_paga", None)
+    pagamento_ok = (
+        bool(consulta_paga_relatorio)
+        if consulta_paga_relatorio is not None
+        else bool(usuario_atual.consulta_paga)
+    )
+
+    if not pagamento_ok:
+        return {
+            "status": "bloqueado",
+            "mensagem": "Pagamento necessário",
+            "relatorio_id": rel.id,
+        }
+
+    return rel.resultado_json
 
 
 @router.get("/{analysis_type}")

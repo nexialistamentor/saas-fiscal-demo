@@ -18,7 +18,7 @@ def processar_xml_job(xml_bytes: bytes, empresa_id: int):
         )
         return {
             "relatorio_id": rel.id,
-            "resultado": analise
+            "tem_resultado": True
         }
     finally:
         db.close()

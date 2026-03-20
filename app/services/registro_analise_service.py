@@ -8,8 +8,9 @@ Cada execução vira um registro completo auditável.
 import time
 from datetime import datetime
 
-from app.models import RelatorioAnalise, AlertaFiscal
+from app.models import Empresa, RelatorioAnalise, AlertaFiscal
 from app.services.analysis_orchestrator import executar_analise_xml
+from app.xml_service import processar_e_persistir_xml
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.usage_service import verificar_limite_analises, incrementar_uso_analise
 
@@ -89,6 +90,22 @@ def executar_e_registrar_analise_xml(
 
     inicio = time.perf_counter()
     resultado = executar_analise_xml(xml_bytes)
+
+    if empresa_id and not resultado.get("dados_fiscais", {}).get("erro"):
+        empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+        if empresa and empresa.user_id:
+            class _UsuarioProxy:
+                def __init__(self, user_id):
+                    self.id = user_id
+
+            usuario_proxy = _UsuarioProxy(empresa.user_id)
+            processar_e_persistir_xml(
+                db=db,
+                usuario_atual=usuario_proxy,
+                empresa=empresa,
+                xml_bytes=xml_bytes,
+            )
+
     tempo = round(time.perf_counter() - inicio, 4)
 
     xml_chave = None
@@ -98,6 +115,18 @@ def executar_e_registrar_analise_xml(
     rel = criar_registro_analise(
         db, user_id, "xml_analise", empresa_id=empresa_id, xml_chave=xml_chave
     )
+
+    if empresa_id:
+        try:
+            from app.services.insights_engine import InsightEngine
+
+            engine = InsightEngine(db)
+            engine.gerar_insights_empresa(
+                empresa_id=empresa_id,
+                relatorio_analise_id=rel.id,
+            )
+        except Exception:
+            pass
 
     score_resultante = None
     if empresa_id:
