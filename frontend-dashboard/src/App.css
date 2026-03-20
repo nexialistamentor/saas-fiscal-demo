@@ -459,6 +459,23 @@ body{
     font-size:14px;
     border-radius:10px;
   }
+
+  .cards-grid{
+    gap:10px;
+  }
+
+  .card{
+    padding:14px;
+    border-radius:14px;
+  }
+
+  .card strong{
+    font-size:18px;
+  }
+
+  .card-label{
+    font-size:12px;
+  }
 }
 
 input[type="file"] {
