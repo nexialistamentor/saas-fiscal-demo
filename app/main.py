@@ -61,12 +61,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://frontend-dashboard-sooty.vercel.app",
-        "https://frontend-dashboard-b42wtc2v1-nexialistamentors-projects.vercel.app",
-        "https://frontend-dashboard-mipqze5my-nexialistamentors-projects.vercel.app",
-        "http://localhost:5173",
-    ],
+    allow_origins=["http://localhost:5173"],
+    allow_origin_regex=r"https://frontend-dashboard-.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
