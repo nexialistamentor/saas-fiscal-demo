@@ -478,16 +478,25 @@ body{
   }
 }
 
-input[type="file"] {
+.xml-upload {
   width: 100%;
   max-width: 100%;
-  display: block;
   margin: 12px 0 20px;
-  color: transparent;
-  font-size: 0;
 }
 
-input[type="file"]::file-selector-button {
+.xml-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.xml-upload-btn {
   width: 100%;
   border: none;
   padding: 14px 16px;

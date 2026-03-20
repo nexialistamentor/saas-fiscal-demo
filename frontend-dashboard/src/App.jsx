@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import "./App.css"
 import useDashboardData from "./hooks/useDashboardData"
 import RelatorioPDFButton from "./components/RelatorioPDFButton"
@@ -74,6 +74,7 @@ function App() {
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutErro, setCheckoutErro] = useState(null)
   const [resultadoXML, setResultadoXML] = useState(null)
+  const xmlInputRef = useRef(null)
 
   async function iniciarCheckout(e) {
     e.preventDefault()
@@ -417,15 +418,27 @@ function App() {
         ))}
       </div>
       {podeUploadXML && (
-        <label className="upload-xml">
-          📄 Carregar XML
+        <div className="xml-upload">
           <input
+            ref={xmlInputRef}
             type="file"
             accept=".xml"
-            onChange={(e) => enviarXML(e.target.files[0])}
-            hidden
+            className="xml-upload-input"
+            aria-label="Enviar arquivo XML"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) enviarXML(f)
+              e.target.value = ""
+            }}
           />
-        </label>
+          <button
+            type="button"
+            className="xml-upload-btn"
+            onClick={() => xmlInputRef.current?.click()}
+          >
+            Escolher Arquivo
+          </button>
+        </div>
       )}
 
       {!podeUploadXML && (
