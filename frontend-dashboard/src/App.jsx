@@ -488,10 +488,16 @@ function App() {
       })()}
 
       <main className="dashboard">
-        <section className="hero-card">
-          <h2>Visão Geral</h2>
-          <p>Acompanhe oportunidades, riscos e indicadores fiscais da empresa.</p>
-        </section>
+        <div className="hero-card visao-card">
+          <div className="visao-geral">
+            <h2 style={{ color: "yellow", fontSize: "34px" }}>TESTE H2</h2>
+            <p style={{ fontSize: "24px", color: "yellow", fontWeight: "700" }}>
+              TESTE VISÃO GERAL
+              <br />
+              fiscais da empresa
+            </p>
+          </div>
+        </div>
 
         <section className="impacto-hero">
           <article className="card card-impacto">
