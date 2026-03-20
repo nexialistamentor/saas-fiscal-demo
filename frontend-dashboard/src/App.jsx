@@ -490,11 +490,9 @@ function App() {
       <main className="dashboard">
         <div className="hero-card visao-card">
           <div className="visao-geral">
-            <h2 style={{ color: "yellow", fontSize: "34px" }}>TESTE H2</h2>
-            <p style={{ fontSize: "24px", color: "yellow", fontWeight: "700" }}>
-              TESTE VISÃO GERAL
-              <br />
-              fiscais da empresa
+            <h2>Visão geral</h2>
+            <p>
+              Resumo dos principais indicadores fiscais da empresa.
             </p>
           </div>
         </div>

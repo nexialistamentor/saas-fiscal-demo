@@ -131,9 +131,15 @@ body{
   content:none;
 }
 
-/* Container real do cartão: .hero-card traz o fundo; sobrescreve aqui (teste vermelho — trocar depois) */
+/* Cartão Visão Geral: fundo escuro legível (sem overlay do .hero-card) */
 .hero-card.visao-card{
-  background:red !important;
+  background:linear-gradient(135deg,#1e3a8a,#0f172a);
+  color:#fff;
+}
+
+.hero-card.visao-card h2,
+.hero-card.visao-card p{
+  color:#f8fafc;
 }
 
 .visao-card{
