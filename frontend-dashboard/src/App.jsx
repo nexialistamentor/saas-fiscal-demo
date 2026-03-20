@@ -40,7 +40,7 @@ function App() {
   const [verificandoSessao, setVerificandoSessao] = useState(true)
 
   const perfisDisponiveis = [
-    { tipo: "empresa", id: 4, nome: "Perfil" },
+    { tipo: "empresa", id: 4, nome: "Empresa" },
     { tipo: "cpf", id: 1, nome: "Pessoa Física" }
   ]
   const [perfilAtual, setPerfilAtual] = React.useState(perfisDisponiveis[0])
