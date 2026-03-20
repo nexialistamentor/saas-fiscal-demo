@@ -205,6 +205,38 @@ function App() {
         { mes: "P5", recuperacao: 52 },
       ]
 
+  async function carregarRelatorioSeguro(relatorio_id) {
+    try {
+      const res = await fetch(`${API_BASE}/relatorio/${relatorio_id}`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      })
+
+      const data = await res.json()
+
+      if (data.status === "bloqueado") {
+        return
+      }
+
+      setResultadoXML(prev => ({
+        ...prev,
+        dados: data,
+        carregado: true
+      }))
+    } catch (e) {
+      console.error("Erro ao carregar relatório seguro")
+    }
+  }
+
+  useEffect(() => {
+    if (!data?.consulta_paga) return
+    if (!resultadoXML?.relatorio_id) return
+    if (resultadoXML?.carregado) return
+
+    carregarRelatorioSeguro(resultadoXML.relatorio_id)
+  }, [data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
+
   if (verificandoSessao) {
     return <p style={{ padding: 40 }}>Validando sessão...</p>
   }
@@ -362,38 +394,6 @@ function App() {
       return
     }
   }
-
-  async function carregarRelatorioSeguro(relatorio_id) {
-    try {
-      const res = await fetch(`${API_BASE}/relatorio/${relatorio_id}`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`
-        }
-      })
-
-      const data = await res.json()
-
-      if (data.status === "bloqueado") {
-        return
-      }
-
-      setResultadoXML(prev => ({
-        ...prev,
-        dados: data,
-        carregado: true
-      }))
-    } catch (e) {
-      console.error("Erro ao carregar relatório seguro")
-    }
-  }
-
-  useEffect(() => {
-    if (!data?.consulta_paga) return
-    if (!resultadoXML?.relatorio_id) return
-    if (resultadoXML?.carregado) return
-
-    carregarRelatorioSeguro(resultadoXML.relatorio_id)
-  }, [data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
 
   return (
     <div className="app">
