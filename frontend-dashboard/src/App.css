@@ -453,3 +453,16 @@ input[type="file"] {
   margin-bottom: 16px;
   background: #fff;
 }
+
+.upload-xml {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: #2563eb;
+  color: white;
+  text-align: center;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+}

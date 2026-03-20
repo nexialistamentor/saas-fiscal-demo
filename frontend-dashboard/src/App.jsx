@@ -417,11 +417,15 @@ function App() {
         ))}
       </div>
       {podeUploadXML && (
-        <input
-          type="file"
-          accept=".xml"
-          onChange={(e) => enviarXML(e.target.files[0])}
-        />
+        <label className="upload-xml">
+          📄 Carregar XML
+          <input
+            type="file"
+            accept=".xml"
+            onChange={(e) => enviarXML(e.target.files[0])}
+            hidden
+          />
+        </label>
       )}
 
       {!podeUploadXML && (
