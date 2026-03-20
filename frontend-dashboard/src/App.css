@@ -445,13 +445,20 @@ body{
 
 input[type="file"] {
   width: 100%;
-  padding: 14px;
-  font-size: 16px;
+  max-width: 100%;
+  display: block;
+  margin: 12px 0;
+}
+
+input[type="file"]::file-selector-button {
+  width: 100%;
+  border: none;
+  padding: 12px;
   border-radius: 10px;
-  border: 1px solid #ccc;
-  margin-top: 12px;
-  margin-bottom: 16px;
-  background: #fff;
+  background: linear-gradient(135deg, #2563eb, #1e3a8a);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .upload-xml {
