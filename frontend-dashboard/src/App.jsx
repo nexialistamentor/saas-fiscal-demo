@@ -341,7 +341,7 @@ function App() {
       id: "qualidade-uf",
       titulo: "Qualidade da Base UF",
       valor: (data?.insights ?? []).some((i) =>
-        String(i).includes("Cobertura de UF insuficiente")
+        String(i).includes("QUALIDADE_DADOS_UF_BAIXA")
       )
         ? "Baixa"
         : "Adequada",

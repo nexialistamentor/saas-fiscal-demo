@@ -108,7 +108,7 @@ def gerar_mapa_oportunidades(db: Session, empresa_id: int):
         .limit(50)
         .all()
     )
-    mapa["insights"] = [r.descricao or r.tipo for r in rows if r.descricao or r.tipo]
+    mapa["insights"] = [r.tipo or r.descricao for r in rows if r.tipo or r.descricao]
     mapa["total_insights"] = len(mapa["insights"])
 
     return mapa
