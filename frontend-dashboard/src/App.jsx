@@ -338,6 +338,15 @@ function App() {
       valor: `${data?.total_insights ?? 0}`,
     },
     {
+      id: "qualidade-uf",
+      titulo: "Qualidade da Base UF",
+      valor: (data?.insights ?? []).some((i) =>
+        String(i).includes("Cobertura de UF insuficiente")
+      )
+        ? "Baixa"
+        : "Adequada",
+    },
+    {
       id: "pontuacao-fiscal",
       titulo: "Pontuação Fiscal",
       valor: `${pontuacao}/100`,
