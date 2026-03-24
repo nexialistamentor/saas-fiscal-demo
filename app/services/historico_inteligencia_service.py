@@ -16,6 +16,7 @@ def obter_historico_inteligencia(db, empresa_id):
             score_global,
             risco_tributario,
             maturidade_tributaria,
+            uf_cobertura,
             criado_em
         FROM inteligencia_snapshots
         WHERE empresa_id = :empresa_id
@@ -34,6 +35,7 @@ def obter_historico_inteligencia(db, empresa_id):
             "score_global": row.score_global,
             "risco_tributario": row.risco_tributario,
             "maturidade_tributaria": row.maturidade_tributaria,
+            "uf_cobertura": row.uf_cobertura,
             "data_snapshot": row.criado_em
         })
 

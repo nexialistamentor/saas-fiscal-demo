@@ -267,6 +267,8 @@ def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
         tipo=dados.get("tipo"),
         valor_total=dados.get("valor_total"),
         mva_utilizada=mva,
+        uf_emit=dados.get("uf_emit"),
+        uf_dest=dados.get("uf_dest"),
     )
 
     db.add(documento)

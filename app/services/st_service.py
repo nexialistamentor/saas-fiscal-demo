@@ -46,7 +46,8 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            mva = carregar_mva(ncm)
+            uf = item.documento.uf_dest or item.documento.uf_emit
+            mva = carregar_mva(ncm, uf)
             if mva is None:
                 continue
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)
@@ -94,7 +95,8 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            mva = carregar_mva(ncm)
+            uf = item.documento.uf_dest or item.documento.uf_emit
+            mva = carregar_mva(ncm, uf)
             if mva is None:
                 continue
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)
@@ -157,7 +159,8 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            mva = carregar_mva(ncm)
+            uf = item.documento.uf_dest or item.documento.uf_emit
+            mva = carregar_mva(ncm, uf)
             if mva is None:
                 continue
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)

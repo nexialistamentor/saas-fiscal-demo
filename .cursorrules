@@ -1,0 +1,71 @@
+CONTEXTO DO PROJETO
+
+Este projeto é uma plataforma de inteligência tributária soberana com arquitetura em camadas.
+
+Stack principal:
+
+Backend: FastAPI + SQLAlchemy + PostgreSQL
+Processamento: Motor fiscal + InsightEngine
+Fila: Redis + RQ
+Frontend: React (Vite)
+Agents: AgentScheduler, AgentExecutor, AgentRegistry
+ARQUITETURA OFICIAL (NÃO VIOLAR)
+
+Todo XML (unitário ou lote) deve seguir o pipeline:
+
+executar_analise_xml (núcleo)
+executar_e_registrar_analise_xml (persistência)
+processar_e_persistir_xml (integração com empresa)
+InsightEngine (enriquecimento)
+dados estruturados no banco
+agents sob gatilho (não automático)
+REGRAS CRÍTICAS
+NÃO criar novos fluxos de análise XML
+NÃO duplicar lógica existente
+NÃO criar novas rotas se já existir equivalente
+NÃO alterar motor_fiscal sem necessidade explícita
+NÃO usar LLM para processamento primário
+NÃO ler XML bruto se já existe dado persistido
+NÃO ignorar base normativa (TabelaMVA)
+BASE NORMATIVA
+
+Fonte de verdade: tabela_mva
+
+NÃO usar fallback JSON como fonte primária
+NÃO hardcodar regras tributárias
+SEMPRE usar:
+buscar_mva
+carregar_mva (até unificação futura)
+AGENTS
+
+Agents NÃO fazem:
+
+processamento de XML
+leitura direta de XML bruto
+
+Agents SÓ fazem:
+
+interpretação de dados já persistidos
+geração de insights
+alertas sob gatilho
+CONTROLE DE CUSTO
+evitar chamadas desnecessárias a LLM
+evitar reprocessamento de XML
+usar cache sempre que possível
+priorizar lógica determinística
+ANTES DE GERAR CÓDIGO, VERIFICAR
+isso já existe?
+isso cria duplicação?
+isso quebra arquitetura?
+isso escala?
+isso aumenta custo?
+
+Se qualquer resposta for "sim" → NÃO gerar código novo
+
+PRINCÍPIO CENTRAL
+
+O sistema deve:
+
+persistir primeiro
+enriquecer depois
+só então usar inteligência

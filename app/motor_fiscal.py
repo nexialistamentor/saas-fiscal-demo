@@ -6,8 +6,6 @@ import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from sqlalchemy import text
-
 from app.database import SessionLocal
 
 
@@ -104,30 +102,23 @@ class MotorFiscal:
 
 
 def carregar_mva(ncm: str, uf: str | None = None) -> float | None:
-    """Consulta MVA na base normativa (tabela_mva) ou fallback em mva.json.
-    Quando uf é informado, usa regras estaduais do banco. Retorna None se não encontrar."""
+    """
+    Adaptador de compatibilidade para consulta de MVA.
+    Fonte prioritária: tabela_mva via buscar_mva.
+    Fallback JSON deve existir apenas como compatibilidade temporária.
+    """
     db = SessionLocal()
+    try:
+        if uf:
+            from app.services.tabela_normativa_service import buscar_mva
 
-    if uf:
-        query = text("""
-            SELECT mva
-            FROM tabela_mva
-            WHERE estado = :uf
-            AND ncm = :ncm
-            LIMIT 1
-        """)
+            regra = buscar_mva(db, uf, ncm)
+            if regra and regra.get("mva") is not None:
+                return float(regra["mva"])
+    finally:
+        db.close()
 
-        result = db.execute(query, {"uf": uf, "ncm": ncm}).fetchone()
-
-        if result:
-            db.close()
-            return float(result[0])
-
-    db.close()
-
-    # fallback para JSON
     path = Path(__file__).parent / "data" / "mva.json"
-
     if path.exists():
         with open(path, "r", encoding="utf-8") as f:
             dados = json.load(f)

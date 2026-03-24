@@ -69,7 +69,8 @@ function App() {
           : "data indisponível",
       score: item?.score_global ?? 0,
       risco: item?.risco_tributario ?? 0,
-      maturidade: item?.maturidade_tributaria ?? 0
+      maturidade: item?.maturidade_tributaria ?? 0,
+      uf_cobertura: item?.uf_cobertura ?? null,
     })) ?? []
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutErro, setCheckoutErro] = useState(null)
@@ -328,7 +329,7 @@ function App() {
       id: "timeline-fiscal",
       titulo: "Eventos na Timeline",
       valor: timelineFiscal.length
-        ? `${timelineFiscal.length} eventos (último: ${timelineFiscal[timelineFiscal.length - 1].data})`
+        ? `${timelineFiscal.length} eventos (último: ${timelineFiscal[timelineFiscal.length - 1].data}) · UF ${timelineFiscal[timelineFiscal.length - 1].uf_cobertura ?? "n/d"}%`
         : "Sem eventos",
     },
     {
