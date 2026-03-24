@@ -101,7 +101,13 @@ def gerar_mapa_oportunidades(db: Session, empresa_id: int):
         pass
 
     # Insights reais da empresa
-    rows = db.query(models.Insight).filter(models.Insight.empresa_id == empresa_id).limit(50).all()
+    rows = (
+        db.query(models.Insight)
+        .filter(models.Insight.empresa_id == empresa_id)
+        .order_by(models.Insight.id.desc())
+        .limit(50)
+        .all()
+    )
     mapa["insights"] = [r.descricao or r.tipo for r in rows if r.descricao or r.tipo]
     mapa["total_insights"] = len(mapa["insights"])
 
