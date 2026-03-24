@@ -358,7 +358,44 @@ function App() {
     },
   ]
 
-  async function enviarXML(file) {
+  async function enviarXML(filesOrFile) {
+    const files = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile]
+
+    if (files.length > 1) {
+      const formData = new FormData()
+      files.forEach((file) => formData.append("files", file))
+
+      const resp = await fetch(`${API_BASE}/lote/analisar-lote`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        },
+        body: formData
+      })
+
+      const data = await resp.json()
+
+      if (data.job_id) {
+        const intervalo = setInterval(async () => {
+          const statusResp = await fetch(`${API_BASE}/lote/job/${data.job_id}`, {
+            headers: {
+              Authorization: `Bearer ${getToken()}`
+            }
+          })
+
+          const statusData = await statusResp.json()
+
+          if (statusData.status === "completed" || statusData.status === "failed") {
+            clearInterval(intervalo)
+            console.log("Lote concluído:", statusData)
+          }
+        }, 2000)
+
+        return
+      }
+    }
+
+    const file = files[0]
     const formData = new FormData()
     formData.append("file", file)
     formData.append("empresa_id", idPerfil)
@@ -433,11 +470,12 @@ function App() {
             ref={xmlInputRef}
             type="file"
             accept=".xml"
+            multiple
             className="xml-upload-input"
-            aria-label="Enviar arquivo XML"
+            aria-label="Enviar arquivos XML"
             onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) enviarXML(f)
+              const files = Array.from(e.target.files ?? [])
+              if (files.length > 0) enviarXML(files)
               e.target.value = ""
             }}
           />
