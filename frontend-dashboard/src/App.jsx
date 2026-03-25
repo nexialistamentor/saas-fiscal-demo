@@ -387,6 +387,17 @@ function App() {
 
           if (statusData.status === "completed" || statusData.status === "failed") {
             clearInterval(intervalo)
+
+            if (statusData.status === "completed" && statusData.resultados?.length) {
+              const primeiro = statusData.resultados[0]
+
+              setResultadoXML({
+                relatorio_id: primeiro?.relatorio_id,
+                tem_resultado: true,
+                carregado: false
+              })
+            }
+
             console.log("Lote concluído:", statusData)
           }
         }, 2000)
