@@ -48,7 +48,8 @@ function App() {
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
 
-  const { data, historico, tendencia, loading, risco, pontuacao, impacto } = useDashboardData(tipoPerfil, idPerfil)
+  const { data, historico, tendencia, loading, risco, pontuacao, impacto, aplicarMapaOportunidades } =
+    useDashboardData(tipoPerfil, idPerfil)
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
@@ -387,6 +388,30 @@ function App() {
 
           if (statusData.status === "completed" || statusData.status === "failed") {
             clearInterval(intervalo)
+
+            if (statusData.status === "completed") {
+              try {
+                const resMapa = await fetch(
+                  `${API_BASE}/inteligencia/mapa-oportunidades/${idPerfil}`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${getToken()}`
+                    }
+                  }
+                )
+                if (resMapa.status === 401) {
+                  clearToken()
+                  window.location.reload()
+                  return
+                }
+                if (resMapa.ok) {
+                  const mapaJson = await resMapa.json()
+                  aplicarMapaOportunidades(mapaJson)
+                }
+              } catch (err) {
+                console.error("[Dashboard] mapa-oportunidades pós-lote:", err)
+              }
+            }
 
             if (statusData.status === "completed" && statusData.resultados?.length) {
               const primeiro = statusData.resultados[0]

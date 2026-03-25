@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { API_BASE, clearToken, getToken, isAuthenticated, isDemoSession } from "../config"
 
 export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
@@ -6,6 +6,20 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
   const [historico, setHistorico] = useState([])
   const [tendencia, setTendencia] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  const aplicarMapaOportunidades = useCallback((mapaJson) => {
+    const mapaSeguro =
+      mapaJson != null && typeof mapaJson === "object" && !Array.isArray(mapaJson)
+        ? mapaJson
+        : null
+    if (mapaSeguro == null && mapaJson != null) {
+      console.warn(
+        "[Dashboard] mapa-oportunidades formato inesperado (pós-lote):",
+        JSON.stringify(mapaJson)
+      )
+    }
+    setData(mapaSeguro ?? {})
+  }, [])
 
   useEffect(() => {
     const token = getToken()
@@ -76,17 +90,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
         const historicoJson = await resHistorico.json()
         const tendenciaJson = resTendencia.ok ? await resTendencia.json() : null
 
-        const mapaSeguro =
-          mapaJson != null && typeof mapaJson === "object" && !Array.isArray(mapaJson)
-            ? mapaJson
-            : null
-        if (mapaSeguro == null) {
-          console.warn(
-            "[Dashboard] mapa-oportunidades formato inesperado (debug):",
-            JSON.stringify(mapaJson)
-          )
-        }
-        setData(mapaSeguro ?? {})
+        aplicarMapaOportunidades(mapaJson)
 
         setHistorico(Array.isArray(historicoJson) ? historicoJson : [])
         setTendencia(tendenciaJson ?? { tendencia: "insuficiente" })
@@ -108,7 +112,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
 
     return () => clearInterval(intervalo)
 
-  }, [idPerfil, tipoPerfil])
+  }, [idPerfil, tipoPerfil, aplicarMapaOportunidades])
 
   // Valores derivados dos campos da API (escalas 0-100, impactos corretos)
   const risco = data ? Math.min(100, data.risco_tributario_percentual ?? 0) : 0
@@ -127,5 +131,6 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
     risco,
     pontuacao,
     impacto,
+    aplicarMapaOportunidades,
   }
 }
