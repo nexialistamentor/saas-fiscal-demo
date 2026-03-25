@@ -512,9 +512,14 @@ function App() {
       {resultadoXML?.lote && (
         <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
           <h3>Lote processado com sucesso</h3>
-          <p><strong>Arquivos processados:</strong> {resultadoXML.total_arquivos ?? "n/d"}</p>
-          <p><strong>Status:</strong> {resultadoXML.status ?? "completed"}</p>
-          <p>O lote foi analisado e os indicadores do dashboard já foram atualizados.</p>
+          <p><strong>Arquivos processados:</strong> {resultadoXML.total_arquivos}</p>
+          <p><strong>Status:</strong> {resultadoXML.status}</p>
+          <p>
+            <strong>Impacto gerado:</strong> R$ {(data?.restituicao_st ?? 0).toLocaleString("pt-BR")}
+          </p>
+          <p>
+            <strong>Insights detectados:</strong> {data?.total_insights ?? 0}
+          </p>
         </div>
       )}
 
