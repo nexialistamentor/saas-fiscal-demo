@@ -394,7 +394,10 @@ function App() {
               setResultadoXML({
                 relatorio_id: primeiro?.relatorio_id,
                 tem_resultado: true,
-                carregado: false
+                carregado: false,
+                lote: true,
+                total_arquivos: statusData.total_files,
+                status: statusData.status
               })
             }
 
@@ -503,6 +506,15 @@ function App() {
       {!podeUploadXML && (
         <div style={{ marginTop: 20 }}>
           <p>Upload de XML disponível apenas em planos superiores.</p>
+        </div>
+      )}
+
+      {resultadoXML?.lote && (
+        <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
+          <h3>Lote processado com sucesso</h3>
+          <p><strong>Arquivos processados:</strong> {resultadoXML.total_arquivos ?? "n/d"}</p>
+          <p><strong>Status:</strong> {resultadoXML.status ?? "completed"}</p>
+          <p>O lote foi analisado e os indicadores do dashboard já foram atualizados.</p>
         </div>
       )}
 
