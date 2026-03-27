@@ -540,7 +540,7 @@ function App() {
           <p><strong>Arquivos processados:</strong> {resultadoXML.total_arquivos}</p>
           <p><strong>Status:</strong> {resultadoXML.status}</p>
           <p>
-            <strong>Impacto gerado:</strong> R$ {(data?.restituicao_st ?? 0).toLocaleString("pt-BR")}
+            <strong>Impacto gerado:</strong> R$ {(data?.impacto_financeiro_anual ?? 0).toLocaleString("pt-BR")}
           </p>
           <p>
             <strong>Insights detectados:</strong> {data?.total_insights ?? 0}
