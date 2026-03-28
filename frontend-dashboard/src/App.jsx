@@ -621,6 +621,20 @@ function App() {
           ))}
         </section>
 
+        {!data?.consulta_paga && data?.total_insights > 0 && (
+          <div style={{ marginTop: 16, padding: 16, border: "1px dashed #999", borderRadius: 8 }}>
+            <p>
+              🚀 <strong>{data.total_insights} oportunidades detectadas</strong>
+            </p>
+            <p style={{ opacity: 0.7 }}>
+              Desbloqueie para ver onde está o dinheiro e como recuperar.
+            </p>
+            <button style={{ marginTop: 8 }}>
+              Ver oportunidades
+            </button>
+          </div>
+        )}
+
         {!data?.consulta_paga && (
           <div className="bloqueio-relatorio">
             <span className="icone-bloqueio">🔒</span>
