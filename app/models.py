@@ -73,6 +73,8 @@ class DocumentoFiscal(Base):
     tipo = Column(String, nullable=True)
     valor_total = Column(Float, nullable=True)
     mva_utilizada = Column(Float, nullable=True)
+    uf_emit = Column(String(2), nullable=True)
+    uf_dest = Column(String(2), nullable=True)
 
     empresa = relationship("Empresa", back_populates="documentos_fiscais")
     itens = relationship("ItemFiscal", back_populates="documento", cascade="all, delete-orphan")
@@ -131,6 +133,7 @@ class InteligenciaSnapshot(Base):
     score_global = Column(Float)
     risco_tributario = Column(String)
     maturidade_tributaria = Column(String)
+    uf_cobertura = Column(Float, nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow)
 
 
