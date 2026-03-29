@@ -164,14 +164,20 @@ class InsightEngine:
 
         for item in insights:
             uf = None
-            try:
-                if hasattr(self, "empresa") and self.empresa:
-                    uf = getattr(self.empresa, "uf", None)
-            except:
-                pass
 
-            if not uf:
-                uf = item.get("uf")
+            # tentativa segura via contexto de item/documento
+            if "ncm" in item:
+                try:
+                    ultimo_item = (
+                        self.db.query(NotaFiscalItem)
+                        .filter(NotaFiscalItem.ncm == item.get("ncm"))
+                        .order_by(NotaFiscalItem.id.desc())
+                        .first()
+                    )
+                    if ultimo_item and ultimo_item.documento:
+                        uf = ultimo_item.documento.uf_dest or ultimo_item.documento.uf_emit
+                except:
+                    pass
 
             if uf:
                 item["uf"] = uf
