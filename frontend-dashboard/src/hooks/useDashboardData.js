@@ -120,8 +120,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
     ? Math.min(100, Math.max(0, data.pontuacao_fiscal ?? 0))
     : 0
   const impacto =
-    data?.impacto_financeiro_anual ??
-    (data?.restituicao_st ?? 0) * 12
+    data?.impacto_financeiro_anual ?? 0
 
   return {
     data,
