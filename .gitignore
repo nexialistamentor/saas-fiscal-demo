@@ -12,3 +12,9 @@ relatorio_payload.json
 node_modules/
 dist/
 test.db
+
+venv311/
+.env.local
+.vercel/
+tmp-browser/
+*.db
