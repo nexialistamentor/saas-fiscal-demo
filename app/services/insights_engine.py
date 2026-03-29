@@ -163,6 +163,19 @@ class InsightEngine:
         self.db.flush()
 
         for item in insights:
+            uf = None
+            try:
+                if hasattr(self, "empresa") and self.empresa:
+                    uf = getattr(self.empresa, "uf", None)
+            except:
+                pass
+
+            if not uf:
+                uf = item.get("uf")
+
+            if uf:
+                item["uf"] = uf
+
             registro_insight = Insight(
                 empresa_id=empresa_id,
                 relatorio_analise_id=relatorio_analise_id,
