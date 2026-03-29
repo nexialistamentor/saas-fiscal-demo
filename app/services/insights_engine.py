@@ -1,6 +1,14 @@
 from sqlalchemy import func
 from datetime import datetime
-from app.models import NotaFiscalItem, DocumentoFiscal, Empresa, EngineResultado, RelatorioAnalise, Insight
+from app.models import (
+    NotaFiscalItem,
+    DocumentoFiscal,
+    Empresa,
+    EngineResultado,
+    RelatorioAnalise,
+    Insight,
+    InteligenciaSnapshot,
+)
 from app.services.motor_predicao_tributaria import prever_impacto_st
 from app.motor_fiscal import carregar_mva
 from app.services.tabela_normativa_service import buscar_mva
@@ -178,6 +186,36 @@ class InsightEngine:
             risco["nivel_risco"],
             maturidade["nivel_maturidade"]
         )
+
+        ultimo_snapshot = (
+            self.db.query(InteligenciaSnapshot)
+            .filter(InteligenciaSnapshot.empresa_id == empresa_id)
+            .order_by(InteligenciaSnapshot.id.desc())
+            .first()
+        )
+        if ultimo_snapshot and ultimo_snapshot.uf_cobertura is not None:
+            if ultimo_snapshot.uf_cobertura < 50:
+                item = {
+                    "tipo": "QUALIDADE_DADOS_UF_BAIXA",
+                    "impacto": "alto",
+                    "descricao": "Cobertura de UF insuficiente para análises estaduais precisas.",
+                    "recomendacao": "Submeter mais XMLs recentes para melhorar a precisão tributária.",
+                }
+                insights.append(item)
+                self.db.add(
+                    Insight(
+                        empresa_id=empresa_id,
+                        relatorio_analise_id=relatorio_analise_id,
+                        tipo=item.get("tipo", "INSIGHT_GENERICO"),
+                        valor_estimado=float(item.get("valor_estimado", 0) or 0),
+                        impacto=item.get("impacto"),
+                        descricao=item.get("descricao"),
+                        recomendacao=item.get("recomendacao"),
+                        ncm=item.get("ncm"),
+                        payload_json=item,
+                    )
+                )
+                self.db.flush()
 
         creditos_detectados = [i for i in insights if i.get("tipo") == "CREDITO_ST_ESTIMADO"]
         oportunidades = [i for i in insights if i.get("tipo") != "CREDITO_ST_ESTIMADO"]
