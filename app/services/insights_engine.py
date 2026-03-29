@@ -170,7 +170,11 @@ class InsightEngine:
                 try:
                     ultimo_item = (
                         self.db.query(NotaFiscalItem)
-                        .filter(NotaFiscalItem.ncm == item.get("ncm"))
+                        .join(NotaFiscalItem.documento)
+                        .filter(
+                            NotaFiscalItem.ncm == item.get("ncm"),
+                            DocumentoFiscal.empresa_id == empresa_id,
+                        )
                         .order_by(NotaFiscalItem.id.desc())
                         .first()
                     )
