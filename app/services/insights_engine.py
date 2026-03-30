@@ -256,6 +256,17 @@ class InsightEngine:
         context = self._montar_contexto_engines(empresa_id)
         resultados_engines = executar_engines(context)
 
+        # Normalização fiscal: impedir tributos negativos
+        if "irpj" in resultados_engines:
+            if resultados_engines["irpj"].get("total_irpj", 0) < 0:
+                resultados_engines["irpj"]["total_irpj"] = 0
+                resultados_engines["irpj"]["irpj"] = 0
+                resultados_engines["irpj"]["adicional_irpj"] = 0
+
+        if "csll" in resultados_engines:
+            if resultados_engines["csll"].get("valor", 0) < 0:
+                resultados_engines["csll"]["valor"] = 0
+
         for nome, resultado in resultados_engines.items():
             registro = EngineResultado(
                 empresa_id=empresa_id,
