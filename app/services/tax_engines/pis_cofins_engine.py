@@ -48,6 +48,32 @@ def calcular_pis_cofins(dados_fiscais: dict, regime="presumido"):
     }
     result = PISCOFINSEngine().execute(context)
 
+    aliquota_pis = 0.0065 if regime == "presumido" else 0.0165
+    aliquota_cofins = 0.03 if regime == "presumido" else 0.076
+
+    base_com_icms = faturamento
+    pis_com_icms = base_com_icms * aliquota_pis
+    cofins_com_icms = base_com_icms * aliquota_cofins
+
+    pis_sem_icms = result["pis"]
+    cofins_sem_icms = result["cofins"]
+
+    credito_pis_estimado = pis_com_icms - pis_sem_icms
+    credito_cofins_estimado = cofins_com_icms - cofins_sem_icms
+    credito_total_estimado = credito_pis_estimado + credito_cofins_estimado
+
+    comparativo_icms_base = {
+        "base_com_icms": base_com_icms,
+        "base_sem_icms": base_pis_cofins,
+        "pis_com_icms": pis_com_icms,
+        "pis_sem_icms": pis_sem_icms,
+        "cofins_com_icms": cofins_com_icms,
+        "cofins_sem_icms": cofins_sem_icms,
+        "credito_pis_estimado": credito_pis_estimado,
+        "credito_cofins_estimado": credito_cofins_estimado,
+        "credito_total_estimado": credito_total_estimado,
+    }
+
     return {
         "tributos": {
             "pis": result["pis"],
@@ -58,6 +84,7 @@ def calcular_pis_cofins(dados_fiscais: dict, regime="presumido"):
             "icms_excluido": icms,
             "base_pis_cofins": base_pis_cofins,
         },
+        "comparativo_icms_base": comparativo_icms_base,
         "regime": regime,
         "alertas": [
             "Valores estimados sem considerar créditos fiscais.",
