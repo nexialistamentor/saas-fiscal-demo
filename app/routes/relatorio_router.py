@@ -110,6 +110,12 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
         "potencial_recuperacao": {"valor_estimado": valor_estimado},
         "insights": insights,
         "score_global": score,
+        "credito_pis_cofins_estimado": (
+            analise.get("resultados_engines", {})
+            .get("pis_cofins", {})
+            .get("comparativo_icms_base", {})
+            .get("credito_total_estimado")
+        ),
     }
 
 
