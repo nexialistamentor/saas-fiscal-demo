@@ -116,6 +116,16 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
             .get("comparativo_icms_base", {})
             .get("credito_total_estimado")
         ),
+        "irpj_total": (
+            analise.get("resultados_engines", {})
+            .get("irpj", {})
+            .get("total_irpj")
+        ),
+        "csll_total": (
+            analise.get("resultados_engines", {})
+            .get("csll", {})
+            .get("valor")
+        ),
     }
 
 
