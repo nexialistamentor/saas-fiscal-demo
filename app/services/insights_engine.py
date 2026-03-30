@@ -25,6 +25,7 @@ from app.services.score_global_tributario_service import calcular_score_global_t
 from app.services.risco_tributario_service import calcular_risco_tributario
 from app.services.maturidade_tributaria_service import calcular_maturidade_tributaria
 from app.services.engine_registry import ENGINES
+from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
 
 
 def executar_engines(context: dict) -> dict:
@@ -32,7 +33,16 @@ def executar_engines(context: dict) -> dict:
     resultados = {}
     for nome, engine in ENGINES.items():
         try:
-            resultados[nome] = engine.execute(context)
+            if nome == "pis_cofins":
+                dados = dict(context)
+                if dados.get("icms") is None:
+                    dados["icms"] = float(
+                        dados.get("icms_devido") or dados.get("icms_pago") or 0
+                    )
+                regime = context.get("regime") or "presumido"
+                resultados[nome] = calcular_pis_cofins(dados, regime=regime)
+            else:
+                resultados[nome] = engine.execute(context)
         except Exception as e:
             resultados[nome] = {"erro": str(e)}
     return resultados
