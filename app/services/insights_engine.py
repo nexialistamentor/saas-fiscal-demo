@@ -625,6 +625,55 @@ class InsightEngine:
 
         return insights
 
+    def _analisar_st_sem_saida_por_ncm(self, empresa_id: int):
+        st_entrada = (
+            self.db.query(
+                NotaFiscalItem.ncm,
+                func.sum(NotaFiscalItem.valor_st).label("st_entrada")
+            )
+            .join(NotaFiscalItem.documento)
+            .filter(DocumentoFiscal.empresa_id == empresa_id)
+            .filter(DocumentoFiscal.tipo == "entrada")
+            .group_by(NotaFiscalItem.ncm)
+            .all()
+        )
+
+        st_saida = (
+            self.db.query(
+                NotaFiscalItem.ncm,
+                func.sum(NotaFiscalItem.valor_st).label("st_saida")
+            )
+            .join(NotaFiscalItem.documento)
+            .filter(DocumentoFiscal.empresa_id == empresa_id)
+            .filter(DocumentoFiscal.tipo == "saida")
+            .group_by(NotaFiscalItem.ncm)
+            .all()
+        )
+
+        mapa_saida = {row.ncm: row.st_saida for row in st_saida}
+        insights = []
+
+        for row in st_entrada:
+            ncm = row.ncm
+            entrada = row.st_entrada or 0
+            saida = mapa_saida.get(ncm, 0) or 0
+            saldo = round(entrada - saida, 2)
+
+            if saldo > 50:
+                insights.append({
+                    "tipo": "ESTOQUE_FANTASMA_NCM",
+                    "tributo": "ST",
+                    "categoria": "distorcao",
+                    "ncm": ncm,
+                    "impacto": "alto" if saldo > 500 else "medio",
+                    "valor_estimado": saldo,
+                    "descricao": f"NCM {ncm}: ST de R$ {saldo} paga na entrada sem saida correspondente.",
+                    "recomendacao": "Verificar se produto ainda esta em estoque ou houve perda/devolucao nao registada."
+                })
+
+        insights.sort(key=lambda x: x["valor_estimado"], reverse=True)
+        return insights
+
     def _analisar_mva_oficial_divergente(self, empresa_id):
         insights = []
 
