@@ -21,7 +21,18 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
         impacto_financeiro_anual: 1680000,
         estoque_fantasma: 0,
         total_insights: 48,
-        consulta_paga: true
+        consulta_paga: true,
+        context_flags: {
+          dados_incompletos: true,
+          valores_normalizados: true,
+          usa_estimativa: true,
+          base_presumida: false
+        },
+        decomposicao_impacto: {
+          valor_recuperavel_real: 1350000,
+          valor_estimado: 330000,
+          normalizacoes_aplicadas: 2
+        }
       })
       setHistorico([
         { data_snapshot: "2025-11-01", score_global: 78, risco_tributario: 38, maturidade_tributaria: 72 },
@@ -116,6 +127,9 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
     data?.impacto_financeiro_anual ??
     (data?.restituicao_st ?? 0) * 12
 
+  const decomposicaoImpacto = data?.decomposicao_impacto ?? null
+  const contextFlags = data?.context_flags ?? null
+
   return {
     data,
     historico,
@@ -124,5 +138,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
     risco,
     pontuacao,
     impacto,
+    decomposicaoImpacto,
+    contextFlags
   }
 }

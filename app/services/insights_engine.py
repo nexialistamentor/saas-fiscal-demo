@@ -26,6 +26,11 @@ from app.services.risco_tributario_service import calcular_risco_tributario
 from app.services.maturidade_tributaria_service import calcular_maturidade_tributaria
 from app.services.engine_registry import ENGINES
 from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
+from app.services.context_flags_service import (
+    anexar_flags_nos_resultados_engines,
+    inferir_flags_contexto_empresa,
+    merge_context_flags,
+)
 
 
 def executar_engines(context: dict) -> dict:
@@ -100,6 +105,11 @@ class InsightEngine:
             "atividade": "comercio",
             "icms_pago": float(st_entradas),
             "icms_devido": float(st_saidas),
+            "context_flags": inferir_flags_contexto_empresa(
+                regime=regime,
+                faturamento=float(faturamento),
+                custos=float(custos),
+            ),
         }
 
     def gerar_insights_empresa(self, empresa_id: int, relatorio_analise_id: int | None = None):
@@ -260,6 +270,7 @@ class InsightEngine:
         creditos_detectados = [i for i in insights if i.get("tipo") == "CREDITO_ST_ESTIMADO"]
         oportunidades = [i for i in insights if i.get("tipo") != "CREDITO_ST_ESTIMADO"]
 
+        self.db.flush()
         resultados_engines = executar_engines(context)
 
         comparativo_regime = {}
@@ -275,16 +286,35 @@ class InsightEngine:
                 "melhor_regime": tax_planning.get("melhor_regime")
             }
 
+        motor_norm = 0
         # Normalização fiscal: impedir tributos negativos
         if "irpj" in resultados_engines:
             if resultados_engines["irpj"].get("total_irpj", 0) < 0:
+                motor_norm += 1
                 resultados_engines["irpj"]["total_irpj"] = 0
                 resultados_engines["irpj"]["irpj"] = 0
                 resultados_engines["irpj"]["adicional_irpj"] = 0
 
         if "csll" in resultados_engines:
             if resultados_engines["csll"].get("valor", 0) < 0:
+                motor_norm += 1
                 resultados_engines["csll"]["valor"] = 0
+
+        self.db.flush()
+        mapa_r = gerar_mapa_oportunidades(self.db, empresa_id)
+        context_flags_final = merge_context_flags(
+            context.get("context_flags"),
+            mapa_r.get("context_flags"),
+        )
+        if motor_norm > 0:
+            context_flags_final["valores_normalizados"] = True
+
+        decomp = dict(mapa_r.get("decomposicao_impacto") or {})
+        decomp["normalizacoes_aplicadas"] = int(decomp.get("normalizacoes_aplicadas", 0)) + motor_norm
+
+        resultados_engines = anexar_flags_nos_resultados_engines(
+            resultados_engines, context_flags_final
+        )
 
         for nome, resultado in resultados_engines.items():
             registro = EngineResultado(
@@ -308,6 +338,8 @@ class InsightEngine:
                 "creditos_detectados": creditos_detectados,
                 "risco_tributario": risco,
                 "resultados_engines": resultados_engines,
+                "context_flags": context_flags_final,
+                "decomposicao_impacto": decomp,
             }
 
         self.db.commit()
@@ -319,6 +351,8 @@ class InsightEngine:
             "risco_tributario": risco,
             "resultados_engines": resultados_engines,
             "comparativo_regime": comparativo_regime,
+            "context_flags": context_flags_final,
+            "decomposicao_impacto": decomp,
         }
 
     def _analisar_impacto_financeiro(self, empresa_id: int):

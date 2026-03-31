@@ -48,7 +48,17 @@ function App() {
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
 
-  const { data, historico, tendencia, loading, risco, pontuacao, impacto } = useDashboardData(tipoPerfil, idPerfil)
+  const {
+    data,
+    historico,
+    tendencia,
+    loading,
+    risco,
+    pontuacao,
+    impacto,
+    decomposicaoImpacto,
+    contextFlags
+  } = useDashboardData(tipoPerfil, idPerfil)
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
@@ -436,6 +446,27 @@ function App() {
           <p>
             R$ {ra?.previsao_recuperacao?.potencial_recuperacao_nota}
           </p>
+          {ra?.decomposicao_impacto && (
+            <div style={{ marginTop: 12 }}>
+              <p>
+                R${" "}
+                {(ra.decomposicao_impacto.valor_recuperavel_real ?? 0).toLocaleString("pt-BR")}{" "}
+                recuperável real (documento)
+              </p>
+              <p>
+                R${" "}
+                {(ra.decomposicao_impacto.valor_estimado ?? 0).toLocaleString("pt-BR")} estimado
+              </p>
+              </div>
+          )}
+          {ra?.context_flags && (
+            <p style={{ marginTop: 8, fontSize: 13, color: "#444" }}>
+              {ra.context_flags.dados_incompletos && "Dados parcialmente completos. "}
+              {ra.context_flags.usa_estimativa && "Inclui estimativas. "}
+              {ra.context_flags.valores_normalizados && "Inclui valores em escala normalizada. "}
+              {ra.context_flags.base_presumida && "Base presumida aplicável."}
+            </p>
+          )}
         </div>
         )
       })()}
@@ -452,7 +483,29 @@ function App() {
             <strong className="card-valor-impacto">
               R$ {(impacto ?? 0).toLocaleString("pt-BR")}
             </strong>
-            <p className="card-sub">Valor recuperável estimado no ano</p>
+            {decomposicaoImpacto && (
+              <div className="card-sub card-rastreio">
+                <p>
+                  R${" "}
+                  {(decomposicaoImpacto.valor_recuperavel_real ?? 0).toLocaleString("pt-BR")}{" "}
+                  recuperável real
+                </p>
+                <p>
+                  R$ {(decomposicaoImpacto.valor_estimado ?? 0).toLocaleString("pt-BR")} estimado
+                </p>
+                {contextFlags?.dados_incompletos && (
+                  <p className="card-aviso">Baseado em dados parcialmente completos.</p>
+                )}
+                {(decomposicaoImpacto.normalizacoes_aplicadas ?? 0) > 0 && (
+                  <p className="card-meta">
+                    {decomposicaoImpacto.normalizacoes_aplicadas} normalização(ões) aplicada(s)
+                  </p>
+                )}
+              </div>
+            )}
+            {!decomposicaoImpacto && (
+              <p className="card-sub">Valor recuperável estimado no ano</p>
+            )}
           </article>
         </section>
 

@@ -22,6 +22,7 @@ from app.services.pdf_report_service import gerar_pdf_imposto, gerar_pdf_relator
 from app.services.imposto_service import calcular_imposto_simples
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
+from app.services.context_flags_service import default_context_flags
 from app.xml_security import validar_upload_xml
 
 router = APIRouter()
@@ -108,6 +109,8 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
     return {
         "empresa_id": empresa_id,
         "potencial_recuperacao": {"valor_estimado": valor_estimado},
+        "context_flags": analise.get("context_flags") or default_context_flags(),
+        "decomposicao_impacto": analise.get("decomposicao_impacto"),
         "insights": insights,
         "score_global": score,
         "credito_pis_cofins_estimado": (
@@ -251,6 +254,8 @@ def _gerar_pdf_relatorio_completo(perfil_id: int, db: Session):
     relatorio = {
         "empresa_id": perfil_id,
         "potencial_recuperacao": {"valor_estimado": mapa.get("restituicao_st", 0) or 0},
+        "context_flags": mapa.get("context_flags") or default_context_flags(),
+        "decomposicao_impacto": mapa.get("decomposicao_impacto"),
         "insights": insights,
         "score_global": round(score, 2) if score is not None else None,
     }

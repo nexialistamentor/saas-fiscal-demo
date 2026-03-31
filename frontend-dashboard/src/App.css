@@ -152,6 +152,24 @@ body{
   opacity:0.9;
 }
 
+.card-impacto .card-rastreio p{
+  margin:4px 0 0;
+  font-size:13px;
+  line-height:1.35;
+  opacity:0.92;
+}
+
+.card-impacto .card-aviso{
+  font-size:12px;
+  font-style:italic;
+  opacity:0.85;
+}
+
+.card-impacto .card-meta{
+  font-size:12px;
+  opacity:0.8;
+}
+
 .cards-grid{
   align-content:start;
   box-sizing:border-box;
