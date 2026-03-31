@@ -50,12 +50,26 @@ def calcular_imposto_simples(
         elif faturamento_anual_projetado >= 75_000:
             alertas.append("faturamento próximo do limite anual")
     else:
-        # CPF / autônomo: base * aliquota simplificada
+        # CPF / autônomo: base real
         base = max(0, faturamento - despesas)
-        aliquota = 0.06  # 6% simplificado
-        imposto = round(base * aliquota, 2)
-        if base > 0 and despesas == 0:
-            alertas.append("considere informar despesas para reduzir a base de cálculo")
+
+        # Tabela IRPF mensal (simplificada)
+        imposto = 0
+
+        if base <= 2112:
+            imposto = 0
+        elif base <= 2826.65:
+            imposto = (base * 0.075) - 158.4
+        elif base <= 3751.05:
+            imposto = (base * 0.15) - 370.4
+        elif base <= 4664.68:
+            imposto = (base * 0.225) - 651.73
+        else:
+            imposto = (base * 0.275) - 884.96
+
+        imposto = max(0, round(imposto, 2))
+
+        alertas.append("Cálculo baseado em tabela progressiva IRPF (estimado)")
 
     aliquota_info = "DAS fixo (comércio/indústria)" if tipo.upper() == "MEI" else "6% (regime simplificado)"
     base = faturamento - despesas if tipo.upper() != "MEI" else faturamento
