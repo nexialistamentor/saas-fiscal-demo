@@ -257,6 +257,19 @@ class InsightEngine:
 
         resultados_engines = executar_engines(context)
 
+        comparativo_regime = {}
+        tax_planning = resultados_engines.get("tax_planning", {})
+        carga_real = tax_planning.get("carga_lucro_real")
+        carga_presumido = tax_planning.get("carga_lucro_presumido")
+
+        if carga_real is not None and carga_presumido is not None:
+            comparativo_regime = {
+                "lucro_real": max(0, carga_real),
+                "lucro_presumido": max(0, carga_presumido),
+                "diferenca": abs((carga_real or 0) - (carga_presumido or 0)),
+                "melhor_regime": tax_planning.get("melhor_regime")
+            }
+
         # Normalização fiscal: impedir tributos negativos
         if "irpj" in resultados_engines:
             if resultados_engines["irpj"].get("total_irpj", 0) < 0:
@@ -299,7 +312,8 @@ class InsightEngine:
             "oportunidades": oportunidades,
             "creditos_detectados": creditos_detectados,
             "risco_tributario": risco,
-            "resultados_engines": resultados_engines
+            "resultados_engines": resultados_engines,
+            "comparativo_regime": comparativo_regime,
         }
 
     def _analisar_impacto_financeiro(self, empresa_id: int):
