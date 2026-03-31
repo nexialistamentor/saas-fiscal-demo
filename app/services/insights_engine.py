@@ -121,6 +121,8 @@ class InsightEngine:
 
         insights = []
 
+        context = self._montar_contexto_engines(empresa_id)
+
         insights.extend(
             self._analisar_restituicao_st(empresa_id)
         )
@@ -138,7 +140,7 @@ class InsightEngine:
         )
 
         insights.extend(
-            self._analisar_st_sem_saida(empresa_id)
+            self._analisar_st_sem_saida(context)
         )
 
         insights.extend(
@@ -253,7 +255,6 @@ class InsightEngine:
         creditos_detectados = [i for i in insights if i.get("tipo") == "CREDITO_ST_ESTIMADO"]
         oportunidades = [i for i in insights if i.get("tipo") != "CREDITO_ST_ESTIMADO"]
 
-        context = self._montar_contexto_engines(empresa_id)
         resultados_engines = executar_engines(context)
 
         # Normalização fiscal: impedir tributos negativos
@@ -580,24 +581,11 @@ class InsightEngine:
 
         return insights
 
-    def _analisar_st_sem_saida(self, empresa_id: int):
+    def _analisar_st_sem_saida(self, context: dict):
         insights = []
 
-        st_entradas = (
-            self.db.query(func.sum(NotaFiscalItem.valor_st))
-            .join(NotaFiscalItem.documento)
-            .filter(DocumentoFiscal.empresa_id == empresa_id)
-            .filter(DocumentoFiscal.tipo == "entrada")
-            .scalar()
-        )
-
-        st_saidas = (
-            self.db.query(func.sum(NotaFiscalItem.valor_st))
-            .join(NotaFiscalItem.documento)
-            .filter(DocumentoFiscal.empresa_id == empresa_id)
-            .filter(DocumentoFiscal.tipo == "saida")
-            .scalar()
-        )
+        st_entradas = context.get("icms_pago", 0)
+        st_saidas = context.get("icms_devido", 0)
 
         if not st_entradas:
             return insights
