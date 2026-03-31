@@ -193,6 +193,8 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
         "economia_regime_natureza": "estimado",
         "tax_recovery_natureza": "recuperavel_fiscal",
         "potencial_total_recuperacao_natureza": "misto_estimado",
+        "estoque_fantasma_natureza": "saldo_fiscal_por_ncm",
+        "estoque_fantasma_fonte": "ESTOQUE_FANTASMA_NCM",
     }
 
 
