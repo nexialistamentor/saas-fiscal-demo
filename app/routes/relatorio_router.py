@@ -189,6 +189,10 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
             ),
             2,
         ),
+        "credito_pis_cofins_natureza": "estimado",
+        "economia_regime_natureza": "estimado",
+        "tax_recovery_natureza": "recuperavel_fiscal",
+        "potencial_total_recuperacao_natureza": "misto_estimado",
     }
 
 
