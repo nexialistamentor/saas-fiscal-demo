@@ -304,8 +304,20 @@ function App() {
 
   function textoSeguro(value) {
     if (value == null) return "—"
-    if (typeof value === "object") return JSON.stringify(value)
-    return String(value)
+
+    if (typeof value === "object") {
+      return JSON.stringify(value)
+    }
+
+    let texto = String(value)
+
+    // Escape básico contra XSS
+    return texto
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;")
   }
 
   const cardsDashboard = [
