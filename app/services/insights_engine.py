@@ -92,6 +92,7 @@ class InsightEngine:
             "db": self.db,
             "faturamento": float(faturamento),
             "custos": float(custos),
+            "custo_fiscal_entradas": float(custos),
             "lucro_contabil": float(max(0, lucro)),
             "lucro": float(max(0, lucro)),
             "base_calculo": float(base_calculo),
