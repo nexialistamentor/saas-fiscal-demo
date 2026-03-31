@@ -151,6 +151,16 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
             .get("cpf", {})
             .get("alertas")
         ),
+        "cpf_base_incompleta": (
+            analise.get("resultados_engines", {})
+            .get("cpf", {})
+            .get("base_incompleta")
+        ),
+        "cpf_origem_base": (
+            analise.get("resultados_engines", {})
+            .get("cpf", {})
+            .get("origem_base")
+        ),
         "economia_regime_estimado": (
             abs(
                 analise.get("comparativo_regime", {}).get("lucro_real", 0)
