@@ -197,6 +197,9 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
             2,
         ),
         "capital_tributario_em_estoque": "saldo_fiscal_por_ncm",
+        "recuperacao_imediata_fiscal_natureza": "recuperavel_fiscal",
+        "otimizacao_estimada_natureza": "estimado",
+        "capital_tributario_em_estoque_natureza": "saldo_fiscal_por_ncm",
         "potencial_total_recuperacao": round(
             (
                 (
