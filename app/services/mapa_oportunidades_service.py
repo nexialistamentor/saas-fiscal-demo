@@ -76,6 +76,8 @@ def gerar_mapa_oportunidades(db: Session, empresa_id: int):
             mapa["estoque_st"] += valor
 
         if tipo == "ST_SEM_SAIDA":
+            continue
+        if tipo == "ESTOQUE_FANTASMA_NCM":
             mapa["estoque_fantasma"] += valor
 
         if tipo == "ANOMALIA_PRECO":
