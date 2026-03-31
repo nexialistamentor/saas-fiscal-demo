@@ -6,6 +6,7 @@ from app.services.tax_engines.csll_engine import CSLLEngine
 from app.services.tax_engines.pis_cofins_engine import PISCOFINSEngine
 from app.services.tax_engines.lucro_real_engine import LucroRealEngine
 from app.services.tax_engines.mei_engine import MEIEngine
+from app.services.tax_engines.cpf_engine import CPFEngine
 
 # Registro de todas as engines BaseTaxEngine para execução direta
 ENGINES = {
@@ -14,6 +15,7 @@ ENGINES = {
     "pis_cofins": PISCOFINSEngine(),
     "lucro_real": LucroRealEngine(),
     "mei": MEIEngine(),
+    "cpf": CPFEngine(),
     "tax_planning": TaxPlanningEngine(),
     "tax_recovery": TaxRecoveryEngine()
 }
