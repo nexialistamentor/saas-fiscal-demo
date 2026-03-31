@@ -195,6 +195,10 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
         "potencial_total_recuperacao_natureza": "misto_estimado",
         "estoque_fantasma_natureza": "saldo_fiscal_por_ncm",
         "estoque_fantasma_fonte": "ESTOQUE_FANTASMA_NCM",
+        "estoque_fantasma_interpretacao": (
+            "valor representa imposto pago na entrada ainda nao compensado em vendas; "
+            "nao e credito imediato"
+        ),
     }
 
 
