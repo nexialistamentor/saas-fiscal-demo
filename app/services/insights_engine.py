@@ -83,23 +83,15 @@ class InsightEngine:
             .filter(DocumentoFiscal.tipo == "saida")
             .scalar()
         ) or 0
-        despesas = (
-            self.db.query(func.coalesce(func.sum(NotaFiscalItem.valor_produto), 0))
-            .join(NotaFiscalItem.documento)
-            .filter(DocumentoFiscal.empresa_id == empresa_id)
-            .filter(DocumentoFiscal.tipo == "saida")  # placeholder controlado
-            .scalar()
-        ) or 0
         empresa = self.db.query(Empresa).filter(Empresa.id == empresa_id).first()
         regime = (empresa.regime_tributario or "presumido").lower() if empresa else "presumido"
-        lucro = faturamento - custos - despesas
+        lucro = faturamento - custos
         base_calculo = lucro if regime == "real" else faturamento * 0.08
         return {
             "empresa_id": empresa_id,
             "db": self.db,
             "faturamento": float(faturamento),
             "custos": float(custos),
-            "despesas": float(despesas),
             "lucro_contabil": float(max(0, lucro)),
             "lucro": float(max(0, lucro)),
             "base_calculo": float(base_calculo),
