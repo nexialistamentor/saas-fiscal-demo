@@ -18,6 +18,10 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+_PROD = os.environ.get("ENVIRONMENT", "development") == "production"
+# Rate limit: 100 req/min por IP (global) - impede brute force
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+
 from app.database import engine, get_db, SessionLocal
 from app import models
 from app.seed_data import ensure_planos
@@ -46,10 +50,6 @@ from app.schemas.user_schema import UserCreate, UserResponse
 from app.auth_router import register_user as register_user_handler
 from app.agents.agent_scheduler import AgentScheduler
 import asyncio
-
-_PROD = os.environ.get("ENVIRONMENT", "development") == "production"
-# Rate limit: 100 req/min por IP (global) - impede brute force
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 app = FastAPI(
     docs_url="/docs",
@@ -248,7 +248,9 @@ def teste_banco(request: Request):
 
 
 @app.post("/upload-xml")
+@limiter.limit("10/minute")
 async def upload_xml(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     usuario_atual: models.User = Depends(get_usuario_atual)

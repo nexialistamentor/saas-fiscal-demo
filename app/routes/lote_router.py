@@ -1,9 +1,10 @@
 import uuid
 import time
 
-from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException, Depends, Request
 from typing import List
 
+from app.main import limiter
 from app.security import get_usuario_atual
 from app.services.analysis_orchestrator import executar_analise_xml
 from app.xml_security import validar_upload_xml
@@ -44,7 +45,9 @@ def processar_lote(job_id, files_bytes):
 
 
 @router.post("/analisar-lote")
+@limiter.limit("3/minute")
 async def analisar_lote(
+    request: Request,
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
     usuario_atual: models.User = Depends(get_usuario_atual),
@@ -77,6 +80,7 @@ async def analisar_lote(
         "resultados": None,
         "error": None,
         "created_at": time.time(),
+        "user_id": usuario_atual.id,
     }
 
     background_tasks.add_task(processar_lote, job_id, files_bytes)
@@ -89,12 +93,17 @@ async def analisar_lote(
 
 
 @router.get("/job/{job_id}")
-def consultar_job(job_id: str):
+def consultar_job(
+    job_id: str,
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
     """Consulta o status e resultado de um job de análise em lote."""
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail="Job não encontrado")
 
     job = jobs[job_id]
+    if job.get("user_id") != usuario_atual.id:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
     status = job["status"]
 
     if status == "completed":
