@@ -1,10 +1,15 @@
+import os
+import uuid
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = "SUA_CHAVE_SUPER_SECRETA_AQUI"
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY não definida no ambiente")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
@@ -19,8 +24,15 @@ def verificar_senha(senha_plana, senha_hash):
 
 def criar_token(dados: dict):
     dados_copia = dados.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    dados_copia.update({"exp": expire})
+    agora = datetime.utcnow()
+    expire = agora + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    dados_copia.update({
+        "exp": expire,
+        "iat": agora,
+        "jti": str(uuid.uuid4())
+    })
+
     token = jwt.encode(dados_copia, SECRET_KEY, algorithm=ALGORITHM)
     return token
 
@@ -28,6 +40,11 @@ def criar_token(dados: dict):
 def verificar_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Validação mínima de integridade do token
+        if "jti" not in payload or "iat" not in payload:
+            return None
+
         return payload
     except JWTError:
         return None
