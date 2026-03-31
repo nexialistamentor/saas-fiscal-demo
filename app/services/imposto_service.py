@@ -71,7 +71,10 @@ def calcular_imposto_simples(
 
         alertas.append("Cálculo baseado em tabela progressiva IRPF (estimado)")
 
-    aliquota_info = "DAS fixo (comércio/indústria)" if tipo.upper() == "MEI" else "6% (regime simplificado)"
+    if tipo.upper() == "MEI":
+        aliquota_info = "DAS fixo (comércio/indústria)"
+    else:
+        aliquota_info = "Tabela progressiva IRPF (estimado mensal)"
     base = faturamento - despesas if tipo.upper() != "MEI" else faturamento
     base = max(0, base) if tipo.upper() != "MEI" else base
 
