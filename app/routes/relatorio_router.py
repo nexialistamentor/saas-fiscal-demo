@@ -160,6 +160,25 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
         "melhor_regime": (
             analise.get("comparativo_regime", {}).get("melhor_regime")
         ),
+        "potencial_total_recuperacao": round(
+            (
+                (
+                    analise.get("resultados_engines", {})
+                    .get("pis_cofins", {})
+                    .get("comparativo_icms_base", {})
+                    .get("credito_total_estimado")
+                    or 0
+                )
+                + (analise.get("comparativo_regime", {}).get("diferenca") or 0)
+                + (
+                    analise.get("resultados_engines", {})
+                    .get("tax_recovery", {})
+                    .get("total_creditos")
+                    or 0
+                )
+            ),
+            2,
+        ),
     }
 
 
