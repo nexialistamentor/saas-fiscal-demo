@@ -599,6 +599,7 @@ class InsightEngine:
 
         insight = {
             "tipo": "ST_SEM_SAIDA",
+            "origem": "st_estoque",
             "impacto": "medio",
             "valor_estimado": round(st_em_estoque, 2),
             "descricao": f"ST estimada de R$ {round(st_em_estoque,2)} ainda não realizada em vendas.",
