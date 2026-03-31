@@ -22,6 +22,7 @@ from app.services.pdf_report_service import gerar_pdf_imposto, gerar_pdf_relator
 from app.services.imposto_service import calcular_imposto_simples
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
+from app.services.context_flags_service import default_context_flags
 from app.xml_security import validar_upload_xml
 
 router = APIRouter()
@@ -108,8 +109,129 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
     return {
         "empresa_id": empresa_id,
         "potencial_recuperacao": {"valor_estimado": valor_estimado},
+        "context_flags": analise.get("context_flags") or default_context_flags(),
+        "decomposicao_impacto": analise.get("decomposicao_impacto"),
         "insights": insights,
         "score_global": score,
+        "credito_pis_cofins_estimado": (
+            analise.get("resultados_engines", {})
+            .get("pis_cofins", {})
+            .get("comparativo_icms_base", {})
+            .get("credito_total_estimado")
+        ),
+        "irpj_total": (
+            analise.get("resultados_engines", {})
+            .get("irpj", {})
+            .get("total_irpj")
+        ),
+        "csll_total": (
+            analise.get("resultados_engines", {})
+            .get("csll", {})
+            .get("valor")
+        ),
+        "mei_das_mensal": (
+            analise.get("resultados_engines", {})
+            .get("mei", {})
+            .get("das_mensal")
+        ),
+        "mei_alertas": (
+            analise.get("resultados_engines", {})
+            .get("mei", {})
+            .get("alertas")
+        ),
+        "cpf_imposto_mensal": (
+            analise.get("resultados_engines", {})
+            .get("cpf", {})
+            .get("imposto_mensal")
+        ),
+        "cpf_base_calculo": (
+            analise.get("resultados_engines", {})
+            .get("cpf", {})
+            .get("base_calculo")
+        ),
+        "cpf_alertas": (
+            analise.get("resultados_engines", {})
+            .get("cpf", {})
+            .get("alertas")
+        ),
+        "cpf_base_incompleta": (
+            analise.get("resultados_engines", {})
+            .get("cpf", {})
+            .get("base_incompleta")
+        ),
+        "cpf_origem_base": (
+            analise.get("resultados_engines", {})
+            .get("cpf", {})
+            .get("origem_base")
+        ),
+        "economia_regime_estimado": (
+            abs(
+                analise.get("comparativo_regime", {}).get("lucro_real", 0)
+                - analise.get("comparativo_regime", {}).get("lucro_presumido", 0)
+            )
+        ),
+        "melhor_regime": (
+            analise.get("comparativo_regime", {}).get("melhor_regime")
+        ),
+        "recuperacao_imediata_fiscal": round(
+            (
+                analise.get("resultados_engines", {})
+                .get("tax_recovery", {})
+                .get("total_creditos")
+                or 0
+            ),
+            2,
+        ),
+        "otimizacao_estimada": round(
+            (
+                (
+                    analise.get("resultados_engines", {})
+                    .get("pis_cofins", {})
+                    .get("comparativo_icms_base", {})
+                    .get("credito_total_estimado")
+                    or 0
+                )
+                + (
+                    analise.get("comparativo_regime", {})
+                    .get("diferenca")
+                    or 0
+                )
+            ),
+            2,
+        ),
+        "capital_tributario_em_estoque": "saldo_fiscal_por_ncm",
+        "recuperacao_imediata_fiscal_natureza": "recuperavel_fiscal",
+        "otimizacao_estimada_natureza": "estimado",
+        "capital_tributario_em_estoque_natureza": "saldo_fiscal_por_ncm",
+        "potencial_total_recuperacao": round(
+            (
+                (
+                    analise.get("resultados_engines", {})
+                    .get("pis_cofins", {})
+                    .get("comparativo_icms_base", {})
+                    .get("credito_total_estimado")
+                    or 0
+                )
+                + (analise.get("comparativo_regime", {}).get("diferenca") or 0)
+                + (
+                    analise.get("resultados_engines", {})
+                    .get("tax_recovery", {})
+                    .get("total_creditos")
+                    or 0
+                )
+            ),
+            2,
+        ),
+        "credito_pis_cofins_natureza": "estimado",
+        "economia_regime_natureza": "estimado",
+        "tax_recovery_natureza": "recuperavel_fiscal",
+        "potencial_total_recuperacao_natureza": "misto_estimado",
+        "estoque_fantasma_natureza": "saldo_fiscal_por_ncm",
+        "estoque_fantasma_fonte": "ESTOQUE_FANTASMA_NCM",
+        "estoque_fantasma_interpretacao": (
+            "valor representa imposto pago na entrada ainda nao compensado em vendas; "
+            "nao e credito imediato"
+        ),
     }
 
 
@@ -132,6 +254,8 @@ def _gerar_pdf_relatorio_completo(perfil_id: int, db: Session):
     relatorio = {
         "empresa_id": perfil_id,
         "potencial_recuperacao": {"valor_estimado": mapa.get("restituicao_st", 0) or 0},
+        "context_flags": mapa.get("context_flags") or default_context_flags(),
+        "decomposicao_impacto": mapa.get("decomposicao_impacto"),
         "insights": insights,
         "score_global": round(score, 2) if score is not None else None,
     }

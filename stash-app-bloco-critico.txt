@@ -1,0 +1,12 @@
+app/jobs/analysis_job.py
+app/models.py
+app/motor_fiscal.py
+app/routes/fiscal_router.py
+app/routes/relatorio_router.py
+app/services/historico_inteligencia_service.py
+app/services/insights_engine.py
+app/services/mapa_oportunidades_service.py
+app/services/memoria_estrategica_service.py
+app/services/registro_analise_service.py
+app/services/st_service.py
+app/xml_service.py

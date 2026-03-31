@@ -1,22 +1,30 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-test.db
-*.sqlite3
-
-relatorio_apos_pagamento.pdf
-relatorio_payload.json
-
-node_modules/
-dist/
-test.db
-.vercel
-
-venv/
-venv311/
-.env.local
-.env.*.local
-tmp-browser/
-uf_lineage_test.db
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+test.db
+*.sqlite3
+
+relatorio_apos_pagamento.pdf
+relatorio_payload.json
+
+node_modules/
+dist/
+
+# banco local
+*.db
+test.db
+uf_lineage_test.db
+
+# ambiente
+venv/
+venv311/
+.env.local
+.env.*.local
+
+# deploy
+.vercel/
+
+# temporários
+tmp-browser/

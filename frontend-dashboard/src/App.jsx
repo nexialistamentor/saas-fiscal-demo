@@ -48,8 +48,18 @@ function App() {
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
 
-  const { data, historico, tendencia, loading, risco, pontuacao, impacto, aplicarMapaOportunidades } =
-    useDashboardData(tipoPerfil, idPerfil)
+  const {
+    data,
+    historico,
+    tendencia,
+    loading,
+    risco,
+    pontuacao,
+    impacto,
+    decomposicaoImpacto,
+    contextFlags,
+    aplicarMapaOportunidades
+  } = useDashboardData(tipoPerfil, idPerfil)
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
@@ -604,7 +614,29 @@ function App() {
             <strong className="card-valor-impacto">
               R$ {(impacto ?? 0).toLocaleString("pt-BR")}
             </strong>
-            <p className="card-sub">Valor recuperável estimado no ano</p>
+            {decomposicaoImpacto && (
+              <div className="card-sub card-rastreio">
+                <p>
+                  R${" "}
+                  {(decomposicaoImpacto.valor_recuperavel_real ?? 0).toLocaleString("pt-BR")}{" "}
+                  recuperável real
+                </p>
+                <p>
+                  R$ {(decomposicaoImpacto.valor_estimado ?? 0).toLocaleString("pt-BR")} estimado
+                </p>
+                {contextFlags?.dados_incompletos && (
+                  <p className="card-aviso">Baseado em dados parcialmente completos.</p>
+                )}
+                {(decomposicaoImpacto.normalizacoes_aplicadas ?? 0) > 0 && (
+                  <p className="card-meta">
+                    {decomposicaoImpacto.normalizacoes_aplicadas} normalização(ões) aplicada(s)
+                  </p>
+                )}
+              </div>
+            )}
+            {!decomposicaoImpacto && (
+              <p className="card-sub">Valor recuperável estimado no ano</p>
+            )}
           </article>
         </section>
 
