@@ -126,6 +126,16 @@ def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dic
             .get("csll", {})
             .get("valor")
         ),
+        "mei_das_mensal": (
+            analise.get("resultados_engines", {})
+            .get("mei", {})
+            .get("das_mensal")
+        ),
+        "mei_alertas": (
+            analise.get("resultados_engines", {})
+            .get("mei", {})
+            .get("alertas")
+        ),
         "economia_regime_estimado": (
             abs(
                 analise.get("comparativo_regime", {}).get("lucro_real", 0)
