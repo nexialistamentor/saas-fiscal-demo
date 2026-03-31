@@ -145,6 +145,10 @@ class InsightEngine:
         )
 
         insights.extend(
+            self._analisar_st_sem_saida_por_ncm(empresa_id)
+        )
+
+        insights.extend(
             self._analisar_mva_oficial_divergente(empresa_id)
         )
 
