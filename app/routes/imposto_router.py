@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
@@ -6,13 +8,13 @@ router = APIRouter()
 
 
 class DadosImposto(BaseModel):
-    tipo_usuario: str  # CPF ou MEI
+    tipo_usuario: Literal["CPF", "MEI"]
     faturamento_mensal: float
     despesas: float = 0
 
 
 class SimulacaoAnual(BaseModel):
-    tipo_usuario: str
+    tipo_usuario: Literal["CPF", "MEI"]
     faturamento_mensal: float
     despesas: float = 0
 
@@ -70,7 +72,7 @@ class SimplesNacionalRequest(BaseModel):
     """Simulação DAS para empresa no Simples Nacional."""
     rbt12: float  # Receita bruta últimos 12 meses (R$)
     receita_mes: float | None = None  # Receita do mês (opcional, default: rbt12/12)
-    anexo: str = "I"  # I, II, III, IV ou V
+    anexo: Literal["I", "II", "III", "IV", "V"] = "I"
 
 
 @router.post("/simples-nacional")
