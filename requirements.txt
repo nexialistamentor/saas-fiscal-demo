@@ -16,3 +16,4 @@ alembic
 requests
 httpx
 pillow
+defusedxml
