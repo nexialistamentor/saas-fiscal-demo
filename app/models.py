@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, Float, Date, DateTime, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, Integer, String, ForeignKey, Float, Date, DateTime, Text
 from sqlalchemy.types import JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -28,6 +28,12 @@ ROLES_VALIDOS = ("user", "admin", "contador")
 
 class User(Base):
     __tablename__ = "usuarios"
+    __table_args__ = (
+        CheckConstraint(
+            f"role IN ({', '.join(repr(r) for r in ROLES_VALIDOS)})",
+            name="ck_usuarios_role_valido",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
