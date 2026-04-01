@@ -193,7 +193,7 @@ function App() {
           }
         }
       } catch {
-        setUsuario(null)
+        // não limpar token por erro técnico
       }
 
       setVerificandoSessao(false)
