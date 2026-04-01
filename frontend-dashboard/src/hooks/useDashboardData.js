@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { API_BASE, clearToken, getToken, isAuthenticated, isDemoSession } from "../config"
+import { API_BASE, clearToken, getToken, isAuthenticated } from "../config"
 
 export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5, enabled = false) {
   const [data, setData] = useState(null)
@@ -22,41 +22,6 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5, e
   }, [])
 
   useEffect(() => {
-    const token = getToken()
-    const sessionDemo = isDemoSession(token)
-
-    if (sessionDemo) {
-      setData({
-        restituicao_st: 280000,
-        risco_tributario_percentual: 12,
-        pontuacao_fiscal: 96,
-        impacto_financeiro_anual: 1680000,
-        estoque_fantasma: 0,
-        total_insights: 48,
-        consulta_paga: true,
-        context_flags: {
-          dados_incompletos: true,
-          valores_normalizados: true,
-          usa_estimativa: true,
-          base_presumida: false
-        },
-        decomposicao_impacto: {
-          valor_recuperavel_real: 1350000,
-          valor_estimado: 330000,
-          normalizacoes_aplicadas: 2
-        }
-      })
-      setHistorico([
-        { data_snapshot: "2025-11-01", score_global: 78, risco_tributario: 38, maturidade_tributaria: 72 },
-        { data_snapshot: "2025-12-01", score_global: 84, risco_tributario: 30, maturidade_tributaria: 79 },
-        { data_snapshot: "2026-01-01", score_global: 90, risco_tributario: 22, maturidade_tributaria: 87 },
-        { data_snapshot: "2026-02-01", score_global: 96, risco_tributario: 12, maturidade_tributaria: 93 }
-      ])
-      setTendencia({ tendencia: "melhoria_forte" })
-      setLoading(false)
-      return
-    }
-
     async function carregar() {
       if (!enabled) {
         setLoading(false)

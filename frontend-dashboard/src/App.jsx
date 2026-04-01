@@ -6,10 +6,9 @@ import {
   API_BASE,
   getToken,
   isAuthenticated,
-  isDemoSession,
-  clearToken,
   login,
-  loginDemo
+  loginDemo,
+  clearToken
 } from "./config"
 import {
   ResponsiveContainer,
@@ -151,17 +150,6 @@ function App() {
       }
 
       try {
-        if (isDemoSession()) {
-          setUsuario({
-            id: 0,
-            email: "demo@demo.com",
-            plano_id: 3,
-            consulta_paga: true
-          })
-          setVerificandoSessao(false)
-          return
-        }
-
         const res = await fetch(`${API_BASE}/auth/me`, {
           headers: {
             Authorization: `Bearer ${getToken()}`
