@@ -40,7 +40,7 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     empresa_id: int | None = None
-    role: str = "user"
+    role: str
 
     class Config:
         from_attributes = True
@@ -51,7 +51,7 @@ class UserSession(BaseModel):
     email: EmailStr
     plano_id: int | None = None
     consulta_paga: bool
-    role: str = "user"
+    role: str
 
     class Config:
         from_attributes = True
