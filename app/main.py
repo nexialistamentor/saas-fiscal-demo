@@ -76,17 +76,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 admin_router = APIRouter()
 
 
-def _exigir_admin(usuario: models.User):
-    """Valida acesso admin via campo role."""
-    if not usuario:
-        raise HTTPException(status_code=401, detail="Autenticação obrigatória")
-    if not usuario.is_admin:
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
-
 
 @admin_router.get("/admin/create-tables")
-def create_tables(usuario: models.User = Depends(get_usuario_atual)):
-    _exigir_admin(usuario)
+def create_tables(usuario: models.User = Depends(require_role("admin"))):
     import app.models
 
     from app.models import DocumentoFiscal, ItemFiscal
@@ -97,8 +89,7 @@ def create_tables(usuario: models.User = Depends(get_usuario_atual)):
 
 
 @admin_router.get("/admin/fix-usuarios-plano")
-def fix_plano_column(usuario: models.User = Depends(get_usuario_atual)):
-    _exigir_admin(usuario)
+def fix_plano_column(usuario: models.User = Depends(require_role("admin"))):
     with engine.connect() as conn:
         conn.execute(text("""
             ALTER TABLE usuarios
@@ -117,9 +108,8 @@ def set_user_role(
     email: str,
     role: str,
     db: Session = Depends(get_db),
-    usuario: models.User = Depends(get_usuario_atual),
+    usuario: models.User = Depends(require_role("admin")),
 ):
-    _exigir_admin(usuario)
     if role not in models.ROLES_VALIDOS:
         raise HTTPException(status_code=400, detail=f"Role inválido. Válidos: {models.ROLES_VALIDOS}")
     target = db.query(models.User).filter(models.User.email == email).first()
@@ -131,8 +121,7 @@ def set_user_role(
 
 
 @admin_router.get("/admin/liberar-consulta")
-def liberar_consulta(email: str, usuario: models.User = Depends(get_usuario_atual)):
-    _exigir_admin(usuario)
+def liberar_consulta(email: str, usuario: models.User = Depends(require_role("admin"))):
     with engine.connect() as conn:
         conn.execute(
             text("""
@@ -147,8 +136,7 @@ def liberar_consulta(email: str, usuario: models.User = Depends(get_usuario_atua
 
 
 @admin_router.get("/admin/fix-planos")
-def fix_planos(usuario: models.User = Depends(get_usuario_atual)):
-    _exigir_admin(usuario)
+def fix_planos(usuario: models.User = Depends(require_role("admin"))):
     with engine.connect() as conn:
         conn.execute(text("""
             ALTER TABLE planos
@@ -159,8 +147,7 @@ def fix_planos(usuario: models.User = Depends(get_usuario_atual)):
 
 
 @admin_router.get("/admin/debug-insights-mva")
-def debug_insights_mva(empresa_id: int, usuario: models.User = Depends(get_usuario_atual)):
-    _exigir_admin(usuario)
+def debug_insights_mva(empresa_id: int, usuario: models.User = Depends(require_role("admin"))):
     with engine.connect() as conn:
         rows = conn.execute(text("""
             SELECT tipo, valor_estimado
