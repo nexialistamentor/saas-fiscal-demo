@@ -76,8 +76,15 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 admin_router = APIRouter()
 
 
+def _exigir_admin(usuario: models.User):
+    """Valida acesso admin. Quando campo 'role' existir no modelo User, usar usuario.role != 'admin'."""
+    if not usuario:
+        raise HTTPException(status_code=401, detail="Autenticação obrigatória")
+
+
 @admin_router.get("/admin/create-tables")
-def create_tables():
+def create_tables(usuario: models.User = Depends(get_usuario_atual)):
+    _exigir_admin(usuario)
     import app.models
 
     from app.models import DocumentoFiscal, ItemFiscal
@@ -88,7 +95,8 @@ def create_tables():
 
 
 @admin_router.get("/admin/fix-usuarios-plano")
-def fix_plano_column():
+def fix_plano_column(usuario: models.User = Depends(get_usuario_atual)):
+    _exigir_admin(usuario)
     with engine.connect() as conn:
         conn.execute(text("""
             ALTER TABLE usuarios
@@ -103,7 +111,8 @@ def fix_plano_column():
 
 
 @admin_router.get("/admin/liberar-consulta")
-def liberar_consulta(email: str):
+def liberar_consulta(email: str, usuario: models.User = Depends(get_usuario_atual)):
+    _exigir_admin(usuario)
     with engine.connect() as conn:
         conn.execute(
             text("""
@@ -118,7 +127,8 @@ def liberar_consulta(email: str):
 
 
 @admin_router.get("/admin/fix-planos")
-def fix_planos():
+def fix_planos(usuario: models.User = Depends(get_usuario_atual)):
+    _exigir_admin(usuario)
     with engine.connect() as conn:
         conn.execute(text("""
             ALTER TABLE planos
@@ -129,7 +139,8 @@ def fix_planos():
 
 
 @admin_router.get("/admin/debug-insights-mva")
-def debug_insights_mva(empresa_id: int):
+def debug_insights_mva(empresa_id: int, usuario: models.User = Depends(get_usuario_atual)):
+    _exigir_admin(usuario)
     with engine.connect() as conn:
         rows = conn.execute(text("""
             SELECT tipo, valor_estimado

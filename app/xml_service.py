@@ -138,8 +138,6 @@ def ler_xml_unico(caminho_xml: str = None, xml_bytes: bytes = None):
         "uf_dest": uf_dest,
         "itens": itens,
     }
-    
-    
     return resultado
 
 
