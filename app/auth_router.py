@@ -86,7 +86,7 @@ def login(
     if not verificar_senha(form_data.password, usuario.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-    token = criar_token({"sub": usuario.email})
+    token = criar_token({"sub": usuario.email, "role": usuario.role})
 
     return {"access_token": token, "token_type": "bearer"}
 

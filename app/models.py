@@ -23,6 +23,9 @@ class Plano(Base):
 # =========================
 # USER
 # =========================
+ROLES_VALIDOS = ("user", "admin", "contador")
+
+
 class User(Base):
     __tablename__ = "usuarios"
 
@@ -31,9 +34,14 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     plano_id = Column(Integer, ForeignKey("planos.id"), nullable=True)
     consulta_paga = Column(Boolean, default=False, nullable=False)
+    role = Column(String(20), nullable=False, default="user", server_default="user", index=True)
 
     plano = relationship("Plano", back_populates="usuarios")
     empresas = relationship("Empresa", back_populates="owner")
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"
 
 
 # Regimes tributários esperados pelo regime_router (fluxo BLOCO 10)

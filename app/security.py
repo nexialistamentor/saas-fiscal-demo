@@ -74,6 +74,18 @@ def get_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depends
     return usuario
 
 
+def require_role(*roles_permitidos: str):
+    """Factory de dependência FastAPI que restringe acesso por role."""
+    def _check(usuario: models.User = Depends(get_usuario_atual)):
+        if usuario.role not in roles_permitidos:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Acesso restrito a: {', '.join(roles_permitidos)}"
+            )
+        return usuario
+    return _check
+
+
 def verificar_acesso_relatorio(relatorio: "models.RelatorioAnalise", usuario: "models.User", db: Session) -> None:
     """
     Multi-tenant: garante que o relatório pertence ao usuário (via user_id ou empresa).

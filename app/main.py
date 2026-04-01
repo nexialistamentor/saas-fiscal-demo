@@ -45,7 +45,7 @@ from app.routers.dashboard_router import router as dashboard_router
 from app.routers.assistente_router import assistente_router
 from app.xml_service import ler_xml_unico, processar_e_persistir_xml
 from app.xml_security import validar_upload_xml
-from app.security import get_usuario_atual
+from app.security import get_usuario_atual, require_role
 from app.schemas.user_schema import UserCreate, UserResponse
 from app.auth_router import register_user as register_user_handler
 from app.agents.agent_scheduler import AgentScheduler
@@ -77,9 +77,11 @@ admin_router = APIRouter()
 
 
 def _exigir_admin(usuario: models.User):
-    """Valida acesso admin. Quando campo 'role' existir no modelo User, usar usuario.role != 'admin'."""
+    """Valida acesso admin via campo role."""
     if not usuario:
         raise HTTPException(status_code=401, detail="Autenticação obrigatória")
+    if not usuario.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
 
 
 @admin_router.get("/admin/create-tables")
@@ -108,6 +110,24 @@ def fix_plano_column(usuario: models.User = Depends(get_usuario_atual)):
         """))
         conn.commit()
     return {"status": "usuarios fixed"}
+
+
+@admin_router.post("/admin/set-role")
+def set_user_role(
+    email: str,
+    role: str,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(get_usuario_atual),
+):
+    _exigir_admin(usuario)
+    if role not in models.ROLES_VALIDOS:
+        raise HTTPException(status_code=400, detail=f"Role inválido. Válidos: {models.ROLES_VALIDOS}")
+    target = db.query(models.User).filter(models.User.email == email).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    target.role = role
+    db.commit()
+    return {"status": "role atualizado", "email": email, "role": role}
 
 
 @admin_router.get("/admin/liberar-consulta")
@@ -202,7 +222,7 @@ def run_migrations():
     from sqlalchemy import inspect
     insp = inspect(engine)
     with engine.begin() as conn:
-        # regime_tributario em empresas (SQLite não suporta ADD COLUMN IF NOT EXISTS)
+        # regime_tributario em empresas
         if "empresas" in insp.get_table_names():
             cols = [c["name"] for c in insp.get_columns("empresas")]
             if "regime_tributario" not in cols:
@@ -212,6 +232,13 @@ def run_migrations():
             cols = [c["name"] for c in insp.get_columns("itens_fiscais")]
             if "quantidade" not in cols:
                 conn.execute(text("ALTER TABLE itens_fiscais ADD COLUMN quantidade REAL"))
+        # role em usuarios (default 'user' para todos os existentes)
+        if "usuarios" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("usuarios")]
+            if "role" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE usuarios ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'"
+                ))
 
 
 @app.on_event("startup")
@@ -322,7 +349,7 @@ async def upload_xml(
 def criar_planos(
     request: Request,
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
+    usuario_atual: models.User = Depends(require_role("admin")),
 ):
 
     planos = [
