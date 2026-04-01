@@ -7,7 +7,6 @@ import {
   getToken,
   isAuthenticated,
   login,
-  loginDemo,
   clearToken
 } from "./config"
 import {
@@ -123,12 +122,6 @@ function App() {
     setErroLogin(null)
 
     try {
-      if (email === "demo@demo.com") {
-        loginDemo()
-        window.location.reload()
-        return
-      }
-
       await login(email, password)
       window.location.reload()
     } catch (err) {
