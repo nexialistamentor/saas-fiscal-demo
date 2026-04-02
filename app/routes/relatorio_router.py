@@ -485,11 +485,13 @@ async def buscar_relatorio_mei_tax(
 
 
 @router.post("/imposto-pdf")
-async def imposto_pdf(dados: DadosImposto):
+async def imposto_pdf(
+    dados: DadosImposto,
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
     """
     Gera PDF com cálculo detalhado de imposto (MEI ou CPF/autônomo).
     Fluxo: /imposto/calcular → preview → pagamento → /relatorio/imposto-pdf.
-    Conteúdo: cálculo completo, orientação de pagamento, resumo fiscal, insight.
     """
     resultado = calcular_imposto_simples(
         faturamento=dados.faturamento_mensal,

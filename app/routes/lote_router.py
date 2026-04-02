@@ -14,6 +14,7 @@ router = APIRouter()
 
 jobs = {}
 MAX_JOBS = 100
+MAX_FILES_PER_BATCH = 20
 
 
 def processar_lote(job_id, files_bytes):
@@ -52,6 +53,15 @@ async def analisar_lote(
     files: List[UploadFile] = File(...),
     usuario_atual: models.User = Depends(get_usuario_atual),
 ):
+    if not files:
+        raise HTTPException(status_code=400, detail="Nenhum arquivo enviado.")
+
+    if len(files) > MAX_FILES_PER_BATCH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Máximo de {MAX_FILES_PER_BATCH} arquivos por lote.",
+        )
+
     files_bytes = []
 
     for file in files:
@@ -60,7 +70,6 @@ async def analisar_lote(
 
     job_id = str(uuid.uuid4())
 
-    # Remove jobs com mais de 1 hora para evitar crescimento infinito da memória
     for jid in list(jobs.keys()):
         created = jobs[jid].get("created_at", 0)
         if time.time() - created > 3600:
@@ -80,7 +89,7 @@ async def analisar_lote(
         "resultados": None,
         "error": None,
         "created_at": time.time(),
-        "user_id": usuario_atual.id,
+        "owner_id": usuario_atual.id,
     }
 
     background_tasks.add_task(processar_lote, job_id, files_bytes)
@@ -102,8 +111,10 @@ def consultar_job(
         raise HTTPException(status_code=404, detail="Job não encontrado")
 
     job = jobs[job_id]
-    if job.get("user_id") != usuario_atual.id:
-        raise HTTPException(status_code=404, detail="Job não encontrado")
+
+    if job.get("owner_id") != usuario_atual.id:
+        raise HTTPException(status_code=403, detail="Acesso negado a este job")
+
     status = job["status"]
 
     if status == "completed":
@@ -126,7 +137,6 @@ def consultar_job(
             "duration_seconds": job.get("duration_seconds"),
             "finished_at": job.get("finished_at"),
         }
-    # pending ou processing → retorna processing para o cliente
     return {
         "status": status if status == "processing" else "processing",
         "progress": job.get("progress", 0),

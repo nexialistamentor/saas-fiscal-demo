@@ -1,6 +1,7 @@
 import os
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from rq.exceptions import NoSuchJobError
 from rq.job import Job
 
 from app.database import get_db
@@ -83,7 +84,14 @@ def status_job(job_id: str, usuario_atual: models.User = Depends(get_usuario_atu
         }
     from app.queue.redis_queue import redis_conn
 
-    job = Job.fetch(job_id, connection=redis_conn)
+    try:
+        job = Job.fetch(job_id, connection=redis_conn)
+    except NoSuchJobError:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+
+    if job.meta.get("owner_id") != usuario_atual.id:
+        raise HTTPException(status_code=403, detail="Acesso negado a este job")
+
     resultado = job.result or {}
     return {
         "job_id": job.id,
@@ -101,7 +109,14 @@ def cancelar_job(job_id: str, usuario_atual: models.User = Depends(get_usuario_a
         return {"job_id": job_id, "status": "não aplicável (análise síncrona)"}
     from app.queue.redis_queue import redis_conn
 
-    job = Job.fetch(job_id, connection=redis_conn)
+    try:
+        job = Job.fetch(job_id, connection=redis_conn)
+    except NoSuchJobError:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+
+    if job.meta.get("owner_id") != usuario_atual.id:
+        raise HTTPException(status_code=403, detail="Acesso negado a este job")
+
     if job.is_finished:
         return {"status": "job já finalizado"}
     job.cancel()
