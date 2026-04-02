@@ -143,6 +143,7 @@ function App() {
   useEffect(() => {
     async function validarSessao() {
       if (!isAuthenticated()) {
+        setUsuario(null)
         setVerificandoSessao(false)
         return
       }
@@ -168,6 +169,7 @@ function App() {
         if (res.ok) {
           const usuarioJson = await res.json()
           setUsuario(usuarioJson)
+
           const er = await fetch(`${API_BASE}/empresas/`, {
             headers: { Authorization: `Bearer ${getToken()}` }
           })
@@ -182,13 +184,14 @@ function App() {
               })
             }
           }
-        }
-
-        if (!res.ok) {
-          clearToken()
+        } else {
+          setUsuario(null)
+          if (res.status === 401) {
+            clearToken()
+          }
         }
       } catch {
-        clearToken()
+        setUsuario(null)
       }
 
       setVerificandoSessao(false)
@@ -278,6 +281,16 @@ function App() {
 
           {erroLogin && <p>{erroLogin}</p>}
         </form>
+      </div>
+    )
+  }
+
+  if (!usuario) {
+    clearToken()
+    return (
+      <div style={{ padding: 40 }}>
+        <h2>Login</h2>
+        <p>Sessão inválida. Faça login novamente.</p>
       </div>
     )
   }
