@@ -43,7 +43,7 @@ from app.routers.documento_router import router as documento_router
 from app.routers.inteligencia_router import inteligencia_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.assistente_router import assistente_router
-from app.xml_service import ler_xml_unico, processar_e_persistir_xml
+from app.xml_service import ler_xml_unico, processar_e_persistir_xml, DuplicataFiscalError
 from app.xml_security import validar_upload_xml
 from app.security import get_usuario_atual, require_role
 from app.schemas.user_schema import UserCreate, UserResponse
@@ -320,14 +320,23 @@ async def upload_xml(
         db.add(empresa)
         db.flush()
 
-    documento, dados, analise = processar_e_persistir_xml(
-        db=db,
-        usuario_atual=usuario_atual,
-        empresa=empresa,
-        xml_bytes=conteudo,
-        dados_pre_parse=dados,
-    )
-
+    try:
+        documento, dados, analise = processar_e_persistir_xml(
+            db=db,
+            usuario_atual=usuario_atual,
+            empresa=empresa,
+            xml_bytes=conteudo,
+            dados_pre_parse=dados,
+        )
+    except DuplicataFiscalError as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "erro": "Documento fiscal duplicado",
+                "chave_nfe": e.chave_nfe,
+                "documento_id": e.documento_id,
+            },
+        )
     return {"documento_id": documento.id}
 
 
