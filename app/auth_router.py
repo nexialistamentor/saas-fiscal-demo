@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from app import models
 from app.schemas.user_schema import UserCreate, UserResponse, UserSession
 from app.security import hash_senha, verificar_senha, criar_token, get_usuario_atual
 from app.seed_data import ensure_planos
+from app.rate_limit import limiter, login_throttle
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -24,7 +25,8 @@ def _consulta_liberada_no_registro() -> bool:
 
 
 @router.post("/register", response_model=UserResponse)
-def register_user(user: UserCreate, db: Session = Depends(get_db)) -> UserResponse:
+@limiter.limit("3/minute")
+def register_user(request: Request, user: UserCreate, db: Session = Depends(get_db)) -> UserResponse:
 
     existing_user = db.query(models.User).filter(
         models.User.email == user.email
@@ -71,21 +73,36 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)) -> UserRespon
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> dict[str, str]:
 
+    email = form_data.username
+
+    if login_throttle.esta_bloqueado(email):
+        restante = login_throttle.tempo_restante(email)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Conta temporariamente bloqueada. Tente novamente em {restante}s.",
+            headers={"Retry-After": str(restante)},
+        )
+
     usuario = db.query(models.User).filter(
-        models.User.email == form_data.username
+        models.User.email == email,
     ).first()
 
     if not usuario:
+        login_throttle.registrar_falha(email)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
     if not verificar_senha(form_data.password, usuario.hashed_password):
+        login_throttle.registrar_falha(email)
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
+    login_throttle.limpar(email)
     token = criar_token({"sub": usuario.email})
 
     return {"access_token": token, "token_type": "bearer"}
