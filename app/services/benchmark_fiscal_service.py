@@ -1,20 +1,38 @@
 from sqlalchemy import text
 
 
-def gerar_benchmark_empresas(db):
+def gerar_benchmark_empresas(db, empresa_ids: list[int] | None = None):
 
-    query = text("""
-        SELECT
-            d.empresa_id,
-            SUM(i.valor_st) AS total_st,
-            COUNT(*) AS volume_operacoes
-        FROM itens_fiscais i
-        JOIN documentos_fiscais d
-            ON i.documento_id = d.id
-        GROUP BY d.empresa_id
-    """)
+    if empresa_ids is not None and len(empresa_ids) == 0:
+        return []
 
-    resultados = db.execute(query).fetchall()
+    if empresa_ids is not None:
+        placeholders = ", ".join(f":id{i}" for i in range(len(empresa_ids)))
+        query = text(f"""
+            SELECT
+                d.empresa_id,
+                SUM(i.valor_st) AS total_st,
+                COUNT(*) AS volume_operacoes
+            FROM itens_fiscais i
+            JOIN documentos_fiscais d
+                ON i.documento_id = d.id
+            WHERE d.empresa_id IN ({placeholders})
+            GROUP BY d.empresa_id
+        """)
+        params = {f"id{i}": eid for i, eid in enumerate(empresa_ids)}
+        resultados = db.execute(query, params).fetchall()
+    else:
+        query = text("""
+            SELECT
+                d.empresa_id,
+                SUM(i.valor_st) AS total_st,
+                COUNT(*) AS volume_operacoes
+            FROM itens_fiscais i
+            JOIN documentos_fiscais d
+                ON i.documento_id = d.id
+            GROUP BY d.empresa_id
+        """)
+        resultados = db.execute(query).fetchall()
 
     ranking = []
 

@@ -138,3 +138,12 @@ def verificar_empresa_do_usuario(empresa_id: int | None, usuario: "models.User",
             detail="Acesso negado: empresa não pertence ao usuário"
         )
     return empresa
+
+
+def tenant_empresa(
+    empresa_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: "models.User" = Depends(get_usuario_atual),
+) -> "models.Empresa":
+    """Dependência FastAPI estrutural: valida ownership de empresa_id antes do handler."""
+    return verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
