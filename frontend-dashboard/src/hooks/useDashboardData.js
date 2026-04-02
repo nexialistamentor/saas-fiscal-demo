@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { API_BASE, clearToken, getToken, isAuthenticated, isDemoSession } from "../config"
 
-export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
+export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5, enabled = false) {
   const [data, setData] = useState(null)
   const [historico, setHistorico] = useState([])
   const [tendencia, setTendencia] = useState(null)
@@ -58,6 +58,10 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
     }
 
     async function carregar() {
+      if (!enabled) {
+        setLoading(false)
+        return
+      }
       if (!isAuthenticated()) {
         setLoading(false)
         return
@@ -123,7 +127,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
 
     return () => clearInterval(intervalo)
 
-  }, [idPerfil, tipoPerfil, aplicarMapaOportunidades])
+  }, [idPerfil, tipoPerfil, enabled, aplicarMapaOportunidades])
 
   // Valores derivados dos campos da API (escalas 0-100, impactos corretos)
   const risco = data ? Math.min(100, data.risco_tributario_percentual ?? 0) : 0

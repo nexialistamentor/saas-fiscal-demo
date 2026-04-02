@@ -48,6 +48,8 @@ function App() {
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
 
+  const sessaoPronta = !!usuario
+
   const {
     data,
     historico,
@@ -59,7 +61,7 @@ function App() {
     decomposicaoImpacto,
     contextFlags,
     aplicarMapaOportunidades
-  } = useDashboardData(tipoPerfil, idPerfil)
+  } = useDashboardData(tipoPerfil, idPerfil, sessaoPronta)
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
