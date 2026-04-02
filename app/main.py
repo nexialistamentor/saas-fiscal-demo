@@ -10,17 +10,16 @@ if sys.platform == "win32":
     multiprocessing.get_context = _patched_get_context
 
 from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 _PROD = os.environ.get("ENVIRONMENT", "development") == "production"
-# Rate limit: 100 req/min por IP (global) - impede brute force
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 from app.database import engine, get_db, SessionLocal
 from app import models
@@ -46,6 +45,7 @@ from app.routers.assistente_router import assistente_router
 from app.xml_service import ler_xml_unico, processar_e_persistir_xml, DuplicataFiscalError
 from app.xml_security import validar_upload_xml
 from app.security import get_usuario_atual, require_role
+from app.rate_limit import limiter
 from app.schemas.user_schema import UserCreate, UserResponse
 from app.auth_router import register_user as register_user_handler
 from app.agents.agent_scheduler import AgentScheduler
@@ -56,8 +56,6 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
-
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -76,20 +74,49 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 admin_router = APIRouter()
 
 
+# ── Payloads admin ──────────────────────────────────────────────────────
+class SetRolePayload(BaseModel):
+    email: str
+    role: str
 
-@admin_router.get("/admin/create-tables")
-def create_tables(usuario: models.User = Depends(require_role("admin"))):
-    import app.models
+class LiberarConsultaPayload(BaseModel):
+    email: str
 
-    from app.models import DocumentoFiscal, ItemFiscal
 
+# ── L2 SOBERANA — REFORÇOS FUTUROS PARA ENDPOINTS ADMIN ─────────────────
+# 1. Audit trail obrigatório
+#    Registrar toda ação admin: quem, quando, endpoint, payload sanitizado, resultado.
+# 2. Proteção anti-CSRF / intenção explícita
+#    Header dedicado para ações administrativas mutáveis em contexto browser.
+# 3. Validação forte de payload
+#    Migrar role e campos sensíveis para enum/schema estrito (sem validação solta).
+# 4. Idempotency-Key em mutações críticas
+#    Suportar reenvio seguro sem duplicar efeito colateral.
+# 5. Rate limit por identidade
+#    Preferir chave por usuario.id/admin_id em vez de apenas IP.
+# 6. Dry-run para operações destrutivas
+#    Permitir simulação antes da execução real.
+# 7. Sanitização de resposta e logs
+#    Minimizar retorno de dados sensíveis e mascarar identificadores.
+# ────────────────────────────────────────────────────────────────────────
+
+# ── Endpoints admin (todos POST — nunca GET para mutação) ──────────────
+@admin_router.post("/admin/create-tables")
+@limiter.limit("5/minute")
+def create_tables(
+    request: Request,
+    usuario: models.User = Depends(require_role("admin")),
+):
     models.Base.metadata.create_all(bind=engine)
-
     return {"status": "tables created"}
 
 
-@admin_router.get("/admin/fix-usuarios-plano")
-def fix_plano_column(usuario: models.User = Depends(require_role("admin"))):
+@admin_router.post("/admin/fix-usuarios-plano")
+@limiter.limit("5/minute")
+def fix_plano_column(
+    request: Request,
+    usuario: models.User = Depends(require_role("admin")),
+):
     with engine.connect() as conn:
         conn.execute(text("""
             ALTER TABLE usuarios
@@ -104,24 +131,30 @@ def fix_plano_column(usuario: models.User = Depends(require_role("admin"))):
 
 
 @admin_router.post("/admin/set-role")
+@limiter.limit("10/minute")
 def set_user_role(
-    email: str,
-    role: str,
+    request: Request,
+    payload: SetRolePayload,
     db: Session = Depends(get_db),
     usuario: models.User = Depends(require_role("admin")),
 ):
-    if role not in models.ROLES_VALIDOS:
+    if payload.role not in models.ROLES_VALIDOS:
         raise HTTPException(status_code=400, detail=f"Role inválido. Válidos: {models.ROLES_VALIDOS}")
-    target = db.query(models.User).filter(models.User.email == email).first()
+    target = db.query(models.User).filter(models.User.email == payload.email).first()
     if not target:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    target.role = role
+    target.role = payload.role
     db.commit()
-    return {"status": "role atualizado", "email": email, "role": role}
+    return {"status": "role atualizado", "email": payload.email, "role": payload.role}
 
 
-@admin_router.get("/admin/liberar-consulta")
-def liberar_consulta(email: str, usuario: models.User = Depends(require_role("admin"))):
+@admin_router.post("/admin/liberar-consulta")
+@limiter.limit("10/minute")
+def liberar_consulta(
+    request: Request,
+    payload: LiberarConsultaPayload,
+    usuario: models.User = Depends(require_role("admin")),
+):
     with engine.connect() as conn:
         conn.execute(
             text("""
@@ -129,14 +162,18 @@ def liberar_consulta(email: str, usuario: models.User = Depends(require_role("ad
                 SET consulta_paga = true
                 WHERE email = :email
             """),
-            {"email": email}
+            {"email": payload.email},
         )
         conn.commit()
-    return {"status": "consulta liberada", "email": email}
+    return {"status": "consulta liberada", "email": payload.email}
 
 
-@admin_router.get("/admin/fix-planos")
-def fix_planos(usuario: models.User = Depends(require_role("admin"))):
+@admin_router.post("/admin/fix-planos")
+@limiter.limit("5/minute")
+def fix_planos(
+    request: Request,
+    usuario: models.User = Depends(require_role("admin")),
+):
     with engine.connect() as conn:
         conn.execute(text("""
             ALTER TABLE planos
@@ -278,7 +315,7 @@ async def upload_xml(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual)
+    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
 
     total_empresas = db.query(models.Empresa).filter(
@@ -347,19 +384,27 @@ def criar_planos(
     db: Session = Depends(get_db),
     usuario_atual: models.User = Depends(require_role("admin")),
 ):
+    nomes_existentes = {p.nome for p in db.query(models.Plano).all()}
 
-    planos = [
-        models.Plano(nome="Basico", limite_cnpjs=5, limite_analises=100),
-        models.Plano(nome="Pro", limite_cnpjs=10, limite_analises=500),
-        models.Plano(nome="Ilimitado", limite_cnpjs=999999, limite_analises=999999),
-        models.Plano(nome="Teste", limite_cnpjs=2, limite_analises=2),  # para teste de limite
+    planos_base = [
+        {"nome": "Basico", "limite_cnpjs": 5, "limite_analises": 100},
+        {"nome": "Pro", "limite_cnpjs": 10, "limite_analises": 500},
+        {"nome": "Ilimitado", "limite_cnpjs": 999999, "limite_analises": 999999},
+        {"nome": "Teste", "limite_cnpjs": 2, "limite_analises": 2},
     ]
 
-    for plano in planos:
-        db.add(plano)
+    criados = []
+    for p in planos_base:
+        if p["nome"] not in nomes_existentes:
+            db.add(models.Plano(**p))
+            criados.append(p["nome"])
 
-    db.commit()
+    if criados:
+        db.commit()
 
-    return {"mensagem": "Planos criados com sucesso"}
+    return {
+        "mensagem": f"Planos criados: {', '.join(criados)}" if criados else "Planos já existem",
+        "criados": criados,
+    }
 
 

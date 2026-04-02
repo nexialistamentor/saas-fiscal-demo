@@ -2,7 +2,7 @@ import time
 
 from fastapi import APIRouter, Depends
 
-from app.security import get_usuario_atual
+from app.security import require_role
 from app.services.analysis_orchestrator import (
     analysis_cache,
     degraded_engines,
@@ -111,7 +111,7 @@ def _status_engines():
 
 
 @router.get("/metrics")
-def obter_metricas(usuario_atual=Depends(get_usuario_atual)):
+def obter_metricas(usuario_atual=Depends(require_role("admin"))):
     """
     Retorna o estado arquitetural completo da plataforma:
     - métricas operacionais
