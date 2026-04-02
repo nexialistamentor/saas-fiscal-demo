@@ -1,15 +1,36 @@
 import os
 import uuid
+import logging
 from datetime import datetime, timedelta
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = os.environ.get("SECRET_KEY")
+logger = logging.getLogger(__name__)
 
-if not SECRET_KEY:
-    raise RuntimeError("SECRET_KEY não definida no ambiente")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
+
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower().strip()
+
+_secret = os.getenv("SECRET_KEY")
+
+if _ENVIRONMENT == "production":
+    if not _secret:
+        raise RuntimeError(
+            "SECRET_KEY não definida. "
+            "A aplicação não pode iniciar em produção sem esta variável."
+        )
+else:
+    if not _secret:
+        _secret = "dev-insecure-placeholder-DO-NOT-USE-IN-PROD"
+        logger.warning(
+            "SECRET_KEY não definida — usando chave de desenvolvimento. "
+            "NUNCA use isto em produção."
+        )
+
+SECRET_KEY: str = _secret
+del _secret
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
