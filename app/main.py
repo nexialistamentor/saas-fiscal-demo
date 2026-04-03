@@ -295,7 +295,7 @@ def health(request: Request):
 @limiter.limit("20/minute")
 def register_publico(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     """Alias de /auth/register para encontrar no Swagger em /register."""
-    return register_user_handler(user, db)
+    return register_user_handler(request, user, db)
 
 
 @app.get("/teste-banco")
