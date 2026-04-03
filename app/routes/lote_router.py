@@ -4,7 +4,7 @@ import time
 from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException, Depends, Request
 from typing import List
 
-from app.main import limiter
+from app.rate_limit import limiter
 from app.security import get_usuario_atual
 from app.services.analysis_orchestrator import executar_analise_xml
 from app.xml_security import validar_upload_xml
