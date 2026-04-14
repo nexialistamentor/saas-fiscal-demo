@@ -360,7 +360,7 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
     return formatar_resposta_insights(resultado)
 
 
-def responder_cpf(pergunta: str) -> str:
+def responder_cpf(pergunta: str) -> dict:
     """Usa imposto_service para CPF/autônomo."""
     faturamento = extrair_faturamento(pergunta) or 5000
     resultado = calcular_imposto_simples(
@@ -368,11 +368,15 @@ def responder_cpf(pergunta: str) -> str:
         despesas=0,
         tipo="CPF"
     )
-    return (
+    resposta_texto = (
         f"Como autônomo (CPF), com faturamento de R$ {_fmt_br(faturamento)} por mês, "
         f"o imposto estimado seria cerca de R$ {_fmt_br(resultado['imposto'])}. "
         f"Base: regime simplificado (6%)."
     )
+    return {
+        "resposta": resposta_texto,
+        "payload": resultado,
+    }
 
 
 def _anexo_para_atividade(anexo: str) -> str:
@@ -548,10 +552,12 @@ def responder_pergunta(
         }
 
     if contribuinte == "cpf":
+        cpf_resultado = responder_cpf(pergunta)
         return {
-            "resposta": responder_cpf(pergunta),
+            "resposta": cpf_resultado["resposta"],
+            "preview": cpf_resultado["payload"],
             "requires_payment": True,
-            "analysis_type": "mei_tax",
+            "analysis_type": "cpf_tax",
         }
 
     # Assumir MEI quando há faturamento mas tipo não especificado (caso mais comum)
