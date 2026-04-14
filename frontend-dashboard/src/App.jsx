@@ -338,51 +338,55 @@ function App() {
     },
   ]
 
-  async function enviarXML(file) {
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("empresa_id", idPerfil)
-
-    const resp = await fetch(`${API_BASE}/fiscal/analisar-xml?empresa_id=${idPerfil}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getToken()}`
-      },
-      body: formData
-    })
-
-    const data = await resp.json()
-
-    if (data.status === "finished" && data.result?.relatorio_id != null) {
-      setResultadoXML({
-        relatorio_id: data.result.relatorio_id,
-        tem_resultado: data.result.tem_resultado,
-        carregado: false
+  async function enviarXML(files) {
+    const listaArquivos = Array.isArray(files) ? files.filter(Boolean) : [files].filter(Boolean)
+    for (const file of listaArquivos) {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("empresa_id", idPerfil)
+      const resp = await fetch(`${API_BASE}/fiscal/analisar-xml?empresa_id=${idPerfil}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        },
+        body: formData
       })
-      return
-    }
-
-    if (data.job_id) {
-      const intervalo = setInterval(async () => {
-        const statusResp = await fetch(`${API_BASE}/fiscal/analise/status/${data.job_id}`, {
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          }
+      const data = await resp.json()
+      if (data.status === "finished" && data.result?.relatorio_id != null) {
+        setResultadoXML({
+          relatorio_id: data.result.relatorio_id,
+          tem_resultado: data.result.tem_resultado,
+          carregado: false
         })
-
-        const statusData = await statusResp.json()
-
-        if (statusData.status === "finished") {
-          clearInterval(intervalo)
-          setResultadoXML({
-            relatorio_id: statusData.result?.relatorio_id,
-            tem_resultado: statusData.result?.tem_resultado,
-            carregado: false
-          })
-        }
-      }, 2000)
-
-      return
+        setTimeout(() => {
+          window.location.reload()
+        }, 500)
+        continue
+      }
+      if (data.job_id) {
+        await new Promise((resolve) => {
+          const intervalo = setInterval(async () => {
+            const statusResp = await fetch(`${API_BASE}/fiscal/analise/status/${data.job_id}`, {
+              headers: {
+                Authorization: `Bearer ${getToken()}`
+              }
+            })
+            const statusData = await statusResp.json()
+            if (statusData.status === "finished") {
+              clearInterval(intervalo)
+              setResultadoXML({
+                relatorio_id: statusData.result?.relatorio_id,
+                tem_resultado: statusData.result?.tem_resultado,
+                carregado: false
+              })
+              setTimeout(() => {
+                window.location.reload()
+              }, 500)
+              resolve()
+            }
+          }, 2000)
+        })
+      }
     }
   }
 
@@ -432,11 +436,7 @@ function App() {
         ))}
       </div>
       {podeUploadXML && (
-        <input
-          type="file"
-          accept=".xml"
-          onChange={(e) => enviarXML(e.target.files[0])}
-        />
+        <input  type="file"  accept=".xml"  multiple  onChange={(e) => enviarXML(Array.from(e.target.files ?? []))}/>
       )}
 
       {!podeUploadXML && (
