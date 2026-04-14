@@ -39,11 +39,18 @@ function App() {
   const [erroLogin, setErroLogin] = useState(null)
   const [verificandoSessao, setVerificandoSessao] = useState(true)
 
-  const perfisDisponiveis = [
-    { tipo: "empresa", id: 4, nome: "Perfil" },
-    { tipo: "cpf", id: 1, nome: "Pessoa Física" }
-  ]
-  const [perfilAtual, setPerfilAtual] = React.useState(perfisDisponiveis[0])
+  const perfilEmpresaApiRef = React.useRef(null)
+
+  const [perfilAtual, setPerfilAtual] = React.useState({
+    tipo: null,
+    id: null,
+    nome: ""
+  })
+
+  const perfisDisponiveis = React.useMemo(() => {
+    const api = perfilEmpresaApiRef.current
+    return api ? [api] : []
+  }, [perfilAtual])
 
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
@@ -162,11 +169,19 @@ function App() {
             const list = await er.json()
             if (Array.isArray(list) && list.length > 0) {
               const e = list[0]
-              setPerfilAtual({
-                tipo: "empresa",
+
+              const tipoDerivado = e.regime_tributario === "mei" ? "mei" : "empresa"
+
+              const perfil = {
+                tipo: tipoDerivado,
                 id: e.id,
-                nome: e.razao_social || `Empresa #${e.id}`
-              })
+                nome:
+                  e.regime_tributario === "mei"
+                    ? `MEI - ${e.razao_social || `#${e.id}`}`
+                    : e.razao_social || `Empresa #${e.id}`
+              }
+              perfilEmpresaApiRef.current = perfil
+              setPerfilAtual(perfil)
             }
           }
         }
@@ -204,6 +219,14 @@ function App() {
         { mes: "P4", recuperacao: 48 },
         { mes: "P5", recuperacao: 52 },
       ]
+
+  useEffect(() => {
+    if (!data?.consulta_paga) return
+    if (!resultadoXML?.relatorio_id) return
+    if (resultadoXML?.carregado) return
+
+    carregarRelatorioSeguro(resultadoXML.relatorio_id)
+  }, [data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
 
   if (verificandoSessao) {
     return <p style={{ padding: 40 }}>Validando sessão...</p>
@@ -386,14 +409,6 @@ function App() {
       console.error("Erro ao carregar relatório seguro")
     }
   }
-
-  useEffect(() => {
-    if (!data?.consulta_paga) return
-    if (!resultadoXML?.relatorio_id) return
-    if (resultadoXML?.carregado) return
-
-    carregarRelatorioSeguro(resultadoXML.relatorio_id)
-  }, [data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
 
   return (
     <div className="app">

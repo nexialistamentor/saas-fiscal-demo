@@ -34,6 +34,11 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
       return
     }
 
+    if (!idPerfil) {
+      setLoading(false)
+      return
+    }
+
     async function carregar() {
       if (!isAuthenticated()) {
         setLoading(false)

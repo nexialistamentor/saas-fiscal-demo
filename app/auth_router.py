@@ -56,9 +56,10 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)) -> UserRespon
     db.refresh(new_user)
 
     empresa_id = None
-    if user.nome and user.nome.strip():
+    if user.nome and len(user.nome.strip()) > 3:
         emp = models.Empresa(
             razao_social=user.nome.strip(),
+            regime_tributario="mei",
             cnpj=None,
             user_id=new_user.id,
         )
