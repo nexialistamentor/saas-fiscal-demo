@@ -553,6 +553,30 @@ def responder_pergunta(
 
     if contribuinte == "cpf":
         cpf_resultado = responder_cpf(pergunta)
+        if usuario is None or db is None:
+            return {
+                "resposta": cpf_resultado["resposta"],
+                "preview": cpf_resultado["payload"],
+                "requires_payment": True,
+                "analysis_type": "cpf_tax",
+            }
+        from app.services.registro_analise_service import (
+            criar_registro_analise,
+            finalizar_registro_analise,
+        )
+        rel = criar_registro_analise(
+            db=db,
+            user_id=usuario.id,
+            analysis_type="cpf_tax",
+            empresa_id=None,
+        )
+        finalizar_registro_analise(
+            db=db,
+            relatorio_id=rel.id,
+            status="ok",
+            total_alertas=len(cpf_resultado["payload"].get("alertas", [])),
+            resultado_json=cpf_resultado["payload"],
+        )
         return {
             "resposta": cpf_resultado["resposta"],
             "preview": cpf_resultado["payload"],
