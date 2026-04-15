@@ -112,6 +112,24 @@ def executar_e_registrar_analise_xml(
     if resultado.get("dados_fiscais") and not resultado["dados_fiscais"].get("erro"):
         xml_chave = resultado["dados_fiscais"].get("chave_nfe")
 
+    if empresa_id and xml_chave:
+        rel_existente = (
+            db.query(RelatorioAnalise)
+            .filter(
+                RelatorioAnalise.empresa_id == empresa_id,
+                RelatorioAnalise.analysis_type == "xml_analise",
+                RelatorioAnalise.xml_chave == xml_chave,
+            )
+            .order_by(RelatorioAnalise.id.desc())
+            .first()
+        )
+        if rel_existente:
+            return rel_existente, {
+                "status": "duplicado",
+                "relatorio_id": rel_existente.id,
+                "xml_chave": xml_chave,
+            }
+
     rel = criar_registro_analise(
         db, user_id, "xml_analise", empresa_id=empresa_id, xml_chave=xml_chave
     )
