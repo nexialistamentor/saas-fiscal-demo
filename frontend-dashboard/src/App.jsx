@@ -358,9 +358,6 @@ function App() {
           tem_resultado: data.result.tem_resultado,
           carregado: false
         })
-        setTimeout(() => {
-          refetch()
-        }, 500)
         continue
       }
       if (data.job_id) {
@@ -379,15 +376,15 @@ function App() {
                 tem_resultado: statusData.result?.tem_resultado,
                 carregado: false
               })
-              setTimeout(() => {
-                refetch()
-              }, 500)
               resolve()
             }
           }, 2000)
         })
       }
     }
+    setTimeout(() => {
+      refetch()
+    }, 500)
   }
 
   async function carregarRelatorioSeguro(relatorio_id) {
