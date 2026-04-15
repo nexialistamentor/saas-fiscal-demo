@@ -55,7 +55,7 @@ function App() {
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
 
-  const { data, historico, tendencia, loading, risco, pontuacao, impacto } = useDashboardData(tipoPerfil, idPerfil)
+  const { data, historico, tendencia, loading, risco, pontuacao, impacto, refetch } = useDashboardData(tipoPerfil, idPerfil)
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
@@ -359,7 +359,7 @@ function App() {
           carregado: false
         })
         setTimeout(() => {
-          window.location.reload()
+          refetch()
         }, 500)
         continue
       }
@@ -380,7 +380,7 @@ function App() {
                 carregado: false
               })
               setTimeout(() => {
-                window.location.reload()
+                refetch()
               }, 500)
               resolve()
             }
