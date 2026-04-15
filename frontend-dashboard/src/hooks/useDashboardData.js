@@ -99,7 +99,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
 
   useEffect(() => {
     carregar()
-    const intervalo = setInterval(carregar, 15000)
+    const intervalo = setInterval(carregar, 60000)
     return () => clearInterval(intervalo)
   }, [carregar])
 
