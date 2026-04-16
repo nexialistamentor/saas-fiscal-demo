@@ -1,16 +1,67 @@
 import { useCallback, useEffect, useState } from "react"
 import { API_BASE, clearToken, getToken, isAuthenticated, isDemoSession } from "../config"
 
-export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
+export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5, cpfContexto = {}) {
   const [data, setData] = useState(null)
   const [historico, setHistorico] = useState([])
   const [tendencia, setTendencia] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const cpfFaturamentoMensal = Number(cpfContexto.faturamento_mensal || 0)
+  const cpfDespesasMensais = Number(cpfContexto.despesas || 0)
+
   const carregar = useCallback(async () => {
     console.log("HOOK DASHBOARD EXECUTANDO", { tipoPerfil, idPerfil })
     const token = getToken()
     const sessionDemo = isDemoSession(token)
+    if (tipoPerfil === "cpf") {
+      if (!isAuthenticated()) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const TOKEN = getToken()
+        if (!TOKEN) {
+          setLoading(false)
+          return
+        }
+
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${TOKEN}`
+        }
+
+        const body = JSON.stringify({
+          tipo_usuario: "CPF",
+          faturamento_mensal: cpfFaturamentoMensal,
+          despesas: cpfDespesasMensais
+        })
+
+        const res = await fetch(`${API_BASE}/imposto/calcular`, {
+          method: "POST",
+          headers,
+          body
+        })
+
+        const json = await res.json()
+
+        setData({
+          impacto_financeiro_anual: (json.imposto_estimado || 0) * 12,
+          pontuacao_fiscal: 70,
+          risco_tributario_percentual: 30,
+          total_insights: json.alertas?.length || 0,
+          consulta_paga: true
+        })
+        setHistorico([])
+        setTendencia({ tendencia: "insuficiente" })
+      } catch (erro) {
+        console.error("[Dashboard CPF] erro:", erro)
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
     if (sessionDemo) {
       setData({
         restituicao_st: 280000,
@@ -95,7 +146,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
     } finally {
       setLoading(false)
     }
-  }, [idPerfil, tipoPerfil])
+  }, [idPerfil, tipoPerfil, cpfFaturamentoMensal, cpfDespesasMensais])
 
   useEffect(() => {
     carregar()

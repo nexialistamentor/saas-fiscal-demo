@@ -49,13 +49,26 @@ function App() {
 
   const perfisDisponiveis = React.useMemo(() => {
     const api = perfilEmpresaApiRef.current
-    return api ? [api] : []
+    const lista = []
+    if (api) lista.push(api)
+    lista.push({ tipo: "cpf", id: null, nome: "CPF" })
+    return lista
   }, [perfilAtual])
 
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
 
-  const { data, historico, tendencia, loading, risco, pontuacao, impacto, refetch } = useDashboardData(tipoPerfil, idPerfil)
+  const [cpfFaturamentoMensal, setCpfFaturamentoMensal] = useState("")
+  const [cpfDespesasMensais, setCpfDespesasMensais] = useState("")
+
+  const { data, historico, tendencia, loading, risco, pontuacao, impacto, refetch } = useDashboardData(
+    tipoPerfil,
+    idPerfil,
+    {
+      faturamento_mensal: cpfFaturamentoMensal,
+      despesas: cpfDespesasMensais
+    }
+  )
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
@@ -487,6 +500,38 @@ function App() {
           <h2>Visão Geral</h2>
           <p>Acompanhe oportunidades, riscos e indicadores fiscais da empresa.</p>
         </section>
+
+        {perfilAtual.tipo === "cpf" && (
+          <section className="card" style={{ marginBottom: 20 }}>
+            <h3>Dados para simulação CPF</h3>
+
+            <div style={{ display: "grid", gap: 12, maxWidth: 420 }}>
+              <label>
+                <span>Faturamento mensal</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cpfFaturamentoMensal}
+                  onChange={(e) => setCpfFaturamentoMensal(e.target.value)}
+                  placeholder="Ex: 5000"
+                />
+              </label>
+
+              <label>
+                <span>Despesas mensais</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cpfDespesasMensais}
+                  onChange={(e) => setCpfDespesasMensais(e.target.value)}
+                  placeholder="Ex: 1000"
+                />
+              </label>
+            </div>
+          </section>
+        )}
 
         <section className="impacto-hero">
           <article className="card card-impacto">
