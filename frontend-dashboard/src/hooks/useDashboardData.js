@@ -33,12 +33,11 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5, c
         }
 
         const body = JSON.stringify({
-          tipo_usuario: "CPF",
           faturamento_mensal: cpfFaturamentoMensal,
           despesas: cpfDespesasMensais
         })
 
-        const res = await fetch(`${API_BASE}/imposto/calcular`, {
+        const res = await fetch(`${API_BASE}/cpf/dashboard`, {
           method: "POST",
           headers,
           body
@@ -47,7 +46,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5, c
         const json = await res.json()
 
         setData({
-          impacto_financeiro_anual: (json.imposto_estimado || 0) * 12,
+          impacto_financeiro_anual: json.imposto_anual ?? 0,
           pontuacao_fiscal: 70,
           risco_tributario_percentual: 30,
           total_insights: json.alertas?.length || 0,
