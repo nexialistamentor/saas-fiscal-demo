@@ -12,3 +12,12 @@ relatorio_payload.json
 node_modules/
 dist/
 test.db
+
+# bases locais
+*.db
+
+# testes locais
+tmp-browser/
+
+# evidências
+*.png
