@@ -57,7 +57,8 @@ analysis_cache = {}
 engine_versions = {
     "tax_planning": "v1",
     "tax_recovery": "v1",
-    "empresa_tax": "v1"
+    "empresa_tax": "v1",
+    "cpf_tax": "v1"
 }
 
 engine_ab_testing = {
@@ -333,6 +334,68 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
                 "analysis_type": "empresa_tax",
                 "erro": "empresa_tax_engine",
                 "mensagem": "Falha ao executar cálculo tributário empresarial"
+            }
+
+    if tipo == "cpf_tax":
+        try:
+            versao = escolher_versao_engine(tipo)
+            engine = ENGINE_REGISTRY[tipo][versao]
+            resultado = engine(dados)
+
+            if isinstance(resultado, dict):
+                resultado["analysis_type"] = "cpf_tax"
+
+            if hasattr(signal, "SIGALRM"):
+                signal.alarm(0)
+
+            tempo_execucao = round(time.time() - inicio_execucao, 4)
+            logger.info(
+                "engine_executada",
+                extra={
+                    "analysis_type": tipo,
+                    "engine_version": versao,
+                    "tempo_execucao": tempo_execucao
+                }
+            )
+            engine_failures[tipo] = 0
+            analysis_cache[cache_key] = resultado
+            registrar_metricas(tipo, tempo_execucao, True)
+            return resultado
+
+        except EngineTimeout:
+            if hasattr(signal, "SIGALRM"):
+                signal.alarm(0)
+            tempo_execucao = round(time.time() - inicio_execucao, 4)
+            registrar_metricas(tipo, tempo_execucao, False)
+            return {
+                "analysis_type": tipo,
+                "erro": "engine_timeout",
+                "mensagem": "Tempo limite da análise excedido"
+            }
+        except Exception:
+            if hasattr(signal, "SIGALRM"):
+                signal.alarm(0)
+            engine_failures[tipo] = engine_failures.get(tipo, 0) + 1
+            if engine_failures[tipo] >= MAX_FAILURES:
+                engine_blocked_until[tipo] = time.time() + BLOCK_TIME
+                logger.warning(
+                    "engine_circuit_breaker_activated",
+                    extra={"analysis_type": tipo}
+                )
+            logger.exception("Erro no motor cpf_tax")
+            tempo_execucao = round(time.time() - inicio_execucao, 4)
+            logger.warning(
+                "engine_falhou",
+                extra={
+                    "analysis_type": tipo,
+                    "tempo_execucao": tempo_execucao
+                }
+            )
+            registrar_metricas(tipo, tempo_execucao, False)
+            return {
+                "analysis_type": "cpf_tax",
+                "erro": "cpf_tax_engine",
+                "mensagem": "Falha ao executar cálculo tributário para CPF"
             }
 
     if hasattr(signal, "SIGALRM"):

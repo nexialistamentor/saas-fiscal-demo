@@ -361,18 +361,24 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
 
 
 def responder_cpf(pergunta: str) -> dict:
-    """Usa imposto_service para CPF/autônomo."""
+    """CPF/autônomo: assistente → executar_analise('cpf_tax', dados)."""
     faturamento = extrair_faturamento(pergunta) or 5000
-    resultado = calcular_imposto_simples(
-        faturamento=faturamento,
-        despesas=0,
-        tipo="CPF"
-    )
+    dados = {"faturamento": faturamento, "despesas": 0}
+    resultado = executar_analise("cpf_tax", dados)
+
+    if resultado.get("erro"):
+        msg = resultado.get("mensagem") or "Não foi possível concluir a análise de CPF no momento."
+        return {"resposta": msg, "payload": resultado}
+
+    tributos = resultado.get("tributos") or {}
+    imposto = float(tributos.get("imposto") or 0)
     resposta_texto = (
         f"Como autônomo (CPF), com faturamento de R$ {_fmt_br(faturamento)} por mês, "
-        f"o imposto estimado seria cerca de R$ {_fmt_br(resultado['imposto'])}. "
-        f"Base: regime simplificado (6%)."
+        f"o imposto estimado seria cerca de R$ {_fmt_br(imposto)} "
+        f"(conforme motor de análise tributária para CPF)."
     )
+    for a in resultado.get("alertas") or []:
+        resposta_texto += f"\n\n• {a}"
     return {
         "resposta": resposta_texto,
         "payload": resultado,
@@ -483,7 +489,7 @@ def responder_pergunta(
 ) -> dict:
     """
     Fluxo do Assistente Fiscal:
-    identificar_contribuinte → MEI/CPF (imposto_service) ou Empresa (verificar pagamento).
+    identificar_contribuinte → MEI (imposto_service), CPF (executar_analise cpf_tax) ou Empresa.
     Empresa: preview (não pago) ou insights_engine + motor fiscal (pago).
     Retorna: {resposta, requires_payment, analysis_type} para integração com fluxo de pagamento.
     """

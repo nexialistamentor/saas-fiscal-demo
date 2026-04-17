@@ -27,5 +27,15 @@ ENGINE_REGISTRY = {
     },
     "empresa_tax": {
         "v1": calcular_impostos_empresa
+    },
+    "cpf_tax": {
+        "v1": lambda dados: {
+            "regime": "cpf",
+            "tributos": {
+                "imposto": 0
+            },
+            "bases_calculo": dados,
+            "alertas": ["Engine CPF ainda não implementada"]
+        }
     }
 }
