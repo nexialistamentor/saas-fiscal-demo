@@ -6,6 +6,13 @@ import signal
 import threading
 import time
 
+from app.services.analysis_types import (
+    ANALYSIS_TYPE_CPF_TAX,
+    ANALYSIS_TYPE_EMPRESA_TAX,
+    ANALYSIS_TYPE_MEI_TAX,
+    ANALYSIS_TYPE_TAX_PLANNING,
+    ANALYSIS_TYPE_TAX_RECOVERY,
+)
 from app.motor_fiscal import analisar_xml
 from app.services.engine_fallback_service import gerar_fallback
 from app.services.engine_registry import ENGINE_REGISTRY
@@ -55,20 +62,35 @@ BLOCK_TIME = 120  # segundos
 analysis_cache = {}
 
 engine_versions = {
-    "tax_planning": "v1",
-    "tax_recovery": "v1",
-    "empresa_tax": "v1",
-    "cpf_tax": "v1",
-    "mei_tax": "v1",
+    ANALYSIS_TYPE_TAX_PLANNING: "v1",
+    ANALYSIS_TYPE_TAX_RECOVERY: "v1",
+    ANALYSIS_TYPE_EMPRESA_TAX: "v1",
+    ANALYSIS_TYPE_CPF_TAX: "v1",
+    ANALYSIS_TYPE_MEI_TAX: "v1",
 }
 
 engine_ab_testing = {
-    "tax_recovery": {
+    ANALYSIS_TYPE_TAX_RECOVERY: {
         "enabled": False,
         "candidate_version": "v2",
         "traffic_percentage": 20
     }
 }
+
+
+def _canonical_analysis_type(tipo: str) -> str:
+    """Resolve o valor recebido para a constante canônica (L2: uma fonte por tipo)."""
+    if tipo == ANALYSIS_TYPE_TAX_PLANNING:
+        return ANALYSIS_TYPE_TAX_PLANNING
+    if tipo == ANALYSIS_TYPE_TAX_RECOVERY:
+        return ANALYSIS_TYPE_TAX_RECOVERY
+    if tipo == ANALYSIS_TYPE_EMPRESA_TAX:
+        return ANALYSIS_TYPE_EMPRESA_TAX
+    if tipo == ANALYSIS_TYPE_CPF_TAX:
+        return ANALYSIS_TYPE_CPF_TAX
+    if tipo == ANALYSIS_TYPE_MEI_TAX:
+        return ANALYSIS_TYPE_MEI_TAX
+    return tipo
 
 
 def escolher_versao_engine(tipo: str):
@@ -98,10 +120,11 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
     Orquestrador central: delega para o motor correto conforme o tipo de análise.
     Fluxo: assistente → analysis_orchestrator → motor específico
     """
+    t = _canonical_analysis_type(tipo)
     inicio_execucao = time.time()
 
     cache_input = {
-        "tipo": tipo,
+        "tipo": t,
         "dados": dados,
         "empresa": getattr(empresa, "id", None)
     }
@@ -112,27 +135,27 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
     if cache_key in analysis_cache:
         logger.info(
             "analysis_cache_hit",
-            extra={"analysis_type": tipo}
+            extra={"analysis_type": t}
         )
         return analysis_cache[cache_key]
 
     agora = time.time()
-    if tipo in engine_blocked_until and agora < engine_blocked_until[tipo]:
+    if t in engine_blocked_until and agora < engine_blocked_until[t]:
         logger.warning(
             "engine_circuit_open",
-            extra={"analysis_type": tipo}
+            extra={"analysis_type": t}
         )
         return {
-            "analysis_type": tipo,
+            "analysis_type": t,
             "erro": "engine_temporarily_disabled",
             "mensagem": "Engine temporariamente desativada por falhas recentes"
         }
 
-    if tipo in degraded_engines and agora < degraded_engines[tipo]:
-        fallback = gerar_fallback(tipo, dados)
+    if t in degraded_engines and agora < degraded_engines[t]:
+        fallback = gerar_fallback(t, dados)
         logger.warning(
             "engine_fallback_ativado",
-            extra={"analysis_type": tipo}
+            extra={"analysis_type": t}
         )
         return fallback
 
@@ -141,13 +164,13 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
             signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(3)
 
-    if tipo == "tax_planning":
+    if t == ANALYSIS_TYPE_TAX_PLANNING:
         try:
-            versao = escolher_versao_engine(tipo)
-            engine = ENGINE_REGISTRY[tipo][versao]
+            versao = escolher_versao_engine(t)
+            engine = ENGINE_REGISTRY[t][versao]
             resultado = engine(dados)
             if isinstance(resultado, dict):
-                resultado["analysis_type"] = "tax_planning"
+                resultado["analysis_type"] = ANALYSIS_TYPE_TAX_PLANNING
 
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -156,63 +179,63 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
             logger.info(
                 "engine_executada",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_TAX_PLANNING,
                     "engine_version": versao,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            engine_failures[tipo] = 0
+            engine_failures[t] = 0
             analysis_cache[cache_key] = resultado
-            registrar_metricas(tipo, tempo_execucao, True)
+            registrar_metricas(t, tempo_execucao, True)
             return resultado
         except EngineTimeout:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
             tempo_execucao = round(time.time() - inicio_execucao, 4)
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             logger.warning(
                 "engine_timeout",
-                extra={"analysis_type": tipo}
+                extra={"analysis_type": ANALYSIS_TYPE_TAX_PLANNING}
             )
             return {
-                "analysis_type": tipo,
+                "analysis_type": ANALYSIS_TYPE_TAX_PLANNING,
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
-            engine_failures[tipo] = engine_failures.get(tipo, 0) + 1
-            if engine_failures[tipo] >= MAX_FAILURES:
-                engine_blocked_until[tipo] = time.time() + BLOCK_TIME
+            engine_failures[t] = engine_failures.get(t, 0) + 1
+            if engine_failures[t] >= MAX_FAILURES:
+                engine_blocked_until[t] = time.time() + BLOCK_TIME
                 logger.warning(
                     "engine_circuit_breaker_activated",
-                    extra={"analysis_type": tipo}
+                    extra={"analysis_type": ANALYSIS_TYPE_TAX_PLANNING}
                 )
             logger.exception("Erro no motor tax_planning")
             tempo_execucao = round(time.time() - inicio_execucao, 4)
             logger.warning(
                 "engine_falhou",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_TAX_PLANNING,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             return {
-                "analysis_type": "tax_planning",
+                "analysis_type": ANALYSIS_TYPE_TAX_PLANNING,
                 "erro": "tax_planning_engine",
                 "mensagem": "Falha ao executar planejamento tributário"
             }
 
-    if tipo == "tax_recovery":
+    if t == ANALYSIS_TYPE_TAX_RECOVERY:
         try:
-            versao = escolher_versao_engine(tipo)
-            engine = ENGINE_REGISTRY[tipo][versao]
+            versao = escolher_versao_engine(t)
+            engine = ENGINE_REGISTRY[t][versao]
             resultado = engine(dados)
 
             if isinstance(resultado, dict):
-                resultado["analysis_type"] = "tax_recovery"
+                resultado["analysis_type"] = ANALYSIS_TYPE_TAX_RECOVERY
 
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -221,64 +244,64 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
             logger.info(
                 "engine_executada",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_TAX_RECOVERY,
                     "engine_version": versao,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            engine_failures[tipo] = 0
+            engine_failures[t] = 0
             analysis_cache[cache_key] = resultado
-            registrar_metricas(tipo, tempo_execucao, True)
+            registrar_metricas(t, tempo_execucao, True)
             return resultado
 
         except EngineTimeout:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
             tempo_execucao = round(time.time() - inicio_execucao, 4)
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             logger.warning(
                 "engine_timeout",
-                extra={"analysis_type": tipo}
+                extra={"analysis_type": ANALYSIS_TYPE_TAX_RECOVERY}
             )
             return {
-                "analysis_type": tipo,
+                "analysis_type": ANALYSIS_TYPE_TAX_RECOVERY,
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
-            engine_failures[tipo] = engine_failures.get(tipo, 0) + 1
-            if engine_failures[tipo] >= MAX_FAILURES:
-                engine_blocked_until[tipo] = time.time() + BLOCK_TIME
+            engine_failures[t] = engine_failures.get(t, 0) + 1
+            if engine_failures[t] >= MAX_FAILURES:
+                engine_blocked_until[t] = time.time() + BLOCK_TIME
                 logger.warning(
                     "engine_circuit_breaker_activated",
-                    extra={"analysis_type": tipo}
+                    extra={"analysis_type": ANALYSIS_TYPE_TAX_RECOVERY}
                 )
             logger.exception("Erro no motor tax_recovery")
             tempo_execucao = round(time.time() - inicio_execucao, 4)
             logger.warning(
                 "engine_falhou",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_TAX_RECOVERY,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             return {
-                "analysis_type": "tax_recovery",
+                "analysis_type": ANALYSIS_TYPE_TAX_RECOVERY,
                 "erro": "tax_recovery_engine",
                 "mensagem": "Falha ao executar análise de recuperação tributária"
             }
 
-    if tipo == "empresa_tax":
+    if t == ANALYSIS_TYPE_EMPRESA_TAX:
         try:
-            versao = escolher_versao_engine(tipo)
-            engine = ENGINE_REGISTRY[tipo][versao]
+            versao = escolher_versao_engine(t)
+            engine = ENGINE_REGISTRY[t][versao]
             resultado = engine(empresa, dados)
 
             if isinstance(resultado, dict):
-                resultado["analysis_type"] = "empresa_tax"
+                resultado["analysis_type"] = ANALYSIS_TYPE_EMPRESA_TAX
 
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -287,64 +310,64 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
             logger.info(
                 "engine_executada",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_EMPRESA_TAX,
                     "engine_version": versao,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            engine_failures[tipo] = 0
+            engine_failures[t] = 0
             analysis_cache[cache_key] = resultado
-            registrar_metricas(tipo, tempo_execucao, True)
+            registrar_metricas(t, tempo_execucao, True)
             return resultado
 
         except EngineTimeout:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
             tempo_execucao = round(time.time() - inicio_execucao, 4)
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             logger.warning(
                 "engine_timeout",
-                extra={"analysis_type": tipo}
+                extra={"analysis_type": ANALYSIS_TYPE_EMPRESA_TAX}
             )
             return {
-                "analysis_type": tipo,
+                "analysis_type": ANALYSIS_TYPE_EMPRESA_TAX,
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
-            engine_failures[tipo] = engine_failures.get(tipo, 0) + 1
-            if engine_failures[tipo] >= MAX_FAILURES:
-                engine_blocked_until[tipo] = time.time() + BLOCK_TIME
+            engine_failures[t] = engine_failures.get(t, 0) + 1
+            if engine_failures[t] >= MAX_FAILURES:
+                engine_blocked_until[t] = time.time() + BLOCK_TIME
                 logger.warning(
                     "engine_circuit_breaker_activated",
-                    extra={"analysis_type": tipo}
+                    extra={"analysis_type": ANALYSIS_TYPE_EMPRESA_TAX}
                 )
             logger.exception("Erro no motor empresa_tax")
             tempo_execucao = round(time.time() - inicio_execucao, 4)
             logger.warning(
                 "engine_falhou",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_EMPRESA_TAX,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             return {
-                "analysis_type": "empresa_tax",
+                "analysis_type": ANALYSIS_TYPE_EMPRESA_TAX,
                 "erro": "empresa_tax_engine",
                 "mensagem": "Falha ao executar cálculo tributário empresarial"
             }
 
-    if tipo == "cpf_tax":
+    if t == ANALYSIS_TYPE_CPF_TAX:
         try:
-            versao = escolher_versao_engine(tipo)
-            engine = ENGINE_REGISTRY[tipo][versao]
+            versao = escolher_versao_engine(t)
+            engine = ENGINE_REGISTRY[t][versao]
             resultado = engine(dados)
 
             if isinstance(resultado, dict):
-                resultado["analysis_type"] = "cpf_tax"
+                resultado["analysis_type"] = ANALYSIS_TYPE_CPF_TAX
 
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -353,60 +376,60 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
             logger.info(
                 "engine_executada",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_CPF_TAX,
                     "engine_version": versao,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            engine_failures[tipo] = 0
+            engine_failures[t] = 0
             analysis_cache[cache_key] = resultado
-            registrar_metricas(tipo, tempo_execucao, True)
+            registrar_metricas(t, tempo_execucao, True)
             return resultado
 
         except EngineTimeout:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
             tempo_execucao = round(time.time() - inicio_execucao, 4)
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             return {
-                "analysis_type": tipo,
+                "analysis_type": ANALYSIS_TYPE_CPF_TAX,
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
-            engine_failures[tipo] = engine_failures.get(tipo, 0) + 1
-            if engine_failures[tipo] >= MAX_FAILURES:
-                engine_blocked_until[tipo] = time.time() + BLOCK_TIME
+            engine_failures[t] = engine_failures.get(t, 0) + 1
+            if engine_failures[t] >= MAX_FAILURES:
+                engine_blocked_until[t] = time.time() + BLOCK_TIME
                 logger.warning(
                     "engine_circuit_breaker_activated",
-                    extra={"analysis_type": tipo}
+                    extra={"analysis_type": ANALYSIS_TYPE_CPF_TAX}
                 )
             logger.exception("Erro no motor cpf_tax")
             tempo_execucao = round(time.time() - inicio_execucao, 4)
             logger.warning(
                 "engine_falhou",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_CPF_TAX,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             return {
-                "analysis_type": "cpf_tax",
+                "analysis_type": ANALYSIS_TYPE_CPF_TAX,
                 "erro": "cpf_tax_engine",
                 "mensagem": "Falha ao executar cálculo tributário para CPF"
             }
 
-    if tipo == "mei_tax":
+    if t == ANALYSIS_TYPE_MEI_TAX:
         try:
-            versao = escolher_versao_engine(tipo)
-            engine = ENGINE_REGISTRY[tipo][versao]
+            versao = escolher_versao_engine(t)
+            engine = ENGINE_REGISTRY[t][versao]
             resultado = engine(dados)
 
             if isinstance(resultado, dict):
-                resultado["analysis_type"] = "mei_tax"
+                resultado["analysis_type"] = ANALYSIS_TYPE_MEI_TAX
 
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -415,58 +438,58 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
             logger.info(
                 "engine_executada",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_MEI_TAX,
                     "engine_version": versao,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            engine_failures[tipo] = 0
+            engine_failures[t] = 0
             analysis_cache[cache_key] = resultado
-            registrar_metricas(tipo, tempo_execucao, True)
+            registrar_metricas(t, tempo_execucao, True)
             return resultado
 
         except EngineTimeout:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
             tempo_execucao = round(time.time() - inicio_execucao, 4)
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             return {
-                "analysis_type": tipo,
+                "analysis_type": ANALYSIS_TYPE_MEI_TAX,
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
-            engine_failures[tipo] = engine_failures.get(tipo, 0) + 1
-            if engine_failures[tipo] >= MAX_FAILURES:
-                engine_blocked_until[tipo] = time.time() + BLOCK_TIME
+            engine_failures[t] = engine_failures.get(t, 0) + 1
+            if engine_failures[t] >= MAX_FAILURES:
+                engine_blocked_until[t] = time.time() + BLOCK_TIME
                 logger.warning(
                     "engine_circuit_breaker_activated",
-                    extra={"analysis_type": tipo}
+                    extra={"analysis_type": ANALYSIS_TYPE_MEI_TAX}
                 )
             logger.exception("Erro no motor mei_tax")
             tempo_execucao = round(time.time() - inicio_execucao, 4)
             logger.warning(
                 "engine_falhou",
                 extra={
-                    "analysis_type": tipo,
+                    "analysis_type": ANALYSIS_TYPE_MEI_TAX,
                     "tempo_execucao": tempo_execucao
                 }
             )
-            registrar_metricas(tipo, tempo_execucao, False)
+            registrar_metricas(t, tempo_execucao, False)
             return {
-                "analysis_type": "mei_tax",
+                "analysis_type": ANALYSIS_TYPE_MEI_TAX,
                 "erro": "mei_tax_engine",
                 "mensagem": "Falha ao executar cálculo tributário para MEI"
             }
 
     if hasattr(signal, "SIGALRM"):
         signal.alarm(0)
-    logger.warning(f"Tipo de análise desconhecido: {tipo}")
+    logger.warning(f"Tipo de análise desconhecido: {t}")
     return {
         "erro": "analysis_type_invalid",
-        "mensagem": f"Tipo de análise '{tipo}' não suportado"
+        "mensagem": f"Tipo de análise '{t}' não suportado"
     }
 
 
