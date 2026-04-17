@@ -1,4 +1,4 @@
-from app.services.imposto_service import calcular_imposto_simples
+from app.services.analysis_orchestrator import executar_analise
 
 
 class CPFDashboardService:
@@ -6,13 +6,22 @@ class CPFDashboardService:
         pass
 
     def calcular_resumo(self, faturamento_mensal: float, despesas: float):
-        resultado = calcular_imposto_simples(
-            faturamento=faturamento_mensal,
-            despesas=despesas,
-            tipo="CPF"
+        resultado = executar_analise(
+            "cpf_tax",
+            {
+                "faturamento": faturamento_mensal,
+                "despesas": despesas
+            }
         )
 
-        imposto_mensal = resultado.get("imposto", 0)
+        if resultado.get("erro"):
+            return {
+                "tipo": "cpf",
+                "erro": resultado.get("mensagem"),
+                "alertas": []
+            }
+
+        imposto_mensal = resultado.get("tributos", {}).get("imposto", 0)
 
         return {
             "tipo": "cpf",

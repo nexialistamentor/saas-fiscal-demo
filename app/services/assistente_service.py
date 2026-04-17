@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func
 
 from app import models
-from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
+from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.insights_engine import InsightEngine
 from app.services.analysis_orchestrator import executar_analise
 
@@ -127,53 +127,40 @@ def _fmt_br(valor: float, decimais: int = 2) -> str:
     return f"{int_fmt},{dec_part}" if decimais else int_fmt
 
 
-def responder_mei(pergunta: str) -> str:
-    """Lógica específica para MEI: limite, simulação e imposto."""
-    intencao = identificar_intencao(pergunta)
-    faturamento = extrair_faturamento(pergunta)
+def _resposta_assistente_mei(pergunta: str) -> dict:
+    """MEI via MEITaxEngine (mesmo fluxo do orquestrador L2)."""
+    faturamento = extrair_faturamento(pergunta) or 5000
 
-    if intencao == "limite_mensal_mei":
-        return (
-            "O limite anual do MEI é R$ 81.000.\n"
-            "Isso corresponde a cerca de R$ 6.750 por mês."
-        )
-
-    if intencao == "imposto_mei":
-        resultado = calcular_imposto_simples(
-            faturamento=6500,
-            despesas=0,
-            tipo="MEI"
-        )
-        return f"O MEI paga aproximadamente R$ {_fmt_br(resultado['imposto'])} por mês no DAS."
-
-    if intencao == "simulacao_mei" and faturamento:
-        resultado = calcular_imposto_simples(
-            faturamento=faturamento,
-            despesas=0,
-            tipo="MEI"
-        )
-
-        faturamento_anual = faturamento * 12
-        restante = max(0, 81000 - faturamento_anual)
-
-        if faturamento_anual > 81000:
-            return (
-                f"Com faturamento de R$ {_fmt_br(faturamento)} por mês "
-                f"você ultrapassaria o limite anual do MEI."
-            )
-
-        return (
-            f"Com faturamento de R$ {_fmt_br(faturamento)} por mês "
-            f"você ainda pode faturar cerca de R$ {_fmt_br(restante)} "
-            f"antes de atingir o limite anual do MEI."
-        )
-
-    if intencao == "restituicao":
-        return "A restituição ocorre quando o contribuinte pagou imposto a mais e pode solicitar a devolução."
-
-    return (
-        "Posso ajudar com dúvidas sobre MEI, impostos, faturamento ou restituição."
+    resultado = executar_analise(
+        "mei_tax",
+        {
+            "faturamento": faturamento
+        }
     )
+
+    if resultado.get("erro"):
+        return {
+            "resposta": resultado.get("mensagem"),
+            "requires_payment": True,
+            "analysis_type": "mei_tax",
+        }
+
+    tributos = resultado.get("tributos", {})
+    das = tributos.get("das", 0)
+
+    resposta = (
+        f"Como MEI, com faturamento de R$ {_fmt_br(faturamento)} por mês, "
+        f"o DAS mensal é de aproximadamente R$ {_fmt_br(das)}."
+    )
+
+    for a in resultado.get("alertas", []):
+        resposta += f"\n\n• {a}"
+
+    return {
+        "resposta": resposta,
+        "requires_payment": True,
+        "analysis_type": "mei_tax",
+    }
 
 
 def formatar_resposta_insights(resultado: dict) -> str:
@@ -489,7 +476,7 @@ def responder_pergunta(
 ) -> dict:
     """
     Fluxo do Assistente Fiscal:
-    identificar_contribuinte → MEI (imposto_service), CPF (executar_analise cpf_tax) ou Empresa.
+    identificar_contribuinte → MEI (executar_analise mei_tax), CPF (executar_analise cpf_tax) ou Empresa.
     Empresa: preview (não pago) ou insights_engine + motor fiscal (pago).
     Retorna: {resposta, requires_payment, analysis_type} para integração com fluxo de pagamento.
     """
@@ -534,11 +521,7 @@ def responder_pergunta(
     contribuinte = identificar_contribuinte(pergunta)
 
     if contribuinte == "mei":
-        return {
-            "resposta": responder_mei(pergunta),
-            "requires_payment": True,
-            "analysis_type": "mei_tax",
-        }
+        return _resposta_assistente_mei(pergunta)
 
     if contribuinte == "empresa":
         if usuario is None or db is None:
@@ -592,11 +575,7 @@ def responder_pergunta(
 
     # Assumir MEI quando há faturamento mas tipo não especificado (caso mais comum)
     if contribuinte == "desconhecido" and extrair_faturamento(pergunta):
-        return {
-            "resposta": responder_mei(pergunta),
-            "requires_payment": True,
-            "analysis_type": "mei_tax",
-        }
+        return _resposta_assistente_mei(pergunta)
 
     return {
         "resposta": (

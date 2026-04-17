@@ -7,6 +7,7 @@ from app.services.tax_engines.pis_cofins_engine import PISCOFINSEngine
 from app.services.tax_engines.lucro_real_engine import LucroRealEngine
 from app.services.tax_engines.lucro_presumido_engine import LucroPresumidoEngine
 from app.services.tax_engines.cpf_tax_engine import CPFTaxEngine
+from app.services.tax_engines.mei_tax_engine import MEITaxEngine
 
 # Registro de todas as engines BaseTaxEngine para execução direta
 ENGINES = {
@@ -18,6 +19,7 @@ ENGINES = {
     "tax_planning": TaxPlanningEngine(),
     "tax_recovery": TaxRecoveryEngine(),
     "cpf_tax": CPFTaxEngine(),
+    "mei_tax": MEITaxEngine(),
 }
 
 ENGINE_REGISTRY = {
@@ -32,5 +34,8 @@ ENGINE_REGISTRY = {
     },
     "cpf_tax": {
         "v1": lambda dados: ENGINES["cpf_tax"].execute(dados)
+    },
+    "mei_tax": {
+        "v1": lambda dados: ENGINES["mei_tax"].execute(dados)
     }
 }
