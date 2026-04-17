@@ -6,6 +6,7 @@ from app.services.tax_engines.csll_engine import CSLLEngine
 from app.services.tax_engines.pis_cofins_engine import PISCOFINSEngine
 from app.services.tax_engines.lucro_real_engine import LucroRealEngine
 from app.services.tax_engines.lucro_presumido_engine import LucroPresumidoEngine
+from app.services.tax_engines.cpf_tax_engine import CPFTaxEngine
 
 # Registro de todas as engines BaseTaxEngine para execução direta
 ENGINES = {
@@ -15,7 +16,8 @@ ENGINES = {
     "lucro_real": LucroRealEngine(),
     "lucro_presumido": LucroPresumidoEngine(),
     "tax_planning": TaxPlanningEngine(),
-    "tax_recovery": TaxRecoveryEngine()
+    "tax_recovery": TaxRecoveryEngine(),
+    "cpf_tax": CPFTaxEngine(),
 }
 
 ENGINE_REGISTRY = {
@@ -29,13 +31,6 @@ ENGINE_REGISTRY = {
         "v1": calcular_impostos_empresa
     },
     "cpf_tax": {
-        "v1": lambda dados: {
-            "regime": "cpf",
-            "tributos": {
-                "imposto": 0
-            },
-            "bases_calculo": dados,
-            "alertas": ["Engine CPF ainda não implementada"]
-        }
+        "v1": lambda dados: ENGINES["cpf_tax"].execute(dados)
     }
 }
