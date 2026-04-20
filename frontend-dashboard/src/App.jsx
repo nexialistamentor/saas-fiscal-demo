@@ -51,7 +51,12 @@ function App() {
   const perfisDisponiveis = React.useMemo(() => {
     const api = perfilEmpresaApiRef.current
     const lista = []
-    if (api) lista.push(api)
+    if (api) {
+      lista.push(api)
+    } else {
+      lista.push({ tipo: "empresa", id: null, nome: "Empresa" })
+    }
+    lista.push({ tipo: "mei", id: null, nome: "MEI" })
     lista.push({ tipo: "cpf", id: null, nome: "CPF" })
     return lista
   }, [perfilAtual])
