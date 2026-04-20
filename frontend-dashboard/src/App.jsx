@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react"
 import "./App.css"
-import useDashboardData from "./hooks/useDashboardData"
 import useMeiDashboard from "./hooks/useMeiDashboard"
 import useCpfDashboard from "./hooks/useCpfDashboard"
 import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
