@@ -4,7 +4,6 @@ console.log("API_BASE DEBUG:", raw)
 export const API_BASE = String(raw).replace(/\/$/, "")
 
 const TOKEN_KEY = "auth_token"
-export const DEMO_TOKEN = "demo_admin"
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY)
@@ -20,10 +19,6 @@ export function clearToken() {
 
 export function isAuthenticated() {
   return !!localStorage.getItem(TOKEN_KEY)
-}
-
-export function isDemoSession(token = getToken()) {
-  return token === DEMO_TOKEN
 }
 
 export async function login(email, password) {
@@ -48,8 +43,4 @@ export async function login(email, password) {
   setToken(data.access_token)
 
   return data
-}
-
-export function loginDemo() {
-  setToken(DEMO_TOKEN)
 }
