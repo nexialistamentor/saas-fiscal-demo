@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react"
 import "./App.css"
 import useDashboardData from "./hooks/useDashboardData"
+import useMeiDashboard from "./hooks/useMeiDashboard"
+import useCpfDashboard from "./hooks/useCpfDashboard"
+import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
 import RelatorioPDFButton from "./components/RelatorioPDFButton"
 import {
   API_BASE,
@@ -59,14 +62,21 @@ function App() {
   const [cpfFaturamentoMensal, setCpfFaturamentoMensal] = useState("")
   const [cpfDespesasMensais, setCpfDespesasMensais] = useState("")
 
-  const { data, historico, tendencia, loading, risco, pontuacao, impacto, refetch } = useDashboardData(
-    tipoPerfil,
-    idPerfil,
-    {
-      faturamento_mensal: cpfFaturamentoMensal,
-      despesas: cpfDespesasMensais
-    }
+  const meiResult = useMeiDashboard({
+    faturamento_mensal: cpfFaturamentoMensal,
+    despesas: cpfDespesasMensais
+  })
+  const cpfResult = useCpfDashboard({
+    faturamento_mensal: cpfFaturamentoMensal,
+    despesas: cpfDespesasMensais
+  })
+  const empresaResult = useEmpresaDashboard(
+    tipoPerfil === "empresa" ? idPerfil : null
   )
+  const { data, historico, tendencia, loading, risco, pontuacao, impacto, refetch } =
+    tipoPerfil === "mei" ? meiResult :
+    tipoPerfil === "cpf" ? cpfResult :
+    empresaResult
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
