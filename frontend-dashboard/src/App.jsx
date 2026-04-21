@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect } from "react"
 import "./App.css"
-import useDashboardData from "./hooks/useDashboardData"
+import useMeiDashboard from "./hooks/useMeiDashboard"
+import useCpfDashboard from "./hooks/useCpfDashboard"
+import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
 import RelatorioPDFButton from "./components/RelatorioPDFButton"
 import {
   API_BASE,
   getToken,
   isAuthenticated,
+  clearToken,
   login,
-  clearToken
 } from "./config"
 import {
   ResponsiveContainer,
@@ -37,29 +39,57 @@ function App() {
   const [erroLogin, setErroLogin] = useState(null)
   const [verificandoSessao, setVerificandoSessao] = useState(true)
 
-  const perfisDisponiveis = [
-    { tipo: "empresa", id: 4, nome: "Empresa" },
-    { tipo: "cpf", id: 1, nome: "Pessoa Física" }
-  ]
-  const [perfilAtual, setPerfilAtual] = React.useState(perfisDisponiveis[0])
+  const [mostrarRegisto, setMostrarRegisto] = useState(false)
+  const [nomeRegisto, setNomeRegisto] = useState("")
+  const [emailRegisto, setEmailRegisto] = useState("")
+  const [passwordRegisto, setPasswordRegisto] = useState("")
+  const [erroRegisto, setErroRegisto] = useState(null)
+  const [sucessoRegisto, setSucessoRegisto] = useState(false)
+
+  const perfilEmpresaApiRef = React.useRef(null)
+
+  const [perfilAtual, setPerfilAtual] = React.useState({
+    tipo: null,
+    id: null,
+    nome: ""
+  })
+
+  const perfisDisponiveis = React.useMemo(() => {
+    const api = perfilEmpresaApiRef.current
+    const lista = []
+    if (api) {
+      lista.push(api)
+    } else {
+      lista.push({ tipo: "empresa", id: null, nome: "Empresa" })
+    }
+    if (!api || api.tipo !== "mei") {
+      lista.push({ tipo: "mei", id: null, nome: "MEI" })
+    }
+    lista.push({ tipo: "cpf", id: null, nome: "CPF" })
+    return lista
+  }, [perfilAtual])
 
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
 
-  const sessaoPronta = !!usuario
+  const [cpfFaturamentoMensal, setCpfFaturamentoMensal] = useState("")
+  const [cpfDespesasMensais, setCpfDespesasMensais] = useState("")
 
-  const {
-    data,
-    historico,
-    tendencia,
-    loading,
-    risco,
-    pontuacao,
-    impacto,
-    decomposicaoImpacto,
-    contextFlags,
-    aplicarMapaOportunidades
-  } = useDashboardData(tipoPerfil, idPerfil, sessaoPronta)
+  const meiResult = useMeiDashboard({
+    faturamento_mensal: cpfFaturamentoMensal,
+    despesas: cpfDespesasMensais
+  })
+  const cpfResult = useCpfDashboard({
+    faturamento_mensal: cpfFaturamentoMensal,
+    despesas: cpfDespesasMensais
+  })
+  const empresaResult = useEmpresaDashboard(
+    tipoPerfil === "empresa" ? idPerfil : null
+  )
+  const { data, historico, tendencia, loading, risco, pontuacao, impacto, refetch } =
+    tipoPerfil === "mei" ? meiResult :
+    tipoPerfil === "cpf" ? cpfResult :
+    empresaResult
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
@@ -80,13 +110,11 @@ function App() {
           : "data indisponível",
       score: item?.score_global ?? 0,
       risco: item?.risco_tributario ?? 0,
-      maturidade: item?.maturidade_tributaria ?? 0,
-      uf_cobertura: item?.uf_cobertura ?? null,
+      maturidade: item?.maturidade_tributaria ?? 0
     })) ?? []
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutErro, setCheckoutErro] = useState(null)
   const [resultadoXML, setResultadoXML] = useState(null)
-  const xmlInputRef = useRef(null)
 
   async function iniciarCheckout(e) {
     e.preventDefault()
@@ -129,6 +157,34 @@ function App() {
     }
   }
 
+  const handleRegisto = async (e) => {
+    e.preventDefault()
+    setErroRegisto(null)
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailRegisto,
+          password: passwordRegisto,
+          nome: nomeRegisto
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || "Erro ao registar.")
+      }
+
+      setSucessoRegisto(true)
+      await login(emailRegisto, passwordRegisto)
+      window.location.reload()
+    } catch (err) {
+      setErroRegisto(err.message)
+    }
+  }
+
   function handleLogout() {
     clearToken()
     window.location.reload()
@@ -137,7 +193,6 @@ function App() {
   useEffect(() => {
     async function validarSessao() {
       if (!isAuthenticated()) {
-        setUsuario(null)
         setVerificandoSessao(false)
         return
       }
@@ -152,7 +207,6 @@ function App() {
         if (res.ok) {
           const usuarioJson = await res.json()
           setUsuario(usuarioJson)
-
           const er = await fetch(`${API_BASE}/empresas/`, {
             headers: { Authorization: `Bearer ${getToken()}` }
           })
@@ -160,21 +214,28 @@ function App() {
             const list = await er.json()
             if (Array.isArray(list) && list.length > 0) {
               const e = list[0]
-              setPerfilAtual({
-                tipo: "empresa",
+
+              const tipoDerivado = e.regime_tributario === "mei" ? "mei" : "empresa"
+
+              const perfil = {
+                tipo: tipoDerivado,
                 id: e.id,
-                nome: e.razao_social || `Empresa #${e.id}`
-              })
+                nome:
+                  e.regime_tributario === "mei"
+                    ? `MEI - ${e.razao_social || `#${e.id}`}`
+                    : e.razao_social || `Empresa #${e.id}`
+              }
+              perfilEmpresaApiRef.current = perfil
+              setPerfilAtual(perfil)
             }
           }
-        } else {
-          setUsuario(null)
-          if (res.status === 401) {
-            clearToken()
-          }
+        }
+
+        if (!res.ok) {
+          clearToken()
         }
       } catch {
-        // não limpar token por erro técnico
+        clearToken()
       }
 
       setVerificandoSessao(false)
@@ -204,30 +265,6 @@ function App() {
         { mes: "P5", recuperacao: 52 },
       ]
 
-  async function carregarRelatorioSeguro(relatorio_id) {
-    try {
-      const res = await fetch(`${API_BASE}/relatorio/${relatorio_id}`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`
-        }
-      })
-
-      const data = await res.json()
-
-      if (data.status === "bloqueado") {
-        return
-      }
-
-      setResultadoXML(prev => ({
-        ...prev,
-        dados: data,
-        carregado: true
-      }))
-    } catch (e) {
-      console.error("Erro ao carregar relatório seguro")
-    }
-  }
-
   useEffect(() => {
     if (!data?.consulta_paga) return
     if (!resultadoXML?.relatorio_id) return
@@ -243,37 +280,94 @@ function App() {
   if (!isAuthenticated()) {
     return (
       <div style={{ padding: 40 }}>
-        <h2>Login</h2>
+        {!mostrarRegisto ? (
+          <>
+            <h2>Login</h2>
 
-        <form onSubmit={handleLogin}>
-          <input
-            type="email"
-            placeholder="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+            <form onSubmit={handleLogin}>
+              <input
+                type="email"
+                placeholder="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
 
-          <input
-            type="password"
-            placeholder="senha"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+              <input
+                type="password"
+                placeholder="senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
 
-          <button type="submit">Entrar</button>
+              <button type="submit">Entrar</button>
 
-          {erroLogin && <p>{erroLogin}</p>}
-        </form>
-      </div>
-    )
-  }
+              {erroLogin && <p>{erroLogin}</p>}
+            </form>
 
-  if (!usuario) {
-    clearToken()
-    return (
-      <div style={{ padding: 40 }}>
-        <h2>Login</h2>
-        <p>Sessão inválida. Faça login novamente.</p>
+            <p style={{ marginTop: 16 }}>
+              Não tem conta?{" "}
+              <button
+                type="button"
+                onClick={() => setMostrarRegisto(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline"
+                }}
+              >
+                Criar conta
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            <h2>Criar conta</h2>
+
+            <form onSubmit={handleRegisto}>
+              <input
+                type="text"
+                placeholder="nome da empresa ou MEI"
+                value={nomeRegisto}
+                onChange={(e) => setNomeRegisto(e.target.value)}
+              />
+
+              <input
+                type="email"
+                placeholder="email"
+                value={emailRegisto}
+                onChange={(e) => setEmailRegisto(e.target.value)}
+              />
+
+              <input
+                type="password"
+                placeholder="senha"
+                value={passwordRegisto}
+                onChange={(e) => setPasswordRegisto(e.target.value)}
+              />
+
+              <button type="submit">Registar</button>
+
+              {erroRegisto && <p>{erroRegisto}</p>}
+            </form>
+
+            <p style={{ marginTop: 16 }}>
+              Já tem conta?{" "}
+              <button
+                type="button"
+                onClick={() => setMostrarRegisto(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline"
+                }}
+              >
+                Fazer login
+              </button>
+            </p>
+          </>
+        )}
       </div>
     )
   }
@@ -300,20 +394,8 @@ function App() {
 
   function textoSeguro(value) {
     if (value == null) return "—"
-
-    if (typeof value === "object") {
-      return JSON.stringify(value)
-    }
-
-    let texto = String(value)
-
-    // Escape básico contra XSS
-    return texto
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;")
+    if (typeof value === "object") return JSON.stringify(value)
+    return String(value)
   }
 
   const cardsDashboard = [
@@ -348,22 +430,13 @@ function App() {
       id: "timeline-fiscal",
       titulo: "Eventos na Timeline",
       valor: timelineFiscal.length
-        ? `${timelineFiscal.length} eventos (último: ${timelineFiscal[timelineFiscal.length - 1].data}) · UF ${timelineFiscal[timelineFiscal.length - 1].uf_cobertura ?? "n/d"}%`
+        ? `${timelineFiscal.length} eventos (último: ${timelineFiscal[timelineFiscal.length - 1].data})`
         : "Sem eventos",
     },
     {
       id: "percepcoes-fiscais",
       titulo: "Percepções",
       valor: `${data?.total_insights ?? 0}`,
-    },
-    {
-      id: "qualidade-uf",
-      titulo: "Qualidade da Base UF",
-      valor: (data?.insights ?? []).some((i) =>
-        String(i).includes("QUALIDADE_DADOS_UF_BAIXA")
-      )
-        ? "Baixa"
-        : "Adequada",
     },
     {
       id: "pontuacao-fiscal",
@@ -377,126 +450,76 @@ function App() {
     },
   ]
 
-  async function enviarXML(filesOrFile) {
-    const files = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile]
-
-    if (files.length > 1) {
+  async function enviarXML(files) {
+    const listaArquivos = Array.isArray(files) ? files.filter(Boolean) : [files].filter(Boolean)
+    for (const file of listaArquivos) {
       const formData = new FormData()
-      files.forEach((file) => formData.append("files", file))
-
-      const resp = await fetch(`${API_BASE}/lote/analisar-lote`, {
+      formData.append("file", file)
+      formData.append("empresa_id", idPerfil)
+      const resp = await fetch(`${API_BASE}/fiscal/analisar-xml?empresa_id=${idPerfil}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${getToken()}`
         },
         body: formData
       })
-
       const data = await resp.json()
-
+      if (data.status === "finished" && data.result?.relatorio_id != null) {
+        setResultadoXML({
+          relatorio_id: data.result.relatorio_id,
+          tem_resultado: data.result.tem_resultado,
+          carregado: false
+        })
+        continue
+      }
       if (data.job_id) {
-        const intervalo = setInterval(async () => {
-          const statusResp = await fetch(`${API_BASE}/lote/job/${data.job_id}`, {
-            headers: {
-              Authorization: `Bearer ${getToken()}`
-            }
-          })
-
-          const statusData = await statusResp.json()
-
-          if (statusData.status === "completed" || statusData.status === "failed") {
-            clearInterval(intervalo)
-
-            if (statusData.status === "completed") {
-              try {
-                const resMapa = await fetch(
-                  `${API_BASE}/inteligencia/mapa-oportunidades/${idPerfil}`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${getToken()}`
-                    }
-                  }
-                )
-                if (resMapa.status === 401) {
-                  clearToken()
-                  window.location.reload()
-                  return
-                }
-                if (resMapa.ok) {
-                  const mapaJson = await resMapa.json()
-                  aplicarMapaOportunidades(mapaJson)
-                }
-              } catch (err) {
-                console.error("[Dashboard] mapa-oportunidades pós-lote:", err)
+        await new Promise((resolve) => {
+          const intervalo = setInterval(async () => {
+            const statusResp = await fetch(`${API_BASE}/fiscal/analise/status/${data.job_id}`, {
+              headers: {
+                Authorization: `Bearer ${getToken()}`
               }
-            }
-
-            if (statusData.status === "completed" && statusData.resultados?.length) {
-              const primeiro = statusData.resultados[0]
-
+            })
+            const statusData = await statusResp.json()
+            if (statusData.status === "finished") {
+              clearInterval(intervalo)
               setResultadoXML({
-                relatorio_id: primeiro?.relatorio_id,
-                tem_resultado: true,
-                carregado: false,
-                lote: true,
-                total_arquivos: statusData.total_files,
-                status: statusData.status
+                relatorio_id: statusData.result?.relatorio_id,
+                tem_resultado: statusData.result?.tem_resultado,
+                carregado: false
               })
+              resolve()
             }
-
-            console.log("Lote concluído:", statusData)
-          }
-        }, 2000)
-
-        return
+          }, 2000)
+        })
       }
     }
+    setTimeout(() => {
+      refetch()
+    }, 500)
+  }
 
-    const file = files[0]
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("empresa_id", idPerfil)
-
-    const resp = await fetch(`${API_BASE}/fiscal/analisar-xml?empresa_id=${idPerfil}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getToken()}`
-      },
-      body: formData
-    })
-
-    const data = await resp.json()
-
-    if (data.status === "finished" && data.result?.relatorio_id != null) {
-      setResultadoXML({
-        relatorio_id: data.result.relatorio_id,
-        tem_resultado: data.result.tem_resultado,
-        carregado: false
-      })
-      return
-    }
-
-    if (data.job_id) {
-      const intervalo = setInterval(async () => {
-        const statusResp = await fetch(`${API_BASE}/fiscal/analise/status/${data.job_id}`, {
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          }
-        })
-
-        const statusData = await statusResp.json()
-
-        if (statusData.status === "finished") {
-          clearInterval(intervalo)
-          setResultadoXML({
-            relatorio_id: statusData.result?.relatorio_id,
-            tem_resultado: statusData.result?.tem_resultado,
-            carregado: false
-          })
+  async function carregarRelatorioSeguro(relatorio_id) {
+    try {
+      const res = await fetch(`${API_BASE}/relatorio/${relatorio_id}`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`
         }
-      }, 2000)
+      })
 
-      return
+      const data = await res.json()
+
+      if (data.status === "bloqueado") {
+        return
+      }
+
+      setResultadoXML(prev => ({
+        ...prev,
+        dados: data,
+        carregado: true
+      }))
+    } catch (e) {
+      console.error("Erro ao carregar relatório seguro")
     }
   }
 
@@ -522,28 +545,7 @@ function App() {
         ))}
       </div>
       {podeUploadXML && (
-        <div className="xml-upload">
-          <input
-            ref={xmlInputRef}
-            type="file"
-            accept=".xml"
-            multiple
-            className="xml-upload-input"
-            aria-label="Enviar arquivos XML"
-            onChange={(e) => {
-              const files = Array.from(e.target.files ?? [])
-              if (files.length > 0) enviarXML(files)
-              e.target.value = ""
-            }}
-          />
-          <button
-            type="button"
-            className="xml-upload-btn"
-            onClick={() => xmlInputRef.current?.click()}
-          >
-            Escolher Arquivo
-          </button>
-        </div>
+        <input  type="file"  accept=".xml"  multiple  onChange={(e) => enviarXML(Array.from(e.target.files ?? []))}/>
       )}
 
       {!podeUploadXML && (
@@ -552,26 +554,12 @@ function App() {
         </div>
       )}
 
-      {resultadoXML?.lote && (
-        <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
-          <h3>Lote processado com sucesso</h3>
-          <p><strong>Arquivos processados:</strong> {resultadoXML.total_arquivos}</p>
-          <p><strong>Status:</strong> {resultadoXML.status}</p>
-          <p>
-            <strong>Impacto gerado:</strong> R$ {(data?.impacto_financeiro_anual ?? 0).toLocaleString("pt-BR")}
-          </p>
-          <p>
-            <strong>Insights detectados:</strong> {data?.total_insights ?? 0}
-          </p>
-        </div>
-      )}
-
       {resultadoXML && !data?.consulta_paga && (
         <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
           <h3>Análise concluída</h3>
           <p>Seu XML foi processado com sucesso.</p>
           <p>Foram identificados elementos fiscais que podem compor um diagnóstico técnico.</p>
-          <p>O relatório completo apresenta detalhes, fundamentos e o mapeamento das oportunidades validadas.</p>
+          <p>Desbloqueie o relatório completo para visualizar detalhes, fundamentos e valores recuperáveis.</p>
         </div>
       )}
 
@@ -607,44 +595,62 @@ function App() {
       })()}
 
       <main className="dashboard">
-        <div className="hero-card visao-card">
-          <div className="visao-geral">
-            <h2>Visão geral</h2>
-            <p>
-              Resumo dos principais indicadores fiscais da empresa.
-            </p>
-          </div>
-        </div>
+        <section className="hero-card">
+          <h2>Visão Geral</h2>
+          <p>Acompanhe oportunidades, riscos e indicadores fiscais da empresa.</p>
+        </section>
+
+        {perfilAtual.tipo === "cpf" && (
+          <section className="card" style={{ marginBottom: 20 }}>
+            <h3>Dados para simulação CPF</h3>
+
+            <div style={{ display: "grid", gap: 12, maxWidth: 420 }}>
+              <label>
+                <span>Faturamento mensal</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cpfFaturamentoMensal}
+                  onChange={(e) => setCpfFaturamentoMensal(e.target.value)}
+                  placeholder="Ex: 5000"
+                />
+              </label>
+
+              <label>
+                <span>Despesas mensais</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cpfDespesasMensais}
+                  onChange={(e) => setCpfDespesasMensais(e.target.value)}
+                  placeholder="Ex: 1000"
+                />
+              </label>
+            </div>
+          </section>
+        )}
 
         <section className="impacto-hero">
           <article className="card card-impacto">
-            <span className="card-label">Impacto Financeiro Anual</span>
+            <span className="card-label">
+              {tipoPerfil === "mei"
+                ? "DAS Estimado Anual"
+                : tipoPerfil === "cpf"
+                  ? "IRPF Estimado Anual"
+                  : "Impacto Financeiro Anual"}
+            </span>
             <strong className="card-valor-impacto">
               R$ {(impacto ?? 0).toLocaleString("pt-BR")}
             </strong>
-            {decomposicaoImpacto && (
-              <div className="card-sub card-rastreio">
-                <p>
-                  R${" "}
-                  {(decomposicaoImpacto.valor_recuperavel_real ?? 0).toLocaleString("pt-BR")}{" "}
-                  recuperável real
-                </p>
-                <p>
-                  R$ {(decomposicaoImpacto.valor_estimado ?? 0).toLocaleString("pt-BR")} estimado
-                </p>
-                {contextFlags?.dados_incompletos && (
-                  <p className="card-aviso">Baseado em dados parcialmente completos.</p>
-                )}
-                {(decomposicaoImpacto.normalizacoes_aplicadas ?? 0) > 0 && (
-                  <p className="card-meta">
-                    {decomposicaoImpacto.normalizacoes_aplicadas} normalização(ões) aplicada(s)
-                  </p>
-                )}
-              </div>
-            )}
-            {!decomposicaoImpacto && (
-              <p className="card-sub">Valor recuperável estimado no ano</p>
-            )}
+            <p className="card-sub">
+              {tipoPerfil === "mei"
+                ? "Imposto mensal estimado × 12"
+                : tipoPerfil === "cpf"
+                  ? "Imposto de renda estimado no ano"
+                  : "Valor recuperável estimado no ano"}
+            </p>
           </article>
         </section>
 
@@ -660,20 +666,6 @@ function App() {
             </article>
           ))}
         </section>
-
-        {!data?.consulta_paga && data?.total_insights > 0 && (
-          <div style={{ marginTop: 16, padding: 16, border: "1px dashed #999", borderRadius: 8 }}>
-            <p>
-              🚀 <strong>{data.total_insights} oportunidades reais detectadas</strong>
-            </p>
-            <p style={{ opacity: 0.7 }}>
-              Desbloqueie agora para ver onde recuperar.
-            </p>
-            <button style={{ marginTop: 8 }}>
-              Ver oportunidades
-            </button>
-          </div>
-        )}
 
         {!data?.consulta_paga && (
           <div className="bloqueio-relatorio">
