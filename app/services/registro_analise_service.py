@@ -5,6 +5,7 @@ Conecta Motor Fiscal, Engines, Agentes e Score ao container relatorios_analise.
 Cada execução vira um registro completo auditável.
 """
 
+import logging
 import time
 from datetime import datetime
 
@@ -13,6 +14,8 @@ from app.services.analysis_orchestrator import executar_analise_xml
 from app.xml_service import processar_e_persistir_xml
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.usage_service import verificar_limite_analises, incrementar_uso_analise
+
+logger = logging.getLogger(__name__)
 
 
 def criar_registro_analise(
@@ -144,7 +147,11 @@ def executar_e_registrar_analise_xml(
                 relatorio_analise_id=rel.id,
             )
         except Exception:
-            pass
+            logger.exception(
+                "Falha ao gerar insights (InsightEngine): empresa_id=%s relatorio_analise_id=%s",
+                empresa_id,
+                rel.id,
+            )
 
     score_resultante = None
     if empresa_id:
@@ -154,7 +161,10 @@ def executar_e_registrar_analise_xml(
             if s is not None:
                 score_resultante = round(float(s), 2)
         except Exception:
-            pass
+            logger.exception(
+                "Falha ao calcular score global: empresa_id=%s",
+                empresa_id,
+            )
 
     total_alertas = contar_alertas_empresa(db, empresa_id) if empresa_id else 0
 
