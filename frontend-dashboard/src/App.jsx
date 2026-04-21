@@ -39,6 +39,13 @@ function App() {
   const [erroLogin, setErroLogin] = useState(null)
   const [verificandoSessao, setVerificandoSessao] = useState(true)
 
+  const [mostrarRegisto, setMostrarRegisto] = useState(false)
+  const [nomeRegisto, setNomeRegisto] = useState("")
+  const [emailRegisto, setEmailRegisto] = useState("")
+  const [passwordRegisto, setPasswordRegisto] = useState("")
+  const [erroRegisto, setErroRegisto] = useState(null)
+  const [sucessoRegisto, setSucessoRegisto] = useState(false)
+
   const perfilEmpresaApiRef = React.useRef(null)
 
   const [perfilAtual, setPerfilAtual] = React.useState({
@@ -148,6 +155,34 @@ function App() {
     }
   }
 
+  const handleRegisto = async (e) => {
+    e.preventDefault()
+    setErroRegisto(null)
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailRegisto,
+          password: passwordRegisto,
+          nome: nomeRegisto
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || "Erro ao registar.")
+      }
+
+      setSucessoRegisto(true)
+      await login(emailRegisto, passwordRegisto)
+      window.location.reload()
+    } catch (err) {
+      setErroRegisto(err.message)
+    }
+  }
+
   function handleLogout() {
     clearToken()
     window.location.reload()
@@ -243,27 +278,94 @@ function App() {
   if (!isAuthenticated()) {
     return (
       <div style={{ padding: 40 }}>
-        <h2>Login</h2>
+        {!mostrarRegisto ? (
+          <>
+            <h2>Login</h2>
 
-        <form onSubmit={handleLogin}>
-          <input
-            type="email"
-            placeholder="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+            <form onSubmit={handleLogin}>
+              <input
+                type="email"
+                placeholder="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
 
-          <input
-            type="password"
-            placeholder="senha"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+              <input
+                type="password"
+                placeholder="senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
 
-          <button type="submit">Entrar</button>
+              <button type="submit">Entrar</button>
 
-          {erroLogin && <p>{erroLogin}</p>}
-        </form>
+              {erroLogin && <p>{erroLogin}</p>}
+            </form>
+
+            <p style={{ marginTop: 16 }}>
+              Não tem conta?{" "}
+              <button
+                type="button"
+                onClick={() => setMostrarRegisto(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline"
+                }}
+              >
+                Criar conta
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            <h2>Criar conta</h2>
+
+            <form onSubmit={handleRegisto}>
+              <input
+                type="text"
+                placeholder="nome da empresa ou MEI"
+                value={nomeRegisto}
+                onChange={(e) => setNomeRegisto(e.target.value)}
+              />
+
+              <input
+                type="email"
+                placeholder="email"
+                value={emailRegisto}
+                onChange={(e) => setEmailRegisto(e.target.value)}
+              />
+
+              <input
+                type="password"
+                placeholder="senha"
+                value={passwordRegisto}
+                onChange={(e) => setPasswordRegisto(e.target.value)}
+              />
+
+              <button type="submit">Registar</button>
+
+              {erroRegisto && <p>{erroRegisto}</p>}
+            </form>
+
+            <p style={{ marginTop: 16 }}>
+              Já tem conta?{" "}
+              <button
+                type="button"
+                onClick={() => setMostrarRegisto(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline"
+                }}
+              >
+                Fazer login
+              </button>
+            </p>
+          </>
+        )}
       </div>
     )
   }
