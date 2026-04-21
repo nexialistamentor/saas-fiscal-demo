@@ -70,7 +70,7 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
         db.refresh(emp)
         empresa_id = emp.id
 
-    return UserResponse(id=new_user.id, email=new_user.email, empresa_id=empresa_id)
+    return UserResponse(id=new_user.id, email=new_user.email, empresa_id=empresa_id, role=new_user.role)
 
 
 @router.post("/login")
