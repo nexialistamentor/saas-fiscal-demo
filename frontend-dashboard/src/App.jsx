@@ -62,7 +62,9 @@ function App() {
     } else {
       lista.push({ tipo: "empresa", id: null, nome: "Empresa" })
     }
-    lista.push({ tipo: "mei", id: null, nome: "MEI" })
+    if (!api || api.tipo !== "mei") {
+      lista.push({ tipo: "mei", id: null, nome: "MEI" })
+    }
     lista.push({ tipo: "cpf", id: null, nome: "CPF" })
     return lista
   }, [perfilAtual])
