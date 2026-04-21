@@ -1,6 +1,13 @@
+from app.services.tax_engines.base_tax_engine import BaseTaxEngine
 from app.services.tax_engines.csll_engine import CSLLEngine
 from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
 from app.services.tax_engines.response_formatter import formatar_resposta_tributaria
+
+
+class LucroPresumidoEngine(BaseTaxEngine):
+
+    def execute(self, context: dict):
+        return calcular_lucro_presumido(context)
 
 
 def calcular_lucro_presumido(dados_fiscais: dict):
