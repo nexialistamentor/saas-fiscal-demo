@@ -344,7 +344,15 @@ function App() {
                 placeholder="senha"
                 value={passwordRegisto}
                 onChange={(e) => setPasswordRegisto(e.target.value)}
+                aria-describedby="hint-password-registo"
+                autoComplete="new-password"
               />
+              <p
+                id="hint-password-registo"
+                style={{ margin: "4px 0 0", fontSize: 12, color: "#555" }}
+              >
+                Mínimo de 8 caracteres.
+              </p>
 
               <button type="submit">Registar</button>
 
