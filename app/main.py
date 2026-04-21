@@ -10,7 +10,6 @@ if sys.platform == "win32":
     multiprocessing.get_context = _patched_get_context
 
 from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
@@ -19,8 +18,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from app.database import engine, get_db
+from app.database import engine, get_db, SessionLocal
 from app import models
+from app.seed_data import ensure_planos
 
 # IMPORTAR EXPLICITAMENTE OS MODELOS (registro para create_all)
 from app.models import DocumentoFiscal, ItemFiscal
@@ -32,6 +32,7 @@ from app.routes.imposto_router import router as imposto_router
 from app.routes.metrics_router import router as metrics_router
 from app.routes.auditoria import router as auditoria_router
 from app.routes.estoque_dashboard import router as estoque_dashboard_router
+from app.routes.cpf_router import router as cpf_router
 from app.routers.st_router import router as st_router
 from app.routers.insights_router import router as insights_router
 from app.routers.empresa_router import router as empresa_router
@@ -39,11 +40,11 @@ from app.routers.documento_router import router as documento_router
 from app.routers.inteligencia_router import inteligencia_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.assistente_router import assistente_router
-from app.xml_service import ler_xml_unico, persistir_documento_fiscal, enriquecer_st_se_necessario
+from app.xml_service import ler_xml_unico, processar_e_persistir_xml
 from app.xml_security import validar_upload_xml
-from app.motor_fiscal import analisar_xml
-from app.services.tax_consistency.tax_consistency_engine import TaxConsistencyEngine
 from app.security import get_usuario_atual
+from app.schemas.user_schema import UserCreate, UserResponse
+from app.auth_router import register_user as register_user_handler
 from app.agents.agent_scheduler import AgentScheduler
 import asyncio
 
@@ -52,16 +53,23 @@ _PROD = os.environ.get("ENVIRONMENT", "development") == "production"
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 app = FastAPI(
-    title="SaaS Fiscal Inteligente",
-    version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    swagger_ui_parameters={"syntaxHighlight.theme": "obsidian"}
+    openapi_url="/openapi.json",
 )
+
+from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "https://saas-fiscal-demo.vercel.app",
+    ],
+    allow_origin_regex=r"https://frontend-dashboard-.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -151,7 +159,14 @@ async def add_security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' data: https://fastapi.tiangolo.com; "
+        "connect-src 'self' https://cdn.jsdelivr.net; "
+        "font-src 'self' https://cdn.jsdelivr.net;"
+    )
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
@@ -173,6 +188,7 @@ app.include_router(assistente_router)
 app.include_router(metrics_router)
 app.include_router(auditoria_router, prefix="/estoque")
 app.include_router(estoque_dashboard_router, prefix="/estoque")
+app.include_router(cpf_router)
 app.include_router(admin_router)
 
 
@@ -197,6 +213,11 @@ def run_migrations():
 async def startup():
     models.Base.metadata.create_all(bind=engine)
     run_migrations()
+    db = SessionLocal()
+    try:
+        ensure_planos(db)
+    finally:
+        db.close()
 
     # Scheduler desativado temporariamente para estabilizar o banco
     # asyncio.create_task(scheduler.iniciar_loop(empresa_id=1, intervalo_segundos=300))
@@ -212,6 +233,13 @@ def root(request: Request):
 @limiter.limit("100/minute")
 def health(request: Request):
     return {"status": "ok"}
+
+
+@app.post("/register", response_model=UserResponse, tags=["Auth"])
+@limiter.limit("20/minute")
+def register_publico(request: Request, user: UserCreate, db: Session = Depends(get_db)):
+    """Alias de /auth/register para encontrar no Swagger em /register."""
+    return register_user_handler(user, db)
 
 
 @app.get("/teste-banco")
@@ -257,20 +285,6 @@ async def upload_xml(
         f.write(conteudo)
 
     dados = ler_xml_unico(caminho)
-    analise = analisar_xml(conteudo)
-
-    engine = TaxConsistencyEngine()
-    consistencia = engine.verificar_consistencia(
-        dados_xml=dados,
-        dados_motor=analise
-    )
-    analise["consistencia_fiscal"] = consistencia
-
-    # Motor dual: ST no XML → validar; ST ausente → calcular
-    enriquecer_st_se_necessario(dados, analise)
-    mva = analise.get("mva_utilizada") or analise.get("mva_percentual")
-    if mva is not None:
-        dados["mva_utilizada"] = float(mva) if isinstance(mva, str) else mva
 
     empresa = db.query(models.Empresa).filter(
         models.Empresa.user_id == usuario_atual.id,
@@ -285,8 +299,14 @@ async def upload_xml(
         db.add(empresa)
         db.flush()
 
-    print(dados)
-    documento = persistir_documento_fiscal(db, usuario_atual, empresa, dados)
+    documento, dados, analise = processar_e_persistir_xml(
+        db=db,
+        usuario_atual=usuario_atual,
+        empresa=empresa,
+        xml_bytes=conteudo,
+        dados_pre_parse=dados,
+    )
+
     return {"documento_id": documento.id}
 
 
@@ -313,5 +333,3 @@ def criar_planos(
     return {"mensagem": "Planos criados com sucesso"}
 
 
-# CORS_OUTERMOST_FIX
-app.add_middleware(CORSMiddleware, allow_origins=['http://localhost:5173','http://127.0.0.1:5173'], allow_credentials=False, allow_methods=['*'], allow_headers=['*'])

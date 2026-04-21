@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
+from app.services.analysis_orchestrator import executar_analise
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
 
 router = APIRouter()
@@ -19,19 +20,47 @@ class SimulacaoAnual(BaseModel):
 
 @router.post("/calcular")
 def calcular_imposto(dados: DadosImposto):
-    resultado = calcular_imposto_simples(
-        faturamento=dados.faturamento_mensal,
-        despesas=dados.despesas,
-        tipo=dados.tipo_usuario,
-    )
 
-    preview = {
-        "tipo_usuario": dados.tipo_usuario,
-        "imposto_estimado": resultado["imposto"],
-        "alertas": resultado.get("alertas", []),
+    tipo = dados.tipo_usuario.lower()
+
+    if tipo == "cpf":
+        resultado = executar_analise(
+            "cpf_tax",
+            {
+                "faturamento": dados.faturamento_mensal,
+                "despesas": dados.despesas
+            }
+        )
+
+        imposto = resultado.get("tributos", {}).get("imposto", 0)
+
+        return {
+            "tipo": "cpf",
+            "imposto_mensal": imposto,
+            "imposto_anual": imposto * 12,
+            "alertas": resultado.get("alertas", [])
+        }
+
+    if tipo == "mei":
+        resultado = executar_analise(
+            "mei_tax",
+            {
+                "faturamento": dados.faturamento_mensal
+            }
+        )
+
+        das = resultado.get("tributos", {}).get("das", 0)
+
+        return {
+            "tipo": "mei",
+            "imposto_mensal": das,
+            "imposto_anual": das * 12,
+            "alertas": resultado.get("alertas", [])
+        }
+
+    return {
+        "erro": "tipo_nao_suportado"
     }
-
-    return preview
 
 
 @router.post("/simular-ano")

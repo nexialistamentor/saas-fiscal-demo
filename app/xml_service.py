@@ -1,9 +1,9 @@
-import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
 from app.models import DocumentoFiscal, ItemFiscal
-from app.motor_fiscal import MotorFiscal, carregar_mva
+from app.motor_fiscal import MotorFiscal, analisar_xml, carregar_mva
+from app.services.tax_consistency.tax_consistency_engine import TaxConsistencyEngine
 
 ALIQUOTA_ICMS_PADRAO = 18.0
 
@@ -50,10 +50,13 @@ def _extrair_valor_icms_detalhe(det, ns):
     return base_icms, valor_icms, base_st, valor_st
 
 
-def ler_xml_unico(caminho_xml: str):
+def ler_xml_unico(caminho_xml: str = None, xml_bytes: bytes = None):
 
-    tree = ET.parse(caminho_xml)
-    root = tree.getroot()
+    if xml_bytes:
+        root = ET.fromstring(xml_bytes)
+    else:
+        tree = ET.parse(caminho_xml)
+        root = tree.getroot()
 
     ns = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
 
@@ -135,8 +138,8 @@ def ler_xml_unico(caminho_xml: str):
         "uf_dest": uf_dest,
         "itens": itens,
     }
-    print("=== RETORNO ler_xml_unico ===")
-    print(resultado)
+    
+    
     return resultado
 
 
@@ -216,6 +219,32 @@ def _parse_data_emissao(val):
     return None
 
 
+def processar_e_persistir_xml(db, usuario_atual, empresa, xml_bytes: bytes, dados_pre_parse: dict | None = None):
+    """
+    Pipeline compartilhado de processamento + persistência fiscal.
+    Reaproveita exatamente a lógica já usada no upload síncrono.
+    Retorna (documento, dados, analise).
+    """
+    dados = dados_pre_parse or ler_xml_unico(xml_bytes=xml_bytes)
+    analise = analisar_xml(xml_bytes)
+
+    engine = TaxConsistencyEngine()
+    consistencia = engine.verificar_consistencia(
+        dados_xml=dados,
+        dados_motor=analise
+    )
+    analise["consistencia_fiscal"] = consistencia
+
+    enriquecer_st_se_necessario(dados, analise)
+
+    mva = analise.get("mva_utilizada") or analise.get("mva_percentual")
+    if mva is not None:
+        dados["mva_utilizada"] = float(mva) if isinstance(mva, str) else mva
+
+    documento = persistir_documento_fiscal(db, usuario_atual, empresa, dados)
+    return documento, dados, analise
+
+
 def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
     from app import models
 
@@ -262,3 +291,4 @@ def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
     db.commit()
 
     return documento
+

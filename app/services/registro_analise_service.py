@@ -5,13 +5,17 @@ Conecta Motor Fiscal, Engines, Agentes e Score ao container relatorios_analise.
 Cada execução vira um registro completo auditável.
 """
 
+import logging
 import time
 from datetime import datetime
 
-from app.models import RelatorioAnalise, AlertaFiscal
+from app.models import Empresa, RelatorioAnalise, AlertaFiscal
 from app.services.analysis_orchestrator import executar_analise_xml
+from app.xml_service import processar_e_persistir_xml
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.usage_service import verificar_limite_analises, incrementar_uso_analise
+
+logger = logging.getLogger(__name__)
 
 
 def criar_registro_analise(
@@ -89,15 +93,65 @@ def executar_e_registrar_analise_xml(
 
     inicio = time.perf_counter()
     resultado = executar_analise_xml(xml_bytes)
+
+    if empresa_id and not resultado.get("dados_fiscais", {}).get("erro"):
+        empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
+        if empresa and empresa.user_id:
+            class _UsuarioProxy:
+                def __init__(self, user_id):
+                    self.id = user_id
+
+            usuario_proxy = _UsuarioProxy(empresa.user_id)
+            processar_e_persistir_xml(
+                db=db,
+                usuario_atual=usuario_proxy,
+                empresa=empresa,
+                xml_bytes=xml_bytes,
+            )
+
     tempo = round(time.perf_counter() - inicio, 4)
 
     xml_chave = None
     if resultado.get("dados_fiscais") and not resultado["dados_fiscais"].get("erro"):
         xml_chave = resultado["dados_fiscais"].get("chave_nfe")
 
+    if empresa_id and xml_chave:
+        rel_existente = (
+            db.query(RelatorioAnalise)
+            .filter(
+                RelatorioAnalise.empresa_id == empresa_id,
+                RelatorioAnalise.analysis_type == "xml_analise",
+                RelatorioAnalise.xml_chave == xml_chave,
+            )
+            .order_by(RelatorioAnalise.id.desc())
+            .first()
+        )
+        if rel_existente:
+            return rel_existente, {
+                "status": "duplicado",
+                "relatorio_id": rel_existente.id,
+                "xml_chave": xml_chave,
+            }
+
     rel = criar_registro_analise(
         db, user_id, "xml_analise", empresa_id=empresa_id, xml_chave=xml_chave
     )
+
+    if empresa_id:
+        try:
+            from app.services.insights_engine import InsightEngine
+
+            engine = InsightEngine(db)
+            engine.gerar_insights_empresa(
+                empresa_id=empresa_id,
+                relatorio_analise_id=rel.id,
+            )
+        except Exception:
+            logger.exception(
+                "Falha ao gerar insights (InsightEngine): empresa_id=%s relatorio_analise_id=%s",
+                empresa_id,
+                rel.id,
+            )
 
     score_resultante = None
     if empresa_id:
@@ -107,7 +161,10 @@ def executar_e_registrar_analise_xml(
             if s is not None:
                 score_resultante = round(float(s), 2)
         except Exception:
-            pass
+            logger.exception(
+                "Falha ao calcular score global: empresa_id=%s",
+                empresa_id,
+            )
 
     total_alertas = contar_alertas_empresa(db, empresa_id) if empresa_id else 0
 

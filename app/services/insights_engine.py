@@ -157,7 +157,7 @@ class InsightEngine:
         for item in insights:
             registro_insight = Insight(
                 empresa_id=empresa_id,
-                relatorio_analise_id=None,
+                relatorio_analise_id=relatorio_analise_id,
                 tipo=item.get("tipo", "INSIGHT_GENERICO"),
                 valor_estimado=float(item.get("valor_estimado", 0) or 0),
                 impacto=item.get("impacto"),
@@ -188,7 +188,7 @@ class InsightEngine:
         for nome, resultado in resultados_engines.items():
             registro = EngineResultado(
                 empresa_id=empresa_id,
-                relatorio_analise_id=None,
+                relatorio_analise_id=relatorio_analise_id,
                 engine_nome=nome,
                 resultado=resultado,
                 criado_em=datetime.utcnow()

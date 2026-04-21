@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import models
+from app.models import RelatorioAnalise
 from app.database import get_db
 from app.routes.imposto_router import DadosImposto
 from app.security import get_usuario_atual, verificar_empresa_do_usuario
@@ -22,10 +23,16 @@ from app.services.imposto_service import calcular_imposto_simples
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
 from app.xml_security import validar_upload_xml
+from app.services.analysis_types import (
+    ANALYSIS_TYPE_TAX_PLANNING,
+    ANALYSIS_TYPE_TAX_RECOVERY,
+    ANALYSIS_TYPE_MEI_TAX,
+    ANALYSIS_TYPES_RELATORIO_GET,
+)
 
 router = APIRouter()
 
-ANALYSIS_TYPES = ("tax_recovery", "tax_planning")  # mei_tax: use POST /mei_tax e GET /mei_tax/{id}
+ANALYSIS_TYPES = ANALYSIS_TYPES_RELATORIO_GET  # mei_tax: use POST /mei_tax e GET /mei_tax/{id}
 
 
 def _pagamento_confirmado(usuario: models.User, perfil_id: int, db: Session) -> bool:
@@ -78,7 +85,11 @@ async def gerar_relatorio(
     relatorio = _montar_relatorio(analise, empresa_id, db)
     if relatorio_obj:
         relatorio["relatorio_id"] = relatorio_obj.id
-    return relatorio
+    return {
+        "status": "processado",
+        "mensagem": "Análise concluída. Desbloqueie o relatório completo para visualizar os detalhes.",
+        "relatorio_id": relatorio.get("relatorio_id"),
+    }
 
 
 def _montar_relatorio(analise: dict, empresa_id: int | None, db: Session) -> dict:
@@ -217,6 +228,39 @@ async def relatorio_pdf(
     )
 
 
+@router.get("/{relatorio_id:int}")
+def obter_relatorio(
+    relatorio_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    rel = db.query(RelatorioAnalise).filter(RelatorioAnalise.id == relatorio_id).first()
+
+    if not rel:
+        raise HTTPException(status_code=404, detail="Relatório não encontrado")
+
+    if rel.user_id != usuario_atual.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    # Fallback para base atual: RelatorioAnalise não possui consulta_paga.
+    # Se no futuro existir coluna por relatório, ela terá prioridade.
+    consulta_paga_relatorio = getattr(rel, "consulta_paga", None)
+    pagamento_ok = (
+        bool(consulta_paga_relatorio)
+        if consulta_paga_relatorio is not None
+        else bool(usuario_atual.consulta_paga)
+    )
+
+    if not pagamento_ok:
+        return {
+            "status": "bloqueado",
+            "mensagem": "Pagamento necessário",
+            "relatorio_id": rel.id,
+        }
+
+    return rel.resultado_json
+
+
 @router.get("/{analysis_type}")
 def obter_relatorio_por_tipo(
     analysis_type: str,
@@ -242,25 +286,25 @@ def obter_relatorio_por_tipo(
     empresa_id = usuario_atual.empresas[0].id if usuario_atual.empresas else None
     pergunta_placeholder = ""
 
-    if analysis_type == "tax_recovery":
+    if analysis_type == ANALYSIS_TYPE_TAX_RECOVERY:
         dados = _obter_dados_fiscais_recuperacao(pergunta_placeholder, usuario_atual, db)
         if dados:
             resultado = simular_recuperacao_tributaria(dados)
-            return {"analysis_type": "tax_recovery", "relatorio": resultado}
+            return {"analysis_type": ANALYSIS_TYPE_TAX_RECOVERY, "relatorio": resultado}
         if empresa_id:
             engine = InsightEngine(db)
             resultado = engine.gerar_insights_empresa(empresa_id)
-            return {"analysis_type": "tax_recovery", "relatorio": resultado}
+            return {"analysis_type": ANALYSIS_TYPE_TAX_RECOVERY, "relatorio": resultado}
         raise HTTPException(
             status_code=400,
             detail="Vincule uma empresa com NF-e ou informe faturamento para gerar o relatório.",
         )
 
-    if analysis_type == "tax_planning":
+    if analysis_type == ANALYSIS_TYPE_TAX_PLANNING:
         dados = _obter_dados_fiscais_planejamento(pergunta_placeholder, usuario_atual, db)
         if dados:
             resultado = simular_planejamento_tributario(dados)
-            return {"analysis_type": "tax_planning", "relatorio": resultado}
+            return {"analysis_type": ANALYSIS_TYPE_TAX_PLANNING, "relatorio": resultado}
         raise HTTPException(
             status_code=400,
             detail="Informe o faturamento ou vincule uma empresa com NF-e.",
@@ -289,7 +333,7 @@ async def gerar_relatorio_mei_tax(
     )
     rel = models.RelatorioAnalise(
         user_id=usuario_atual.id,
-        analysis_type="mei_tax",
+        analysis_type=ANALYSIS_TYPE_MEI_TAX,
         status="ok",
         resultado_json=resultado,
     )
@@ -309,7 +353,7 @@ async def buscar_relatorio_mei_tax(
     rel = db.query(models.RelatorioAnalise).filter(
         models.RelatorioAnalise.id == relatorio_id,
         models.RelatorioAnalise.user_id == usuario_atual.id,
-        models.RelatorioAnalise.analysis_type == "mei_tax",
+        models.RelatorioAnalise.analysis_type == ANALYSIS_TYPE_MEI_TAX,
     ).first()
     if not rel:
         raise HTTPException(status_code=404, detail="Relatório não encontrado.")
