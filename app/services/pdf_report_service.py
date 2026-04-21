@@ -154,6 +154,36 @@ def gerar_pdf_relatorio(relatorio: dict) -> BytesIO:
     c.drawString(100, y, f"Potencial de recuperação: R$ {valor}")
     y -= 30
 
+    dec = relatorio.get("decomposicao_impacto") or {}
+    if dec:
+        vr = dec.get("valor_recuperavel_real")
+        ve = dec.get("valor_estimado")
+        na = dec.get("normalizacoes_aplicadas")
+        c.drawString(100, y, f"Recuperável (base documental): R$ {vr}")
+        y -= 20
+        c.drawString(100, y, f"Componente estimado: R$ {ve}")
+        y -= 20
+        if na is not None:
+            c.drawString(100, y, f"Normalizações aplicadas: {na}")
+            y -= 24
+
+    flags = relatorio.get("context_flags") or {}
+    if flags:
+        c.setFont("Helvetica-Oblique", 9)
+        avisos = []
+        if flags.get("dados_incompletos"):
+            avisos.append("dados parcialmente completos")
+        if flags.get("usa_estimativa"):
+            avisos.append("inclui estimativas")
+        if flags.get("base_presumida"):
+            avisos.append("base presumida aplicável")
+        if flags.get("valores_normalizados"):
+            avisos.append("valores exibidos em escala normalizada")
+        if avisos:
+            c.drawString(100, y, "Rastreabilidade: " + "; ".join(avisos))
+            y -= 28
+        c.setFont("Helvetica", 10)
+
     score = relatorio.get("score_global")
     c.drawString(100, y, f"Score tributário: {score}")
     y -= 40

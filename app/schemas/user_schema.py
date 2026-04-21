@@ -1,16 +1,46 @@
-from pydantic import BaseModel, EmailStr
+import unicodedata
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
-    nome: str | None = None
+    password: str = Field(..., min_length=8, max_length=64)
+    nome: str | None = Field(default=None, max_length=100)
+
+    @field_validator("nome")
+    @classmethod
+    def normalizar_nome(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+
+        v = unicodedata.normalize("NFKC", v)
+        v = "".join(ch for ch in v if unicodedata.category(ch)[0] != "C")
+        v = v.strip()
+
+        # Bloqueio de padrões perigosos
+        bloqueios = [
+            "<script",
+            "</script",
+            "javascript:",
+            "onerror=",
+            "onload=",
+        ]
+
+        texto_upper = v.upper()
+
+        for padrao in bloqueios:
+            if padrao.upper() in texto_upper:
+                raise ValueError("Nome contém conteúdo inválido")
+
+        return v or None
 
 
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
     empresa_id: int | None = None
+    role: str
 
     class Config:
         from_attributes = True
@@ -21,6 +51,7 @@ class UserSession(BaseModel):
     email: EmailStr
     plano_id: int | None = None
     consulta_paga: bool
+    role: str
 
     class Config:
         from_attributes = True

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.database import get_db
-from app.security import get_usuario_atual, verificar_empresa_do_usuario
+from app.security import get_usuario_atual, tenant_empresa
 from app.services.ranking_restituicao_service import gerar_ranking_restituicao
 from app.services.mapa_oportunidades_service import gerar_mapa_oportunidades
 from app.services.detector_creditos_service import detectar_creditos
@@ -36,114 +36,93 @@ inteligencia_router = APIRouter(
 
 @inteligencia_router.get("/oportunidades-recuperacao/{empresa_id}")
 def oportunidades_recuperacao(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return ranking_oportunidades_recuperacao(db, empresa_id)
+    return ranking_oportunidades_recuperacao(db, empresa.id)
 
 
 @inteligencia_router.get("/ranking-restituicao/{empresa_id}")
 def ranking_restituicao(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return gerar_ranking_restituicao(db, empresa_id)
+    return gerar_ranking_restituicao(db, empresa.id)
 
 
 @inteligencia_router.get("/mapa-oportunidades/{empresa_id}")
 def mapa_oportunidades(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
     usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    mapa = gerar_mapa_oportunidades(db, empresa_id)
+    mapa = gerar_mapa_oportunidades(db, empresa.id)
     mapa["consulta_paga"] = usuario_atual.consulta_paga
     return mapa
 
 
 @inteligencia_router.get("/creditos/{empresa_id}")
 def creditos_fiscais(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return detectar_creditos(db, empresa_id)
+    return detectar_creditos(db, empresa.id)
 
 
 @inteligencia_router.get("/distorcoes/{empresa_id}")
 def distorcoes_tributarias(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return detectar_distorcoes(db, empresa_id)
+    return detectar_distorcoes(db, empresa.id)
 
 
 @inteligencia_router.get("/oportunidades-preditivas/{empresa_id}")
 def oportunidades_preditivas(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_potencial_recuperacao(db, empresa_id)
+    return calcular_potencial_recuperacao(db, empresa.id)
 
 
 @inteligencia_router.get("/ranking-estrategico/{empresa_id}")
 def ranking_estrategico(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return gerar_ranking_estrategico(db, empresa_id)
+    return gerar_ranking_estrategico(db, empresa.id)
 
 
 @inteligencia_router.get("/impacto-financeiro/{empresa_id}")
 def impacto_financeiro(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_impacto_financeiro(db, empresa_id)
+    return calcular_impacto_financeiro(db, empresa.id)
 
 
 @inteligencia_router.get("/indice-inteligencia/{empresa_id}")
 def indice_inteligencia(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_indice_inteligencia(db, empresa_id)
+    return calcular_indice_inteligencia(db, empresa.id)
 
 
 @inteligencia_router.get("/score-tributario/{empresa_id}")
 def score_tributario(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_score_tributario(db, empresa_id)
+    return calcular_score_tributario(db, empresa.id)
 
 
 @inteligencia_router.get("/radar-tributario/{empresa_id}")
 def radar_tributario(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return gerar_radar_tributario(db, empresa_id)
+    return gerar_radar_tributario(db, empresa.id)
 
 
 @inteligencia_router.get("/benchmark-empresas")
@@ -151,114 +130,93 @@ def benchmark_empresas(
     db: Session = Depends(get_db),
     usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    return gerar_benchmark_empresas(db)
+    empresa_ids = [e.id for e in usuario_atual.empresas] if usuario_atual.empresas else []
+    return gerar_benchmark_empresas(db, empresa_ids=empresa_ids)
 
 
 @inteligencia_router.get("/anomalias-tributarias/{empresa_id}")
 def anomalias_tributarias(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return detectar_anomalias_tributarias(db, empresa_id)
+    return detectar_anomalias_tributarias(db, empresa.id)
 
 
 @inteligencia_router.get("/prioridade-auditoria/{empresa_id}")
 def prioridade_auditoria(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_prioridade_auditoria(db, empresa_id)
+    return calcular_prioridade_auditoria(db, empresa.id)
 
 
 @inteligencia_router.get("/projecao-recuperacao/{empresa_id}")
 def projecao_recuperacao(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return projetar_recuperacao_tributaria(db, empresa_id)
+    return projetar_recuperacao_tributaria(db, empresa.id)
 
 
 @inteligencia_router.get("/risco-tributario/{empresa_id}")
 def risco_tributario(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_risco_tributario(db, empresa_id)
+    return calcular_risco_tributario(db, empresa.id)
 
 
 @inteligencia_router.get("/eficiencia-tributaria/{empresa_id}")
 def eficiencia_tributaria(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_eficiencia_tributaria(db, empresa_id)
+    return calcular_eficiencia_tributaria(db, empresa.id)
 
 
 @inteligencia_router.get("/complexidade-tributaria/{empresa_id}")
 def complexidade_tributaria(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_complexidade_tributaria(db, empresa_id)
+    return calcular_complexidade_tributaria(db, empresa.id)
 
 
 @inteligencia_router.get("/maturidade-tributaria/{empresa_id}")
 def maturidade_tributaria(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_maturidade_tributaria(db, empresa_id)
+    return calcular_maturidade_tributaria(db, empresa.id)
 
 
 @inteligencia_router.get("/score-global-tributario/{empresa_id}")
 def score_global_tributario(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return calcular_score_global_tributario(db, empresa_id)
+    return calcular_score_global_tributario(db, empresa.id)
 
 
 @inteligencia_router.get("/historico-inteligencia/{empresa_id}")
 def historico_inteligencia(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return obter_historico_inteligencia(db, empresa_id)
+    return obter_historico_inteligencia(db, empresa.id)
 
 
 @inteligencia_router.get("/tendencia-inteligencia/{empresa_id}")
 def tendencia_inteligencia(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return analisar_tendencia_inteligencia(db, empresa_id)
+    return analisar_tendencia_inteligencia(db, empresa.id)
 
 
 @inteligencia_router.get("/comparacao-temporal/{empresa_id}")
 def comparacao_temporal(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
-    return comparar_periodos_inteligencia(db, empresa_id)
+    return comparar_periodos_inteligencia(db, empresa.id)

@@ -6,10 +6,8 @@ import {
   API_BASE,
   getToken,
   isAuthenticated,
-  isDemoSession,
-  clearToken,
   login,
-  loginDemo
+  clearToken
 } from "./config"
 import {
   ResponsiveContainer,
@@ -48,8 +46,20 @@ function App() {
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
 
-  const { data, historico, tendencia, loading, risco, pontuacao, impacto, aplicarMapaOportunidades } =
-    useDashboardData(tipoPerfil, idPerfil)
+  const sessaoPronta = !!usuario
+
+  const {
+    data,
+    historico,
+    tendencia,
+    loading,
+    risco,
+    pontuacao,
+    impacto,
+    decomposicaoImpacto,
+    contextFlags,
+    aplicarMapaOportunidades
+  } = useDashboardData(tipoPerfil, idPerfil, sessaoPronta)
   const severidadeRisco =
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
@@ -112,12 +122,6 @@ function App() {
     setErroLogin(null)
 
     try {
-      if (email === "demo@demo.com") {
-        loginDemo()
-        window.location.reload()
-        return
-      }
-
       await login(email, password)
       window.location.reload()
     } catch (err) {
@@ -133,22 +137,12 @@ function App() {
   useEffect(() => {
     async function validarSessao() {
       if (!isAuthenticated()) {
+        setUsuario(null)
         setVerificandoSessao(false)
         return
       }
 
       try {
-        if (isDemoSession()) {
-          setUsuario({
-            id: 0,
-            email: "demo@demo.com",
-            plano_id: 3,
-            consulta_paga: true
-          })
-          setVerificandoSessao(false)
-          return
-        }
-
         const res = await fetch(`${API_BASE}/auth/me`, {
           headers: {
             Authorization: `Bearer ${getToken()}`
@@ -158,6 +152,7 @@ function App() {
         if (res.ok) {
           const usuarioJson = await res.json()
           setUsuario(usuarioJson)
+
           const er = await fetch(`${API_BASE}/empresas/`, {
             headers: { Authorization: `Bearer ${getToken()}` }
           })
@@ -172,13 +167,14 @@ function App() {
               })
             }
           }
-        }
-
-        if (!res.ok) {
-          clearToken()
+        } else {
+          setUsuario(null)
+          if (res.status === 401) {
+            clearToken()
+          }
         }
       } catch {
-        clearToken()
+        // não limpar token por erro técnico
       }
 
       setVerificandoSessao(false)
@@ -272,6 +268,16 @@ function App() {
     )
   }
 
+  if (!usuario) {
+    clearToken()
+    return (
+      <div style={{ padding: 40 }}>
+        <h2>Login</h2>
+        <p>Sessão inválida. Faça login novamente.</p>
+      </div>
+    )
+  }
+
   if (loading) {
     return <p style={{ padding: 40 }}>Carregando dados fiscais...</p>
   }
@@ -294,8 +300,20 @@ function App() {
 
   function textoSeguro(value) {
     if (value == null) return "—"
-    if (typeof value === "object") return JSON.stringify(value)
-    return String(value)
+
+    if (typeof value === "object") {
+      return JSON.stringify(value)
+    }
+
+    let texto = String(value)
+
+    // Escape básico contra XSS
+    return texto
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;")
   }
 
   const cardsDashboard = [
@@ -604,7 +622,29 @@ function App() {
             <strong className="card-valor-impacto">
               R$ {(impacto ?? 0).toLocaleString("pt-BR")}
             </strong>
-            <p className="card-sub">Valor recuperável estimado no ano</p>
+            {decomposicaoImpacto && (
+              <div className="card-sub card-rastreio">
+                <p>
+                  R${" "}
+                  {(decomposicaoImpacto.valor_recuperavel_real ?? 0).toLocaleString("pt-BR")}{" "}
+                  recuperável real
+                </p>
+                <p>
+                  R$ {(decomposicaoImpacto.valor_estimado ?? 0).toLocaleString("pt-BR")} estimado
+                </p>
+                {contextFlags?.dados_incompletos && (
+                  <p className="card-aviso">Baseado em dados parcialmente completos.</p>
+                )}
+                {(decomposicaoImpacto.normalizacoes_aplicadas ?? 0) > 0 && (
+                  <p className="card-meta">
+                    {decomposicaoImpacto.normalizacoes_aplicadas} normalização(ões) aplicada(s)
+                  </p>
+                )}
+              </div>
+            )}
+            {!decomposicaoImpacto && (
+              <p className="card-sub">Valor recuperável estimado no ano</p>
+            )}
           </article>
         </section>
 

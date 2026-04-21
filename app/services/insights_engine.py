@@ -25,6 +25,12 @@ from app.services.score_global_tributario_service import calcular_score_global_t
 from app.services.risco_tributario_service import calcular_risco_tributario
 from app.services.maturidade_tributaria_service import calcular_maturidade_tributaria
 from app.services.engine_registry import ENGINES
+from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
+from app.services.context_flags_service import (
+    anexar_flags_nos_resultados_engines,
+    inferir_flags_contexto_empresa,
+    merge_context_flags,
+)
 
 
 def executar_engines(context: dict) -> dict:
@@ -32,7 +38,16 @@ def executar_engines(context: dict) -> dict:
     resultados = {}
     for nome, engine in ENGINES.items():
         try:
-            resultados[nome] = engine.execute(context)
+            if nome == "pis_cofins":
+                dados = dict(context)
+                if dados.get("icms") is None:
+                    dados["icms"] = float(
+                        dados.get("icms_devido") or dados.get("icms_pago") or 0
+                    )
+                regime = context.get("regime") or "presumido"
+                resultados[nome] = calcular_pis_cofins(dados, regime=regime)
+            else:
+                resultados[nome] = engine.execute(context)
         except Exception as e:
             resultados[nome] = {"erro": str(e)}
     return resultados
@@ -82,6 +97,7 @@ class InsightEngine:
             "db": self.db,
             "faturamento": float(faturamento),
             "custos": float(custos),
+            "custo_fiscal_entradas": float(custos),
             "lucro_contabil": float(max(0, lucro)),
             "lucro": float(max(0, lucro)),
             "base_calculo": float(base_calculo),
@@ -89,6 +105,11 @@ class InsightEngine:
             "atividade": "comercio",
             "icms_pago": float(st_entradas),
             "icms_devido": float(st_saidas),
+            "context_flags": inferir_flags_contexto_empresa(
+                regime=regime,
+                faturamento=float(faturamento),
+                custos=float(custos),
+            ),
         }
 
     def gerar_insights_empresa(self, empresa_id: int, relatorio_analise_id: int | None = None):
@@ -111,6 +132,8 @@ class InsightEngine:
 
         insights = []
 
+        context = self._montar_contexto_engines(empresa_id)
+
         insights.extend(
             self._analisar_restituicao_st(empresa_id)
         )
@@ -128,7 +151,11 @@ class InsightEngine:
         )
 
         insights.extend(
-            self._analisar_st_sem_saida(empresa_id)
+            self._analisar_st_sem_saida(context)
+        )
+
+        insights.extend(
+            self._analisar_st_sem_saida_por_ncm(empresa_id)
         )
 
         insights.extend(
@@ -163,6 +190,29 @@ class InsightEngine:
         self.db.flush()
 
         for item in insights:
+            uf = None
+
+            # tentativa segura via contexto de item/documento
+            if "ncm" in item:
+                try:
+                    ultimo_item = (
+                        self.db.query(NotaFiscalItem)
+                        .join(NotaFiscalItem.documento)
+                        .filter(
+                            NotaFiscalItem.ncm == item.get("ncm"),
+                            DocumentoFiscal.empresa_id == empresa_id,
+                        )
+                        .order_by(NotaFiscalItem.id.desc())
+                        .first()
+                    )
+                    if ultimo_item and ultimo_item.documento:
+                        uf = ultimo_item.documento.uf_dest or ultimo_item.documento.uf_emit
+                except:
+                    pass
+
+            if uf:
+                item["uf"] = uf
+
             registro_insight = Insight(
                 empresa_id=empresa_id,
                 relatorio_analise_id=relatorio_analise_id,
@@ -220,8 +270,51 @@ class InsightEngine:
         creditos_detectados = [i for i in insights if i.get("tipo") == "CREDITO_ST_ESTIMADO"]
         oportunidades = [i for i in insights if i.get("tipo") != "CREDITO_ST_ESTIMADO"]
 
-        context = self._montar_contexto_engines(empresa_id)
+        self.db.flush()
         resultados_engines = executar_engines(context)
+
+        comparativo_regime = {}
+        tax_planning = resultados_engines.get("tax_planning", {})
+        carga_real = tax_planning.get("carga_lucro_real")
+        carga_presumido = tax_planning.get("carga_lucro_presumido")
+
+        if carga_real is not None and carga_presumido is not None:
+            comparativo_regime = {
+                "lucro_real": max(0, carga_real),
+                "lucro_presumido": max(0, carga_presumido),
+                "diferenca": abs((carga_real or 0) - (carga_presumido or 0)),
+                "melhor_regime": tax_planning.get("melhor_regime")
+            }
+
+        motor_norm = 0
+        # Normalização fiscal: impedir tributos negativos
+        if "irpj" in resultados_engines:
+            if resultados_engines["irpj"].get("total_irpj", 0) < 0:
+                motor_norm += 1
+                resultados_engines["irpj"]["total_irpj"] = 0
+                resultados_engines["irpj"]["irpj"] = 0
+                resultados_engines["irpj"]["adicional_irpj"] = 0
+
+        if "csll" in resultados_engines:
+            if resultados_engines["csll"].get("valor", 0) < 0:
+                motor_norm += 1
+                resultados_engines["csll"]["valor"] = 0
+
+        self.db.flush()
+        mapa_r = gerar_mapa_oportunidades(self.db, empresa_id)
+        context_flags_final = merge_context_flags(
+            context.get("context_flags"),
+            mapa_r.get("context_flags"),
+        )
+        if motor_norm > 0:
+            context_flags_final["valores_normalizados"] = True
+
+        decomp = dict(mapa_r.get("decomposicao_impacto") or {})
+        decomp["normalizacoes_aplicadas"] = int(decomp.get("normalizacoes_aplicadas", 0)) + motor_norm
+
+        resultados_engines = anexar_flags_nos_resultados_engines(
+            resultados_engines, context_flags_final
+        )
 
         for nome, resultado in resultados_engines.items():
             registro = EngineResultado(
@@ -245,6 +338,8 @@ class InsightEngine:
                 "creditos_detectados": creditos_detectados,
                 "risco_tributario": risco,
                 "resultados_engines": resultados_engines,
+                "context_flags": context_flags_final,
+                "decomposicao_impacto": decomp,
             }
 
         self.db.commit()
@@ -254,7 +349,10 @@ class InsightEngine:
             "oportunidades": oportunidades,
             "creditos_detectados": creditos_detectados,
             "risco_tributario": risco,
-            "resultados_engines": resultados_engines
+            "resultados_engines": resultados_engines,
+            "comparativo_regime": comparativo_regime,
+            "context_flags": context_flags_final,
+            "decomposicao_impacto": decomp,
         }
 
     def _analisar_impacto_financeiro(self, empresa_id: int):
@@ -536,24 +634,11 @@ class InsightEngine:
 
         return insights
 
-    def _analisar_st_sem_saida(self, empresa_id: int):
+    def _analisar_st_sem_saida(self, context: dict):
         insights = []
 
-        st_entradas = (
-            self.db.query(func.sum(NotaFiscalItem.valor_st))
-            .join(NotaFiscalItem.documento)
-            .filter(DocumentoFiscal.empresa_id == empresa_id)
-            .filter(DocumentoFiscal.tipo == "entrada")
-            .scalar()
-        )
-
-        st_saidas = (
-            self.db.query(func.sum(NotaFiscalItem.valor_st))
-            .join(NotaFiscalItem.documento)
-            .filter(DocumentoFiscal.empresa_id == empresa_id)
-            .filter(DocumentoFiscal.tipo == "saida")
-            .scalar()
-        )
+        st_entradas = context.get("icms_pago", 0)
+        st_saidas = context.get("icms_devido", 0)
 
         if not st_entradas:
             return insights
@@ -567,6 +652,7 @@ class InsightEngine:
 
         insight = {
             "tipo": "ST_SEM_SAIDA",
+            "origem": "st_estoque",
             "impacto": "medio",
             "valor_estimado": round(st_em_estoque, 2),
             "descricao": f"ST estimada de R$ {round(st_em_estoque,2)} ainda não realizada em vendas.",
@@ -575,6 +661,55 @@ class InsightEngine:
 
         insights.append(insight)
 
+        return insights
+
+    def _analisar_st_sem_saida_por_ncm(self, empresa_id: int):
+        st_entrada = (
+            self.db.query(
+                NotaFiscalItem.ncm,
+                func.sum(NotaFiscalItem.valor_st).label("st_entrada")
+            )
+            .join(NotaFiscalItem.documento)
+            .filter(DocumentoFiscal.empresa_id == empresa_id)
+            .filter(DocumentoFiscal.tipo == "entrada")
+            .group_by(NotaFiscalItem.ncm)
+            .all()
+        )
+
+        st_saida = (
+            self.db.query(
+                NotaFiscalItem.ncm,
+                func.sum(NotaFiscalItem.valor_st).label("st_saida")
+            )
+            .join(NotaFiscalItem.documento)
+            .filter(DocumentoFiscal.empresa_id == empresa_id)
+            .filter(DocumentoFiscal.tipo == "saida")
+            .group_by(NotaFiscalItem.ncm)
+            .all()
+        )
+
+        mapa_saida = {row.ncm: row.st_saida for row in st_saida}
+        insights = []
+
+        for row in st_entrada:
+            ncm = row.ncm
+            entrada = row.st_entrada or 0
+            saida = mapa_saida.get(ncm, 0) or 0
+            saldo = round(entrada - saida, 2)
+
+            if saldo > 50:
+                insights.append({
+                    "tipo": "ESTOQUE_FANTASMA_NCM",
+                    "tributo": "ST",
+                    "categoria": "distorcao",
+                    "ncm": ncm,
+                    "impacto": "alto" if saldo > 500 else "medio",
+                    "valor_estimado": saldo,
+                    "descricao": f"NCM {ncm}: ST de R$ {saldo} paga na entrada sem saida correspondente.",
+                    "recomendacao": "Verificar se produto ainda esta em estoque ou houve perda/devolucao nao registada."
+                })
+
+        insights.sort(key=lambda x: x["valor_estimado"], reverse=True)
         return insights
 
     def _analisar_mva_oficial_divergente(self, empresa_id):

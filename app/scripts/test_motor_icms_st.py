@@ -15,7 +15,7 @@ Executar da raiz do projeto:
 """
 
 import sys
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from pathlib import Path
 
 # Garante que a raiz do projeto está no PYTHONPATH

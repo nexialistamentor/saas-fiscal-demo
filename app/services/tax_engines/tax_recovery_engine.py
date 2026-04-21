@@ -18,6 +18,7 @@ class TaxRecoveryEngine(BaseTaxEngine):
         if icms_pago > icms_devido:
             creditos.append({
                 "tipo": "ICMS_RECUPERAVEL",
+                "origem": "icms_fluxo",
                 "valor": icms_pago - icms_devido
             })
 

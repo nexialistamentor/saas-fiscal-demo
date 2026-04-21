@@ -1,28 +1,47 @@
 """
 Proteções operacionais para upload de XML fiscais.
-Evita XML muito grande, tipo incorreto e ataques XXE (DOCTYPE/ENTITY).
+
+Camadas de defesa (ordem de prioridade):
+1. Parser seguro (defusedxml) — proteção primária contra XXE/bombs
+2. Nome de ficheiro seguro (UUID) — elimina path traversal
+3. Content-Type obrigatório — rejeita uploads ambíguos
+4. Heurística XXE (DOCTYPE/ENTITY) — camada complementar
 """
+import unicodedata
+import uuid
+
+import defusedxml.ElementTree as ET
 from fastapi import HTTPException, UploadFile
 
-MAX_XML_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+MAX_XML_SIZE_BYTES = 2 * 1024 * 1024  # 2MB limite real seguro
 ALLOWED_CONTENT_TYPES = ("application/xml", "text/xml")
 ALLOWED_EXTENSIONS = (".xml",)
-# Extensões executáveis bloqueadas (upload malicioso)
 BLOCKED_EXTENSIONS = (".exe", ".py", ".pyc", ".sh", ".bat", ".cmd", ".ps1", ".dll", ".so", ".bin")
-# Padrões maliciosos que indicam tentativa de XXE
-XXE_BLOCKED_PATTERNS = ("<!DOCTYPE", "<!ENTITY")
+XXE_BLOCKED_PATTERNS = (
+    "<!DOCTYPE",
+    "<!ENTITY",
+    "SYSTEM",
+    "PUBLIC",
+    "ENTITY",
+)
+
+
+def gerar_nome_seguro(extensao: str = ".xml") -> str:
+    """Gera nome de ficheiro baseado em UUID4. Nunca usa input do utilizador."""
+    return f"{uuid.uuid4().hex}{extensao}"
 
 
 async def validar_upload_xml(file: UploadFile) -> bytes:
     """
     Valida arquivo XML de upload e retorna o conteúdo em bytes.
     Levanta HTTPException(400) se:
-    - Tamanho > 5MB
-    - Tipo/extensão não é XML
+    - Tamanho > 2MB
+    - Extensão executável ou não-.xml
+    - Content-Type ausente ou não-XML
     - Conteúdo contém DOCTYPE ou ENTITY (proteção XXE)
     """
     conteudo = b""
-    while chunk := await file.read(1024 * 64):  # lê em blocos de 64KB
+    while chunk := await file.read(1024 * 64):
         conteudo += chunk
         if len(conteudo) > MAX_XML_SIZE_BYTES:
             raise HTTPException(
@@ -30,31 +49,42 @@ async def validar_upload_xml(file: UploadFile) -> bytes:
                 detail=f"XML muito grande. Limite: {MAX_XML_SIZE_BYTES // (1024*1024)} MB",
             )
 
+    # Proteção adicional: limite de caracteres após decode
+    if len(conteudo) > MAX_XML_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail="XML excede limite seguro de processamento",
+        )
+
     if len(conteudo) == 0:
         raise HTTPException(status_code=400, detail="Arquivo vazio")
 
-    # Bloquear extensões executáveis
+    # --- Extensão ---
     filename = (file.filename or "").lower()
     if any(filename.endswith(ext) for ext in BLOCKED_EXTENSIONS):
         raise HTTPException(
             status_code=400,
             detail="Tipo de arquivo não permitido para upload",
         )
+    if not any(filename.endswith(ext) for ext in ALLOWED_EXTENSIONS):
+        raise HTTPException(
+            status_code=400,
+            detail="Extensão inválida. Apenas .xml é aceito.",
+        )
 
-    # Validação de tipo
+    # --- Content-Type obrigatório ---
     content_type = (file.content_type or "").lower().split(";")[0].strip()
-    if content_type and content_type not in ALLOWED_CONTENT_TYPES:
-        if not any(filename.endswith(ext) for ext in ALLOWED_EXTENSIONS):
-            raise HTTPException(
-                status_code=400,
-                detail="Tipo de documento inválido. Envie um arquivo XML.",
-            )
+    if not content_type or content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Content-Type inválido. Envie application/xml ou text/xml.",
+        )
 
-    # Proteção XXE: bloquear DOCTYPE e ENTITY
+    # --- Heurística XXE (camada complementar — defesa em profundidade) ---
     try:
-        texto = conteudo.decode("utf-8", errors="ignore").upper()
+        texto = unicodedata.normalize("NFKC", conteudo.decode("utf-8", errors="strict")).upper()
     except Exception:
-        raise HTTPException(status_code=400, detail="Conteúdo não é texto válido")
+        raise HTTPException(status_code=400, detail="Conteúdo inválido ou encoding suspeito")
 
     for padrao in XXE_BLOCKED_PATTERNS:
         if padrao.upper() in texto:
@@ -62,5 +92,25 @@ async def validar_upload_xml(file: UploadFile) -> bytes:
                 status_code=400,
                 detail="XML contém conteúdo potencialmente malicioso (XXE bloqueado)",
             )
+
+    # Remover BOM se existir
+    conteudo_limpo = conteudo.lstrip(b"\xef\xbb\xbf").lstrip()
+
+    # Validação estrutural mínima
+    inicio = conteudo_limpo[:20].upper()
+
+    if not (inicio.startswith(b"<?XML") or inicio.startswith(b"<NFE") or inicio.startswith(b"<")):
+        raise HTTPException(
+            status_code=400,
+            detail="Arquivo não parece ser um XML válido",
+        )
+
+    try:
+        ET.fromstring(conteudo_limpo)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="XML malformado ou inválido",
+        )
 
     return conteudo

@@ -1,10 +1,36 @@
+import os
+import uuid
+import logging
 from datetime import datetime, timedelta
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = "SUA_CHAVE_SUPER_SECRETA_AQUI"
+logger = logging.getLogger(__name__)
+
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower().strip()
+
+_secret = os.getenv("SECRET_KEY")
+
+if _ENVIRONMENT == "production":
+    if not _secret:
+        raise RuntimeError(
+            "SECRET_KEY não definida. "
+            "A aplicação não pode iniciar em produção sem esta variável."
+        )
+else:
+    if not _secret:
+        _secret = "dev-insecure-placeholder-DO-NOT-USE-IN-PROD"
+        logger.warning(
+            "SECRET_KEY não definida — usando chave de desenvolvimento. "
+            "NUNCA use isto em produção."
+        )
+
+SECRET_KEY: str = _secret
+del _secret
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
@@ -19,8 +45,15 @@ def verificar_senha(senha_plana, senha_hash):
 
 def criar_token(dados: dict):
     dados_copia = dados.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    dados_copia.update({"exp": expire})
+    agora = datetime.utcnow()
+    expire = agora + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
+    dados_copia.update({
+        "exp": expire,
+        "iat": agora,
+        "jti": str(uuid.uuid4())
+    })
+
     token = jwt.encode(dados_copia, SECRET_KEY, algorithm=ALGORITHM)
     return token
 
@@ -28,6 +61,11 @@ def criar_token(dados: dict):
 def verificar_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Validação mínima de integridade do token
+        if "jti" not in payload or "iat" not in payload:
+            return None
+
         return payload
     except JWTError:
         return None
@@ -55,6 +93,18 @@ def get_usuario_atual(token: str = Depends(oauth2_scheme), db: Session = Depends
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
 
     return usuario
+
+
+def require_role(*roles_permitidos: str):
+    """Factory de dependência FastAPI que restringe acesso por role."""
+    def _check(usuario: models.User = Depends(get_usuario_atual)):
+        if usuario.role not in roles_permitidos:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Acesso restrito a: {', '.join(roles_permitidos)}"
+            )
+        return usuario
+    return _check
 
 
 def verificar_acesso_relatorio(relatorio: "models.RelatorioAnalise", usuario: "models.User", db: Session) -> None:
@@ -88,3 +138,12 @@ def verificar_empresa_do_usuario(empresa_id: int | None, usuario: "models.User",
             detail="Acesso negado: empresa não pertence ao usuário"
         )
     return empresa
+
+
+def tenant_empresa(
+    empresa_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: "models.User" = Depends(get_usuario_atual),
+) -> "models.Empresa":
+    """Dependência FastAPI estrutural: valida ownership de empresa_id antes do handler."""
+    return verificar_empresa_do_usuario(empresa_id, usuario_atual, db)

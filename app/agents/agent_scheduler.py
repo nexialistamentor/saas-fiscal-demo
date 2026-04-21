@@ -1,7 +1,10 @@
 import asyncio
+import logging
 from datetime import datetime
 
 from app.agents.agent_executor import AgentExecutor
+
+logger = logging.getLogger(__name__)
 from app.services.analysis_orchestrator import analysis_cache
 from app.database import SessionLocal
 from app.services.insights_engine import InsightEngine
@@ -37,8 +40,7 @@ class AgentScheduler:
 
             resultados = await self.executor.run_all(context)
 
-            print("Ciclo executado:", datetime.utcnow().isoformat())
-            print(resultados)
+            logger.info("Ciclo executado: %s", datetime.utcnow().isoformat())
 
             salvar_snapshot_metricas(db)
             verificar_alertas_metricas()
@@ -56,10 +58,10 @@ class AgentScheduler:
         Executa ciclos do scheduler continuamente em intervalos definidos.
         Usado apenas para testes fora da API.
         """
-        print("Scheduler iniciado...")
+        logger.info("Scheduler iniciado...")
         while True:
             try:
                 await self.executar_ciclo(empresa_id)
             except Exception as e:
-                print("Erro no scheduler:", str(e))
+                logger.error("Erro no scheduler: %s", str(e))
             await asyncio.sleep(intervalo_segundos)

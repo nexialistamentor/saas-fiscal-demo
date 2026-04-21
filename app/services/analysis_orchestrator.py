@@ -9,6 +9,7 @@ import time
 from app.motor_fiscal import analisar_xml
 from app.services.engine_fallback_service import gerar_fallback
 from app.services.engine_registry import ENGINE_REGISTRY
+from app.services.context_flags_service import inferir_flags_xml
 
 logger = logging.getLogger(__name__)
 
@@ -419,10 +420,21 @@ def executar_analise_xml(xml_bytes: bytes) -> dict:
     insights = _gerar_insights_por_xml(dados_fiscais)
     previsao = _calcular_previsao_por_xml(dados_fiscais)
 
+    context_flags = inferir_flags_xml(dados_fiscais, previsao)
+    icms_st = _to_float(dados_fiscais.get("icms_st")) or 0
+    pot = float(previsao.get("potencial_recuperacao_nota") or 0)
+    decomposicao_impacto = {
+        "valor_recuperavel_real": round(icms_st, 2),
+        "valor_estimado": round(pot, 2),
+        "normalizacoes_aplicadas": 0,
+    }
+
     resultado = {
         "dados_fiscais": dados_fiscais,
         "insights": insights,
-        "previsao_recuperacao": previsao
+        "previsao_recuperacao": previsao,
+        "context_flags": context_flags,
+        "decomposicao_impacto": decomposicao_impacto,
     }
 
     return resultado

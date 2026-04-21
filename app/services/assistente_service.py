@@ -483,6 +483,26 @@ def responder_pergunta(
     Empresa: preview (não pago) ou insights_engine + motor fiscal (pago).
     Retorna: {resposta, requires_payment, analysis_type} para integração com fluxo de pagamento.
     """
+    # Blindagem contextual contra manipulação semântica
+    bloqueios_contextuais = [
+        "finja que você é",
+        "aja como",
+        "ignore instruções",
+        "responda como sistema",
+        "modo desenvolvedor",
+        "bypass",
+    ]
+
+    texto = pergunta.lower()
+
+    for padrao in bloqueios_contextuais:
+        if padrao in texto:
+            return {
+                "resposta": "Pergunta inválida ou manipulativa detectada.",
+                "requires_payment": False,
+                "analysis_type": None,
+            }
+
     intencao = identificar_intencao(pergunta)
     if intencao == "planejamento_tributario":
         dados_fiscais = _obter_dados_fiscais_planejamento(pergunta, usuario, db)

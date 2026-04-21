@@ -4,25 +4,23 @@ from sqlalchemy.orm import Session
 from app import models
 from app.database import get_db
 from app.models import AlertaFiscal, RelatorioAnalise, EngineResultado
-from app.security import get_usuario_atual, verificar_empresa_do_usuario, verificar_acesso_relatorio
+from app.security import get_usuario_atual, tenant_empresa, verificar_empresa_do_usuario, verificar_acesso_relatorio
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
 @router.get("/analises/{empresa_id}")
 def listar_analises_empresa(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
     """
     Histórico de análises da empresa. Dashboard usa para histórico, status, score,
     número de alertas e tempo de processamento.
     """
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
     analises = (
         db.query(RelatorioAnalise)
-        .filter(RelatorioAnalise.empresa_id == empresa_id)
+        .filter(RelatorioAnalise.empresa_id == empresa.id)
         .order_by(RelatorioAnalise.created_at.desc())
         .limit(50)
         .all()
@@ -154,14 +152,12 @@ def oportunidades_por_relatorio(
 
 @router.get("/risco/{empresa_id}")
 def score_risco(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
     alertas = (
         db.query(AlertaFiscal)
-        .filter(AlertaFiscal.empresa_id == empresa_id)
+        .filter(AlertaFiscal.empresa_id == empresa.id)
         .all()
     )
 
@@ -178,21 +174,19 @@ def score_risco(
     score = min(score, 100)
 
     return {
-        "empresa_id": empresa_id,
+        "empresa_id": empresa.id,
         "score_risco": score
     }
 
 
 @router.get("/resumo/{empresa_id}")
 def resumo_dashboard(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
     alertas = (
         db.query(AlertaFiscal)
-        .filter(AlertaFiscal.empresa_id == empresa_id)
+        .filter(AlertaFiscal.empresa_id == empresa.id)
         .all()
     )
 
@@ -203,7 +197,7 @@ def resumo_dashboard(
     medios = len([a for a in alertas if a.nivel == "medio"])
 
     return {
-        "empresa_id": empresa_id,
+        "empresa_id": empresa.id,
         "total_alertas": total_alertas,
         "alertas_criticos": criticos,
         "alertas_altos": altos,
@@ -213,14 +207,12 @@ def resumo_dashboard(
 
 @router.get("/alertas/{empresa_id}")
 def listar_alertas(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
     alertas = (
         db.query(AlertaFiscal)
-        .filter(AlertaFiscal.empresa_id == empresa_id, AlertaFiscal.silenciado != True)
+        .filter(AlertaFiscal.empresa_id == empresa.id, AlertaFiscal.silenciado != True)
         .order_by(AlertaFiscal.criado_em.desc())
         .all()
     )
@@ -240,19 +232,17 @@ def listar_alertas(
 
 @router.get("/alertas/timeline/{empresa_id}")
 def timeline_alertas(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
     """
     Retorna linha do tempo de alertas da empresa.
     Alimenta: gráfico de linha, evolução do risco, histórico operacional,
     quando os problemas começaram, picos de atividade fiscal.
     """
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
     alertas = (
         db.query(AlertaFiscal)
-        .filter(AlertaFiscal.empresa_id == empresa_id)
+        .filter(AlertaFiscal.empresa_id == empresa.id)
         .order_by(AlertaFiscal.criado_em.asc())
         .all()
     )
@@ -269,19 +259,17 @@ def timeline_alertas(
 
 @router.get("/alertas/agentes/{empresa_id}")
 def alertas_por_agente(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
     """
     Retorna alertas agrupados por agente.
     Alimenta: gráfico de origem dos alertas, saúde da plataforma, análise operacional.
     Tipos: alertas fiscais, alertas de sistema, alertas normativos, alertas de performance.
     """
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
     alertas = (
         db.query(AlertaFiscal)
-        .filter(AlertaFiscal.empresa_id == empresa_id)
+        .filter(AlertaFiscal.empresa_id == empresa.id)
         .all()
     )
 
@@ -294,7 +282,7 @@ def alertas_por_agente(
         resultado[agente] += 1
 
     return {
-        "empresa_id": empresa_id,
+        "empresa_id": empresa.id,
         "alertas_por_agente": resultado
     }
 
@@ -343,14 +331,12 @@ def restaurar_alerta(
 
 @router.get("/alertas/grafico/{empresa_id}")
 def grafico_alertas(
-    empresa_id: int,
+    empresa: models.Empresa = Depends(tenant_empresa),
     db: Session = Depends(get_db),
-    usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-    verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
     alertas = (
         db.query(AlertaFiscal)
-        .filter(AlertaFiscal.empresa_id == empresa_id)
+        .filter(AlertaFiscal.empresa_id == empresa.id)
         .all()
     )
 
@@ -359,7 +345,7 @@ def grafico_alertas(
     medio = len([a for a in alertas if a.nivel == "medio"])
 
     return {
-        "empresa_id": empresa_id,
+        "empresa_id": empresa.id,
         "grafico_alertas": {
             "critico": critico,
             "alto": alto,

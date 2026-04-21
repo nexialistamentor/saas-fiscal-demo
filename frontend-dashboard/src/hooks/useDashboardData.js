@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
-import { API_BASE, clearToken, getToken, isAuthenticated, isDemoSession } from "../config"
+import { API_BASE, clearToken, getToken, isAuthenticated } from "../config"
 
-export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
+export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5, enabled = false) {
   const [data, setData] = useState(null)
   const [historico, setHistorico] = useState([])
   const [tendencia, setTendencia] = useState(null)
@@ -22,31 +22,11 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
   }, [])
 
   useEffect(() => {
-    const token = getToken()
-    const sessionDemo = isDemoSession(token)
-
-    if (sessionDemo) {
-      setData({
-        restituicao_st: 280000,
-        risco_tributario_percentual: 12,
-        pontuacao_fiscal: 96,
-        impacto_financeiro_anual: 1680000,
-        estoque_fantasma: 0,
-        total_insights: 48,
-        consulta_paga: true
-      })
-      setHistorico([
-        { data_snapshot: "2025-11-01", score_global: 78, risco_tributario: 38, maturidade_tributaria: 72 },
-        { data_snapshot: "2025-12-01", score_global: 84, risco_tributario: 30, maturidade_tributaria: 79 },
-        { data_snapshot: "2026-01-01", score_global: 90, risco_tributario: 22, maturidade_tributaria: 87 },
-        { data_snapshot: "2026-02-01", score_global: 96, risco_tributario: 12, maturidade_tributaria: 93 }
-      ])
-      setTendencia({ tendencia: "melhoria_forte" })
-      setLoading(false)
-      return
-    }
-
     async function carregar() {
+      if (!enabled) {
+        setLoading(false)
+        return
+      }
       if (!isAuthenticated()) {
         setLoading(false)
         return
@@ -112,7 +92,7 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
 
     return () => clearInterval(intervalo)
 
-  }, [idPerfil, tipoPerfil, aplicarMapaOportunidades])
+  }, [idPerfil, tipoPerfil, enabled, aplicarMapaOportunidades])
 
   // Valores derivados dos campos da API (escalas 0-100, impactos corretos)
   const risco = data ? Math.min(100, data.risco_tributario_percentual ?? 0) : 0
@@ -122,6 +102,9 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
   const impacto =
     data?.impacto_financeiro_anual ?? 0
 
+  const decomposicaoImpacto = data?.decomposicao_impacto ?? null
+  const contextFlags = data?.context_flags ?? null
+
   return {
     data,
     historico,
@@ -130,6 +113,8 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5) {
     risco,
     pontuacao,
     impacto,
-    aplicarMapaOportunidades,
+    decomposicaoImpacto,
+    contextFlags,
+    aplicarMapaOportunidades
   }
 }

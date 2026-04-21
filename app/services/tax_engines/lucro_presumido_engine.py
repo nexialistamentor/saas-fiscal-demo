@@ -1,39 +1,6 @@
-from app.services.tax_engines.base_tax_engine import BaseTaxEngine
 from app.services.tax_engines.csll_engine import CSLLEngine
 from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
 from app.services.tax_engines.response_formatter import formatar_resposta_tributaria
-
-
-class LucroPresumidoEngine(BaseTaxEngine):
-    """
-    Engine de cálculo para regime de Lucro Presumido.
-    """
-
-    name = "lucro_presumido"
-
-    def execute(self, context: dict):
-        faturamento = context.get("faturamento", 0)
-        atividade = context.get("atividade", "comercio")
-
-        percentuais = {
-            "comercio": 0.08,
-            "industria": 0.08,
-            "servico": 0.32
-        }
-
-        base_irpj = faturamento * percentuais.get(atividade, 0.08)
-        irpj = base_irpj * 0.15
-
-        base_csll = faturamento * 0.12
-        csll = base_csll * 0.09
-
-        return {
-            "regime": "lucro_presumido",
-            "base_irpj": base_irpj,
-            "irpj": irpj,
-            "base_csll": base_csll,
-            "csll": csll
-        }
 
 
 def calcular_lucro_presumido(dados_fiscais: dict):

@@ -1,11 +1,24 @@
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from datetime import datetime
+
+from sqlalchemy.exc import IntegrityError
 
 from app.models import DocumentoFiscal, ItemFiscal
 from app.motor_fiscal import MotorFiscal, analisar_xml, carregar_mva
 from app.services.tax_consistency.tax_consistency_engine import TaxConsistencyEngine
 
 ALIQUOTA_ICMS_PADRAO = 18.0
+
+
+class DuplicataFiscalError(Exception):
+    """Documento fiscal com mesma chave_nfe já existe para esta empresa."""
+
+    def __init__(self, chave_nfe: str, documento_id: int):
+        self.chave_nfe = chave_nfe
+        self.documento_id = documento_id
+        super().__init__(
+            f"Documento duplicado: chave_nfe={chave_nfe}, documento_id={documento_id}"
+        )
 
 
 def _extrair_texto(elemento, tag, ns):
@@ -138,8 +151,6 @@ def ler_xml_unico(caminho_xml: str = None, xml_bytes: bytes = None):
         "uf_dest": uf_dest,
         "itens": itens,
     }
-    
-    
     return resultado
 
 
@@ -248,7 +259,24 @@ def processar_e_persistir_xml(db, usuario_atual, empresa, xml_bytes: bytes, dado
 def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
     from app import models
 
-    # 1️⃣ Criar documento
+    # ── Guard de deduplicação por chave_nfe ──────────────────────────────
+    chave_nfe = dados.get("chave_nfe")
+    if chave_nfe and chave_nfe.strip():
+        existente = (
+            db.query(models.DocumentoFiscal)
+            .filter(
+                models.DocumentoFiscal.empresa_id == empresa.id,
+                models.DocumentoFiscal.chave_nfe == chave_nfe.strip(),
+            )
+            .first()
+        )
+        if existente:
+            raise DuplicataFiscalError(
+                chave_nfe=chave_nfe.strip(),
+                documento_id=existente.id,
+            )
+
+    # ── Criar documento ──────────────────────────────────────────────────
     mva = dados.get("mva_utilizada")
     if mva is not None and isinstance(mva, str):
         try:
@@ -261,7 +289,7 @@ def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
     documento = models.DocumentoFiscal(
         usuario_id=usuario_atual.id,
         empresa_id=empresa.id,
-        chave_nfe=dados.get("chave_nfe"),
+        chave_nfe=chave_nfe.strip() if chave_nfe else chave_nfe,
         numero_nota=dados.get("numero_nota"),
         data_emissao=data_emissao,
         tipo=dados.get("tipo"),
@@ -271,10 +299,27 @@ def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
         uf_dest=dados.get("uf_dest"),
     )
 
-    db.add(documento)
-    db.flush()  # garante que documento.id já exista
+    # Captura IntegrityError para quando a constraint
+    # UNIQUE(empresa_id, chave_nfe) existir no banco (Fase 3).
+    try:
+        db.add(documento)
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        existente = (
+            db.query(models.DocumentoFiscal)
+            .filter(
+                models.DocumentoFiscal.empresa_id == empresa.id,
+                models.DocumentoFiscal.chave_nfe == (chave_nfe.strip() if chave_nfe else chave_nfe),
+            )
+            .first()
+        )
+        raise DuplicataFiscalError(
+            chave_nfe=chave_nfe or "",
+            documento_id=existente.id if existente else 0,
+        )
 
-    # 2️⃣ Inserir itens
+    # ── Inserir itens ────────────────────────────────────────────────────
     for item_data in dados.get("itens", []):
         item = models.ItemFiscal(
             documento_id=documento.id,
@@ -289,7 +334,6 @@ def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
         )
         db.add(item)
 
-    # 3️⃣ Commit único
     db.commit()
 
     return documento
