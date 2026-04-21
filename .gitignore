@@ -43,3 +43,4 @@ venv311/
 # temporários
 tmp-browser/
 teste_*.xml
+*.png

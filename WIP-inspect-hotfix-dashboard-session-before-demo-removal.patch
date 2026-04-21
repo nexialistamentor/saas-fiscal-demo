@@ -1,0 +1,661 @@
+﻿diff --git a/app/services/assistente_service.py b/app/services/assistente_service.py
+index deb4f59..8b9d946 100644
+--- a/app/services/assistente_service.py
++++ b/app/services/assistente_service.py
+@@ -127,6 +127,15 @@ def _fmt_br(valor: float, decimais: int = 2) -> str:
+     return f"{int_fmt},{dec_part}" if decimais else int_fmt
+ 
+ 
++def _texto_com_explicacao_motor(resultado: dict, resposta_fallback: str) -> str:
++    """
++    Prioriza a narrativa gerada pelo motor (explicacao_resumida) quando existir;
++    mant├®m o texto legado como fallback para motores ainda sem explica├º├úo estruturada.
++    """
++    expl = (resultado.get("explicacao_resumida") or "").strip()
++    return expl if expl else resposta_fallback
++
++
+ def _resposta_assistente_mei(pergunta: str) -> dict:
+     """MEI via MEITaxEngine (mesmo fluxo do orquestrador L2)."""
+     faturamento = extrair_faturamento(pergunta) or 5000
+@@ -148,10 +157,11 @@ def _resposta_assistente_mei(pergunta: str) -> dict:
+     tributos = resultado.get("tributos", {})
+     das = tributos.get("das", 0)
+ 
+-    resposta = (
++    resposta_fallback = (
+         f"Como MEI, com faturamento de R$ {_fmt_br(faturamento)} por m├¬s, "
+         f"o DAS mensal ├® de aproximadamente R$ {_fmt_br(das)}."
+     )
++    resposta = _texto_com_explicacao_motor(resultado, resposta_fallback)
+ 
+     for a in resultado.get("alertas", []):
+         resposta += f"\n\nÔÇó {a}"
+@@ -359,11 +369,12 @@ def responder_cpf(pergunta: str) -> dict:
+ 
+     tributos = resultado.get("tributos") or {}
+     imposto = float(tributos.get("imposto") or 0)
+-    resposta_texto = (
++    resposta_fallback = (
+         f"Como aut├┤nomo (CPF), com faturamento de R$ {_fmt_br(faturamento)} por m├¬s, "
+         f"o imposto estimado seria cerca de R$ {_fmt_br(imposto)} "
+         f"(conforme motor de an├ílise tribut├íria para CPF)."
+     )
++    resposta_texto = _texto_com_explicacao_motor(resultado, resposta_fallback)
+     for a in resultado.get("alertas") or []:
+         resposta_texto += f"\n\nÔÇó {a}"
+     return {
+diff --git a/app/services/cpf_dashboard_service.py b/app/services/cpf_dashboard_service.py
+index d716589..2eeb36a 100644
+--- a/app/services/cpf_dashboard_service.py
++++ b/app/services/cpf_dashboard_service.py
+@@ -28,4 +28,7 @@ class CPFDashboardService:
+             "imposto_mensal": imposto_mensal,
+             "imposto_anual": imposto_mensal * 12,
+             "alertas": resultado.get("alertas", []),
++            "explicacao_resumida": resultado.get("explicacao_resumida"),
++            "explicabilidade": resultado.get("explicabilidade"),
++            "bases_calculo": resultado.get("bases_calculo"),
+         }
+diff --git a/app/services/tax_engines/cpf_tax_engine.py b/app/services/tax_engines/cpf_tax_engine.py
+index e2e1ea4..df093e1 100644
+--- a/app/services/tax_engines/cpf_tax_engine.py
++++ b/app/services/tax_engines/cpf_tax_engine.py
+@@ -13,27 +13,172 @@ class CPFTaxEngine(BaseTaxEngine):
+ 
+     name = "cpf_tax"
+ 
++    def _build_explicacoes(
++        self,
++        *,
++        faturamento: float,
++        inss_pago: float,
++        metodo_deducao: str,
++        base_calculo: float,
++        aliquota_nominal: float,
++        parcela_deduzir: float,
++        imposto: float,
++        aliquota_efetiva: float,
++        explicabilidade: dict,
++    ) -> dict:
++        explicacao_resumida = (
++            f"C├ílculo de imposto de renda para aut├┤nomo (CPF) com base na tabela progressiva do IRPF 2025. "
++            f"Com faturamento mensal de R$ {faturamento:.2f}, INSS de R$ {inss_pago:.2f} "
++            f"e dedu├º├úo por {metodo_deducao.replace('_', ' ')}, "
++            f"a base de c├ílculo do imposto de renda foi R$ {base_calculo:.2f}. "
++            f"Aplicou-se a al├¡quota de {aliquota_nominal*100:.1f}% "
++            f"(com parcela a deduzir de R$ {parcela_deduzir:.2f}), "
++            f"resultando em um imposto mensal de R$ {imposto:.2f}. "
++            f"A al├¡quota efetiva foi de {aliquota_efetiva:.2f}%. "
++            f"Este c├ílculo considera regras atuais do IRPF para profissionais aut├┤nomos."
++        )
++
++        explicacao_tecnica = (
++            f"Motor cpf_tax. M├®todo de dedu├º├úo: {metodo_deducao}. "
++            f"Base de c├ílculo: R$ {base_calculo:.2f}. "
++            f"Al├¡quota nominal: {aliquota_nominal*100:.1f}%. "
++            f"Parcela a deduzir: R$ {parcela_deduzir:.2f}. "
++            f"Imposto apurado: R$ {imposto:.2f}."
++        )
++
++        explicabilidade["resumo"] = explicacao_resumida
++        explicabilidade["resumo_tecnico"] = explicacao_tecnica
++
++        return {
++            "explicacao_resumida": explicacao_resumida,
++            "explicacao_tecnica": explicacao_tecnica,
++            "explicabilidade": explicabilidade,
++        }
++
+     def execute(self, context: dict):
+         faturamento = float(context.get("faturamento", 0))
+         despesas = float(context.get("despesas", 0))
++        inss_pago = float(context.get("inss_pago", 0))
+ 
+-        base_calculo = max(0, faturamento - despesas)
++        base_bruta = max(0, faturamento - inss_pago)
++        desconto_simplificado = min(base_bruta * 0.20, 1396.19)
++        base_real = max(0, base_bruta - despesas)
++        base_simplificada = max(0, base_bruta - desconto_simplificado)
++
++        if base_real <= base_simplificada:
++            base_calculo = base_real
++            metodo_deducao = "despesas_reais"
++            valor_deducao = despesas
++        else:
++            base_calculo = base_simplificada
++            metodo_deducao = "desconto_simplificado"
++            valor_deducao = desconto_simplificado
++
++        faixas = [
++            (2259.20, 0.00, 0.00),
++            (2826.65, 0.075, 169.44),
++            (3751.05, 0.15, 381.44),
++            (4664.68, 0.225, 662.77),
++            (float("inf"), 0.275, 896.00),
++        ]
++
++        aliquota_nominal = 0.0
++        parcela_deduzir = 0.0
++        for limite, aliquota, deducao in faixas:
++            if base_calculo <= limite:
++                aliquota_nominal = aliquota
++                parcela_deduzir = deducao
++                break
++
++        imposto = max(0, round((base_calculo * aliquota_nominal) - parcela_deduzir, 2))
++        aliquota_efetiva = round((imposto / base_calculo) * 100, 4) if base_calculo > 0 else 0.0
++
++        # Camada de explicabilidade (narrativa/estrutura; o c├ílculo permanece acima).
++        explicabilidade = {
++            "motor": "cpf_tax",
++            "passos": [
++                {
++                    "id": "entradas",
++                    "rotulo": "Dados informados",
++                    "valores": {
++                        "faturamento": faturamento,
++                        "despesas": despesas,
++                        "inss_pago": inss_pago,
++                    },
++                },
++                {
++                    "id": "bases_pre_ir",
++                    "rotulo": "Bases antes da escolha do m├®todo de dedu├º├úo",
++                    "valores": {
++                        "base_bruta": base_bruta,
++                        "base_real": base_real,
++                        "base_simplificada": base_simplificada,
++                        "desconto_simplificado": desconto_simplificado,
++                    },
++                },
++                {
++                    "id": "metodo_deducao",
++                    "rotulo": "M├®todo de dedu├º├úo aplicado",
++                    "valores": {
++                        "metodo_deducao": metodo_deducao,
++                        "valor_deducao_aplicado": round(valor_deducao, 2),
++                        "base_calculo": base_calculo,
++                    },
++                },
++                {
++                    "id": "tabela_progressiva",
++                    "rotulo": "Faixa da tabela progressiva (IRPF mensal)",
++                    "valores": {
++                        "aliquota_nominal": aliquota_nominal,
++                        "parcela_deduzir": parcela_deduzir,
++                    },
++                },
++                {
++                    "id": "resultado",
++                    "rotulo": "Imposto devido e al├¡quota efetiva",
++                    "valores": {
++                        "imposto": imposto,
++                        "aliquota_efetiva_percentual": aliquota_efetiva,
++                    },
++                },
++            ],
++        }
+ 
+-        # REGRA TEMPOR├üRIA (substituir depois por IRPF real)
+-        aliquota = 0.06
+-        imposto = round(base_calculo * aliquota, 2)
++        explicacoes = self._build_explicacoes(
++            faturamento=faturamento,
++            inss_pago=inss_pago,
++            metodo_deducao=metodo_deducao,
++            base_calculo=base_calculo,
++            aliquota_nominal=aliquota_nominal,
++            parcela_deduzir=parcela_deduzir,
++            imposto=imposto,
++            aliquota_efetiva=aliquota_efetiva,
++            explicabilidade=explicabilidade,
++        )
+ 
+         return {
+-            "regime": "cpf_autonomo",
++            "regime": "cpf_autonomo_irpf_mensal",
+             "tributos": {
+                 "imposto": imposto
+             },
++            "explicacao_resumida": explicacoes["explicacao_resumida"],
++            "explicabilidade": explicacoes["explicabilidade"],
+             "bases_calculo": {
+                 "faturamento": faturamento,
++                "inss_pago": inss_pago,
+                 "despesas": despesas,
+-                "base_calculo": base_calculo
++                "base_bruta": base_bruta,
++                "base_real": base_real,
++                "base_simplificada": base_simplificada,
++                "base_calculo": base_calculo,
++                "metodo_deducao": metodo_deducao,
++                "valor_deducao_aplicado": round(valor_deducao, 2),
++                "aliquota_nominal": aliquota_nominal,
++                "aliquota_efetiva_percentual": aliquota_efetiva,
++                "parcela_deduzir": parcela_deduzir,
+             },
+             "alertas": [
+-                "C├ílculo simplificado (6%) ÔÇö motor IRPF ainda n├úo implementado"
++                "C├ílculo mensal baseado na tabela progressiva do IRPF 2025",
++                "INSS n├úo ├® calculado pelo motor; apenas deduzido quando informado em 'inss_pago'",
+             ]
+         }
+diff --git a/frontend-dashboard/src/App.css b/frontend-dashboard/src/App.css
+index 99bb8f4..117d408 100644
+--- a/frontend-dashboard/src/App.css
++++ b/frontend-dashboard/src/App.css
+@@ -420,3 +420,152 @@ body{
+   border-left:4px solid #1e88e5;
+   background:rgba(30,136,229,0.08);
+ }
++
++/* CPF: narrativa (valor percebido) + detalhes opcionais */
++.cpf-narrativa{
++  margin-bottom:24px;
++  border:1px solid #e2e8f0;
++  border-left:4px solid #1e3a8a;
++  background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
++}
++
++.cpf-narrativa-top{
++  margin-bottom:16px;
++}
++
++.cpf-narrativa-badge{
++  display:inline-block;
++  font-size:11px;
++  font-weight:600;
++  letter-spacing:0.06em;
++  text-transform:uppercase;
++  color:#1e40af;
++  background:rgba(30,64,175,0.1);
++  padding:4px 10px;
++  border-radius:999px;
++  margin-bottom:10px;
++}
++
++.cpf-narrativa h3{
++  margin:0 0 6px;
++  font-size:1.35rem;
++  color:#0f172a;
++  letter-spacing:-0.02em;
++}
++
++.cpf-narrativa-sub{
++  margin:0;
++  font-size:14px;
++  color:#64748b;
++  line-height:1.45;
++}
++
++.cpf-narrativa-texto{
++  margin:0 0 20px;
++  font-size:16px;
++  line-height:1.65;
++  color:#334155;
++}
++
++.cpf-narrativa-destaques{
++  list-style:none;
++  margin:0 0 20px;
++  padding:0;
++  display:grid;
++  gap:12px;
++  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
++}
++
++.cpf-narrativa-destaques li{
++  background:#fff;
++  border:1px solid #e2e8f0;
++  border-radius:12px;
++  padding:12px 14px;
++  box-shadow:0 1px 3px rgba(15,23,42,0.06);
++}
++
++.cpf-narrativa-destaques strong{
++  display:block;
++  font-size:12px;
++  font-weight:600;
++  text-transform:uppercase;
++  letter-spacing:0.04em;
++  color:#64748b;
++  margin-bottom:4px;
++}
++
++.cpf-narrativa-destaques span{
++  font-size:17px;
++  font-weight:600;
++  color:#0f172a;
++  font-variant-numeric:tabular-nums;
++}
++
++.cpf-detalhes{
++  margin-top:12px;
++  border-top:1px solid #e2e8f0;
++  padding-top:12px;
++}
++
++.cpf-detalhes summary{
++  cursor:pointer;
++  font-weight:600;
++  font-size:14px;
++  color:#1e3a8a;
++  padding:6px 0;
++}
++
++.cpf-detalhes summary:hover{
++  color:#172554;
++}
++
++.cpf-detalhes-corpo{
++  margin:10px 0 0;
++  font-size:13px;
++  line-height:1.55;
++  color:#475569;
++}
++
++.cpf-passos-lista{
++  margin:12px 0 0;
++  padding-left:1.2rem;
++  font-size:14px;
++  color:#334155;
++}
++
++.cpf-passos-rotulo{
++  font-weight:600;
++  color:#0f172a;
++}
++
++.cpf-passos-valores{
++  margin:8px 0 0;
++  padding:10px 12px;
++  background:#f1f5f9;
++  border-radius:8px;
++  font-size:13px;
++}
++
++.cpf-passos-par{
++  display:grid;
++  grid-template-columns:1fr auto;
++  gap:8px 16px;
++  padding:4px 0;
++  border-bottom:1px solid #e2e8f0;
++}
++
++.cpf-passos-par:last-child{
++  border-bottom:none;
++}
++
++.cpf-passos-par dt{
++  margin:0;
++  color:#64748b;
++}
++
++.cpf-passos-par dd{
++  margin:0;
++  text-align:right;
++  font-variant-numeric:tabular-nums;
++  color:#0f172a;
++}
+diff --git a/frontend-dashboard/src/App.jsx b/frontend-dashboard/src/App.jsx
+index e4dd971..180efe1 100644
+--- a/frontend-dashboard/src/App.jsx
++++ b/frontend-dashboard/src/App.jsx
+@@ -32,6 +32,32 @@ const dadosNCM = [
+   { nome: "9403", valor: 20 }
+ ]
+ 
++function rotuloChavePassoCpf(chave) {
++  return String(chave)
++    .split("_")
++    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
++    .join(" ")
++}
++
++function formatarValorPassoCpf(chave, valor) {
++  if (valor == null) return "ÔÇö"
++  if (typeof valor === "boolean") return valor ? "Sim" : "N├úo"
++  if (typeof valor === "string") {
++    return valor.replace(/_/g, " ")
++  }
++  if (typeof valor === "number") {
++    const k = String(chave).toLowerCase()
++    if (k === "aliquota_nominal") {
++      return `${(valor * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
++    }
++    if (k.includes("percent") || k.includes("aliquota_efetiva")) {
++      return `${valor.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}%`
++    }
++    return `R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
++  }
++  return String(valor)
++}
++
+ function App() {
+   const [email, setEmail] = useState("")
+   const [password, setPassword] = useState("")
+@@ -162,6 +188,15 @@ function App() {
+             plano_id: 3,
+             consulta_paga: true
+           })
++
++          const perfilDemo = {
++            tipo: "empresa",
++            id: 1,
++            nome: "Empresa Demo"
++          }
++          perfilEmpresaApiRef.current = perfilDemo
++          setPerfilAtual(perfilDemo)
++
+           setVerificandoSessao(false)
+           return
+         }
+@@ -354,45 +389,56 @@ function App() {
+   async function enviarXML(files) {
+     const listaArquivos = Array.isArray(files) ? files.filter(Boolean) : [files].filter(Boolean)
+     for (const file of listaArquivos) {
+-      const formData = new FormData()
+-      formData.append("file", file)
+-      formData.append("empresa_id", idPerfil)
+-      const resp = await fetch(`${API_BASE}/fiscal/analisar-xml?empresa_id=${idPerfil}`, {
+-        method: "POST",
+-        headers: {
+-          Authorization: `Bearer ${getToken()}`
+-        },
+-        body: formData
+-      })
+-      const data = await resp.json()
+-      if (data.status === "finished" && data.result?.relatorio_id != null) {
+-        setResultadoXML({
+-          relatorio_id: data.result.relatorio_id,
+-          tem_resultado: data.result.tem_resultado,
+-          carregado: false
++      try {
++        console.log("UPLOAD START", {
++          API_BASE,
++          idPerfil,
++          token: getToken(),
++          file
+         })
+-        continue
+-      }
+-      if (data.job_id) {
+-        await new Promise((resolve) => {
+-          const intervalo = setInterval(async () => {
+-            const statusResp = await fetch(`${API_BASE}/fiscal/analise/status/${data.job_id}`, {
+-              headers: {
+-                Authorization: `Bearer ${getToken()}`
+-              }
+-            })
+-            const statusData = await statusResp.json()
+-            if (statusData.status === "finished") {
+-              clearInterval(intervalo)
+-              setResultadoXML({
+-                relatorio_id: statusData.result?.relatorio_id,
+-                tem_resultado: statusData.result?.tem_resultado,
+-                carregado: false
+-              })
+-              resolve()
+-            }
+-          }, 2000)
++        const formData = new FormData()
++        formData.append("file", file)
++        formData.append("empresa_id", idPerfil)
++        const resp = await fetch(`${API_BASE}/fiscal/analisar-xml?empresa_id=${idPerfil}`, {
++          method: "POST",
++          headers: {
++            Authorization: `Bearer ${getToken()}`
++          },
++          body: formData
+         })
++        console.log("UPLOAD RESPONSE", resp)
++        const data = await resp.json()
++        if (data.status === "finished" && data.result?.relatorio_id != null) {
++          setResultadoXML({
++            relatorio_id: data.result.relatorio_id,
++            tem_resultado: data.result.tem_resultado,
++            carregado: false
++          })
++          continue
++        }
++        if (data.job_id) {
++          await new Promise((resolve) => {
++            const intervalo = setInterval(async () => {
++              const statusResp = await fetch(`${API_BASE}/fiscal/analise/status/${data.job_id}`, {
++                headers: {
++                  Authorization: `Bearer ${getToken()}`
++                }
++              })
++              const statusData = await statusResp.json()
++              if (statusData.status === "finished") {
++                clearInterval(intervalo)
++                setResultadoXML({
++                  relatorio_id: statusData.result?.relatorio_id,
++                  tem_resultado: statusData.result?.tem_resultado,
++                  carregado: false
++                })
++                resolve()
++              }
++            }, 2000)
++          })
++        }
++      } catch (err) {
++        console.error("ERRO UPLOAD XML:", err)
+       }
+     }
+     setTimeout(() => {
+@@ -446,7 +492,10 @@ function App() {
+         ))}
+       </div>
+       {podeUploadXML && (
+-        <input  type="file"  accept=".xml"  multiple  onChange={(e) => enviarXML(Array.from(e.target.files ?? []))}/>
++        <input  type="file"  accept=".xml"  multiple  onChange={(e) => {
++          console.log("INPUT CHANGE DISPAROU", e.target.files)
++          enviarXML(Array.from(e.target.files ?? []))
++        }}/>
+       )}
+ 
+       {!podeUploadXML && (
+@@ -539,10 +588,83 @@ function App() {
+             <strong className="card-valor-impacto">
+               R$ {(impacto ?? 0).toLocaleString("pt-BR")}
+             </strong>
+-            <p className="card-sub">Valor recuper├ível estimado no ano</p>
++            <p className="card-sub">
++              {perfilAtual.tipo === "cpf"
++                ? "Estimativa anual de IR (aut├┤nomo), alinhada ao motor de simula├º├úo"
++                : "Valor recuper├ível estimado no ano"}
++            </p>
+           </article>
+         </section>
+ 
++        {perfilAtual.tipo === "cpf" && data?.cpf_explicacao_resumida && (
++          <section className="cpf-narrativa card" aria-labelledby="cpf-narrativa-titulo">
++            <div className="cpf-narrativa-top">
++              <span className="cpf-narrativa-badge">Leitura estrat├®gica</span>
++              <h3 id="cpf-narrativa-titulo">O que este n├║mero significa para voc├¬</h3>
++              <p className="cpf-narrativa-sub">
++                Resumo em linguagem clara ÔÇö antes dos detalhes t├®cnicos que o contador aprofunda.
++              </p>
++            </div>
++            <p className="cpf-narrativa-texto">{data.cpf_explicacao_resumida}</p>
++            {data.cpf_bases_calculo?.metodo_deducao != null && (
++              <ul className="cpf-narrativa-destaques">
++                <li>
++                  <strong>M├®todo de dedu├º├úo aplicado</strong>
++                  <span>
++                    {String(data.cpf_bases_calculo.metodo_deducao).replace(/_/g, " ")}
++                  </span>
++                </li>
++                <li>
++                  <strong>Imposto mensal estimado</strong>
++                  <span>
++                    R${" "}
++                    {(data.cpf_imposto_mensal ??
++                      (data.impacto_financeiro_anual ?? 0) / 12
++                    ).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
++                  </span>
++                </li>
++                <li>
++                  <strong>Al├¡quota efetiva</strong>
++                  <span>
++                    {data.cpf_bases_calculo?.aliquota_efetiva_percentual != null
++                      ? `${Number(data.cpf_bases_calculo.aliquota_efetiva_percentual).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
++                      : "ÔÇö"}
++                  </span>
++                </li>
++              </ul>
++            )}
++            {data.cpf_explicabilidade?.resumo_tecnico && (
++              <details className="cpf-detalhes">
++                <summary>Detalhes t├®cnicos do motor</summary>
++                <p className="cpf-detalhes-corpo">{data.cpf_explicabilidade.resumo_tecnico}</p>
++              </details>
++            )}
++            {Array.isArray(data.cpf_explicabilidade?.passos) &&
++              data.cpf_explicabilidade.passos.length > 0 && (
++                <details className="cpf-detalhes">
++                  <summary>Passo a passo do c├ílculo</summary>
++                  <ol className="cpf-passos-lista">
++                    {data.cpf_explicabilidade.passos.map((passo) => (
++                      <li key={passo.id ?? passo.rotulo}>
++                        <span className="cpf-passos-rotulo">{passo.rotulo}</span>
++                        {passo.valores && typeof passo.valores === "object" && (
++                          <dl className="cpf-passos-valores">
++                            {Object.entries(passo.valores).map(([k, v]) => (
++                              <div key={k} className="cpf-passos-par">
++                                <dt>{rotuloChavePassoCpf(k)}</dt>
++                                <dd>{formatarValorPassoCpf(k, v)}</dd>
++                              </div>
++                            ))}
++                          </dl>
++                        )}
++                      </li>
++                    ))}
++                  </ol>
++                </details>
++              )}
++          </section>
++        )}
++
+         <section className="cards-grid">
+           {cardsDashboard.map((card) => (
+             <article
+diff --git a/frontend-dashboard/src/hooks/useDashboardData.js b/frontend-dashboard/src/hooks/useDashboardData.js
+index 83ae5ff..6eb621c 100644
+--- a/frontend-dashboard/src/hooks/useDashboardData.js
++++ b/frontend-dashboard/src/hooks/useDashboardData.js
+@@ -50,7 +50,11 @@ export default function useDashboardData(tipoPerfil = "empresa", idPerfil = 5, c
+           pontuacao_fiscal: 70,
+           risco_tributario_percentual: 30,
+           total_insights: json.alertas?.length || 0,
+-          consulta_paga: true
++          consulta_paga: true,
++          cpf_explicacao_resumida: json.explicacao_resumida ?? null,
++          cpf_explicabilidade: json.explicabilidade ?? null,
++          cpf_bases_calculo: json.bases_calculo ?? null,
++          cpf_imposto_mensal: json.imposto_mensal ?? null,
+         })
+         setHistorico([])
+         setTendencia({ tendencia: "insuficiente" })
