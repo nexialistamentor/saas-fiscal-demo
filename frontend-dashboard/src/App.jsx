@@ -634,11 +634,17 @@ function App() {
 
         <section className="impacto-hero">
           <article className="card card-impacto">
-            <span className="card-label">Impacto Financeiro Anual</span>
+            <span className="card-label">
+              {tipoPerfil === "mei" ? "DAS Estimado Anual" : "Impacto Financeiro Anual"}
+            </span>
             <strong className="card-valor-impacto">
               R$ {(impacto ?? 0).toLocaleString("pt-BR")}
             </strong>
-            <p className="card-sub">Valor recuperável estimado no ano</p>
+            <p className="card-sub">
+              {tipoPerfil === "mei"
+                ? "Imposto mensal estimado × 12"
+                : "Valor recuperável estimado no ano"}
+            </p>
           </article>
         </section>
 
