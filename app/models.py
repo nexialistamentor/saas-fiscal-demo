@@ -41,6 +41,7 @@ class User(Base):
     plano_id = Column(Integer, ForeignKey("planos.id"), nullable=True)
     consulta_paga = Column(Boolean, default=False, nullable=False)
     role = Column(String(20), nullable=False, default="user", server_default="user", index=True)
+    cpf = Column(String(11), nullable=True, unique=True, index=True)
 
     plano = relationship("Plano", back_populates="usuarios")
     empresas = relationship("Empresa", back_populates="owner")

@@ -58,11 +58,18 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
     db.refresh(new_user)
 
     empresa_id = None
-    if user.nome and len(user.nome.strip()) > 3:
+
+    if user.tipo_usuario == "cpf":
+        if user.documento:
+            new_user.cpf = user.documento.strip()
+            db.commit()
+            db.refresh(new_user)
+    else:
+        regime = "mei" if user.tipo_usuario == "mei" else "simples"
         emp = models.Empresa(
-            razao_social=user.nome.strip(),
-            regime_tributario="mei",
-            cnpj=None,
+            razao_social=user.nome.strip() if user.nome else None,
+            regime_tributario=regime,
+            cnpj=user.documento.strip() if user.documento else None,
             user_id=new_user.id,
         )
         db.add(emp)

@@ -43,6 +43,8 @@ function App() {
   const [nomeRegisto, setNomeRegisto] = useState("")
   const [emailRegisto, setEmailRegisto] = useState("")
   const [passwordRegisto, setPasswordRegisto] = useState("")
+  const [tipoRegisto, setTipoRegisto] = useState("mei")
+  const [documentoRegisto, setDocumentoRegisto] = useState("")
   const [erroRegisto, setErroRegisto] = useState(null)
   const [sucessoRegisto, setSucessoRegisto] = useState(false)
 
@@ -170,7 +172,9 @@ function App() {
         body: JSON.stringify({
           email: emailRegisto,
           password: passwordRegisto,
-          nome: nomeRegisto
+          nome: nomeRegisto,
+          tipo_usuario: tipoRegisto,
+          documento: documentoRegisto || null
         })
       })
 
@@ -327,11 +331,41 @@ function App() {
             <h2>Criar conta</h2>
 
             <form onSubmit={handleRegisto}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                {["cpf", "mei", "empresa"].map((tipo) => (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => { setTipoRegisto(tipo); setDocumentoRegisto("") }}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 4,
+                      border: "1px solid #ccc",
+                      background: tipoRegisto === tipo ? "#1e3a8a" : "#fff",
+                      color: tipoRegisto === tipo ? "#fff" : "#333",
+                      cursor: "pointer",
+                      fontWeight: tipoRegisto === tipo ? "bold" : "normal"
+                    }}
+                  >
+                    {tipo.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+
+              {tipoRegisto !== "cpf" && (
+                <input
+                  type="text"
+                  placeholder="Nome da empresa"
+                  value={nomeRegisto}
+                  onChange={(e) => setNomeRegisto(e.target.value)}
+                />
+              )}
+
               <input
                 type="text"
-                placeholder="nome da empresa ou MEI"
-                value={nomeRegisto}
-                onChange={(e) => setNomeRegisto(e.target.value)}
+                placeholder={tipoRegisto === "cpf" ? "CPF (somente números)" : "CNPJ (somente números)"}
+                value={documentoRegisto}
+                onChange={(e) => setDocumentoRegisto(e.target.value)}
               />
 
               <input

@@ -1,5 +1,7 @@
 import unicodedata
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
@@ -7,6 +9,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=64)
     nome: str | None = Field(default=None, max_length=100)
+    tipo_usuario: Literal["cpf", "mei", "empresa"] = Field(default="mei")
+    documento: str | None = Field(default=None, max_length=20)
 
     @field_validator("nome")
     @classmethod
