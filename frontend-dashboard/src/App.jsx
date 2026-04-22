@@ -32,6 +32,14 @@ const dadosNCM = [
   { nome: "9403", valor: 20 }
 ]
 
+const TIPOS_RENDIMENTO_OPTS = [
+  { id: "salario", label: "Salário" },
+  { id: "autonomo", label: "Autônomo" },
+  { id: "aluguel", label: "Aluguel" },
+  { id: "investimento", label: "Investimento" },
+  { id: "outro", label: "Outro" }
+]
+
 function App() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -119,6 +127,19 @@ function App() {
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutErro, setCheckoutErro] = useState(null)
   const [resultadoXML, setResultadoXML] = useState(null)
+
+  const [uploadRendimentoResposta, setUploadRendimentoResposta] = useState(null)
+  const [formRendimento, setFormRendimento] = useState({
+    tipo_rendimento: "salario",
+    descricao: "",
+    valor: "",
+    ano_referencia: new Date().getFullYear(),
+    mes_referencia: new Date().getMonth() + 1,
+    fonte_pagadora: "",
+  })
+  const [rendimentoEnviando, setRendimentoEnviando] = useState(false)
+  const [rendimentoConfirmado, setRendimentoConfirmado] = useState(null)
+  const [rendimentoErro, setRendimentoErro] = useState(null)
 
   async function iniciarCheckout(e) {
     e.preventDefault()
@@ -272,12 +293,13 @@ function App() {
       ]
 
   useEffect(() => {
+    if (tipoPerfil === "cpf") return
     if (!data?.consulta_paga) return
     if (!resultadoXML?.relatorio_id) return
     if (resultadoXML?.carregado) return
 
     carregarRelatorioSeguro(resultadoXML.relatorio_id)
-  }, [data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
+  }, [tipoPerfil, data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
 
   if (verificandoSessao) {
     return <p style={{ padding: 40 }}>Validando sessão...</p>
@@ -543,6 +565,82 @@ function App() {
     }, 500)
   }
 
+  async function enviarDocumentoRendimento(file) {
+    if (!file) return
+    setRendimentoErro(null)
+    setRendimentoConfirmado(null)
+    const formData = new FormData()
+    formData.append("file", file)
+    const resp = await fetch(`${API_BASE}/cpf/documentos/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken()}` },
+      body: formData
+    })
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}))
+      setRendimentoErro(
+        typeof err.detail === "string" ? err.detail : "Falha no envio do ficheiro."
+      )
+      return
+    }
+    const json = await resp.json()
+    setUploadRendimentoResposta({
+      arquivo_nome: json.arquivo_nome,
+      tamanho: json.tamanho
+    })
+  }
+
+  async function confirmarRendimento(e) {
+    e.preventDefault()
+    setRendimentoEnviando(true)
+    setRendimentoErro(null)
+    try {
+      const rawValor = String(formRendimento.valor).trim()
+      const valorNum =
+        rawValor === "" ? null : Number(rawValor.replace(",", "."))
+      const res = await fetch(`${API_BASE}/cpf/documentos/confirmar`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          tipo_rendimento: formRendimento.tipo_rendimento,
+          descricao: formRendimento.descricao || null,
+          valor: valorNum,
+          ano_referencia:
+            formRendimento.ano_referencia === "" || formRendimento.ano_referencia == null
+              ? null
+              : Number(formRendimento.ano_referencia),
+          mes_referencia:
+            formRendimento.mes_referencia === "" || formRendimento.mes_referencia == null
+              ? null
+              : Number(formRendimento.mes_referencia),
+          fonte_pagadora: formRendimento.fonte_pagadora || null,
+          confianca_extracao: "manual"
+        })
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(
+          typeof err.detail === "string" ? err.detail : "Não foi possível guardar o rendimento."
+        )
+      }
+      const j = await res.json()
+      setRendimentoConfirmado(j)
+      setUploadRendimentoResposta(null)
+      setFormRendimento((f) => ({
+        ...f,
+        descricao: "",
+        valor: ""
+      }))
+    } catch (err) {
+      setRendimentoErro(err.message)
+    } finally {
+      setRendimentoEnviando(false)
+    }
+  }
+
   async function carregarRelatorioSeguro(relatorio_id) {
     try {
       const res = await fetch(`${API_BASE}/relatorio/${relatorio_id}`, {
@@ -588,17 +686,151 @@ function App() {
           </button>
         ))}
       </div>
-      {podeUploadXML && (
-        <input  type="file"  accept=".xml"  multiple  onChange={(e) => enviarXML(Array.from(e.target.files ?? []))}/>
+
+      {tipoPerfil === "cpf" && podeUploadXML && (
+        <div
+          className="card"
+          style={{ margin: "20px 24px 0", maxWidth: 520, padding: 20, border: "1px solid #e2e8f0" }}
+        >
+          <h3 style={{ marginTop: 0 }}>Documentos de rendimento</h3>
+          <p style={{ fontSize: 14, color: "#475569" }}>
+            Envie um comprovativo (PDF ou imagem). Depois confirme o tipo e os valores para
+            registo, conforme o passo de confirmação da API.
+          </p>
+          <input
+            type="file"
+            accept=".pdf,image/*,application/pdf"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) enviarDocumentoRendimento(f)
+              e.target.value = ""
+            }}
+          />
+          {uploadRendimentoResposta && (
+            <p style={{ fontSize: 13, marginTop: 8 }}>
+              Ficheiro recebido: <strong>{uploadRendimentoResposta.arquivo_nome}</strong> (
+              {uploadRendimentoResposta.tamanho} bytes)
+            </p>
+          )}
+          {rendimentoConfirmado && (
+            <p style={{ marginTop: 12, color: "#166534" }}>
+              Rendimento guardado (id {rendimentoConfirmado.id}).
+            </p>
+          )}
+          {uploadRendimentoResposta && (
+            <form onSubmit={confirmarRendimento} style={{ marginTop: 16, display: "grid", gap: 10 }}>
+              <label>
+                Tipo de rendimento
+                <select
+                  value={formRendimento.tipo_rendimento}
+                  onChange={(e) =>
+                    setFormRendimento((f) => ({ ...f, tipo_rendimento: e.target.value }))
+                  }
+                >
+                  {TIPOS_RENDIMENTO_OPTS.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Descrição (opcional)
+                <input
+                  type="text"
+                  value={formRendimento.descricao}
+                  onChange={(e) =>
+                    setFormRendimento((f) => ({ ...f, descricao: e.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                Valor (R$)
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={formRendimento.valor}
+                  onChange={(e) =>
+                    setFormRendimento((f) => ({ ...f, valor: e.target.value }))
+                  }
+                  placeholder="Ex: 1500,50"
+                />
+              </label>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <label>
+                  Mês
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={formRendimento.mes_referencia}
+                    onChange={(e) =>
+                      setFormRendimento((f) => ({
+                        ...f,
+                        mes_referencia: e.target.value === "" ? "" : Number(e.target.value)
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Ano
+                  <input
+                    type="number"
+                    min={2000}
+                    max={2100}
+                    value={formRendimento.ano_referencia}
+                    onChange={(e) =>
+                      setFormRendimento((f) => ({
+                        ...f,
+                        ano_referencia: e.target.value === "" ? "" : Number(e.target.value)
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <label>
+                Fonte pagadora (opcional)
+                <input
+                  type="text"
+                  value={formRendimento.fonte_pagadora}
+                  onChange={(e) =>
+                    setFormRendimento((f) => ({ ...f, fonte_pagadora: e.target.value }))
+                  }
+                />
+              </label>
+              <button type="submit" disabled={rendimentoEnviando}>
+                {rendimentoEnviando ? "A guardar…" : "Confirmar e guardar rendimento"}
+              </button>
+            </form>
+          )}
+          {rendimentoErro && (
+            <p style={{ color: "#b91c1c", marginTop: 8 }}>{rendimentoErro}</p>
+          )}
+        </div>
       )}
 
-      {!podeUploadXML && (
+      {tipoPerfil === "cpf" && !podeUploadXML && (
+        <div style={{ marginTop: 20, marginLeft: 24, marginRight: 24 }}>
+          <p>Envio de documentos de rendimento disponível apenas em planos superiores.</p>
+        </div>
+      )}
+
+      {tipoPerfil !== "cpf" && podeUploadXML && (
+        <input
+          type="file"
+          accept=".xml"
+          multiple
+          onChange={(e) => enviarXML(Array.from(e.target.files ?? []))}
+        />
+      )}
+
+      {tipoPerfil !== "cpf" && !podeUploadXML && (
         <div style={{ marginTop: 20 }}>
           <p>Upload de XML disponível apenas em planos superiores.</p>
         </div>
       )}
 
-      {resultadoXML && !data?.consulta_paga && (
+      {tipoPerfil !== "cpf" && resultadoXML && !data?.consulta_paga && (
         <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
           <h3>Análise concluída</h3>
           <p>Seu XML foi processado com sucesso.</p>
@@ -607,7 +839,7 @@ function App() {
         </div>
       )}
 
-      {resultadoXML?.carregado && data?.consulta_paga && (() => {
+      {tipoPerfil !== "cpf" && resultadoXML?.carregado && data?.consulta_paga && (() => {
         const ra = resultadoXML.dados?.resultado ?? resultadoXML.dados
         const df = ra?.dados_fiscais
         return (
