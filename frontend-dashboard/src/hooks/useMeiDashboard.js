@@ -21,7 +21,7 @@ export default function useMeiDashboard(contexto = {}) {
           Authorization: `Bearer ${TOKEN}`
         },
         body: JSON.stringify({
-          tipo_usuario: "mei",
+          tipo_usuario: "MEI",
           faturamento_mensal: faturamentoMensal,
           despesas: despesasMensais
         })

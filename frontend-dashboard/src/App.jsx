@@ -74,10 +74,12 @@ function App() {
 
   const [cpfFaturamentoMensal, setCpfFaturamentoMensal] = useState("")
   const [cpfDespesasMensais, setCpfDespesasMensais] = useState("")
+  const [meiFaturamentoMensal, setMeiFaturamentoMensal] = useState("")
+  const [meiDespesasMensais, setMeiDespesasMensais] = useState("")
 
   const meiResult = useMeiDashboard({
-    faturamento_mensal: cpfFaturamentoMensal,
-    despesas: cpfDespesasMensais
+    faturamento_mensal: meiFaturamentoMensal,
+    despesas: meiDespesasMensais
   })
   const cpfResult = useCpfDashboard({
     faturamento_mensal: cpfFaturamentoMensal,
@@ -607,6 +609,38 @@ function App() {
           <h2>Visão Geral</h2>
           <p>Acompanhe oportunidades, riscos e indicadores fiscais da empresa.</p>
         </section>
+
+        {perfilAtual.tipo === "mei" && (
+          <section className="card" style={{ marginBottom: 20 }}>
+            <h3>Dados para simulação MEI</h3>
+
+            <div style={{ display: "grid", gap: 12, maxWidth: 420 }}>
+              <label>
+                <span>Faturamento mensal</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={meiFaturamentoMensal}
+                  onChange={(e) => setMeiFaturamentoMensal(e.target.value)}
+                  placeholder="Ex: 5000"
+                />
+              </label>
+
+              <label>
+                <span>Despesas mensais</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={meiDespesasMensais}
+                  onChange={(e) => setMeiDespesasMensais(e.target.value)}
+                  placeholder="Ex: 1000"
+                />
+              </label>
+            </div>
+          </section>
+        )}
 
         {perfilAtual.tipo === "cpf" && (
           <section className="card" style={{ marginBottom: 20 }}>

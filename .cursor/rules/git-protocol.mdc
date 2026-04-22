@@ -1,0 +1,19 @@
+---
+description: Protocolo obrigatório de git e segurança antes de qualquer sessão de trabalho (ref. 73658a3)
+alwaysApply: true
+---
+
+# Protocolo de Sessão Git — saas-fiscal-demo
+
+## Antes de qualquer sessão de trabalho
+
+1. `git branch` + `git status --short` + `git log --oneline -5`
+2. `git branch -r` para ver todas as branches remotas
+3. Confirmar qual branch é produção antes de qualquer commit
+4. Confirmar base do PR antes de criar
+5. 1 commit = 1 intenção — sempre `git diff` antes de commitar
+6. Nunca tocar no núcleo de dados sem isolamento e decomposição por intenção
+7. Identificar riscos antes de agir — nunca assumir sem prova
+8. Motor fiscal = código — backend decide, frontend apresenta
+9. Build limpo obrigatório antes de push
+10. Ver `PROTOCOLO.md` para regras completas
