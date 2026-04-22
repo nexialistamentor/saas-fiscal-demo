@@ -45,6 +45,7 @@ class User(Base):
 
     plano = relationship("Plano", back_populates="usuarios")
     empresas = relationship("Empresa", back_populates="owner")
+    documentos_rendimento = relationship("DocumentoRendimento", back_populates="owner")
 
     @property
     def is_admin(self) -> bool:
@@ -275,6 +276,32 @@ class AuditoriaEstoque(Base):
     diferenca = Column(Float, nullable=True)
     risco_desvio = Column(Integer, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+
+
+# =========================
+# DOCUMENTO RENDIMENTO (CPF)
+# =========================
+TIPOS_RENDIMENTO = ("salario", "autonomo", "aluguel", "investimento", "outro")
+
+
+class DocumentoRendimento(Base):
+    __tablename__ = "documentos_rendimento"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    tipo_rendimento = Column(String(20), nullable=False)
+    descricao = Column(String, nullable=True)
+    valor = Column(Float, nullable=True)
+    ano_referencia = Column(Integer, nullable=True)
+    mes_referencia = Column(Integer, nullable=True)
+    arquivo_nome = Column(String, nullable=True)
+    arquivo_path = Column(String, nullable=True)
+    fonte_pagadora = Column(String, nullable=True)
+    confianca_extracao = Column(String(10), nullable=True)  # alta | media | baixa | manual
+    campos_corrigidos = Column(JSON, nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+
+    owner = relationship("User", back_populates="documentos_rendimento")
 
 
 # =========================
