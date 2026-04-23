@@ -717,92 +717,90 @@ function App() {
               Rendimento guardado (id {rendimentoConfirmado.id}).
             </p>
           )}
-          {uploadRendimentoResposta && (
-            <form onSubmit={confirmarRendimento} style={{ marginTop: 16, display: "grid", gap: 10 }}>
+          <form onSubmit={confirmarRendimento} style={{ marginTop: 16, display: "grid", gap: 10 }}>
+            <label>
+              Tipo de rendimento
+              <select
+                value={formRendimento.tipo_rendimento}
+                onChange={(e) =>
+                  setFormRendimento((f) => ({ ...f, tipo_rendimento: e.target.value }))
+                }
+              >
+                {TIPOS_RENDIMENTO_OPTS.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Descrição (opcional)
+              <input
+                type="text"
+                value={formRendimento.descricao}
+                onChange={(e) =>
+                  setFormRendimento((f) => ({ ...f, descricao: e.target.value }))
+                }
+              />
+            </label>
+            <label>
+              Valor (R$)
+              <input
+                type="text"
+                inputMode="decimal"
+                value={formRendimento.valor}
+                onChange={(e) =>
+                  setFormRendimento((f) => ({ ...f, valor: e.target.value }))
+                }
+                placeholder="Ex: 1500,50"
+              />
+            </label>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <label>
-                Tipo de rendimento
-                <select
-                  value={formRendimento.tipo_rendimento}
-                  onChange={(e) =>
-                    setFormRendimento((f) => ({ ...f, tipo_rendimento: e.target.value }))
-                  }
-                >
-                  {TIPOS_RENDIMENTO_OPTS.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Descrição (opcional)
+                Mês
                 <input
-                  type="text"
-                  value={formRendimento.descricao}
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={formRendimento.mes_referencia}
                   onChange={(e) =>
-                    setFormRendimento((f) => ({ ...f, descricao: e.target.value }))
+                    setFormRendimento((f) => ({
+                      ...f,
+                      mes_referencia: e.target.value === "" ? "" : Number(e.target.value)
+                    }))
                   }
                 />
               </label>
               <label>
-                Valor (R$)
+                Ano
                 <input
-                  type="text"
-                  inputMode="decimal"
-                  value={formRendimento.valor}
+                  type="number"
+                  min={2000}
+                  max={2100}
+                  value={formRendimento.ano_referencia}
                   onChange={(e) =>
-                    setFormRendimento((f) => ({ ...f, valor: e.target.value }))
-                  }
-                  placeholder="Ex: 1500,50"
-                />
-              </label>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <label>
-                  Mês
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={formRendimento.mes_referencia}
-                    onChange={(e) =>
-                      setFormRendimento((f) => ({
-                        ...f,
-                        mes_referencia: e.target.value === "" ? "" : Number(e.target.value)
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  Ano
-                  <input
-                    type="number"
-                    min={2000}
-                    max={2100}
-                    value={formRendimento.ano_referencia}
-                    onChange={(e) =>
-                      setFormRendimento((f) => ({
-                        ...f,
-                        ano_referencia: e.target.value === "" ? "" : Number(e.target.value)
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-              <label>
-                Fonte pagadora (opcional)
-                <input
-                  type="text"
-                  value={formRendimento.fonte_pagadora}
-                  onChange={(e) =>
-                    setFormRendimento((f) => ({ ...f, fonte_pagadora: e.target.value }))
+                    setFormRendimento((f) => ({
+                      ...f,
+                      ano_referencia: e.target.value === "" ? "" : Number(e.target.value)
+                    }))
                   }
                 />
               </label>
-              <button type="submit" disabled={rendimentoEnviando}>
-                {rendimentoEnviando ? "A guardar…" : "Confirmar e guardar rendimento"}
-              </button>
-            </form>
-          )}
+            </div>
+            <label>
+              Fonte pagadora (opcional)
+              <input
+                type="text"
+                value={formRendimento.fonte_pagadora}
+                onChange={(e) =>
+                  setFormRendimento((f) => ({ ...f, fonte_pagadora: e.target.value }))
+                }
+              />
+            </label>
+            <button type="submit" disabled={rendimentoEnviando}>
+              {rendimentoEnviando ? "A guardar…" : "Confirmar e guardar rendimento"}
+            </button>
+          </form>
           {rendimentoErro && (
             <p style={{ color: "#b91c1c", marginTop: 8 }}>{rendimentoErro}</p>
           )}
