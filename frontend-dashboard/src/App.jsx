@@ -45,6 +45,10 @@ function App() {
   const [password, setPassword] = useState("")
   const [usuario, setUsuario] = useState(null)
   const [erroLogin, setErroLogin] = useState(null)
+
+  const [mostrarSenhaLogin, setMostrarSenhaLogin] = useState(false)
+
+  const [mostrarSenhaRegisto, setMostrarSenhaRegisto] = useState(false)
   const [verificandoSessao, setVerificandoSessao] = useState(true)
 
   const [mostrarRegisto, setMostrarRegisto] = useState(false)
@@ -320,12 +324,21 @@ function App() {
                 onChange={(e) => setEmail(e.target.value)}
               />
 
-              <input
-                type="password"
-                placeholder="senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <input
+                  type={mostrarSenhaLogin ? "text" : "password"}
+                  placeholder="senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenhaLogin(!mostrarSenhaLogin)}
+                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14 }}
+                >
+                  {mostrarSenhaLogin ? "🙈" : "👁️"}
+                </button>
+              </div>
 
               <button type="submit">Entrar</button>
 
@@ -397,14 +410,23 @@ function App() {
                 onChange={(e) => setEmailRegisto(e.target.value)}
               />
 
-              <input
-                type="password"
-                placeholder="senha"
-                value={passwordRegisto}
-                onChange={(e) => setPasswordRegisto(e.target.value)}
-                aria-describedby="hint-password-registo"
-                autoComplete="new-password"
-              />
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <input
+                  type={mostrarSenhaRegisto ? "text" : "password"}
+                  placeholder="senha"
+                  value={passwordRegisto}
+                  onChange={(e) => setPasswordRegisto(e.target.value)}
+                  aria-describedby="hint-password-registo"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenhaRegisto(!mostrarSenhaRegisto)}
+                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14 }}
+                >
+                  {mostrarSenhaRegisto ? "🙈" : "👁️"}
+                </button>
+              </div>
               <p
                 id="hint-password-registo"
                 style={{ margin: "4px 0 0", fontSize: 12, color: "#555" }}
