@@ -45,6 +45,9 @@ tmp-browser/
 teste_*.xml
 *.png
 
+# bancos de dados locais de teste
+_e2e.db
+
 # logs e artefatos locais (dev/terminal)
 uvicorn_log.txt
 _debug_*.txt
