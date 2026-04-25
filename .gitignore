@@ -44,3 +44,10 @@ venv311/
 tmp-browser/
 teste_*.xml
 *.png
+
+# logs e artefatos locais (dev/terminal)
+uvicorn_log.txt
+_debug_*.txt
+_cmdout.txt
+_rem.txt
+*.log
