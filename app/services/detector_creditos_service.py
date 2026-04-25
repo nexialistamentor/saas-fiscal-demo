@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
+from app.services.fiscal_utils import resolver_aliquota_e_mva
+
 
 def detectar_creditos(db: Session, empresa_id: int):
 
@@ -20,22 +22,20 @@ def detectar_creditos(db: Session, empresa_id: int):
     creditos = []
 
     for row in resultado:
-
         ncm = row.ncm
         st_pago = float(row.st_pago or 0)
         base_st = float(row.base_st or 0)
 
-        aliquota = 0.18
-
+        res = resolver_aliquota_e_mva(db, "PA", ncm)
+        aliquota = res["aliquota"]
         st_correta = base_st * aliquota
-
         credito = st_pago - st_correta
 
         if credito > 0:
-
             creditos.append({
                 "ncm": ncm,
-                "credito_estimado": credito
+                "credito_estimado": credito,
+                "aliquota_fonte": res["fonte"],
             })
 
     return creditos
