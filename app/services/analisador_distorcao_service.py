@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
+from app.services.fiscal_utils import resolver_aliquota_e_mva
+
 
 def detectar_distorcoes(db: Session, empresa_id: int):
     query = text("""
@@ -28,14 +30,15 @@ def detectar_distorcoes(db: Session, empresa_id: int):
 
         margem_real = (preco_medio - base_st) / preco_medio
 
-        mva_oficial = 0.40
-
+        res = resolver_aliquota_e_mva(db, "PA", ncm)
+        mva_oficial = res["mva"]
         distorcao = mva_oficial - margem_real
 
         if distorcao > 0.20:
             distorcoes.append({
                 "ncm": ncm,
-                "distorcao": distorcao
+                "distorcao": distorcao,
+                "mva_fonte": res["fonte"],
             })
 
     return distorcoes
