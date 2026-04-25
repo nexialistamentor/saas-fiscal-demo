@@ -47,8 +47,6 @@ from app.xml_service import ler_xml_unico, processar_e_persistir_xml, DuplicataF
 from app.xml_security import validar_upload_xml
 from app.security import get_usuario_atual, require_role
 from app.rate_limit import limiter
-from app.schemas.user_schema import UserCreate, UserResponse
-from app.auth_router import register_user as register_user_handler
 from app.agents.agent_scheduler import AgentScheduler
 import asyncio
 
@@ -293,13 +291,6 @@ def root(request: Request):
 @limiter.limit("100/minute")
 def health(request: Request):
     return {"status": "ok"}
-
-
-@app.post("/register", response_model=UserResponse, tags=["Auth"])
-@limiter.limit("20/minute")
-def register_publico(request: Request, user: UserCreate, db: Session = Depends(get_db)):
-    """Alias de /auth/register para encontrar no Swagger em /register."""
-    return register_user_handler(request, user, db)
 
 
 @app.post("/upload-xml")
