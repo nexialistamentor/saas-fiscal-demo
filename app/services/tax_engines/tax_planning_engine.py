@@ -3,6 +3,13 @@ from app.services.tax_engines.lucro_presumido_engine import calcular_lucro_presu
 from app.services.tax_engines.lucro_real_engine import calcular_lucro_real
 
 
+def _total_tributos_resposta_tributaria(resultado: dict) -> float:
+    """Soma tributos a partir de formatar_resposta_tributaria (data.tributos) ou payload legado."""
+    payload = resultado.get("data", resultado)
+    trib = payload.get("tributos") or {}
+    return float(sum(trib.values()))
+
+
 class TaxPlanningEngine(BaseTaxEngine):
     """
     Engine de planejamento tributário.
@@ -42,8 +49,8 @@ def simular_regimes(dados_fiscais: dict):
     resultado_presumido = calcular_lucro_presumido(dados_fiscais)
     resultado_real = calcular_lucro_real(dados_fiscais)
 
-    total_presumido = sum(resultado_presumido["tributos"].values())
-    total_real = sum(resultado_real["tributos"].values())
+    total_presumido = _total_tributos_resposta_tributaria(resultado_presumido)
+    total_real = _total_tributos_resposta_tributaria(resultado_real)
 
     if total_presumido < total_real:
         melhor_regime = "lucro_presumido"
