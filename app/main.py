@@ -302,17 +302,6 @@ def register_publico(request: Request, user: UserCreate, db: Session = Depends(g
     return register_user_handler(request, user, db)
 
 
-@app.get("/teste-banco")
-@limiter.limit("30/minute")
-def teste_banco(request: Request):
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT 1"))
-        return {
-            "status": "Banco conectado",
-            "resultado": result.scalar()
-        }
-
-
 @app.post("/upload-xml")
 @limiter.limit("10/minute")
 async def upload_xml(
