@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
+from app.services.fiscal_utils import resolver_aliquota_e_mva
+
 
 def gerar_ranking_restituicao(db: Session, empresa_id: int):
-
-    db.rollback()
 
     query = text("""
         SELECT
@@ -23,22 +23,18 @@ def gerar_ranking_restituicao(db: Session, empresa_id: int):
     ranking = []
 
     for row in resultado:
-
         ncm = row.ncm
-        st_pago = row.st_pago or 0
-        base_st = row.base_st or 0
-
-        # temporário até integrar tabela normativa
-        aliquota = 0.18
-
+        st_pago = float(row.st_pago or 0)
+        base_st = float(row.base_st or 0)
+        res = resolver_aliquota_e_mva(db, "PA", ncm)
+        aliquota = res["aliquota"]
         st_devida = base_st * aliquota
-
         restituicao = max(st_pago - st_devida, 0)
-
         ranking.append({
             "ncm": ncm,
             "restituicao_estimada": float(restituicao),
-            "percentual_impacto": 0
+            "percentual_impacto": 0,
+            "aliquota_fonte": res["fonte"],
         })
 
     ranking.sort(key=lambda x: x["restituicao_estimada"], reverse=True)
