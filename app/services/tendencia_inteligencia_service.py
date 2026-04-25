@@ -23,13 +23,13 @@ def analisar_tendencia_inteligencia(db, empresa_id):
 
     variacao = ultimo - primeiro
 
-    if variacao > 10000:
+    if variacao > 30000:
         tendencia = "melhoria_forte"
-    elif variacao > 0:
+    elif variacao > 5000:
         tendencia = "melhoria"
-    elif variacao < -10000:
+    elif variacao < -30000:
         tendencia = "queda_forte"
-    elif variacao < 0:
+    elif variacao < -5000:
         tendencia = "queda"
     else:
         tendencia = "estavel"
