@@ -1,9 +1,7 @@
 from sqlalchemy import func
 from app import models
-from app.motor_fiscal import MotorFiscal, carregar_mva
-
-# Alíquota ICMS padrão (%). ItemFiscal não possui campo aliquota_icms no banco.
-ALIQUOTA_ICMS_PADRAO = 18.0
+from app.motor_fiscal import MotorFiscal
+from app.services.fiscal_utils import resolver_aliquota_e_mva
 
 
 class STAnalyzer:
@@ -15,8 +13,8 @@ class STAnalyzer:
         ST paga = soma(valor_st) das entradas
         ST devida estimada = proporção simples baseada na saída
 
-        Esta é uma estimativa inicial.
-        Não considera MVA dinâmica nem ICMS por estado.
+        Esta é uma estimativa inicial. Alíquota e MVA vêm de
+        ``resolver_aliquota_e_mva`` (tabela_mva com fallback documentado).
         """
 
         # 1️⃣ ST paga nas ENTRADAS
@@ -46,13 +44,13 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            uf = item.documento.uf_dest or item.documento.uf_emit
-            mva = carregar_mva(ncm, uf)
-            if mva is None:
-                continue
+            uf = (item.documento.uf_dest or item.documento.uf_emit or "PA")
+            res = resolver_aliquota_e_mva(db, uf, ncm)
+            mva = res["mva"] * 100
+            aliquota = res["aliquota"] * 100
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)
-            icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, ALIQUOTA_ICMS_PADRAO)
-            icms_st = MotorFiscal.calcular_icms_st(base_st, ALIQUOTA_ICMS_PADRAO, icms_proprio)
+            icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, aliquota)
+            icms_st = MotorFiscal.calcular_icms_st(base_st, aliquota, icms_proprio)
             st_devida += icms_st
 
         restituicao = max(0, st_pago - st_devida)
@@ -95,13 +93,13 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            uf = item.documento.uf_dest or item.documento.uf_emit
-            mva = carregar_mva(ncm, uf)
-            if mva is None:
-                continue
+            uf = (item.documento.uf_dest or item.documento.uf_emit or "PA")
+            res = resolver_aliquota_e_mva(db, uf, ncm)
+            mva = res["mva"] * 100
+            aliquota = res["aliquota"] * 100
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)
-            icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, ALIQUOTA_ICMS_PADRAO)
-            icms_st = MotorFiscal.calcular_icms_st(base_st, ALIQUOTA_ICMS_PADRAO, icms_proprio)
+            icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, aliquota)
+            icms_st = MotorFiscal.calcular_icms_st(base_st, aliquota, icms_proprio)
             mapa_st_devido[ncm] = mapa_st_devido.get(ncm, 0.0) + icms_st
 
         ncms = set(mapa_st_pago) | set(mapa_st_devido)
@@ -159,13 +157,13 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            uf = item.documento.uf_dest or item.documento.uf_emit
-            mva = carregar_mva(ncm, uf)
-            if mva is None:
-                continue
+            uf = (item.documento.uf_dest or item.documento.uf_emit or "PA")
+            res = resolver_aliquota_e_mva(db, uf, ncm)
+            mva = res["mva"] * 100
+            aliquota = res["aliquota"] * 100
             base_st = MotorFiscal.calcular_base_st(valor_produto, mva)
-            icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, ALIQUOTA_ICMS_PADRAO)
-            icms_st = MotorFiscal.calcular_icms_st(base_st, ALIQUOTA_ICMS_PADRAO, icms_proprio)
+            icms_proprio = MotorFiscal.calcular_icms_proprio(valor_produto, aliquota)
+            icms_st = MotorFiscal.calcular_icms_st(base_st, aliquota, icms_proprio)
             st_devida += icms_st
 
         restituicao = max(0, (st_pago or 0) - st_devida)
