@@ -1,6 +1,7 @@
 from typing import Dict
 
 from app.agents.auditor_fiscal_agent import auditor_fiscal_agent
+from app.agents.consistency_audit_agent import consistency_audit_agent
 from app.agents.data_sanitization_agent import data_sanitization_agent
 from app.agents.normative_agent import normative_agent
 from app.agents.performance_agent import performance_agent
@@ -15,12 +16,13 @@ class AgentRegistry:
     def __init__(self):
         self._agents: Dict[str, object] = {}
 
-        # registro de agentes disponíveis
+        # registro de agentes disponiveis
         self.register(data_sanitization_agent)
         self.register(auditor_fiscal_agent)
         self.register(repair_agent)
         self.register(performance_agent)
         self.register(normative_agent)
+        self.register(consistency_audit_agent)
 
     def register(self, agent):
         self._agents[agent.name] = agent
