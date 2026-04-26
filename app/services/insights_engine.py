@@ -649,7 +649,8 @@ class InsightEngine:
 
         st_em_estoque = st_entradas - st_saidas
 
-        if st_em_estoque <= 100:
+        threshold_global = max(100.0, float(st_entradas or 0) * 0.05)
+        if st_em_estoque <= threshold_global:
             return insights
 
         insight = {
@@ -691,21 +692,27 @@ class InsightEngine:
         )
 
         mapa_saida = {row.ncm: row.st_saida for row in st_saida}
-        insights = []
 
+        # Threshold dinâmico baseado no volume real da empresa
+        valores_entrada = [float(row.st_entrada or 0) for row in st_entrada]
+        st_media = (sum(valores_entrada) / len(valores_entrada)) if valores_entrada else 0
+        threshold_medio = max(50.0, st_media * 0.05)
+        threshold_alto = max(500.0, st_media * 0.50)
+
+        insights = []
         for row in st_entrada:
             ncm = row.ncm
             entrada = row.st_entrada or 0
             saida = mapa_saida.get(ncm, 0) or 0
             saldo = round(entrada - saida, 2)
 
-            if saldo > 50:
+            if saldo > threshold_medio:
                 insights.append({
                     "tipo": "ESTOQUE_FANTASMA_NCM",
                     "tributo": "ST",
                     "categoria": "distorcao",
                     "ncm": ncm,
-                    "impacto": "alto" if saldo > 500 else "medio",
+                    "impacto": "alto" if saldo > threshold_alto else "medio",
                     "valor_estimado": saldo,
                     "descricao": f"NCM {ncm}: ST de R$ {saldo} paga na entrada sem saida correspondente.",
                     "recomendacao": "Verificar se produto ainda esta em estoque ou houve perda/devolucao nao registada."
