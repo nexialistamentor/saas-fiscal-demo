@@ -1,5 +1,7 @@
 from sqlalchemy import text
 
+from app.services.fiscal_utils import resolver_aliquota_e_mva
+
 
 def calcular_potencial_recuperacao(db, empresa_id):
 
@@ -22,16 +24,23 @@ def calcular_potencial_recuperacao(db, empresa_id):
     for row in resultado:
 
         ncm = row.ncm
-        st_pago = row.st_pago or 0
-        base_st = row.base_st or 0
-        volume = row.volume_operacoes or 0
+        st_pago = float(row.st_pago or 0)
+        base_st = float(row.base_st or 0)
+        volume = int(row.volume_operacoes or 0)
 
         if base_st == 0:
             continue
 
-        aliquota_media = st_pago / base_st
+        res = resolver_aliquota_e_mva(db, "PA", ncm)
 
-        potencial_recuperacao = (st_pago * 0.15)
+        aliquota = res["aliquota"]
+
+        st_devida = base_st * aliquota
+
+        potencial_recuperacao = max(0.0, st_pago - st_devida)
+
+        if potencial_recuperacao == 0:
+            continue
 
         score_oportunidade = potencial_recuperacao * volume
 
@@ -39,7 +48,8 @@ def calcular_potencial_recuperacao(db, empresa_id):
             "ncm": ncm,
             "potencial_recuperacao": round(potencial_recuperacao, 2),
             "score_oportunidade": round(score_oportunidade, 2),
-            "volume_operacoes": volume
+            "volume_operacoes": volume,
+            "aliquota_fonte": res["fonte"],
         })
 
     oportunidades.sort(
