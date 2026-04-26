@@ -12,6 +12,7 @@ from app.models import (
 from app.services.motor_predicao_tributaria import prever_impacto_st
 from app.motor_fiscal import carregar_mva
 from app.services.tabela_normativa_service import buscar_mva
+from app.services.fiscal_utils import resolver_aliquota_e_mva, uf_do_documento
 from app.services.motor_decisao_tributaria import decidir_acao_st
 from app.services.ranking_restituicao_service import gerar_ranking_restituicao
 from app.services.mapa_oportunidades_service import gerar_mapa_oportunidades
@@ -466,7 +467,8 @@ class InsightEngine:
         if not st_total or not base_st_total:
             return insights
 
-        st_devida = base_st_total * 0.18
+        res_aliq = resolver_aliquota_e_mva(self.db, "PA", None)
+        st_devida = base_st_total * res_aliq["aliquota"]
         restituicao_estimada = st_total - st_devida
 
         if restituicao_estimada <= 0:
@@ -726,7 +728,8 @@ class InsightEngine:
             if not item.ncm:
                 continue
 
-            regra = buscar_mva(self.db, "PA", item.ncm)
+            uf = uf_do_documento(item.documento)
+            regra = buscar_mva(self.db, uf, item.ncm)
 
             if not regra:
                 continue
@@ -783,7 +786,8 @@ class InsightEngine:
             if valor <= 0:
                 continue
 
-            regra = buscar_mva(self.db, "PA", item.ncm)
+            uf = uf_do_documento(item.documento)
+            regra = buscar_mva(self.db, uf, item.ncm)
 
             if not regra:
                 continue
