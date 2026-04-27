@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session
-from app.models import NotaFiscalItem, DocumentoFiscal
-from app.services.tabela_normativa_service import buscar_mva
+
+from app.models import DocumentoFiscal, NotaFiscalItem
 from app.services.analisador_impacto import calcular_impacto_st
+from app.services.fiscal_utils import resolver_aliquota_e_mva, uf_do_documento
+from app.services.tabela_normativa_service import buscar_mva
 
 
 def prever_impacto_st(db: Session, empresa_id: int):
@@ -25,23 +27,36 @@ def prever_impacto_st(db: Session, empresa_id: int):
         if valor <= 0:
             continue
 
-        uf = (item.documento.uf_dest or item.documento.uf_emit or "PA").upper()
         doc = item.documento
-        regra = buscar_mva(
-            db,
-            uf,
-            item.ncm,
-            data_referencia=doc.data_emissao if doc else None,
-        )
+        uf = uf_do_documento(doc)
+        ncm = (item.ncm or "").strip()
 
-        if not regra:
-            continue
+        if uf:
+            regra = buscar_mva(
+                db,
+                uf,
+                item.ncm,
+                data_referencia=doc.data_emissao if doc else None,
+            )
+            if not regra:
+                continue
+            mva_dec = regra["mva"] / 100
+            aliquota_dec = regra["aliquota_interna"]
+        else:
+            res = resolver_aliquota_e_mva(
+                db,
+                "",
+                ncm,
+                data_referencia=doc.data_emissao if doc else None,
+            )
+            mva_dec = res["mva"]
+            aliquota_dec = res["aliquota"]
 
         analise = calcular_impacto_st(
             valor_produto=valor,
             st_pago=st_pago,
-            mva=regra["mva"] / 100,
-            aliquota=regra["aliquota_interna"]
+            mva=mva_dec,
+            aliquota=aliquota_dec,
         )
 
         impacto_total += analise["impacto"]

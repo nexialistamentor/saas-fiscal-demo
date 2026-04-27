@@ -1,7 +1,7 @@
 from sqlalchemy import func
 from app import models
 from app.motor_fiscal import MotorFiscal
-from app.services.fiscal_utils import resolver_aliquota_e_mva
+from app.services.fiscal_utils import resolver_aliquota_e_mva, uf_do_documento
 
 
 class STAnalyzer:
@@ -44,7 +44,7 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            uf = (item.documento.uf_dest or item.documento.uf_emit or "PA")
+            uf = uf_do_documento(item.documento)
             res = resolver_aliquota_e_mva(db, uf, ncm)
             mva = res["mva"] * 100
             aliquota = res["aliquota"] * 100
@@ -93,7 +93,7 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            uf = (item.documento.uf_dest or item.documento.uf_emit or "PA")
+            uf = uf_do_documento(item.documento)
             res = resolver_aliquota_e_mva(db, uf, ncm)
             mva = res["mva"] * 100
             aliquota = res["aliquota"] * 100
@@ -157,7 +157,7 @@ class STAnalyzer:
             valor_produto = float(item.valor_produto or 0)
             if valor_produto <= 0:
                 continue
-            uf = (item.documento.uf_dest or item.documento.uf_emit or "PA")
+            uf = uf_do_documento(item.documento)
             res = resolver_aliquota_e_mva(db, uf, ncm)
             mva = res["mva"] * 100
             aliquota = res["aliquota"] * 100
