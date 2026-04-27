@@ -227,6 +227,7 @@ class Insight(Base):
     ncm = Column(String, nullable=True, index=True)
     payload_json = Column(JSON, nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow)
+    superseded = Column(Boolean, default=False, nullable=False, server_default="false")
 
 
 # =========================

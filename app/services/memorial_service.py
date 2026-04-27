@@ -106,7 +106,10 @@ def coletar_contexto_memorial(
 
     insights = (
         db.query(Insight)
-        .filter(Insight.relatorio_analise_id == relatorio_id)
+        .filter(
+            Insight.relatorio_analise_id == relatorio_id,
+            Insight.superseded == False,
+        )
         .order_by(Insight.criado_em.asc())
         .all()
     )
