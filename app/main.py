@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
+import logging
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -26,7 +27,7 @@ from app import models
 from app.seed_data import ensure_planos
 
 # IMPORTAR EXPLICITAMENTE OS MODELOS (registro para create_all)
-from app.models import DocumentoFiscal, ItemFiscal
+from app.models import DocumentoFiscal, ItemFiscal, RequestLog
 from app.auth_router import router as auth_router
 from app.routes.fiscal_router import router as fiscal_router
 from app.routes.lote_router import router as lote_router
@@ -45,10 +46,12 @@ from app.routers.dashboard_router import router as dashboard_router
 from app.routers.assistente_router import assistente_router
 from app.xml_service import ler_xml_unico, processar_e_persistir_xml, DuplicataFiscalError
 from app.xml_security import validar_upload_xml
-from app.security import get_usuario_atual, require_role
+from app.security import get_usuario_atual, require_role, verificar_token
 from app.rate_limit import limiter
 from app.agents.agent_scheduler import AgentScheduler
 import asyncio
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     docs_url="/docs",
@@ -219,6 +222,40 @@ async def add_security_headers(request, call_next):
     )
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    response = await call_next(request)
+    db = None
+    try:
+        db = SessionLocal()
+        user_id = None
+        auth = request.headers.get("authorization", "")
+        if auth.lower().startswith("bearer "):
+            payload = verificar_token(auth[7:].strip())
+            if payload:
+                user_id = payload.get("user_id")
+        ip = request.client.host if request.client else "unknown"
+        log = RequestLog(
+            method=request.method,
+            path=str(request.url.path),
+            status_code=response.status_code,
+            user_id=user_id,
+            ip=ip,
+            user_agent=request.headers.get("user-agent"),
+        )
+        db.add(log)
+        db.commit()
+    except Exception as exc:
+        if db is not None:
+            db.rollback()
+        logger.warning("log_requests middleware falhou: %s", exc)
+    finally:
+        if db is not None:
+            db.close()
+    return response
+
 
 scheduler = AgentScheduler()
 

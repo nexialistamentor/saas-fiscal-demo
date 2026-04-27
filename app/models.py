@@ -337,3 +337,21 @@ class EngineResultado(Base):
     engine_nome = Column(String, index=True)
     resultado = Column(JSON)
     criado_em = Column(DateTime, default=datetime.utcnow)
+
+
+# =========================
+# REQUEST LOG (tráfego HTTP)
+# =========================
+class RequestLog(Base):
+    __tablename__ = "request_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    criado_em = Column(DateTime, default=func.now(), nullable=False, index=True)
+    method = Column(String(10), nullable=False)
+    path = Column(String(500), nullable=False)
+    status_code = Column(Integer, nullable=True)
+    user_id = Column(
+        Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    ip = Column(String(45), nullable=False)
+    user_agent = Column(String(500), nullable=True)

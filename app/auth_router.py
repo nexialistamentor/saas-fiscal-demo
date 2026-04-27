@@ -119,7 +119,7 @@ def login(
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
     login_throttle.limpar(email)
-    token = criar_token({"sub": usuario.email})
+    token = criar_token({"sub": usuario.email, "user_id": usuario.id})
 
     return {"access_token": token, "token_type": "bearer"}
 
