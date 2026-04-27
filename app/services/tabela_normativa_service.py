@@ -6,6 +6,11 @@ from sqlalchemy import or_
 from app.models import TabelaMVA
 
 
+def uf_tem_dados_mva(db: Session, uf: str) -> bool:
+    """Verifica se há pelo menos uma regra MVA activa para a UF."""
+    return db.query(TabelaMVA).filter(TabelaMVA.estado == uf).limit(1).count() > 0
+
+
 def listar_base_normativa(db: Session):
     """Retorna a base normativa (tabela MVA) para uso pelos agentes."""
     registros = db.query(TabelaMVA).all()
@@ -57,5 +62,7 @@ def buscar_mva(
         "mva": registro.mva,
         "aliquota_interna": registro.aliquota_interna,
         "vigencia_inicio": registro.vigencia_inicio,
-        "vigencia_fim": registro.vigencia_fim
+        "vigencia_fim": registro.vigencia_fim,
+        "fonte_legal": getattr(registro, "fonte_legal", None),
+        "url_fonte": getattr(registro, "url_fonte", None),
     }

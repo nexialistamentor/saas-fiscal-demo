@@ -11,7 +11,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
-from app.services.tabela_normativa_service import buscar_mva
+from app.services.tabela_normativa_service import buscar_mva, uf_tem_dados_mva
 
 # Fallbacks documentados — usados APENAS quando não há regra na tabela_mva
 # Devem ser marcados como "fallback" no output para rastreabilidade
@@ -30,15 +30,30 @@ def resolver_aliquota_e_mva(
 
     Returns:
         {
-            "aliquota": float,   # alíquota interna ICMS (ex: 0.17)
+            "aliquota": float,
             "mva": float,        # MVA decimal (ex: 0.40)
-            "fonte": str,        # "tabela" | "fallback"
-            "uf": str,           # UF usada na busca
-            "ncm": str,          # NCM usado na busca
+            "fonte": str,        # "tabela" | "fallback" | "fallback_uf_sem_dados"
+            "uf": str,
+            "ncm": str,
+            "confianca": str,    # "oficial" | "sem_fonte_legal" | "estimativa" | "indisponivel"
+            "aviso": str | None, # quando aplicável
         }
     """
     uf_norm = (uf or "PA").strip().upper()[:2]
     ncm_norm = (ncm or "").strip()
+
+    if not uf_tem_dados_mva(db, uf_norm):
+        return {
+            "aliquota": _ALIQUOTA_ICMS_FALLBACK,
+            "mva": _MVA_FALLBACK,
+            "fonte": "fallback_uf_sem_dados",
+            "uf": uf_norm,
+            "ncm": ncm_norm,
+            "confianca": "indisponivel",
+            "aviso": (
+                f"UF {uf_norm} sem dados MVA cadastrados. Cálculo ST indisponível."
+            ),
+        }
 
     regra = (
         buscar_mva(db, uf_norm, ncm_norm, data_referencia=data_referencia)
@@ -53,6 +68,7 @@ def resolver_aliquota_e_mva(
             "fonte": "tabela",
             "uf": uf_norm,
             "ncm": ncm_norm,
+            "confianca": "oficial" if regra.get("fonte_legal") else "sem_fonte_legal",
         }
 
     return {
@@ -61,6 +77,8 @@ def resolver_aliquota_e_mva(
         "fonte": "fallback",
         "uf": uf_norm,
         "ncm": ncm_norm,
+        "confianca": "estimativa",
+        "aviso": "Sem regra MVA na tabela. Valores de fallback aplicados.",
     }
 
 

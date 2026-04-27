@@ -167,7 +167,7 @@ class InsightEngine:
         )
 
         insights.extend(
-            self._analisar_mva_oficial_divergente(empresa_id)
+            self._analisar_mva_oficial_divergente(empresa_id, context)
         )
 
         insights.extend(
@@ -315,6 +315,8 @@ class InsightEngine:
             context.get("context_flags"),
             mapa_r.get("context_flags"),
         )
+        if context.get("uf_sem_dados_oficiais"):
+            context_flags_final["uf_sem_dados_oficiais"] = True
         if motor_norm > 0:
             context_flags_final["valores_normalizados"] = True
 
@@ -506,6 +508,11 @@ class InsightEngine:
             "descricao": f"Possível restituição de ST estimada em R$ {round(restituicao_estimada,2)} com base nas operações analisadas.",
             "recomendacao": "Verificar diferença entre ST paga e ST devida."
         }
+        if res_aliq.get("confianca") != "oficial":
+            insight["alerta_confianca"] = res_aliq.get(
+                "aviso", "Dados MVA com confiança reduzida"
+            )
+            context["uf_sem_dados_oficiais"] = True
 
         insights.append(insight)
 
@@ -743,7 +750,7 @@ class InsightEngine:
         insights.sort(key=lambda x: x["valor_estimado"], reverse=True)
         return insights
 
-    def _analisar_mva_oficial_divergente(self, empresa_id):
+    def _analisar_mva_oficial_divergente(self, empresa_id, context: dict):
         insights = []
 
         itens = (
@@ -758,14 +765,14 @@ class InsightEngine:
                 continue
 
             uf = uf_do_documento(item.documento)
-            regra = buscar_mva(
+            res = resolver_aliquota_e_mva(
                 self.db,
                 uf,
                 item.ncm,
                 data_referencia=item.documento.data_emissao,
             )
 
-            if not regra:
+            if res.get("fonte") != "tabela":
                 continue
 
             base = item.base_st or 0
@@ -776,18 +783,24 @@ class InsightEngine:
 
             mva_aplicada = (base - valor) / valor
 
-            mva_oficial = regra["mva"] / 100
+            mva_oficial = float(res["mva"])
 
             diferenca = abs(mva_aplicada - mva_oficial)
 
             if diferenca > 0.1:
-                insights.append({
+                insight = {
                     "tipo": "MVA_OFICIAL_DIVERGENTE",
                     "impacto": "medio",
                     "valor_estimado": 0,
                     "descricao": f"NCM {item.ncm} apresenta divergência entre MVA aplicada e MVA oficial.",
-                    "recomendacao": "Verificar parametrização fiscal e possível restituição de ST."
-                })
+                    "recomendacao": "Verificar parametrização fiscal e possível restituição de ST.",
+                }
+                if res.get("confianca") != "oficial":
+                    insight["alerta_confianca"] = res.get(
+                        "aviso", "Dados MVA com confiança reduzida"
+                    )
+                    context["uf_sem_dados_oficiais"] = True
+                insights.append(insight)
 
         return insights
 

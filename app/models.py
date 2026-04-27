@@ -158,6 +158,11 @@ class TabelaMVA(Base):
     vigencia_inicio = Column(Date)
     vigencia_fim = Column(Date, nullable=True)
 
+    fonte_legal = Column(String(500), nullable=True)  # ex: "Portaria SEFAZ/PA 058/2023"
+    url_fonte = Column(String(1000), nullable=True)  # link oficial quando disponível
+    importado_em = Column(DateTime, default=func.now(), nullable=True)
+    importado_por = Column(String(100), nullable=True)  # ex: "importar_mva_pa.py v1.0"
+
 
 # =========================
 # SNAPSHOT INTELIGÊNCIA (Memória Estratégica Tributária)
