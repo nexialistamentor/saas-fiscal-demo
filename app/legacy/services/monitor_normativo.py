@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.services.verificador_normativo import verificar_divergencias
+from app.legacy.services.verificador_normativo import verificar_divergencias
 from app.services.atualizacao_normativa_service import atualizar_mva
 
 

@@ -1,6 +1,6 @@
 from app.database import SessionLocal
-from app.data.mvas_pa import MVA_PA
-from app.services.verificador_normativo import verificar_divergencias
+from app.legacy.data.mvas_pa import MVA_PA
+from app.legacy.services.verificador_normativo import verificar_divergencias
 
 
 def executar_verificacao():

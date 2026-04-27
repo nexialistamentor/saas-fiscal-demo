@@ -1,6 +1,6 @@
 from app.database import SessionLocal
-from app.services.importador_normativo import importar_mvas
-from app.data.mvas_pa import MVA_PA
+from app.legacy.services.importador_normativo import importar_mvas
+from app.legacy.data.mvas_pa import MVA_PA
 
 
 def executar_importacao():

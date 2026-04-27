@@ -16,9 +16,15 @@ import csv
 import logging
 from datetime import date
 from pathlib import Path
+from typing import cast
 
 from app.database import SessionLocal
-from app.models import TabelaMVA
+from app.services.pipeline_normativo import (
+    NivelConfianca,
+    RegraNormativa,
+    ResultadoImport,
+    importar_regras,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +55,8 @@ def _linhas_dados_csv(open_file):
 
 def importar(commit: bool = False, uf_filtro: str | None = None) -> dict:
     db = SessionLocal()
-    inseridos = atualizados = ignorados = 0
+    regras: list[RegraNormativa] = []
+    res = ResultadoImport()
     try:
         with open(CSV_PATH, newline="", encoding="utf-8-sig") as f:
             reader = csv.DictReader(_linhas_dados_csv(f))
@@ -62,65 +69,50 @@ def importar(commit: bool = False, uf_filtro: str | None = None) -> dict:
                 ncm = row["ncm"].strip()
                 vi = _parse_date((row.get("vigencia_inicio") or "").strip())
                 vf = _parse_date((row.get("vigencia_fim") or "").strip())
-
-                existente = (
-                    db.query(TabelaMVA)
-                    .filter(
-                        TabelaMVA.estado == uf,
-                        TabelaMVA.ncm == ncm,
-                        TabelaMVA.vigencia_inicio == vi,
-                    )
-                    .first()
-                )
+                if vi is None:
+                    logger.warning("Linha sem vigencia_inicio válida (uf=%s ncm=%s); ignorada.", uf, ncm)
+                    continue
                 ali, nivel = _aliquota_interna_e_nivel(row)
-                if existente:
-                    if existente.nivel_confianca_fonte == "oficial":
-                        ignorados += 1
-                        continue
-                    existente.mva = float(row["mva"])
-                    existente.aliquota_interna = ali
-                    existente.vigencia_fim = vf
-                    existente.fonte_legal = row["fonte_legal"]
-                    existente.url_fonte = row.get("url_fonte")
-                    existente.nivel_confianca_fonte = nivel
-                    existente.importado_por = IMPORTADO_POR
-                    atualizados += 1
-                else:
-                    db.add(
-                        TabelaMVA(
-                            estado=uf,
-                            ncm=ncm,
-                            mva=float(row["mva"]),
-                            aliquota_interna=ali,
-                            vigencia_inicio=vi,
-                            vigencia_fim=vf,
-                            fonte_legal=row["fonte_legal"],
-                            url_fonte=row.get("url_fonte"),
-                            nivel_confianca_fonte=nivel,
-                            importado_por=IMPORTADO_POR,
-                        )
+                regras.append(
+                    RegraNormativa(
+                        estado=uf,
+                        ncm=ncm,
+                        mva=float(row["mva"]),
+                        aliquota_interna=ali,
+                        vigencia_inicio=vi,
+                        vigencia_fim=vf,
+                        fonte_legal=row["fonte_legal"],
+                        url_fonte=row.get("url_fonte"),
+                        nivel_confianca=cast(NivelConfianca, nivel),
+                        importado_por=IMPORTADO_POR,
                     )
-                    inseridos += 1
+                )
 
+        res = importar_regras(db, regras, dry_run=not commit)
+        if res.erros:
+            logger.warning("Erros no pipeline normativo: %s", res.erros)
         if commit:
-            db.commit()
             logger.info(
                 "Commit: %d inseridos, %d actualizados, %d ignorados (oficial)",
-                inseridos,
-                atualizados,
-                ignorados,
+                res.inseridos,
+                res.atualizados,
+                res.ignorados,
             )
         else:
-            db.rollback()
             logger.info(
                 "Dry-run: %d a inserir, %d a actualizar, %d a ignorar (oficial)",
-                inseridos,
-                atualizados,
-                ignorados,
+                res.inseridos,
+                res.atualizados,
+                res.ignorados,
             )
     finally:
         db.close()
-    return {"inseridos": inseridos, "atualizados": atualizados, "ignorados": ignorados}
+    return {
+        "inseridos": res.inseridos,
+        "atualizados": res.atualizados,
+        "ignorados": res.ignorados,
+        "erros": res.erros,
+    }
 
 
 if __name__ == "__main__":

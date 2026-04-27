@@ -1,6 +1,6 @@
 from app.database import SessionLocal
-from app.data.mvas_pa import MVA_PA
-from app.services.monitor_normativo import monitorar_atualizacoes
+from app.legacy.data.mvas_pa import MVA_PA
+from app.legacy.services.monitor_normativo import monitorar_atualizacoes
 
 
 def executar_sincronizacao():
