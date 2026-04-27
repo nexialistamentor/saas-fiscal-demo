@@ -11,7 +11,7 @@ from datetime import datetime
 
 from app.models import Empresa, RelatorioAnalise, AlertaFiscal
 from app.services.analysis_orchestrator import executar_analise_xml
-from app.xml_service import processar_e_persistir_xml
+from app.xml_service import DuplicataFiscalError, processar_e_persistir_xml
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.usage_service import verificar_limite_analises, incrementar_uso_analise
 
@@ -102,12 +102,18 @@ def executar_e_registrar_analise_xml(
                     self.id = user_id
 
             usuario_proxy = _UsuarioProxy(empresa.user_id)
-            processar_e_persistir_xml(
-                db=db,
-                usuario_atual=usuario_proxy,
-                empresa=empresa,
-                xml_bytes=xml_bytes,
-            )
+            try:
+                processar_e_persistir_xml(
+                    db=db,
+                    usuario_atual=usuario_proxy,
+                    empresa=empresa,
+                    xml_bytes=xml_bytes,
+                )
+            except DuplicataFiscalError:
+                logger.info(
+                    "persistencia_xml_ignorada_duplicata empresa_id=%s",
+                    empresa_id,
+                )
 
     tempo = round(time.perf_counter() - inicio, 4)
 

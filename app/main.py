@@ -392,6 +392,7 @@ async def upload_xml(
                 "erro": "Documento fiscal duplicado",
                 "chave_nfe": e.chave_nfe,
                 "documento_id": e.documento_id,
+                "conteudo_sha256": e.conteudo_sha256,
             },
         )
     return {"documento_id": documento.id}

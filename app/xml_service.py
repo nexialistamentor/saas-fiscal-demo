@@ -1,3 +1,4 @@
+import hashlib
 import defusedxml.ElementTree as ET
 from datetime import datetime
 
@@ -11,14 +12,25 @@ ALIQUOTA_ICMS_PADRAO = 18.0
 
 
 class DuplicataFiscalError(Exception):
-    """Documento fiscal com mesma chave_nfe já existe para esta empresa."""
+    """Documento fiscal duplicado (chave NF-e ou fingerprint SHA-256) para esta empresa."""
 
-    def __init__(self, chave_nfe: str, documento_id: int):
+    def __init__(
+        self,
+        chave_nfe: str | None = None,
+        documento_id: int = 0,
+        *,
+        conteudo_sha256: str | None = None,
+    ):
         self.chave_nfe = chave_nfe
         self.documento_id = documento_id
-        super().__init__(
-            f"Documento duplicado: chave_nfe={chave_nfe}, documento_id={documento_id}"
-        )
+        self.conteudo_sha256 = conteudo_sha256
+        if conteudo_sha256:
+            msg = (
+                f"Documento duplicado: mesmo arquivo (SHA-256), documento_id={documento_id}"
+            )
+        else:
+            msg = f"Documento duplicado: chave_nfe={chave_nfe}, documento_id={documento_id}"
+        super().__init__(msg)
 
 
 def _extrair_texto(elemento, tag, ns):
@@ -252,12 +264,37 @@ def processar_e_persistir_xml(db, usuario_atual, empresa, xml_bytes: bytes, dado
     if mva is not None:
         dados["mva_utilizada"] = float(mva) if isinstance(mva, str) else mva
 
-    documento = persistir_documento_fiscal(db, usuario_atual, empresa, dados)
+    conteudo_sha256 = hashlib.sha256(xml_bytes).hexdigest()
+    documento = persistir_documento_fiscal(
+        db, usuario_atual, empresa, dados, conteudo_sha256=conteudo_sha256
+    )
     return documento, dados, analise
 
 
-def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
+def persistir_documento_fiscal(
+    db,
+    usuario_atual,
+    empresa,
+    dados,
+    *,
+    conteudo_sha256: str,
+):
     from app import models
+
+    # ── Deduplicação por fingerprint do arquivo (bytes brutos) ─────────
+    existente_fp = (
+        db.query(models.DocumentoFiscal)
+        .filter(
+            models.DocumentoFiscal.empresa_id == empresa.id,
+            models.DocumentoFiscal.conteudo_sha256 == conteudo_sha256,
+        )
+        .first()
+    )
+    if existente_fp:
+        raise DuplicataFiscalError(
+            documento_id=existente_fp.id,
+            conteudo_sha256=conteudo_sha256,
+        )
 
     # ── Guard de deduplicação por chave_nfe ──────────────────────────────
     chave_nfe = dados.get("chave_nfe")
@@ -289,6 +326,7 @@ def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
     documento = models.DocumentoFiscal(
         usuario_id=usuario_atual.id,
         empresa_id=empresa.id,
+        conteudo_sha256=conteudo_sha256,
         chave_nfe=chave_nfe.strip() if chave_nfe else chave_nfe,
         numero_nota=dados.get("numero_nota"),
         data_emissao=data_emissao,
@@ -306,6 +344,19 @@ def persistir_documento_fiscal(db, usuario_atual, empresa, dados):
         db.flush()
     except IntegrityError:
         db.rollback()
+        existente = (
+            db.query(models.DocumentoFiscal)
+            .filter(
+                models.DocumentoFiscal.empresa_id == empresa.id,
+                models.DocumentoFiscal.conteudo_sha256 == conteudo_sha256,
+            )
+            .first()
+        )
+        if existente:
+            raise DuplicataFiscalError(
+                documento_id=existente.id,
+                conteudo_sha256=conteudo_sha256,
+            )
         existente = (
             db.query(models.DocumentoFiscal)
             .filter(

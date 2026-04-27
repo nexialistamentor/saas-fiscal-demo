@@ -1,5 +1,17 @@
 from datetime import datetime
-from sqlalchemy import Boolean, CheckConstraint, Column, Integer, String, ForeignKey, Float, Date, DateTime, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.types import JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -79,10 +91,19 @@ class Empresa(Base):
 # =========================
 class DocumentoFiscal(Base):
     __tablename__ = "documentos_fiscais"
+    __table_args__ = (
+        UniqueConstraint(
+            "empresa_id",
+            "conteudo_sha256",
+            name="uq_documentos_fiscais_empresa_conteudo_sha256",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     empresa_id = Column(Integer, ForeignKey("empresas.id"))
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
+    # SHA-256 hex (64 chars) dos bytes brutos do XML; deduplica reenvio idêntico por empresa.
+    conteudo_sha256 = Column(String(64), nullable=True)
     chave_nfe = Column(String, nullable=True)
     numero_nota = Column(String, nullable=True)
     data_emissao = Column(Date, nullable=True)
