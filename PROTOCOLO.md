@@ -1,158 +1,218 @@
-# PROTOCOLO SOBERANO L2 — OBRIGATÓRIO EM CADA SESSÃO
+# PROTOCOLO SOBERANA L2
+
+> Versão: 2.0 | Actualizado: 2026-04-27 | HEAD: 885a6a2
 
 ---
 
-## 0. ANTES DE QUALQUER ACÇÃO — ESTADO DO REPOSITÓRIO
+## 0. INÍCIO DE SESSÃO (obrigatório)
 
 ```powershell
-git branch                              # branch actual
-git status --short                      # ficheiros modificados
-git log --oneline -5                    # últimos commits locais
-git branch -r                           # todas as branches remotas
-git log --oneline origin/main -3        # estado de produção
-git log --oneline origin/principal -3   # estado de produto
+git branch; git status --short; git log --oneline -5
 ```
 
----
-
-## 1. CONFIRMAR ANTES DE QUALQUER BRANCH NOVA
-
-- Qual branch é produção?
-- Qual branch é a base correcta para o PR?
-- A branch local está sincronizada com o remoto?
-- Existem conflitos potenciais com outras branches activas?
+Nunca actuar sem confirmar branch, ficheiros modificados e HEAD.
 
 ---
 
-## 2. IDENTIFICAR RISCOS ANTES DE AGIR
+## 1. PRINCÍPIOS FUNDAMENTAIS
 
-- Mapear todos os pontos de dependência antes de escrever código
-- Identificar pontos fracos e fortalecer antes de avançar
-- Nunca assumir comportamento sem prova (log, diff, output real)
-- Se algo parece estranho — parar e investigar antes de continuar
-
----
-
-## 3. NÚCLEO DE DADOS — REGRA ABSOLUTA
-
-- Nunca tocar no núcleo da verdade de dados sem isolamento suficiente
-- Nunca alterar lógica de dados sem decompor por intenção primeiro
-- Cada alteração ao núcleo = uma intenção = um commit
-- Sem prova de que o isolamento está garantido → não avançar
+1. **Persistir primeiro → enriquecer → só então inteligência**
+2. **Motor fiscal = código** — cálculos no backend; frontend só apresenta
+3. **Zero fallback geográfico implícito** — sem `or "PA"` ou defaults de estado
+4. **Fonte normativa rastreável** — toda regra MVA/PMPF tem `fonte_legal`, `url_fonte`, `nivel_confianca_fonte`, `importado_por`
+5. **Nunca apagar dados fiscais** — só marcar (`superseded`, `vigencia_fim`, `silenciado`)
+6. **1 intenção = 1 commit** — `git diff --cached --stat` antes de commitar
+7. **Zero merge para `main` sem testes verdes**
 
 ---
 
-## 4. ARQUITECTURA OFICIAL — NÃO VIOLAR
+## 2. STACK
 
-Pipeline obrigatório para todo XML:
-
-`executar_analise_xml` (núcleo)
-
-→ `executar_e_registrar_analise_xml` (persistência)
-
-→ `processar_e_persistir_xml` (integração empresa)
-
-→ InsightEngine (enriquecimento)
-
-→ dados estruturados no banco
-
-→ agents sob gatilho (não automático)
-
-**PRINCÍPIO CENTRAL:**
-
-persistir primeiro → enriquecer depois → só então usar inteligência
+| Camada | Tecnologia |
+|--------|-----------|
+| Backend | FastAPI + SQLAlchemy + PostgreSQL (Railway) |
+| Cache/Queue | Redis + RQ |
+| Frontend | React + Vite (Vercel) |
+| Branch produção | `main` → Railway |
+| Branch trabalho | `principal` (ou feature branch) |
 
 ---
 
-## 5. REGRAS CRÍTICAS DE CÓDIGO
+## 3. REGRAS DE CÓDIGO
 
-- NÃO criar novos fluxos de análise XML
-- NÃO duplicar lógica existente
-- NÃO criar novas rotas se já existir equivalente
-- NÃO alterar `motor_fiscal` sem necessidade explícita
-- NÃO usar LLM para processamento primário
-- NÃO ler XML bruto se já existe dado persistido
-- NÃO ignorar base normativa (TabelaMVA)
+### 3.1 Antes de qualquer alteração
 
-**Antes de gerar qualquer código, verificar:**
+- Ler o ficheiro completo (`Get-Content`) — nunca editar por resumo
+- `git diff` para confirmar o estado real
+- PowerShell: usar `;` em vez de `&&`
 
-- Isso já existe?
-- Isso cria duplicação?
-- Isso quebra arquitectura?
-- Isso escala?
-- Isso aumenta custo?
+### 3.2 Proibições absolutas
 
-Se qualquer resposta for "sim" → NÃO gerar código novo.
+- Não duplicar rotas nem fluxos XML
+- Não alterar `motor_fiscal.py` sem necessidade explícita
+- Não usar LLM no pipeline primário de cálculo
+- Não hardcodar UF, estado ou fallback geográfico
+- Não usar `func.concat()` — incompatível entre SQLite e PostgreSQL; usar concatenação Python
+- Não commitar sem `py_compile` ou `pytest tests/ -q` verde
 
----
+### 3.3 Padrão de commit
 
-## 6. BASE NORMATIVA
+tipo(escopo): descrição imperativa em português
 
-- Fonte de verdade: `tabela_mva`
-- NÃO usar fallback JSON como fonte primária
-- NÃO hardcodar regras tributárias
-- SEMPRE usar: `buscar_mva`, `carregar_mva`
+feat     — nova funcionalidade
 
----
+fix      — correcção de bug
 
-## 7. AGENTS — LIMITES ESTRITOS
+refactor — reorganização sem mudança de comportamento
 
-Agents NÃO fazem:
+perf     — optimização
 
-- Processamento de XML
-- Leitura directa de XML bruto
-
-Agents SÓ fazem:
-
-- Interpretação de dados já persistidos
-- Geração de insights
-- Alertas sob gatilho
+chore    — infra, deps, config
 
 ---
 
-## 8. CONTROLO DE CUSTO
+## 4. PIPELINE NORMATIVO
 
-- Evitar chamadas desnecessárias a LLM
-- Evitar reprocessamento de XML
-- Usar cache sempre que possível
-- Priorizar lógica determinística
+### Hierarquia de fonte (prioridade decrescente)
 
----
+oficial > convenio_base > convenio_base_sem_aliquota > estimativa > sem_fonte
 
-## 9. REGRAS DE COMMIT
+### Hierarquia de cálculo ST
 
-- 1 commit = 1 intenção
-- Ver `git diff` completo antes de qualquer commit
-- Nunca commitar ficheiros não auditados
-- Testar localmente antes de commitar
-- Build limpo obrigatório antes de push
+PMPF (tabela_pmpf — por marca/embalagem)
 
----
+IVA-ST% (tabela_mva — por NCM/UF)
 
-## 10. REGRAS DE PR
+indisponivel — nunca inventar valor
 
-- Confirmar base do PR antes de criar
-- Confirmar que a base está sincronizada com produção
-- Nunca force push em branches partilhadas
-- Verificar `git log base..head` antes de abrir PR
+### Regras de ouro normativas
 
----
+- `nivel_confianca_fonte="oficial"` nunca é sobrescrito automaticamente
+- Import de dados reais: `pipeline_normativo.importar_regras()` com `dry_run=True` primeiro
+- Portaria revogada: `expirar_regras_revogadas()` com operador identificado
+- Novos dados: commit com citação do número da portaria e data de consulta
 
-## 11. MOTOR FISCAL = CÓDIGO (lei do projecto)
+### Ciclo de actualização normativa
 
-- Cálculo fiscal → backend sempre
-- API externa → tradução/orientação, nunca verdade
-- Frontend → apresenta, nunca calcula
-- Qualquer excepção exige aprovação explícita
+DOU → AG3 detecta → AlertaFiscal criado →
+
+/admin/alertas-normativos → operador verifica →
+
+pipeline_normativo.importar_regras() → marcar_alerta_processado()
 
 ---
 
-## 12. STACK E CONTEXTO
+## 5. AGENTES
 
-- Backend: FastAPI + SQLAlchemy + PostgreSQL
-- Processamento: Motor fiscal + InsightEngine
-- Fila: Redis + RQ
-- Frontend: React (Vite)
-- Agents: AgentScheduler, AgentExecutor, AgentRegistry
-- Produção: Railway (backend) + Vercel (frontend)
-- Branch de produção: `main` → Railway
+- Só consomem dados já persistidos na BD
+
+- Nunca processam XML bruto
+
+- Retornam sempre: `agent`, `total_alertas`, `alertas`, `status: "executado"`
+
+- Alertas têm `tipo`, `descricao`, `nivel` (critico/alto/medio/baixo)
+
+- Registados em `AgentRegistry` — `name` único por agente
+
+### Agentes activos
+
+| Nome | Função |
+|------|--------|
+| `data_sanitization_agent` | Higiene de dados |
+| `auditor_fiscal_agent` | Auditoria fiscal |
+| `normative_agent` | NormativeWatchdogAgent — DOU + vigências |
+| `consistency_audit_agent` | Consistência entre tabelas |
+| `memorial_validator_agent` | Validação antes de exportar memorial |
+| `security_audit_agent` | Padrões suspeitos de uso |
+| `state_recovery_agent` | Circuit breaker e engines degradadas |
+| `repair_agent` | Reparação de estados inconsistentes |
+
+---
+
+## 6. SEGURANÇA
+
+- `LoginThrottle`: Redis (produção) + fallback memória — 5 tentativas / 15 min
+
+- JWT: `jti` revogado em Redis após logout — TTL = tempo restante do token
+
+- Rate limit: por `user_id` (JWT válido) ou IP (fallback)
+
+- `request_logs`: middleware async (`asyncio.to_thread`) — purga automática (default 30 dias)
+
+- `SECRET_KEY`: obrigatória em produção — app não inicia sem ela
+
+- `REDIS_URL`: obrigatória em produção para throttle e revogação JWT
+
+---
+
+## 7. DADOS E MIGRAÇÕES
+
+- ORM: SQLAlchemy + Alembic
+
+- Toda migration: verificar que só toca a tabela pretendida (autogenerate detecta ruído)
+
+- SQLite local / PostgreSQL Railway — testar compatibilidade antes de push
+
+- `Base.metadata.create_all` no startup (novas instâncias) + `alembic upgrade head` (instâncias existentes)
+
+- Dados imutáveis: `superseded` (insights), `vigencia_fim` (MVA/PMPF), `processado` (alertas)
+
+---
+
+## 8. TESTES
+
+```powershell
+python -m pytest tests\ -q   # sempre antes de commitar
+```
+
+- `testpaths = tests` no `pytest.ini` — scripts/ excluídos
+
+- Paths Redis: validar com `fakeredis` antes de commitar
+
+- Paths async: `pytest-asyncio` com `asyncio_mode = auto`
+
+- Novos serviços críticos: mínimo 1 teste unitário antes de merge
+
+---
+
+## 9. VARIÁVEIS DE AMBIENTE
+
+| Variável | Obrigatória | Descrição |
+|----------|------------|-----------|
+| `SECRET_KEY` | Produção | Chave JWT — app não inicia sem ela |
+| `REDIS_URL` | Produção | Throttle + revogação JWT |
+| `DATABASE_URL` | Produção | PostgreSQL Railway |
+| `ENVIRONMENT` | Não | `production` activa validações estritas |
+| `REQUEST_LOG_RETENTION_DAYS` | Não | Default 30 dias |
+
+---
+
+## 10. ESCALAR PARA FINTECH — REGRAS NÃO NEGOCIÁVEIS
+
+1. **Zero dados não verificados em produção** — `convenio_base_sem_aliquota` nunca vira `oficial` sem portaria real
+
+2. **Zero cálculo ST sem fonte** — `confianca: indisponivel` bloqueia, não estima
+
+3. **Auditoria completa** — quem importou, quando, de que fonte, com que nível de confiança
+
+4. **Trilha imutável** — nenhum dado fiscal é apagado, só encerrado (`vigencia_fim`) ou substituído (`superseded`)
+
+5. **Monitorização automática** — AG3 + DOU; operador age, sistema detecta
+
+6. **Testes obrigatórios** — sem excepções, sem "validado em produção"
+
+---
+
+## 11. FICHEIROS DE REFERÊNCIA
+
+| Ficheiro | Conteúdo |
+|----------|----------|
+| `PROTOCOLO.md` | Este ficheiro |
+| `SOBERANA_L2_ROADMAP.md` | Roadmap detalhado Semana 4+ |
+| `app/services/pipeline_normativo.py` | Import nacional de regras normativas |
+| `app/agents/normative_watchdog_agent.py` | Monitorização DOU e vigências |
+| `data/mva/convenio_142_2018.csv` | Base MVA nacional (27 UFs) |
+
+---
+
+*Última actualização: 2026-04-27 | HEAD: 885a6a2*
