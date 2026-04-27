@@ -387,7 +387,8 @@ async def startup():
     await asyncio.to_thread(_startup_purge_request_logs_sync)
 
     # Scheduler desativado temporariamente para estabilizar o banco
-    # asyncio.create_task(scheduler.iniciar_loop(empresa_id=1, intervalo_segundos=300))
+    # asyncio.create_task(scheduler.iniciar_loop(intervalo_segundos=300))  # multi-tenant
+    # asyncio.create_task(scheduler.iniciar_loop(empresa_id=1, intervalo_segundos=300))  # uma empresa
 
 
 @app.get("/")
