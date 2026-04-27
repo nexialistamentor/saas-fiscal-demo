@@ -31,7 +31,7 @@ def calcular_potencial_recuperacao(db, empresa_id):
         if base_st == 0:
             continue
 
-        res = resolver_aliquota_e_mva(db, "PA", ncm)
+        res = resolver_aliquota_e_mva(db, "", ncm)
 
         aliquota = res["aliquota"]
 

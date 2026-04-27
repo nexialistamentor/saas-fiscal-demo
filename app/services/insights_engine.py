@@ -488,7 +488,7 @@ class InsightEngine:
 
         res_aliq = resolver_aliquota_e_mva(
             self.db,
-            "PA",
+            "",
             None,
             data_referencia=context.get("data_referencia"),
         )
