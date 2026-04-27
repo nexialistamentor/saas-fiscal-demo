@@ -5,6 +5,8 @@ Conecta Motor Fiscal, Engines, Agentes e Score ao container relatorios_analise.
 Cada execução vira um registro completo auditável.
 """
 
+import hashlib
+import json
 import logging
 import time
 from datetime import datetime
@@ -65,6 +67,9 @@ def finalizar_registro_analise(
         rel.score_resultante = score_resultante
     if resultado_json is not None:
         rel.resultado_json = resultado_json
+        rel.fingerprint = hashlib.sha256(
+            json.dumps(resultado_json, sort_keys=True, ensure_ascii=False).encode()
+        ).hexdigest()
     db.commit()
 
 

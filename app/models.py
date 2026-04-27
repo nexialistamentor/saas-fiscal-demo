@@ -225,6 +225,7 @@ class RelatorioAnalise(Base):
     score_resultante = Column(Float, nullable=True)  # score tributário ao final da análise
 
     resultado_json = Column(JSON)
+    fingerprint = Column(String(64), nullable=True)
 
     pago = Column(Boolean, default=False, nullable=False)
     memorial_gerado = Column(Boolean, default=False, nullable=False)

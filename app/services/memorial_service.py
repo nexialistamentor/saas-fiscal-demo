@@ -138,6 +138,7 @@ def coletar_contexto_memorial(
             "total_alertas": rel.total_alertas,
             "score_resultante": rel.score_resultante,
             "resultado_json": rel.resultado_json,
+            "fingerprint": rel.fingerprint,
             "pago": rel.pago,
             "memorial_gerado": rel.memorial_gerado,
             "created_at": rel.created_at.isoformat() if rel.created_at else None,
