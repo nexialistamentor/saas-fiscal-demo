@@ -1,0 +1,4 @@
+# Desenvolvimento e CI: path crítico Redis (LoginThrottle) sem depender de Docker
+-r requirements.txt
+fakeredis>=2.0
+pytest>=7.0
