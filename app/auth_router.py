@@ -7,7 +7,15 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models
 from app.schemas.user_schema import UserCreate, UserResponse, UserSession
-from app.security import hash_senha, verificar_senha, criar_token, get_usuario_atual
+from app.security import (
+    hash_senha,
+    verificar_senha,
+    criar_token,
+    get_usuario_atual,
+    decodificar_token_acesso_valido,
+    oauth2_scheme,
+)
+from app.token_revocation import revogacao_jti
 from app.seed_data import ensure_planos
 from app.rate_limit import limiter, login_throttle
 
@@ -119,3 +127,18 @@ def login(
 @router.get("/me", response_model=UserSession)
 def me(usuario_atual: models.User = Depends(get_usuario_atual)) -> UserSession:
     return usuario_atual
+
+
+@router.post("/logout")
+@limiter.limit("30/minute")
+def logout(request: Request, token: str = Depends(oauth2_scheme)) -> dict[str, str]:
+    payload = decodificar_token_acesso_valido(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    if jti and exp is not None:
+        if revogacao_jti.esta_revogado(jti):
+            return {"detail": "Sessão encerrada"}
+        revogacao_jti.registrar(jti, exp)
+    return {"detail": "Sessão encerrada"}

@@ -3,8 +3,15 @@ import uuid
 import logging
 from datetime import datetime, timedelta
 
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+
+from app import models
+from app.database import get_db
+from app.token_revocation import revogacao_jti
 
 logger = logging.getLogger(__name__)
 
@@ -66,14 +73,27 @@ def verificar_token(token: str):
         if "jti" not in payload or "iat" not in payload:
             return None
 
+        jti = payload.get("jti")
+        if jti and revogacao_jti.esta_revogado(jti):
+            return None
+
         return payload
     except JWTError:
         return None
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
-from app.database import get_db
-from app import models
-from sqlalchemy.orm import Session
+
+
+def decodificar_token_acesso_valido(token: str) -> dict | None:
+    """
+    Assinatura e exp; não verifica revogação (necessário para /auth/logout idempotente).
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if "jti" not in payload or "iat" not in payload:
+            return None
+        return payload
+    except JWTError:
+        return None
+
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
