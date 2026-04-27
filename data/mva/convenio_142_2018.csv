@@ -1,0 +1,19 @@
+# Convênio ICMS 142/2018 — Anexo II (MVA por NCM).
+# URL: https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+# Data de consulta / registo no repositório: 2026-04-27
+#
+# Colunas: ver Convênio ICMS 142/2018. vigencia_fim vazio = ainda vigente à data acima.
+#
+# MVA 40% para NCM 2202.10.00: valor indicado no Anexo II do convênio.
+# aliquota_interna 0,18: conforme exemplos normativos SP e MG da especificação de importação
+#   e alinhado ao cadastro PA já existente no projeto (seed MVA) para o mesmo NCM.
+#
+# UFs sem linha neste ficheiro (NCM 2202.10.00): AC, AL, AM, AP, BA, CE, DF, ES, GO, MA,
+#   MS, MT, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, TO — não incluídas até constar
+#   no texto legal consultado a alíquota interna aplicável a este NCM em cada UF
+#   (o convênio fixa MVA; a alíquota interna é estadual).
+#
+csvuf,ncm,mva,aliquota_interna,vigencia_inicio,vigencia_fim,fonte_legal,url_fonte
+MG,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+PA,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+SP,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18

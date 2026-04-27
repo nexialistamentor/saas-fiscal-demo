@@ -39,8 +39,19 @@ def resolver_aliquota_e_mva(
             "aviso": str | None, # quando aplicável
         }
     """
-    uf_norm = (uf or "PA").strip().upper()[:2]
+    uf_norm = (uf or "").strip().upper()[:2]
     ncm_norm = (ncm or "").strip()
+
+    if not uf_norm:
+        return {
+            "aliquota": _ALIQUOTA_ICMS_FALLBACK,
+            "mva": _MVA_FALLBACK,
+            "fonte": "fallback_uf_desconhecida",
+            "uf": uf_norm,
+            "ncm": ncm_norm,
+            "confianca": "indisponivel",
+            "aviso": "UF não identificada no documento fiscal.",
+        }
 
     if not uf_tem_dados_mva(db, uf_norm):
         return {
@@ -86,12 +97,13 @@ def uf_do_documento(documento) -> str:
     """
     Extrai a UF relevante de um DocumentoFiscal.
     Prioriza uf_dest (destino da operação) sobre uf_emit.
-    Fallback: "PA".
+    Se ausente, devolve string vazia (resolver_aliquota_e_mva aplica fallback auditável).
     """
     if documento is None:
-        return "PA"
-    return (
+        return ""
+    raw = (
         getattr(documento, "uf_dest", None)
         or getattr(documento, "uf_emit", None)
-        or "PA"
-    ).strip().upper()[:2]
+        or ""
+    )
+    return str(raw).strip().upper()[:2]

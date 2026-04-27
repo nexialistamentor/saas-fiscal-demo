@@ -1,9 +1,16 @@
 from datetime import date
 
+from sqlalchemy import case, or_
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 
 from app.models import TabelaMVA
+
+_PRIORIDADE_FONTE = case(
+    (TabelaMVA.nivel_confianca_fonte == "oficial", 0),
+    (TabelaMVA.nivel_confianca_fonte == "convenio_base", 1),
+    (TabelaMVA.nivel_confianca_fonte == "estimativa", 2),
+    else_=3,
+)
 
 
 def uf_tem_dados_mva(db: Session, uf: str) -> bool:
@@ -51,6 +58,7 @@ def buscar_mva(
             )
         )
     registro = q.order_by(
+        _PRIORIDADE_FONTE,
         TabelaMVA.vigencia_inicio.desc(),
         TabelaMVA.id.desc(),
     ).first()
