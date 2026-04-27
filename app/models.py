@@ -205,6 +205,8 @@ class RelatorioAnalise(Base):
 
     resultado_json = Column(JSON)
 
+    pago = Column(Boolean, default=False, nullable=False)
+    memorial_gerado = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -302,6 +304,25 @@ class DocumentoRendimento(Base):
     criado_em = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="documentos_rendimento")
+
+
+# =========================
+# REFERÊNCIAS LEGAIS (base normativa do Memorial de Cálculo)
+# =========================
+class ReferenciaLegal(Base):
+    __tablename__ = "referencias_legais"
+
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String(50), unique=True, nullable=False, index=True)
+    titulo = Column(String(200), nullable=False)
+    fundamento = Column(Text, nullable=False)
+    descricao = Column(Text, nullable=True)
+    uf = Column(String(2), nullable=True, index=True)
+    vigencia_inicio = Column(Date, nullable=False)
+    vigencia_fim = Column(Date, nullable=True)
+    fonte_url = Column(String(500), nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 # =========================
