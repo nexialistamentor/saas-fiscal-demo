@@ -224,26 +224,30 @@ async def add_security_headers(request, call_next):
     return response
 
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    response = await call_next(request)
+def _persist_request_log(
+    method: str,
+    path: str,
+    status_code: int,
+    auth_header: str,
+    user_agent: str | None,
+    ip: str,
+) -> None:
+    """Persistência síncrona; chamada via asyncio.to_thread no middleware async."""
     db = None
     try:
         db = SessionLocal()
         user_id = None
-        auth = request.headers.get("authorization", "")
-        if auth.lower().startswith("bearer "):
-            payload = verificar_token(auth[7:].strip())
+        if auth_header.lower().startswith("bearer "):
+            payload = verificar_token(auth_header[7:].strip())
             if payload:
                 user_id = payload.get("user_id")
-        ip = request.client.host if request.client else "unknown"
         log = RequestLog(
-            method=request.method,
-            path=str(request.url.path),
-            status_code=response.status_code,
+            method=method,
+            path=path,
+            status_code=status_code,
             user_id=user_id,
             ip=ip,
-            user_agent=request.headers.get("user-agent"),
+            user_agent=user_agent,
         )
         db.add(log)
         db.commit()
@@ -254,6 +258,23 @@ async def log_requests(request: Request, call_next):
     finally:
         if db is not None:
             db.close()
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    response = await call_next(request)
+    auth_header = request.headers.get("authorization", "")
+    user_agent = request.headers.get("user-agent")
+    ip = request.client.host if request.client else "unknown"
+    await asyncio.to_thread(
+        _persist_request_log,
+        request.method,
+        str(request.url.path),
+        response.status_code,
+        auth_header,
+        user_agent,
+        ip,
+    )
     return response
 
 
