@@ -8,7 +8,6 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import AlertaFiscal, TabelaMVA, TabelaPMPF
@@ -87,44 +86,39 @@ def expirar_regras_revogadas(
     Requer operador identificado.
     """
     data = date.fromisoformat(data_revogacao)
-    suffix = f" | Revogado: {fonte_revogacao}"
 
-    mva_actualizados = (
+    registos_mva = (
         db.query(TabelaMVA)
         .filter(
             TabelaMVA.estado == estado.upper(),
             TabelaMVA.ncm == ncm,
             TabelaMVA.vigencia_fim.is_(None),
         )
-        .update(
-            {
-                "vigencia_fim": data,
-                "fonte_legal": func.concat(
-                    func.coalesce(TabelaMVA.fonte_legal, ""),
-                    suffix,
-                ),
-            },
-            synchronize_session=False,
-        )
+        .all()
     )
-    pmpf_actualizados = (
+    for r in registos_mva:
+        r.vigencia_fim = data
+        r.fonte_legal = (
+            f"{r.fonte_legal or ''} | Revogado: {fonte_revogacao}".strip(" |")
+        )
+
+    registos_pmpf = (
         db.query(TabelaPMPF)
         .filter(
             TabelaPMPF.estado == estado.upper(),
             TabelaPMPF.ncm == ncm,
             TabelaPMPF.vigencia_fim.is_(None),
         )
-        .update(
-            {
-                "vigencia_fim": data,
-                "fonte_legal": func.concat(
-                    func.coalesce(TabelaPMPF.fonte_legal, ""),
-                    suffix,
-                ),
-            },
-            synchronize_session=False,
-        )
+        .all()
     )
+    for r in registos_pmpf:
+        r.vigencia_fim = data
+        r.fonte_legal = (
+            f"{r.fonte_legal or ''} | Revogado: {fonte_revogacao}".strip(" |")
+        )
+
+    mva_actualizados = len(registos_mva)
+    pmpf_actualizados = len(registos_pmpf)
     db.commit()
     logger.warning(
         "Regras expiradas por %s: estado=%s ncm=%s data=%s mva=%d pmpf=%d fonte=%s",
