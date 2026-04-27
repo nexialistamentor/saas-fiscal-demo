@@ -73,13 +73,31 @@ def resolver_aliquota_e_mva(
     )
 
     if regra:
+        nivel = regra.get("nivel_confianca_fonte") or "sem_fonte"
+        mva_val = (
+            float(regra["mva"]) / 100 if regra["mva"] > 1 else float(regra["mva"])
+        )
+        if nivel == "convenio_base_sem_aliquota":
+            return {
+                "aliquota": _ALIQUOTA_ICMS_FALLBACK,
+                "mva": mva_val,
+                "fonte": "tabela",
+                "uf": uf_norm,
+                "ncm": ncm_norm,
+                "confianca": "estimativa",
+                "aviso": (
+                    "MVA do Convênio ICMS 142/2018 (base convenio); alíquota interna "
+                    "não cadastrada com fonte estadual verificada — aplicado fallback "
+                    "documentado de ICMS. Confirmar no RICMS da UF."
+                ),
+            }
         return {
             "aliquota": float(regra["aliquota_interna"]),
-            "mva": float(regra["mva"]) / 100 if regra["mva"] > 1 else float(regra["mva"]),
+            "mva": mva_val,
             "fonte": "tabela",
             "uf": uf_norm,
             "ncm": ncm_norm,
-            "confianca": regra.get("nivel_confianca_fonte") or "sem_fonte",
+            "confianca": nivel,
         }
 
     return {

@@ -30,6 +30,16 @@ def _parse_date(s: str) -> date | None:
     return date.fromisoformat(s) if s else None
 
 
+def _aliquota_interna_e_nivel(row: dict) -> tuple[float, str]:
+    """
+    CSV vazio em aliquota_interna → placeholder 0.0 na BD e marcador de auditoria.
+    """
+    raw = (row.get("aliquota_interna") or "").strip()
+    if not raw:
+        return 0.0, "convenio_base_sem_aliquota"
+    return float(raw), "convenio_base"
+
+
 def _linhas_dados_csv(open_file):
     for row in open_file:
         if row.lstrip().startswith("#"):
@@ -62,16 +72,17 @@ def importar(commit: bool = False, uf_filtro: str | None = None) -> dict:
                     )
                     .first()
                 )
+                ali, nivel = _aliquota_interna_e_nivel(row)
                 if existente:
                     if existente.nivel_confianca_fonte == "oficial":
                         ignorados += 1
                         continue
                     existente.mva = float(row["mva"])
-                    existente.aliquota_interna = float(row["aliquota_interna"])
+                    existente.aliquota_interna = ali
                     existente.vigencia_fim = vf
                     existente.fonte_legal = row["fonte_legal"]
                     existente.url_fonte = row.get("url_fonte")
-                    existente.nivel_confianca_fonte = "convenio_base"
+                    existente.nivel_confianca_fonte = nivel
                     existente.importado_por = IMPORTADO_POR
                     atualizados += 1
                 else:
@@ -80,12 +91,12 @@ def importar(commit: bool = False, uf_filtro: str | None = None) -> dict:
                             estado=uf,
                             ncm=ncm,
                             mva=float(row["mva"]),
-                            aliquota_interna=float(row["aliquota_interna"]),
+                            aliquota_interna=ali,
                             vigencia_inicio=vi,
                             vigencia_fim=vf,
                             fonte_legal=row["fonte_legal"],
                             url_fonte=row.get("url_fonte"),
-                            nivel_confianca_fonte="convenio_base",
+                            nivel_confianca_fonte=nivel,
                             importado_por=IMPORTADO_POR,
                         )
                     )

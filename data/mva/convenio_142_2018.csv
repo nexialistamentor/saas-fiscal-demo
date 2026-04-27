@@ -5,36 +5,33 @@
 # Colunas: ver Convênio ICMS 142/2018. vigencia_fim vazio = ainda vigente à data acima.
 #
 # MVA 40% para NCM 2202.10.00: valor do Anexo II do convênio (todas as UFs abaixo).
-# aliquota_interna: alíquota geral interna de ICMS da UF na vigência do Anexo II (início
-#   2018-10-16), para mercadorias sujeitas à alíquota modal nas operações internas, conforme
-#   RICMS/SEFAZ de cada ente (percentuais consolidados em tabelas fiscais da época; ex.: PR
-#   18% até majoração em 2023; RO 17,5% até 2024).
+# aliquota_interna: vazia = requer verificação por RICMS estadual
 #
 csvuf,ncm,mva,aliquota_interna,vigencia_inicio,vigencia_fim,fonte_legal,url_fonte
-AC,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-AL,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-AM,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-AP,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-BA,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-CE,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-DF,22021000,40.0,0.20,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-ES,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-GO,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-MA,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-MG,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-MS,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-MT,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-PA,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-PB,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-PE,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-PI,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-PR,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-RJ,22021000,40.0,0.20,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-RN,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-RO,22021000,40.0,0.175,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-RR,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-RS,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-SC,22021000,40.0,0.17,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-SE,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-SP,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
-TO,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíq. interna RICMS UF (ref. 2018-10-16),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+AC,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+AL,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+AM,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+AP,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+BA,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+CE,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+DF,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+ES,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+GO,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+MA,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+MG,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+MS,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+MT,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+PA,22021000,40.0,0.18,2018-10-16,,Convênio ICMS 142/2018 Anexo II; alíquota interna 18% verificada (RICMS PA / seed_mva),https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+PB,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+PE,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+PI,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+PR,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+RJ,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+RN,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+RO,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+RR,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+RS,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+SC,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+SE,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+SP,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18
+TO,22021000,40.0,,2018-10-16,,Convênio ICMS 142/2018 Anexo II (MVA); alíquota interna pendente de verificação RICMS da UF,https://www.confaz.fazenda.gov.br/legislacao/convenios/2018/cv142_18

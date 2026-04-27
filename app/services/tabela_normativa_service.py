@@ -7,7 +7,10 @@ from app.models import TabelaMVA
 
 _PRIORIDADE_FONTE = case(
     (TabelaMVA.nivel_confianca_fonte == "oficial", 0),
-    (TabelaMVA.nivel_confianca_fonte == "convenio_base", 1),
+    (
+        TabelaMVA.nivel_confianca_fonte.in_(("convenio_base", "convenio_base_sem_aliquota")),
+        1,
+    ),
     (TabelaMVA.nivel_confianca_fonte == "estimativa", 2),
     else_=3,
 )
