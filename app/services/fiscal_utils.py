@@ -35,7 +35,7 @@ def resolver_aliquota_e_mva(
             "fonte": str,        # "tabela" | "fallback" | "fallback_uf_sem_dados"
             "uf": str,
             "ncm": str,
-            "confianca": str,    # "oficial" | "sem_fonte_legal" | "estimativa" | "indisponivel"
+            "confianca": str,    # nível da fonte na tabela ou indisponível/estimativa (fallback)
             "aviso": str | None, # quando aplicável
         }
     """
@@ -68,7 +68,7 @@ def resolver_aliquota_e_mva(
             "fonte": "tabela",
             "uf": uf_norm,
             "ncm": ncm_norm,
-            "confianca": "oficial" if regra.get("fonte_legal") else "sem_fonte_legal",
+            "confianca": regra.get("nivel_confianca_fonte") or "sem_fonte",
         }
 
     return {

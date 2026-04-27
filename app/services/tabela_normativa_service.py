@@ -65,4 +65,5 @@ def buscar_mva(
         "vigencia_fim": registro.vigencia_fim,
         "fonte_legal": getattr(registro, "fonte_legal", None),
         "url_fonte": getattr(registro, "url_fonte", None),
+        "nivel_confianca_fonte": registro.nivel_confianca_fonte or "sem_fonte",
     }

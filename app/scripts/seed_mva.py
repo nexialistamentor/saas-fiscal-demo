@@ -45,14 +45,24 @@ def seed_mva():
             .first()
         )
 
-        if not existente:
+        # Portaria PA = fonte primária
+        nivel = "oficial" if r["estado"] == "PA" else (
+            r.get("nivel_confianca_fonte") or "sem_fonte"
+        )
 
+        if existente:
+            existente.mva = r["mva"]
+            existente.aliquota_interna = r["aliquota_interna"]
+            existente.vigencia_inicio = r["vigencia_inicio"]
+            existente.nivel_confianca_fonte = nivel
+        else:
             nova = TabelaMVA(
                 estado=r["estado"],
                 ncm=r["ncm"],
                 mva=r["mva"],
                 aliquota_interna=r["aliquota_interna"],
-                vigencia_inicio=r["vigencia_inicio"]
+                vigencia_inicio=r["vigencia_inicio"],
+                nivel_confianca_fonte=nivel,
             )
 
             db.add(nova)
