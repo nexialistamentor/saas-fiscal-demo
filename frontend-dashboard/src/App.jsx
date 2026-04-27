@@ -10,6 +10,7 @@ import {
   isAuthenticated,
   clearToken,
   login,
+  logout,
 } from "./config"
 import {
   ResponsiveContainer,
@@ -216,8 +217,8 @@ function App() {
     }
   }
 
-  function handleLogout() {
-    clearToken()
+  async function handleLogout() {
+    await logout()
     window.location.reload()
   }
 

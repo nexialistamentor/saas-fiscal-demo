@@ -24,6 +24,22 @@ export function isAuthenticated() {
   return !!localStorage.getItem(TOKEN_KEY)
 }
 
+export async function logout() {
+  const t = getToken()
+  if (!t) {
+    clearToken()
+    return
+  }
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${t}` },
+    })
+  } finally {
+    clearToken()
+  }
+}
+
 export async function login(email, password) {
   const form = new URLSearchParams()
   form.append("username", email)
