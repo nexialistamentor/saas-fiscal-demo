@@ -2,7 +2,7 @@ import unicodedata
 
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationInfo, field_validator
 
 
 class UserCreate(BaseModel):
@@ -59,8 +59,7 @@ class UserResponse(BaseModel):
     empresa_id: int | None = None
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserSession(BaseModel):
@@ -70,5 +69,4 @@ class UserSession(BaseModel):
     consulta_paga: bool
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

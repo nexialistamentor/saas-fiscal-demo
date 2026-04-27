@@ -9,6 +9,8 @@ if sys.platform == "win32":
         return _orig_get_context(method)
     multiprocessing.get_context = _patched_get_context
 
+from contextlib import asynccontextmanager
+
 from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -54,7 +56,77 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
+
+def _dias_retenção_request_logs() -> int:
+    raw = os.environ.get("REQUEST_LOG_RETENTION_DAYS", "30")
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning("REQUEST_LOG_RETENTION_DAYS inválido (%s), usando 30", raw)
+        return 30
+
+
+def _startup_purge_request_logs_sync() -> None:
+    dias = _dias_retenção_request_logs()
+    if dias <= 0:
+        logger.info("Retenção request_logs desativada (REQUEST_LOG_RETENTION_DAYS <= 0).")
+        return
+    try:
+        n = purga_request_logs_mais_antigos_que(dias)
+        if n:
+            logger.info(
+                "Retenção request_logs: removidos %s registos com mais de %s dias.",
+                n,
+                dias,
+            )
+    except Exception as exc:
+        logger.warning("Retenção request_logs no startup falhou: %s", exc)
+
+
+def run_migrations():
+    """Cria colunas e tabelas adicionais se não existirem."""
+    from sqlalchemy import inspect
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        # regime_tributario em empresas
+        if "empresas" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("empresas")]
+            if "regime_tributario" not in cols:
+                conn.execute(text("ALTER TABLE empresas ADD COLUMN regime_tributario VARCHAR(50)"))
+        # quantidade em itens_fiscais
+        if "itens_fiscais" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("itens_fiscais")]
+            if "quantidade" not in cols:
+                conn.execute(text("ALTER TABLE itens_fiscais ADD COLUMN quantidade REAL"))
+        # role em usuarios (default 'user' para todos os existentes)
+        if "usuarios" in insp.get_table_names():
+            cols = [c["name"] for c in insp.get_columns("usuarios")]
+            if "role" not in cols:
+                conn.execute(text(
+                    "ALTER TABLE usuarios ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'"
+                ))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    models.Base.metadata.create_all(bind=engine)
+    run_migrations()
+    db = SessionLocal()
+    try:
+        ensure_planos(db)
+    finally:
+        db.close()
+    await asyncio.to_thread(_startup_purge_request_logs_sync)
+
+    # Scheduler desativado temporariamente para estabilizar o banco
+    # asyncio.create_task(scheduler.iniciar_loop(intervalo_segundos=300))  # multi-tenant
+    # asyncio.create_task(scheduler.iniciar_loop(empresa_id=1, intervalo_segundos=300))  # uma empresa
+
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -91,15 +163,6 @@ class LiberarConsultaPayload(BaseModel):
 class PurgeRequestLogsPayload(BaseModel):
     """Se dias for omitido, usa REQUEST_LOG_RETENTION_DAYS (default 30)."""
     dias: int | None = None
-
-
-def _dias_retenção_request_logs() -> int:
-    raw = os.environ.get("REQUEST_LOG_RETENTION_DAYS", "30")
-    try:
-        return int(raw)
-    except ValueError:
-        logger.warning("REQUEST_LOG_RETENTION_DAYS inválido (%s), usando 30", raw)
-        return 30
 
 
 # ── L2 SOBERANA — REFORÇOS FUTUROS PARA ENDPOINTS ADMIN ─────────────────
@@ -311,23 +374,6 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-def _startup_purge_request_logs_sync() -> None:
-    dias = _dias_retenção_request_logs()
-    if dias <= 0:
-        logger.info("Retenção request_logs desativada (REQUEST_LOG_RETENTION_DAYS <= 0).")
-        return
-    try:
-        n = purga_request_logs_mais_antigos_que(dias)
-        if n:
-            logger.info(
-                "Retenção request_logs: removidos %s registos com mais de %s dias.",
-                n,
-                dias,
-            )
-    except Exception as exc:
-        logger.warning("Retenção request_logs no startup falhou: %s", exc)
-
-
 scheduler = AgentScheduler()
 
 
@@ -348,47 +394,6 @@ app.include_router(auditoria_router, prefix="/estoque")
 app.include_router(estoque_dashboard_router, prefix="/estoque")
 app.include_router(cpf_router)
 app.include_router(admin_router)
-
-
-def run_migrations():
-    """Cria colunas e tabelas adicionais se não existirem."""
-    from sqlalchemy import inspect
-    insp = inspect(engine)
-    with engine.begin() as conn:
-        # regime_tributario em empresas
-        if "empresas" in insp.get_table_names():
-            cols = [c["name"] for c in insp.get_columns("empresas")]
-            if "regime_tributario" not in cols:
-                conn.execute(text("ALTER TABLE empresas ADD COLUMN regime_tributario VARCHAR(50)"))
-        # quantidade em itens_fiscais
-        if "itens_fiscais" in insp.get_table_names():
-            cols = [c["name"] for c in insp.get_columns("itens_fiscais")]
-            if "quantidade" not in cols:
-                conn.execute(text("ALTER TABLE itens_fiscais ADD COLUMN quantidade REAL"))
-        # role em usuarios (default 'user' para todos os existentes)
-        if "usuarios" in insp.get_table_names():
-            cols = [c["name"] for c in insp.get_columns("usuarios")]
-            if "role" not in cols:
-                conn.execute(text(
-                    "ALTER TABLE usuarios ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'"
-                ))
-
-
-@app.on_event("startup")
-async def startup():
-    models.Base.metadata.create_all(bind=engine)
-    run_migrations()
-    db = SessionLocal()
-    try:
-        ensure_planos(db)
-    finally:
-        db.close()
-
-    await asyncio.to_thread(_startup_purge_request_logs_sync)
-
-    # Scheduler desativado temporariamente para estabilizar o banco
-    # asyncio.create_task(scheduler.iniciar_loop(intervalo_segundos=300))  # multi-tenant
-    # asyncio.create_task(scheduler.iniciar_loop(empresa_id=1, intervalo_segundos=300))  # uma empresa
 
 
 @app.get("/")
