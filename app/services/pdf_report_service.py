@@ -199,3 +199,151 @@ def gerar_pdf_relatorio(relatorio: dict) -> BytesIO:
     buffer.seek(0)
 
     return buffer
+
+
+def gerar_pdf_memorial(contexto: dict) -> BytesIO:
+    """
+    Gera o Memorial de Cálculo L2 — documento auditável com embasamento legal.
+
+    Entrada: contexto de coletar_contexto_memorial()
+    """
+    from datetime import datetime
+
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    w, h = A4
+    margem = 50
+    largura = w - 2 * margem
+
+    def nova_pagina():
+        c.showPage()
+        return h - 50
+
+    def linha(y, espaco=14):
+        return y - espaco
+
+    rel = contexto.get("relatorio", {})
+    insights = contexto.get("insights", [])
+    alertas = contexto.get("alertas", [])
+    referencias = contexto.get("referencias_legais", [])
+    ref_map = {r["codigo"]: r for r in referencias}
+
+    y = h - 50
+
+    # === CABEÇALHO ===
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(margem, y, "MEMORIAL DE CÁLCULO TRIBUTÁRIO")
+    y = linha(y, 25)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(margem, y, "Plataforma de Inteligência Tributária Soberana L2")
+    y = linha(y, 20)
+    c.setFont("Helvetica", 9)
+    c.drawString(
+        margem,
+        y,
+        f"Relatório ID: {rel.get('id')} | Empresa ID: {rel.get('empresa_id')} | Gerado: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')} UTC",
+    )
+    y = linha(y, 18)
+    c.drawString(
+        margem,
+        y,
+        f"Tipo de análise: {rel.get('analysis_type')} | Status: {rel.get('status')} | Score: {rel.get('score_resultante')}",
+    )
+    y = linha(y, 25)
+
+    # === SECÇÃO 1 — RESUMO EXECUTIVO ===
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margem, y, "1. RESUMO EXECUTIVO")
+    y = linha(y, 20)
+    c.setFont("Helvetica", 10)
+    total_recuperavel = sum(
+        float(i.get("valor_estimado") or 0) for i in insights if i.get("impacto") in ("alto", "medio")
+    )
+    total_alertas_criticos = len([a for a in alertas if a.get("nivel") == "critico"])
+    c.drawString(
+        margem + 20,
+        y,
+        f"Total recuperável estimado: R$ {total_recuperavel:,.2f}".replace(",", "X")
+        .replace(".", ",")
+        .replace("X", "."),
+    )
+    y = linha(y)
+    c.drawString(
+        margem + 20,
+        y,
+        f"Total de insights: {len(insights)} | Alertas críticos: {total_alertas_criticos}",
+    )
+    y = linha(y, 25)
+
+    # === SECÇÃO 2 — CÁLCULOS E FUNDAMENTOS LEGAIS ===
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margem, y, "2. CÁLCULOS E FUNDAMENTOS LEGAIS")
+    y = linha(y, 20)
+
+    for i, insight in enumerate(insights, 1):
+        if y < 120:
+            y = nova_pagina()
+        tipo = insight.get("tipo", "INSIGHT_GENERICO")
+        valor = float(insight.get("valor_estimado") or 0)
+        ref = ref_map.get(tipo)
+
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(margem + 10, y, f"{i}. {tipo}")
+        y = linha(y)
+        c.setFont("Helvetica", 9)
+        if insight.get("descricao"):
+            y = _quebrar_texto(c, f"Descrição: {insight['descricao']}", margem + 20, y, largura - 20)
+        c.drawString(
+            margem + 20,
+            y,
+            f"Valor estimado: R$ {valor:,.2f}".replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+            + f" | Impacto: {insight.get('impacto', 'N/A')}",
+        )
+        y = linha(y)
+        if ref:
+            c.setFont("Helvetica-Oblique", 9)
+            y = _quebrar_texto(c, f"Fundamento: {ref['fundamento']}", margem + 20, y, largura - 20)
+            if ref.get("fonte_url"):
+                y = _quebrar_texto(c, f"Fonte: {ref['fonte_url']}", margem + 20, y, largura - 20)
+        else:
+            c.setFont("Helvetica-Oblique", 9)
+            c.drawString(margem + 20, y, "Fundamento: base normativa em actualização.")
+            y = linha(y)
+        c.setFont("Helvetica", 9)
+        y = linha(y, 8)
+
+    # === SECÇÃO 3 — ALERTAS ===
+    if alertas:
+        if y < 150:
+            y = nova_pagina()
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(margem, y, "3. ALERTAS DO SISTEMA")
+        y = linha(y, 20)
+        for a in alertas:
+            if y < 80:
+                y = nova_pagina()
+            c.setFont("Helvetica-Bold", 9)
+            c.drawString(margem + 10, y, f"[{a.get('nivel','').upper()}] {a.get('tipo')}")
+            y = linha(y)
+            c.setFont("Helvetica", 9)
+            if a.get("descricao"):
+                y = _quebrar_texto(c, a["descricao"], margem + 20, y, largura - 20)
+            y = linha(y, 6)
+
+    # === DISCLAIMER ===
+    if y < 80:
+        y = nova_pagina()
+    y = 60
+    c.setFont("Helvetica-Oblique", 8)
+    disclaimer = (
+        "Este Memorial de Cálculo é um relatório de inteligência fiscal computacional para fins de auditoria interna. "
+        "Não substitui declaração acessória assinada por profissional habilitado (CRC). "
+        "Plataforma Soberana L2 — Motor Fiscal Soberano."
+    )
+    _quebrar_texto(c, disclaimer, margem, y, largura)
+
+    c.save()
+    buffer.seek(0)
+    return buffer

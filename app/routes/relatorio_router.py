@@ -18,7 +18,7 @@ from app.services.assistente_service import (
     simular_recuperacao_tributaria,
 )
 from app.services.insights_engine import InsightEngine
-from app.services.pdf_report_service import gerar_pdf_imposto, gerar_pdf_relatorio
+from app.services.pdf_report_service import gerar_pdf_imposto, gerar_pdf_relatorio, gerar_pdf_memorial
 from app.services.imposto_service import calcular_imposto_simples
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
@@ -373,6 +373,35 @@ def obter_memorial(
         raise HTTPException(status_code=402, detail="Pagamento necessário para aceder ao memorial.")
     marcar_memorial_gerado(db, relatorio_id)
     return contexto
+
+
+@router.get("/memorial/{relatorio_id}/pdf")
+def baixar_memorial_pdf(
+    relatorio_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    """
+    Descarrega o Memorial de Cálculo em PDF.
+    Requer pagamento (relatorio.pago = True).
+    """
+    contexto = coletar_contexto_memorial(db, relatorio_id)
+    if contexto is None:
+        raise HTTPException(status_code=404, detail="Relatório não encontrado.")
+    rel = contexto["relatorio"]
+    if rel["user_id"] != usuario_atual.id:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
+    if not rel["pago"]:
+        raise HTTPException(status_code=402, detail="Pagamento necessário para aceder ao memorial.")
+
+    pdf = gerar_pdf_memorial(contexto)
+    marcar_memorial_gerado(db, relatorio_id)
+
+    return StreamingResponse(
+        iter([pdf.getvalue()]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=memorial-{relatorio_id}.pdf"},
+    )
 
 
 @router.get("/{relatorio_id:int}")
