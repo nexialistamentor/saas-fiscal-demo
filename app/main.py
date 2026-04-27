@@ -93,8 +93,7 @@ class LiberarConsultaPayload(BaseModel):
 #    Migrar role e campos sensíveis para enum/schema estrito (sem validação solta).
 # 4. Idempotency-Key em mutações críticas
 #    Suportar reenvio seguro sem duplicar efeito colateral.
-# 5. Rate limit por identidade
-#    Preferir chave por usuario.id/admin_id em vez de apenas IP.
+# 5. Rate limit por identidade (RA8) — em app.rate_limit.obter_chave_rate_limit: JWT válido => user:email; senão IP.
 # 6. Dry-run para operações destrutivas
 #    Permitir simulação antes da execução real.
 # 7. Sanitização de resposta e logs

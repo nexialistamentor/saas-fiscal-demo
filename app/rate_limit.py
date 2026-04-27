@@ -1,6 +1,7 @@
 """
 Protecção anti-brute-force em duas camadas:
-  1. Rate limit por IP (slowapi) — partilhado com toda a app
+  1. Rate limit (slowapi): com Bearer JWT válido — por utilizador (sub);
+     sem token ou token inválido/revogado — por IP.
   2. Lockout por conta — bloqueia temporariamente após N falhas consecutivas
      Armazenamento: Redis (produção) com fallback para memória (se Redis indisponível)
 """
@@ -13,12 +14,33 @@ from collections import defaultdict
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from starlette.requests import Request
+
+from app.security import verificar_token
 
 logger = logging.getLogger(__name__)
 
-# ── Camada 1: Rate limit global por IP (slowapi) ──────────────────────
+
+def obter_chave_rate_limit(request: Request) -> str:
+    """
+    Chave do rate limit: utilizador autenticado (mesma regra que verificar_token,
+    incluindo revogação jti) ou endereço remoto.
+    """
+    auth = request.headers.get("authorization") or request.headers.get("Authorization")
+    if auth and auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+        if token:
+            payload = verificar_token(token)
+            if payload:
+                sub = payload.get("sub")
+                if isinstance(sub, str) and sub.strip():
+                    return f"user:{sub.strip().lower()}"
+    return get_remote_address(request)
+
+
+# ── Camada 1: rate limit slowapi (por utilizador autenticado ou IP) ─────
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=obter_chave_rate_limit,
     default_limits=["100/minute"],
 )
 
