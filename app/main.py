@@ -52,6 +52,11 @@ from app.security import get_usuario_atual, require_role, verificar_token
 from app.rate_limit import limiter
 from app.agents.agent_scheduler import AgentScheduler
 from app.services.request_log_retention import purga_request_logs_mais_antigos_que
+from app.services.normative_update_service import (
+    expirar_regras_revogadas,
+    listar_alertas_normativos_pendentes,
+    marcar_alerta_processado,
+)
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -163,6 +168,18 @@ class LiberarConsultaPayload(BaseModel):
 class PurgeRequestLogsPayload(BaseModel):
     """Se dias for omitido, usa REQUEST_LOG_RETENTION_DAYS (default 30)."""
     dias: int | None = None
+
+
+class MarcarProcessadoPayload(BaseModel):
+    alerta_id: int
+    notas: str | None = None
+
+
+class ExpirarRegrasPayload(BaseModel):
+    estado: str
+    ncm: str
+    data_revogacao: str  # YYYY-MM-DD
+    fonte_revogacao: str
 
 
 # ── L2 SOBERANA — REFORÇOS FUTUROS PARA ENDPOINTS ADMIN ─────────────────
@@ -280,6 +297,55 @@ def admin_purge_request_logs(
         )
     removidos = purga_request_logs_mais_antigos_que(dias)
     return {"status": "ok", "removidos": removidos, "dias": dias}
+
+
+@admin_router.get("/admin/alertas-normativos")
+@limiter.limit("30/minute")
+def get_alertas_normativos(
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """Lista alertas normativos pendentes de acção."""
+    return listar_alertas_normativos_pendentes(db)
+
+
+@admin_router.post("/admin/alertas-normativos/processar")
+@limiter.limit("30/minute")
+def processar_alerta_normativo(
+    request: Request,
+    payload: MarcarProcessadoPayload,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    ok = marcar_alerta_processado(
+        db,
+        payload.alerta_id,
+        processado_por=usuario.email,
+        notas=payload.notas,
+    )
+    if not ok:
+        raise HTTPException(status_code=404, detail="Alerta não encontrado")
+    return {"status": "processado", "alerta_id": payload.alerta_id}
+
+
+@admin_router.post("/admin/normativos/expirar-regras")
+@limiter.limit("10/minute")
+def expirar_regras(
+    request: Request,
+    payload: ExpirarRegrasPayload,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """Encerra vigência de regras MVA/PMPF quando portaria é revogada."""
+    return expirar_regras_revogadas(
+        db,
+        estado=payload.estado,
+        ncm=payload.ncm,
+        data_revogacao=payload.data_revogacao,
+        processado_por=usuario.email,
+        fonte_revogacao=payload.fonte_revogacao,
+    )
 
 
 @admin_router.get("/admin/debug-insights-mva")

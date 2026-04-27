@@ -7,12 +7,14 @@ Integra com API do Diário Oficial da União para detecção de novos actos norm
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Dict, List
 
 import httpx
+from sqlalchemy import func
 
 from app.database import SessionLocal
+from app.models import AlertaFiscal as AlertaFiscalModel
 from app.models import Insight
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,26 @@ _DOU_TERMOS = [
     "Convênio ICMS",
     "alíquota",
 ]
+
+
+def _data_ultima_verificacao_dou() -> str:
+    """Lê do BD a data do último alerta DOU processado; fallback 30 dias atrás."""
+    db = SessionLocal()
+    try:
+        ultimo = (
+            db.query(func.max(AlertaFiscalModel.criado_em))
+            .filter(AlertaFiscalModel.tipo == "NOVIDADE_DOU_ICMS_ST")
+            .scalar()
+        )
+        if ultimo:
+            return ultimo.strftime("%d-%m-%Y")
+    except Exception:
+        pass
+    finally:
+        db.close()
+    return (datetime.utcnow() - timedelta(days=30)).strftime("%d-%m-%Y")
+
+
 _UFS_OBRIGATORIAS = [
     "AC",
     "AL",
@@ -203,7 +225,7 @@ class NormativeWatchdogAgent:
         # ── 5. Monitorização DOU ─────────────────────────────────────
         data_ultima_verificacao = context.get(
             "dou_ultima_verificacao",
-            datetime.utcnow().strftime("%d-%m-%Y"),
+            _data_ultima_verificacao_dou(),
         )
         novidades_dou: list[str] = []
         for termo in _DOU_TERMOS:

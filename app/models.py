@@ -230,6 +230,10 @@ class AlertaFiscal(Base):
     relatorio_analise_id = Column(Integer, ForeignKey("relatorios_analise.id"), nullable=True, index=True)
     criado_em = Column(DateTime, default=datetime.utcnow)
     silenciado = Column(Boolean, default=False)
+    processado = Column(Boolean, default=False, nullable=False, server_default="false")
+    processado_em = Column(DateTime, nullable=True)
+    processado_por = Column(String(100), nullable=True)
+    notas_resolucao = Column(String(1000), nullable=True)
 
 
 # =========================
