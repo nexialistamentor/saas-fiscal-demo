@@ -23,6 +23,7 @@ from app.services.imposto_service import calcular_imposto_simples
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
 from app.services.context_flags_service import default_context_flags
+from app.services.memorial_service import coletar_contexto_memorial, marcar_memorial_gerado
 from app.xml_security import validar_upload_xml
 from app.services.analysis_types import (
     ANALYSIS_TYPE_TAX_PLANNING,
@@ -350,6 +351,28 @@ async def relatorio_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=relatorio-fiscal.pdf"},
     )
+
+
+@router.get("/memorial/{relatorio_id}")
+def obter_memorial(
+    relatorio_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    """
+    Retorna o contexto completo do Memorial de Cálculo para um relatório.
+    Requer pagamento (relatorio.pago = True).
+    """
+    contexto = coletar_contexto_memorial(db, relatorio_id)
+    if contexto is None:
+        raise HTTPException(status_code=404, detail="Relatório não encontrado.")
+    rel = contexto["relatorio"]
+    if rel["user_id"] != usuario_atual.id:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
+    if not rel["pago"]:
+        raise HTTPException(status_code=402, detail="Pagamento necessário para aceder ao memorial.")
+    marcar_memorial_gerado(db, relatorio_id)
+    return contexto
 
 
 @router.get("/{relatorio_id:int}")
