@@ -9,7 +9,7 @@ if sys.platform == "win32":
         return _orig_get_context(method)
     multiprocessing.get_context = _patched_get_context
 
-from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request
+from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -49,6 +49,7 @@ from app.xml_security import validar_upload_xml
 from app.security import get_usuario_atual, require_role, verificar_token
 from app.rate_limit import limiter
 from app.agents.agent_scheduler import AgentScheduler
+from app.services.request_log_retention import purga_request_logs_mais_antigos_que
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,20 @@ class SetRolePayload(BaseModel):
 
 class LiberarConsultaPayload(BaseModel):
     email: str
+
+
+class PurgeRequestLogsPayload(BaseModel):
+    """Se dias for omitido, usa REQUEST_LOG_RETENTION_DAYS (default 30)."""
+    dias: int | None = None
+
+
+def _dias_retenção_request_logs() -> int:
+    raw = os.environ.get("REQUEST_LOG_RETENTION_DAYS", "30")
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning("REQUEST_LOG_RETENTION_DAYS inválido (%s), usando 30", raw)
+        return 30
 
 
 # ── L2 SOBERANA — REFORÇOS FUTUROS PARA ENDPOINTS ADMIN ─────────────────
@@ -186,6 +201,24 @@ def fix_planos(
     return {"status": "planos fixed"}
 
 
+@admin_router.post("/admin/purge-request-logs")
+@limiter.limit("5/minute")
+def admin_purge_request_logs(
+    request: Request,
+    payload: PurgeRequestLogsPayload = Body(default_factory=PurgeRequestLogsPayload),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """Remove request_logs mais antigos que N dias (operação de manutenção)."""
+    dias = payload.dias if payload.dias is not None else _dias_retenção_request_logs()
+    if dias <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="dias deve ser > 0 (ou defina REQUEST_LOG_RETENTION_DAYS > 0)",
+        )
+    removidos = purga_request_logs_mais_antigos_que(dias)
+    return {"status": "ok", "removidos": removidos, "dias": dias}
+
+
 @admin_router.get("/admin/debug-insights-mva")
 def debug_insights_mva(empresa_id: int, usuario: models.User = Depends(require_role("admin"))):
     with engine.connect() as conn:
@@ -278,6 +311,23 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+def _startup_purge_request_logs_sync() -> None:
+    dias = _dias_retenção_request_logs()
+    if dias <= 0:
+        logger.info("Retenção request_logs desativada (REQUEST_LOG_RETENTION_DAYS <= 0).")
+        return
+    try:
+        n = purga_request_logs_mais_antigos_que(dias)
+        if n:
+            logger.info(
+                "Retenção request_logs: removidos %s registos com mais de %s dias.",
+                n,
+                dias,
+            )
+    except Exception as exc:
+        logger.warning("Retenção request_logs no startup falhou: %s", exc)
+
+
 scheduler = AgentScheduler()
 
 
@@ -333,6 +383,8 @@ async def startup():
         ensure_planos(db)
     finally:
         db.close()
+
+    await asyncio.to_thread(_startup_purge_request_logs_sync)
 
     # Scheduler desativado temporariamente para estabilizar o banco
     # asyncio.create_task(scheduler.iniciar_loop(empresa_id=1, intervalo_segundos=300))
