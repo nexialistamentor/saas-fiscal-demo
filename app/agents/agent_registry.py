@@ -7,6 +7,8 @@ from app.agents.memorial_validator_agent import memorial_validator_agent
 from app.agents.normative_agent import normative_agent
 from app.agents.performance_agent import performance_agent
 from app.agents.repair_agent import repair_agent
+from app.agents.security_audit_agent import security_audit_agent
+from app.agents.state_recovery_agent import state_recovery_agent
 
 
 class AgentRegistry:
@@ -25,6 +27,8 @@ class AgentRegistry:
         self.register(normative_agent)
         self.register(consistency_audit_agent)
         self.register(memorial_validator_agent)
+        self.register(security_audit_agent)
+        self.register(state_recovery_agent)
 
     def register(self, agent):
         self._agents[agent.name] = agent
