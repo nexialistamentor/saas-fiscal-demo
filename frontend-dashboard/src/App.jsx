@@ -1021,6 +1021,7 @@ function App() {
             <h3>Diagnóstico completo disponível</h3>
             <p>Baixe o relatório detalhado em PDF.</p>
             <RelatorioPDFButton idPerfil={idPerfil} />
+            <MemorialButton relatorioId={resultadoXML?.relatorio_id} />
           </div>
         )}
 
@@ -1075,6 +1076,53 @@ function App() {
           </div>
         </section>
       </main>
+    </div>
+  )
+}
+
+function MemorialButton({ relatorioId }) {
+  const [loading, setLoading] = React.useState(false)
+  const [erro, setErro] = React.useState(null)
+
+  if (!relatorioId) return null
+
+  async function baixarMemorial() {
+    setLoading(true)
+    setErro(null)
+    try {
+      const res = await fetch(`${API_BASE}/relatorio/memorial/${relatorioId}/pdf`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${getToken()}` }
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || "Erro ao gerar memorial.")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `memorial-${relatorioId}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setErro(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        type="button"
+        className="btn-desbloquear"
+        onClick={baixarMemorial}
+        disabled={loading}
+      >
+        {loading ? "A gerar..." : "📄 Baixar Memorial de Cálculo"}
+      </button>
+      {erro && <span className="relatorio-pdf-erro" style={{ marginTop: 4 }}>{erro}</span>}
     </div>
   )
 }
