@@ -167,6 +167,40 @@ class TabelaMVA(Base):
 
 
 # =========================
+# TABELA PMPF (preço máximo ao consumidor final — base ST em UF que adotam PMPF)
+# =========================
+class TabelaPMPF(Base):
+    __tablename__ = "tabela_pmpf"
+    __table_args__ = (
+        UniqueConstraint(
+            "estado",
+            "ncm",
+            "marca",
+            "embalagem_ml",
+            "vigencia_inicio",
+            name="uq_pmpf_estado_ncm_marca_embalagem_vigencia",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    estado = Column(String(2), nullable=False, index=True)
+    ncm = Column(String(20), nullable=False, index=True)
+    cest = Column(String(9), nullable=True)
+    marca = Column(String(200), nullable=False)
+    embalagem_ml = Column(Integer, nullable=True)
+    pmpf_reais = Column(Float, nullable=False)
+    aliquota_interna = Column(Float, nullable=False)
+    vigencia_inicio = Column(Date, nullable=False)
+    vigencia_fim = Column(Date, nullable=True)
+    fonte_legal = Column(String(500), nullable=True)
+    url_fonte = Column(String(1000), nullable=True)
+    nivel_confianca_fonte = Column(String(40), nullable=True)
+    importado_por = Column(String(100), nullable=True)
+    importado_em = Column(DateTime, default=func.now(), nullable=True)
+    criado_em = Column(DateTime, default=func.now(), nullable=False)
+
+
+# =========================
 # SNAPSHOT INTELIGÊNCIA (Memória Estratégica Tributária)
 # =========================
 class InteligenciaSnapshot(Base):
