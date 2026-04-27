@@ -29,6 +29,9 @@ def listar_base_normativa(db: Session):
             "aliquota_interna": r.aliquota_interna,
             "vigencia_inicio": str(r.vigencia_inicio) if r.vigencia_inicio else None,
             "vigencia_fim": str(r.vigencia_fim) if r.vigencia_fim else None,
+            "nivel_confianca_fonte": r.nivel_confianca_fonte or "sem_fonte",
+            "fonte_legal": r.fonte_legal,
+            "importado_por": r.importado_por,
         }
         for r in registros
     ]
