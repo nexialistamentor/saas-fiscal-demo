@@ -26,7 +26,13 @@ def prever_impacto_st(db: Session, empresa_id: int):
             continue
 
         uf = (item.documento.uf_dest or item.documento.uf_emit or "PA").upper()
-        regra = buscar_mva(db, uf, item.ncm)
+        doc = item.documento
+        regra = buscar_mva(
+            db,
+            uf,
+            item.ncm,
+            data_referencia=doc.data_emissao if doc else None,
+        )
 
         if not regra:
             continue

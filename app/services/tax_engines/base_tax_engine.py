@@ -11,6 +11,8 @@ class BaseTaxEngine:
     """
 
     name = "base_tax_engine"
+    versao = "1.0"
+    ano_vigencia = 2024
 
     def execute(self, context: dict):
         raise NotImplementedError("Engine deve implementar execute()")

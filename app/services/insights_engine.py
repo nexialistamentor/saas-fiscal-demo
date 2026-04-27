@@ -93,9 +93,16 @@ class InsightEngine:
         regime = (empresa.regime_tributario or "presumido").lower() if empresa else "presumido"
         lucro = faturamento - custos
         base_calculo = lucro if regime == "real" else faturamento * 0.08
+        data_referencia = (
+            self.db.query(func.max(DocumentoFiscal.data_emissao))
+            .filter(DocumentoFiscal.empresa_id == empresa_id)
+            .scalar()
+        )
+
         return {
             "empresa_id": empresa_id,
             "db": self.db,
+            "data_referencia": data_referencia,
             "faturamento": float(faturamento),
             "custos": float(custos),
             "custo_fiscal_entradas": float(custos),
@@ -136,7 +143,7 @@ class InsightEngine:
         context = self._montar_contexto_engines(empresa_id)
 
         insights.extend(
-            self._analisar_restituicao_st(empresa_id)
+            self._analisar_restituicao_st(empresa_id, context)
         )
 
         insights.extend(
@@ -318,12 +325,21 @@ class InsightEngine:
             resultados_engines, context_flags_final
         )
 
+        resultados_engines_enriquecidos = {}
         for nome, resultado in resultados_engines.items():
+            res = dict(resultado)
+            eng = ENGINES.get(nome)
+            if eng is not None:
+                cls = type(eng)
+                res["_versao_engine"] = getattr(cls, "versao", None)
+                res["_ano_vigencia"] = getattr(cls, "ano_vigencia", None)
+            resultados_engines_enriquecidos[nome] = res
+
             registro = EngineResultado(
                 empresa_id=empresa_id,
                 relatorio_analise_id=relatorio_analise_id,
                 engine_nome=nome,
-                resultado=resultado,
+                resultado=res,
                 criado_em=datetime.utcnow()
             )
             self.db.add(registro)
@@ -339,7 +355,7 @@ class InsightEngine:
                 "oportunidades": oportunidades,
                 "creditos_detectados": creditos_detectados,
                 "risco_tributario": risco,
-                "resultados_engines": resultados_engines,
+                "resultados_engines": resultados_engines_enriquecidos,
                 "context_flags": context_flags_final,
                 "decomposicao_impacto": decomp,
             }
@@ -351,7 +367,7 @@ class InsightEngine:
             "oportunidades": oportunidades,
             "creditos_detectados": creditos_detectados,
             "risco_tributario": risco,
-            "resultados_engines": resultados_engines,
+            "resultados_engines": resultados_engines_enriquecidos,
             "comparativo_regime": comparativo_regime,
             "context_flags": context_flags_final,
             "decomposicao_impacto": decomp,
@@ -448,7 +464,7 @@ class InsightEngine:
             "recomendacao": "Analisar o mapa para priorizar ações de otimização tributária."
         }]
 
-    def _analisar_restituicao_st(self, empresa_id: int):
+    def _analisar_restituicao_st(self, empresa_id: int, context: dict):
         insights = []
 
         st_total = (
@@ -468,7 +484,12 @@ class InsightEngine:
         if not st_total or not base_st_total:
             return insights
 
-        res_aliq = resolver_aliquota_e_mva(self.db, "PA", None)
+        res_aliq = resolver_aliquota_e_mva(
+            self.db,
+            "PA",
+            None,
+            data_referencia=context.get("data_referencia"),
+        )
         st_devida = base_st_total * res_aliq["aliquota"]
         restituicao_estimada = st_total - st_devida
 
@@ -737,7 +758,12 @@ class InsightEngine:
                 continue
 
             uf = uf_do_documento(item.documento)
-            regra = buscar_mva(self.db, uf, item.ncm)
+            regra = buscar_mva(
+                self.db,
+                uf,
+                item.ncm,
+                data_referencia=item.documento.data_emissao,
+            )
 
             if not regra:
                 continue
@@ -795,7 +821,12 @@ class InsightEngine:
                 continue
 
             uf = uf_do_documento(item.documento)
-            regra = buscar_mva(self.db, uf, item.ncm)
+            regra = buscar_mva(
+                self.db,
+                uf,
+                item.ncm,
+                data_referencia=item.documento.data_emissao,
+            )
 
             if not regra:
                 continue

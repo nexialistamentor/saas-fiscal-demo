@@ -1,4 +1,8 @@
+from datetime import date
+
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
+
 from app.models import TabelaMVA
 
 
@@ -18,14 +22,33 @@ def listar_base_normativa(db: Session):
     ]
 
 
-def buscar_mva(db: Session, estado: str, ncm: str):
-
-    registro = (
+def buscar_mva(
+    db: Session,
+    estado: str,
+    ncm: str,
+    data_referencia: date | None = None,
+):
+    q = (
         db.query(TabelaMVA)
         .filter(TabelaMVA.estado == estado)
         .filter(TabelaMVA.ncm == ncm)
-        .first()
     )
+    if data_referencia is not None:
+        q = q.filter(
+            or_(
+                TabelaMVA.vigencia_inicio.is_(None),
+                TabelaMVA.vigencia_inicio <= data_referencia,
+            )
+        ).filter(
+            or_(
+                TabelaMVA.vigencia_fim.is_(None),
+                TabelaMVA.vigencia_fim >= data_referencia,
+            )
+        )
+    registro = q.order_by(
+        TabelaMVA.vigencia_inicio.desc(),
+        TabelaMVA.id.desc(),
+    ).first()
 
     if not registro:
         return None

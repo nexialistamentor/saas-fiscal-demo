@@ -7,6 +7,8 @@ Nenhum serviço usa alíquota ou MVA hardcoded directamente.
 
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy.orm import Session
 
 from app.services.tabela_normativa_service import buscar_mva
@@ -21,6 +23,7 @@ def resolver_aliquota_e_mva(
     db: Session,
     uf: str,
     ncm: str,
+    data_referencia: date | None = None,
 ) -> dict:
     """
     Resolve alíquota interna e MVA para UF + NCM a partir da tabela_mva.
@@ -37,7 +40,11 @@ def resolver_aliquota_e_mva(
     uf_norm = (uf or "PA").strip().upper()[:2]
     ncm_norm = (ncm or "").strip()
 
-    regra = buscar_mva(db, uf_norm, ncm_norm) if ncm_norm else None
+    regra = (
+        buscar_mva(db, uf_norm, ncm_norm, data_referencia=data_referencia)
+        if ncm_norm
+        else None
+    )
 
     if regra:
         return {
