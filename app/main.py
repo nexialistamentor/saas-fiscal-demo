@@ -57,6 +57,7 @@ from app.services.normative_update_service import (
     listar_alertas_normativos_pendentes,
     marcar_alerta_processado,
 )
+from app.services.parsers.orquestrador_parsers import executar_parsers
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -180,6 +181,10 @@ class ExpirarRegrasPayload(BaseModel):
     ncm: str
     data_revogacao: str  # YYYY-MM-DD
     fonte_revogacao: str
+
+
+class ExecutarParsersPayload(BaseModel):
+    dry_run: bool = True
 
 
 # ── L2 SOBERANA — REFORÇOS FUTUROS PARA ENDPOINTS ADMIN ─────────────────
@@ -346,6 +351,18 @@ def expirar_regras(
         processado_por=usuario.email,
         fonte_revogacao=payload.fonte_revogacao,
     )
+
+
+@admin_router.post("/admin/parsers/executar")
+@limiter.limit("5/minute")
+def admin_executar_parsers(
+    request: Request,
+    payload: ExecutarParsersPayload,
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """Executa parsers normativos. dry_run=True por defeito."""
+    resultado = executar_parsers(dry_run=payload.dry_run)
+    return resultado
 
 
 @admin_router.get("/admin/debug-insights-mva")

@@ -31,8 +31,8 @@ def _regra(
         aliquota_interna=0.18,
         vigencia_inicio=vigencia_inicio,
         vigencia_fim=None,
-        fonte_legal="pytest",
-        url_fonte=None,
+        fonte_legal="pytest fixture pipeline_normativo",
+        url_fonte="http://pytest.local/regra",
         nivel_confianca=nivel,  # type: ignore[arg-type]
         importado_por="pytest",
     )
