@@ -1,6 +1,8 @@
+from io import BytesIO
+
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-from io import BytesIO
 
 
 def _quebrar_texto(c, texto: str, x: float, y: float, largura_max: float) -> float:
@@ -215,14 +217,28 @@ def gerar_pdf_memorial(contexto: dict) -> BytesIO:
     margem = 50
     largura = w - 2 * margem
 
+    rel = contexto.get("relatorio", {})
+    ts_geracao = datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC")
+    rel_id = rel.get("id")
+    fp = (rel.get("fingerprint") or "").strip()
+    sha_rodape = f"SHA: {fp[:16]}..." if fp else "SHA: —"
+
+    def desenhar_rodape_memorial():
+        linha_rodape = f"ID: {rel_id} | {ts_geracao} | {sha_rodape}"
+        c.saveState()
+        c.setFont("Helvetica", 7)
+        c.setFillColor(colors.HexColor("#808080"))
+        c.drawString(margem, 32, linha_rodape)
+        c.restoreState()
+
     def nova_pagina():
+        desenhar_rodape_memorial()
         c.showPage()
         return h - 50
 
     def linha(y, espaco=14):
         return y - espaco
 
-    rel = contexto.get("relatorio", {})
     insights = contexto.get("insights", [])
     alertas = contexto.get("alertas", [])
     referencias = contexto.get("referencias_legais", [])
@@ -241,7 +257,7 @@ def gerar_pdf_memorial(contexto: dict) -> BytesIO:
     c.drawString(
         margem,
         y,
-        f"Relatório ID: {rel.get('id')} | Empresa ID: {rel.get('empresa_id')} | Gerado: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')} UTC",
+        f"Relatório ID: {rel.get('id')} | Empresa ID: {rel.get('empresa_id')} | Gerado: {ts_geracao}",
     )
     y = linha(y, 18)
     c.drawString(
@@ -335,15 +351,16 @@ def gerar_pdf_memorial(contexto: dict) -> BytesIO:
     # === DISCLAIMER ===
     if y < 80:
         y = nova_pagina()
-    y = 60
+    y = 88
     c.setFont("Helvetica-Oblique", 8)
     disclaimer = (
         "Este Memorial de Cálculo é um relatório de inteligência fiscal computacional para fins de auditoria interna. "
         "Não substitui declaração acessória assinada por profissional habilitado (CRC). "
         "Plataforma Soberana L2 — Motor Fiscal Soberano."
     )
-    _quebrar_texto(c, disclaimer, margem, y, largura)
+    y = _quebrar_texto(c, disclaimer, margem, y, largura)
 
+    desenhar_rodape_memorial()
     c.save()
     buffer.seek(0)
     return buffer

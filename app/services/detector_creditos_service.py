@@ -26,7 +26,7 @@ def detectar_creditos(db: Session, empresa_id: int):
         st_pago = float(row.st_pago or 0)
         base_st = float(row.base_st or 0)
 
-        res = resolver_aliquota_e_mva(db, "PA", ncm)
+        res = resolver_aliquota_e_mva(db, "", ncm)
         aliquota = res["aliquota"]
         st_correta = base_st * aliquota
         credito = st_pago - st_correta
