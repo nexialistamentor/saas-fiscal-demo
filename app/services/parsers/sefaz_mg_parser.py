@@ -279,4 +279,7 @@ def _construir_regra(
         url_fonte=_URLS_SAIF_062_2025[0],
         nivel_confianca="candidata_oficial",
         importado_por=_IMPORTADO_POR,
+        pmpf_reais=pmpf,
+        marca_produto=marca or "—",
+        embalagem_ml=embalagem_ml if embalagem_ml > 0 else None,
     )

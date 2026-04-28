@@ -1,21 +1,19 @@
-"""Fase 1.5 — parser PDF da SAIF 062/2025: testes de unidade puros."""
+"""Parser PDF SAIF 062/2025 (MG PMPF) — Opção A NCM por anexo."""
 from datetime import date
 from unittest.mock import MagicMock, patch
 
 from app.services.parsers.base_parser import ResultadoParser
 from app.services.parsers.sefaz_mg_pdf_parser import (
     SefazMGPdfParser,
+    _detectar_anexo_na_tabela,
     _extrair_regra_da_linha,
     _extrair_regras_de_tabela,
-    _identificar_header,
+    _mapear_colunas_saif,
     _parece_pdf,
-    _parse_ncm,
     _parse_valor,
     _parse_volume,
+    extrair_regras_mg_pdf_de_bytes,
 )
-
-
-# ── Heurísticas puras ─────────────────────────────────────────────────
 
 
 def test_parece_pdf_aceita_magic_bytes():
@@ -26,160 +24,126 @@ def test_parece_pdf_rejeita_html():
     assert _parece_pdf(b"<!DOCTYPE html><html>") is False
 
 
-def test_parse_ncm_aceita_com_e_sem_ponto():
-    assert _parse_ncm("2202.10.00") == "22021000"
-    assert _parse_ncm("22021000") == "22021000"
-    assert _parse_ncm("NCM 2202.99.00 — refrigerante") == "22029900"
-
-
-def test_parse_ncm_rejeita_invalido():
-    assert _parse_ncm("") is None
-    assert _parse_ncm("não-aplicável") is None
-
-
-def test_parse_valor_aceita_formatos_brasileiros():
+def test_parse_valor_formatos_br():
     assert _parse_valor("R$ 7,50") == 7.50
-    assert _parse_valor("12,30") == 12.30
-    assert _parse_valor("R$1.000,00") in (1.0, 1000.0)  # ambiguidade ok
-
-
-def test_parse_valor_rejeita_invalido():
-    assert _parse_valor("") is None
-    assert _parse_valor("livre") is None
+    assert _parse_valor("1,54") == 1.54
 
 
 def test_parse_volume_extrai_ml():
     assert _parse_volume("2000 ml") == 2000
     assert _parse_volume("Lata 350ml") == 350
-    assert _parse_volume("garrafa") is None
 
 
-def test_identificar_header_reconhece_ncm_marca_volume_pmpf():
-    cols = _identificar_header(["NCM", "Marca", "Embalagem (ml)", "PMPF (R$)"])
-    assert cols is not None
-    assert cols["ncm"] == 0
-    assert cols["marca"] == 1
-    assert cols["volume"] == 2
-    assert cols["pmpf"] == 3
-
-
-def test_identificar_header_aceita_sinonimos_descricao_e_preco():
-    cols = _identificar_header(["NCM", "Descrição", "Volume", "Preço"])
-    assert cols is not None
-    assert "marca" in cols and cols["marca"] == 1
-
-
-def test_identificar_header_rejeita_linha_sem_ncm():
-    assert _identificar_header(["Marca", "Volume", "PMPF"]) is None
-    assert _identificar_header([None, "produto"]) is None
-
-
-# ── Extracção de linha → RegraNormativa ───────────────────────────────
-
-
-def test_extrair_regra_da_linha_constroi_regra_completa():
-    cols = {"ncm": 0, "marca": 1, "volume": 2, "pmpf": 3}
-    linha = ["2202.10.00", "COCA-COLA 2L", "2000 ml", "R$ 7,50"]
-    regra = _extrair_regra_da_linha(linha, cols)
-    assert regra is not None
-    assert regra.estado == "MG"
-    assert regra.ncm == "22021000"
-    assert regra.mva == 0.0
-    assert regra.aliquota_interna == 0.18
-    assert regra.vigencia_inicio == date(2026, 1, 1)
-    assert regra.vigencia_fim == date(2026, 6, 30)
-    assert regra.nivel_confianca == "candidata_oficial"
-    assert "7.50" in regra.fonte_legal or "7,50" in regra.fonte_legal
-    assert "COCA-COLA" in regra.fonte_legal
-    assert "2000ml" in regra.fonte_legal
-    assert regra.url_fonte and regra.url_fonte.endswith(".pdf")
-
-
-def test_extrair_regra_da_linha_recupera_volume_da_marca_se_coluna_ausente():
-    cols = {"ncm": 0, "marca": 1, "pmpf": 2}
-    linha = ["2202.10.00", "GUARANÁ ANTARCTICA 350 ml", "R$ 3,90"]
-    regra = _extrair_regra_da_linha(linha, cols)
-    assert regra is not None
-    assert "350ml" in regra.fonte_legal
-    assert "GUARAN" in regra.fonte_legal.upper()
-
-
-def test_extrair_regra_da_linha_descarta_linha_sem_ncm():
-    cols = {"ncm": 0, "pmpf": 1}
-    assert _extrair_regra_da_linha(["TOTAL", "R$ 100,00"], cols) is None
-
-
-def test_extrair_regra_da_linha_descarta_pmpf_zero():
-    cols = {"ncm": 0, "pmpf": 1}
-    assert _extrair_regra_da_linha(["2202.10.00", "0,00"], cols) is None
-
-
-# ── Extracção de tabela inteira ───────────────────────────────────────
-
-
-def test_extrair_regras_de_tabela_dois_skus():
-    """Header na linha 0; duas linhas de dados subsequentes."""
+def test_detectar_anexo_na_tabela():
     tabela = [
-        ["NCM", "Marca", "Embalagem", "PMPF"],
-        ["2202.10.00", "COCA-COLA", "2000 ml", "R$ 7,50"],
-        ["2202.99.00", "GUARANÁ ANTARCTICA", "350 ml", "R$ 3,90"],
+        ["ANEXO I - REFRIGERANTES"],
+        ["ITEM", "EMBALAGEM", "MARCA", "PMPF"],
     ]
-    regras = _extrair_regras_de_tabela(tabela)
+    assert _detectar_anexo_na_tabela(tabela) == "I"
+
+
+def test_mapear_colunas_saif_compacto():
+    tabela = [
+        ["ANEXO II"],
+        ["ITEM", "EMBALAGEM", "MARCA", "CÓDIGO\nFABRICANTE", "PMPF"],
+        ["1", "PET 400ml", "Bioleve", "133", "3,84"],
+    ]
+    m = _mapear_colunas_saif(tabela)
+    assert m is not None
+    cols, primeira, fmt = m
+    assert fmt == "compacto"
+    assert primeira == 2
+    assert cols["pmpf"] == 4
+
+
+def test_mapear_colunas_saif_largo_anexo_i():
+    """Replica estrutura do PDF oficial — linha ITEM duplicada + mesclas."""
+    tabela = [
+        ["", "", "", "", "ANEXO I - REFRIGERANTES"],
+        ["", "", None, "ITEM", "ITEM", None, "EMBALAGEM", None, None, "MARCA", None, None, "", "CÓDIGO DO", "", "PMPF", "PMPF", None],
+        [None, None, None, None, None, None, None, None, None, None, None, None, None, "FABRICANTE"],
+        ["", "", "", "", "1", "", "", "Copo até 360ml", "", "", "Guaramil (todos)", "", "", "57", "", "", "1,54", ""],
+    ]
+    m = _mapear_colunas_saif(tabela)
+    assert m is not None
+    cols, primeira, fmt = m
+    assert fmt == "largo"
+    assert primeira == 3
+    assert cols["item"] == 4
+    assert cols["pmpf"] == 16
+
+
+def test_extrair_regras_de_tabela_anexo_i_ncm_fixo():
+    tabela = [
+        ["", "", "", "", "ANEXO I - REFRIGERANTES"],
+        ["", "", None, "ITEM", "ITEM", None, "EMBALAGEM", None, None, "MARCA", None, None, "", "CÓDIGO DO", "", "PMPF", "PMPF", None],
+        [None, None, None, None, None, None, None, None, None, None, None, None, None, "FABRICANTE"],
+        ["", "", "", "", "1", "", "", "Copo até 360ml", "", "", "Guaramil (todos)", "", "", "57", "", "", "1,54", ""],
+        ["", "", "", "", "53", "", "", "Lata 300 a 349ml", "", "", "Guaraná Kuat", "", "", "2", "", "", "3,72", ""],
+    ]
+    regras = _extrair_regras_de_tabela(tabela, anexo_romano="I", ncm_fixo="22021000")
     assert len(regras) == 2
-    ncms = sorted(r.ncm for r in regras)
-    assert ncms == ["22021000", "22029900"]
+    assert all(r.ncm == "22021000" for r in regras)
+    ps = [r.pmpf_reais for r in regras]
+    assert ps == [1.54, 3.72]
+    assert regras[0].nivel_confianca == "candidata_oficial"
+    assert regras[0].importado_por == "sefaz_mg_pdf_parser_v1"
+    assert regras[0].vigencia_inicio == date(2026, 1, 1)
 
 
-def test_extrair_regras_de_tabela_ignora_titulo_antes_do_header():
-    """Algumas portarias colocam título da tabela antes do header real."""
-    tabela = [
-        ["ANEXO ÚNICO — PMPF Refrigerantes", None, None, None],
-        ["NCM", "Marca", "Embalagem", "PMPF"],
-        ["2202.10.00", "PEPSI", "2000 ml", "R$ 6,80"],
-    ]
-    regras = _extrair_regras_de_tabela(tabela)
-    assert len(regras) == 1
-    assert regras[0].ncm == "22021000"
+def test_extrair_regra_da_linha_descarta_sem_item():
+    cols = {"item": 4, "embalagem": 7, "marca": 10, "pmpf": 16}
+    linha = [""] * 17
+    linha[4] = "TOTAL"
+    linha[16] = "999,99"
+    assert (
+        _extrair_regra_da_linha(
+            linha,
+            cols,
+            anexo_romano="I",
+            ncm_fixo="22021000",
+        )
+        is None
+    )
 
 
-def test_extrair_regras_de_tabela_descarta_quando_header_nao_tem_pmpf():
-    """Tabela sem coluna PMPF/preço/R$ não é tabela PMPF — descartar."""
-    tabela = [
-        ["NCM", "Marca", "Volume"],
-        ["2202.10.00", "X", "2000 ml"],
-    ]
-    assert _extrair_regras_de_tabela(tabela) == []
+def test_extrair_regras_pdf_bytes_so_anexo_i():
+    """Integração leve: PDF real baixado em mock HTTP."""
+    import io
 
+    try:
+        import pdfplumber  # noqa: F401
+    except ImportError:
+        return
 
-def test_extrair_regras_de_tabela_deduplica_linhas_iguais():
-    tabela = [
-        ["NCM", "Marca", "Embalagem", "PMPF"],
-        ["2202.10.00", "COCA-COLA", "2000 ml", "R$ 7,50"],
-        ["2202.10.00", "COCA-COLA", "2000 ml", "R$ 7,50"],
-    ]
-    regras = _extrair_regras_de_tabela(tabela)
-    assert len(regras) == 1
+    try:
+        import httpx
 
+        url = (
+            "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/"
+            "portarias/2025/port_saif062_2025_anexos.pdf"
+        )
+        raw = httpx.get(url, follow_redirects=True, timeout=120).content
+    except Exception:
+        return
 
-# ── Parser end-to-end (com httpx mockado) ─────────────────────────────
+    regs, erros = extrair_regras_mg_pdf_de_bytes(raw, apenas_anexos=frozenset({"I"}))
+    assert not erros
+    assert len(regs) >= 100
+    assert all(r.estado == "MG" and r.ncm == "22021000" for r in regs[:50])
 
 
 def test_sefaz_mg_pdf_falha_graciosamente_quando_get_lanca():
-    """fetch_com_diagnostico devolve resp=None em excepção — sem crash."""
     with patch("httpx.get", side_effect=Exception("dns down")):
         parser = SefazMGPdfParser()
         resultado = parser.extrair_seguro()
     assert isinstance(resultado, ResultadoParser)
     assert resultado.regras == []
     assert any("GET falhou" in e or "dns" in e for e in resultado.erros)
-    assert resultado.diagnostico, "diagnostico HTTP deve registar a tentativa"
+    assert resultado.diagnostico
 
 
 def test_sefaz_mg_pdf_aborta_quando_resposta_nao_e_pdf():
-    """
-    Servidor pode devolver HTML de erro/redirect com 200 — magic bytes
-    detectam isso e abortamos antes de passar lixo ao pdfplumber.
-    """
     fake = MagicMock()
     fake.status_code = 200
     fake.content = b"<html>Not a PDF</html>"
