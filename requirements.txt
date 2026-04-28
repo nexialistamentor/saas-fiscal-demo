@@ -17,3 +17,6 @@ requests
 httpx
 pillow
 defusedxml
+beautifulsoup4
+lxml
+pdfplumber
