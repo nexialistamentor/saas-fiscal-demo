@@ -15,6 +15,10 @@ Critérios de promoção automática:
 Se todos os critérios passam → promove para 'oficial' e regista AG-VALIDACAO em importado_por.
 
 Se algum falha → alerta nível 'alto' no resultado do agente (persistido pelo AgentExecutor).
+
+Promoção é global (tabelas normativas não são por tenant): quando o AgentExecutor corre
+por empresa, só executamos em empresa_id == 1 ou quando o contexto não traz empresa_id,
+para não duplicar alertas de rejeição.
 """
 
 from __future__ import annotations
@@ -107,6 +111,19 @@ class NormativeValidationAgent:
     permissions = ["read_tabela_mva", "read_tabela_pmpf", "write_nivel_confianca"]
 
     async def run(self, context: Dict) -> Dict:
+        empresa_id = context.get("empresa_id")
+        if empresa_id is not None and empresa_id != 1:
+            logger.debug("AG-VALIDACAO: skip para empresa_id=%s", empresa_id)
+            return {
+                "agent": self.name,
+                "total_alertas": 0,
+                "alertas": [],
+                "status": "pulado_multi_empresa",
+                "promovidas_mva": 0,
+                "promovidas_pmpf": 0,
+                "rejeitadas": 0,
+            }
+
         alertas: List[Dict] = []
         promovidas_mva = 0
         promovidas_pmpf = 0

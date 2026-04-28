@@ -119,3 +119,71 @@ async def test_nao_promove_se_conflito_oficial():
     agent = NormativeValidationAgent()
     result = await agent.run({})
     assert result["rejeitadas"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_skip_ag_validacao_para_empresa_id_nao_global():
+    """Promoção normativa é global — não deve correr para empresa_id != 1."""
+    db = SessionLocal()
+    db.add(
+        TabelaMVA(
+            estado="XT",
+            ncm="22021000",
+            mva=66.0,
+            aliquota_interna=0.18,
+            vigencia_inicio=date(2026, 1, 1),
+            fonte_legal="Portaria Skip 003/2026 — SEFAZ-XT",
+            url_fonte="https://sefaz.xt.gov.br/portaria-003-2026",
+            nivel_confianca_fonte="candidata_oficial",
+            importado_por="test_skip",
+        )
+    )
+    db.commit()
+    db.close()
+
+    agent = NormativeValidationAgent()
+    result = await agent.run({"empresa_id": 99})
+    assert result["status"] == "pulado_multi_empresa"
+    assert result["promovidas_mva"] == 0
+    assert result["total_alertas"] == 0
+
+    db = SessionLocal()
+    reg = db.query(TabelaMVA).filter(
+        TabelaMVA.estado == "XT", TabelaMVA.ncm == "22021000"
+    ).first()
+    assert reg is not None
+    assert reg.nivel_confianca_fonte == "candidata_oficial"
+    db.close()
+
+
+@pytest.mark.asyncio
+async def test_ag_validacao_executa_com_empresa_id_1():
+    db = SessionLocal()
+    db.add(
+        TabelaMVA(
+            estado="XT",
+            ncm="33049990",
+            mva=55.0,
+            aliquota_interna=0.18,
+            vigencia_inicio=date(2026, 2, 1),
+            fonte_legal="Portaria Um 004/2026 — SEFAZ-XT",
+            url_fonte="https://sefaz.xt.gov.br/portaria-004-2026",
+            nivel_confianca_fonte="candidata_oficial",
+            importado_por="test_e1",
+        )
+    )
+    db.commit()
+    db.close()
+
+    agent = NormativeValidationAgent()
+    result = await agent.run({"empresa_id": 1})
+    assert result["promovidas_mva"] >= 1
+    assert result["status"] == "executado"
+
+    db = SessionLocal()
+    reg = db.query(TabelaMVA).filter(
+        TabelaMVA.estado == "XT", TabelaMVA.ncm == "33049990"
+    ).first()
+    assert reg is not None
+    assert reg.nivel_confianca_fonte == "oficial"
+    db.close()
