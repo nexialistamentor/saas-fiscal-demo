@@ -45,6 +45,9 @@ tmp-browser/
 teste_*.xml
 *.png
 
+# snapshots de inspecção de parsers normativos (ver app/services/parsers/*)
+debug_*.html
+
 # bancos de dados locais de teste
 _e2e.db
 

@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 NivelConfianca = Literal[
     "oficial",
+    "candidata_oficial",
     "convenio_base",
     "convenio_base_sem_aliquota",
     "estimativa",
@@ -51,6 +52,20 @@ class ResultadoImport:
     erros: list[str] = field(default_factory=list)
 
 
+def _validar_regra(r: RegraNormativa) -> list[str]:
+    """Retorna lista de erros. Vazio = válido."""
+    erros: list[str] = []
+    if not r.fonte_legal or len(r.fonte_legal.strip()) < 10:
+        erros.append(f"{r.estado}/{r.ncm}: fonte_legal ausente ou insuficiente")
+    if not r.url_fonte or not r.url_fonte.startswith("http"):
+        erros.append(f"{r.estado}/{r.ncm}: url_fonte ausente ou inválida")
+    if r.mva <= 0:
+        erros.append(f"{r.estado}/{r.ncm}: mva inválido ({r.mva})")
+    if not (0 < r.aliquota_interna < 1):
+        erros.append(f"{r.estado}/{r.ncm}: aliquota_interna fora do intervalo (0,1)")
+    return erros
+
+
 def importar_regras(
     db: Session,
     regras: list[RegraNormativa],
@@ -63,11 +78,19 @@ def importar_regras(
 
     - Nunca sobrescreve 'oficial' por padrão.
     - dry_run=True: valida sem gravar.
+    - Regras inválidas (sem fonte_legal/url, mva<=0, alíquota fora de (0,1))
+      vão para resultado.erros e não são persistidas.
     """
     resultado = ResultadoImport()
 
     for r in regras:
         try:
+            erros_validacao = _validar_regra(r)
+            if erros_validacao:
+                resultado.erros.extend(erros_validacao)
+                resultado.ignorados += 1
+                continue
+
             existente = (
                 db.query(TabelaMVA)
                 .filter(

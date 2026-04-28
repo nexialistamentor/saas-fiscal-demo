@@ -17,3 +17,9 @@ requests
 httpx
 pillow
 defusedxml
+beautifulsoup4
+lxml
+pdfplumber
+# Testes async + Redis em memória (CI / pytest; ver também requirements-dev.txt)
+pytest-asyncio>=0.23.0
+fakeredis>=2.0
