@@ -38,7 +38,6 @@ _URL_SRE_89_2025 = (
 )
 _URLS_SRE_89_2025: tuple[str, ...] = (
     _URL_SRE_89_2025,
-    "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-89-2025.aspx",
     "https://legislacao.fazenda.sp.gov.br/Paginas/portaria-sre-89-de-2025.aspx",
 )
 _URL_INDICE_BUSCA = (
@@ -46,11 +45,12 @@ _URL_INDICE_BUSCA = (
 )
 _URL_INDICE_PORTARIAS = "https://legislacao.fazenda.sp.gov.br/Paginas/AllTextos.aspx"
 
-# Sucessora — slug presumido pelo mesmo padrão da 89/2025 (a confirmar quando
-# o portal indexar a página). Como não temos a página directa, o url_fonte
-# da regra baseline aponta para o índice oficial — válido para auditoria
-# e suficiente para passar no _validar_regra (startswith http).
-_URL_SRE_09_26_BASELINE = _URL_INDICE_PORTARIAS
+# URL confirmada em 2026-04-28: portal SEFAZ-SP indexou a SRE 09/2026.
+# Revogação do Inciso I Art. 1º + Anexo I (refrigerantes) da SRE 89/2025
+# com vigor a partir de 2026-07-01 (Art. 3º da SRE 09/2026).
+_URL_SRE_09_26_BASELINE = (
+    "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-9-de-2026.aspx"
+)
 
 _FONTE_SRE_89 = "Portaria SRE 89/2025 — SEFAZ-SP"
 _FONTE_SRE_09_26 = (
