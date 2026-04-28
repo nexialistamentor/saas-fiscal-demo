@@ -5,7 +5,6 @@ from app.agents.consistency_audit_agent import consistency_audit_agent
 from app.agents.data_sanitization_agent import data_sanitization_agent
 from app.agents.memorial_validator_agent import memorial_validator_agent
 from app.agents.normative_watchdog_agent import normative_watchdog_agent
-from app.agents.normative_validation_agent import normative_validation_agent
 from app.agents.performance_agent import performance_agent
 from app.agents.repair_agent import repair_agent
 from app.agents.security_audit_agent import security_audit_agent
@@ -26,7 +25,6 @@ class AgentRegistry:
         self.register(repair_agent)
         self.register(performance_agent)
         self.register(normative_watchdog_agent)
-        self.register(normative_validation_agent)
         self.register(consistency_audit_agent)
         self.register(memorial_validator_agent)
         self.register(security_audit_agent)

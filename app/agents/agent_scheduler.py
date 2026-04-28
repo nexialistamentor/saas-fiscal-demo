@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.agents.agent_executor import AgentExecutor
+from app.agents.normative_validation_agent import normative_validation_agent
 from app.database import SessionLocal
 from app.models import Empresa
 from app.services.analysis_orchestrator import analysis_cache
@@ -54,7 +55,7 @@ class AgentScheduler:
         finally:
             db.close()
 
-    def _finalizar_ciclo_metricas_e_cache(self) -> None:
+    async def _finalizar_ciclo_metricas_e_cache(self) -> None:
         """Persistência de métricas, alertas e limpeza de cache (escopo global)."""
         db = SessionLocal()
         try:
@@ -62,13 +63,23 @@ class AgentScheduler:
             verificar_alertas_metricas()
             verificar_regressao_performance(db)
             verificar_recuperacao_engines()
+            try:
+                resultado_validacao = await normative_validation_agent.run({})
+                logger.info(
+                    "AG-VALIDACAO: promovidas_mva=%d promovidas_pmpf=%d rejeitadas=%d",
+                    resultado_validacao.get("promovidas_mva", 0),
+                    resultado_validacao.get("promovidas_pmpf", 0),
+                    resultado_validacao.get("rejeitadas", 0),
+                )
+            except Exception as exc:
+                logger.error("AG-VALIDACAO falhou no ciclo global: %s", exc)
         finally:
             db.close()
         analysis_cache.clear()
 
     async def executar_ciclo(self, empresa_id: int = 1) -> None:
         await self._executar_agents_uma_empresa(empresa_id)
-        self._finalizar_ciclo_metricas_e_cache()
+        await self._finalizar_ciclo_metricas_e_cache()
 
     async def executar_ciclo_multi_tenant(self) -> None:
         db = SessionLocal()
@@ -84,7 +95,7 @@ class AgentScheduler:
         for eid in empresa_ids:
             await self._executar_agents_uma_empresa(eid)
 
-        self._finalizar_ciclo_metricas_e_cache()
+        await self._finalizar_ciclo_metricas_e_cache()
 
     async def iniciar_loop(
         self,
