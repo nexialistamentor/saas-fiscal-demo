@@ -7,12 +7,18 @@ from app.services.parsers.base_parser import (
     ResultadoParser,
     fetch_com_diagnostico,
 )
+from app.services.parsers.dou_dados_abertos_parser import (
+    DOUDadosAbertosParser,
+    montar_url_zip_publico,
+)
 from app.services.parsers.dou_parser import (
     DOUParser,
     _eh_shell_spa_sem_resultados,
     _extrair_publicacoes_html,
     _extrair_uf_do_titulo,
+    _tentar_inlabs,
 )
+from app.services.parsers import inlabs_official as inlabs_mod
 from app.services.parsers.sefaz_mg_parser import SefazMGParser, _extrair_pmpf_html
 from app.services.parsers.sefaz_sp_parser import SefazSPParser, _extrair_regras_html
 from app.services.pipeline_normativo import RegraNormativa, _validar_regra
@@ -52,6 +58,99 @@ def test_extrair_uf_do_titulo_detecta_sp():
 
 def test_extrair_uf_do_titulo_nao_detecta_generico():
     assert _extrair_uf_do_titulo("Convênio ICMS 142/2018") is None
+
+
+def test_montar_url_zip_publico():
+    u = montar_url_zip_publico(
+        "https://exemplo.gov/prefixo",
+        date(2025, 3, 7),
+        "DO1",
+    )
+    assert u == "https://exemplo.gov/prefixo/2025/03/2025_03_07-DO1.zip"
+
+
+def test_dou_dados_abertos_sem_zip_base_anota_erro():
+    fake_resp = MagicMock()
+    fake_resp.status_code = 200
+    fake_resp.content = b"<html>ok</html>"
+    fake_resp.text = "<html>ok</html>"
+    fake_resp.headers = {"content-type": "text/html"}
+    fake_resp.request.url = "https://in.gov.br/acesso-a-informacao/dados-abertos/base-de-dados"
+    with patch.dict("os.environ", {"DOU_DADOS_ABERTOS_ZIP_BASE": ""}, clear=False):
+        with patch("httpx.get", return_value=fake_resp):
+            r = DOUDadosAbertosParser().extrair_seguro()
+    assert any("DOU_DADOS_ABERTOS_ZIP_BASE" in e for e in r.erros)
+
+
+def test_dou_dados_abertos_extrai_de_zip_mock():
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(
+            "pub.xml",
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<xml><Identifica>Portaria SRE/SP — IVA-ST refrigerantes MG</Identifica></xml>",
+        )
+    zip_bytes = buf.getvalue()
+
+    def _resp(url: str, content: bytes, status: int = 200):
+        r = MagicMock()
+        r.status_code = status
+        r.content = content
+        r.text = content.decode("utf-8", errors="replace") if content else ""
+        r.headers = {"content-type": "application/zip" if content.startswith(b"PK") else "text/html"}
+        r.request.url = url
+        return r
+
+    def _diag(url: str, content: bytes, status: int):
+        return DiagnosticoHTTP(
+            url=url,
+            status_code=status,
+            bytes_recebidos=len(content),
+            content_type="",
+            preview="",
+        )
+
+    portal_url = "https://in.gov.br/acesso-a-informacao/dados-abertos/base-de-dados"
+    zip_url = montar_url_zip_publico("https://cdn.externo", date.today(), "DO1")
+
+    def side_effect(url: str, **kwargs):
+        if "base-de-dados" in url:
+            c = b"<html/>"
+            return _resp(portal_url, c), _diag(portal_url, c, 200)
+        if url == zip_url:
+            return _resp(zip_url, zip_bytes), _diag(zip_url, zip_bytes, 200)
+        return _resp(url, b""), _diag(url, b"", 404)
+
+    env = {
+        "DOU_DADOS_ABERTOS_ZIP_BASE": "https://cdn.externo",
+        "DOU_DADOS_ABERTOS_MAX_DIAS": "1",
+        "DOU_DADOS_ABERTOS_SECOES": "DO1",
+    }
+    with patch.dict("os.environ", env, clear=False):
+        with patch(
+            "app.services.parsers.dou_dados_abertos_parser.fetch_com_diagnostico",
+            side_effect=side_effect,
+        ):
+            r = DOUDadosAbertosParser().extrair_seguro()
+    assert len(r.regras) >= 1
+    assert r.regras[0].estado == "SP"
+    assert r.regras[0].nivel_confianca == "candidata_oficial"
+
+
+def test_tentar_inlabs_auth_error_nao_propaga():
+    """Falha de login INLABS devolve listas vazias e mensagem — sem excepção."""
+    with patch.object(
+        inlabs_mod,
+        "login_com_resposta",
+        side_effect=inlabs_mod.InlabsAuthError("sem cookie de sessão"),
+    ):
+        regras, erros, diags = _tentar_inlabs("user@test.gov", "x", 7)
+    assert regras == []
+    assert diags == []
+    assert any("sem cookie" in e for e in erros)
 
 
 def test_dou_parser_falha_graciosamente():
@@ -96,7 +195,11 @@ def test_orquestrador_dry_run_nao_grava():
         regras=[], erros=[], fonte="TEST",
         url_consultada="http://test", data_consulta="2026-01-01"
     )
-    with patch("app.services.parsers.dou_parser.DOUParser.extrair_seguro",
+    with patch(
+        "app.services.parsers.dou_dados_abertos_parser.DOUDadosAbertosParser.extrair_seguro",
+        return_value=mock_resultado,
+    ), \
+         patch("app.services.parsers.dou_parser.DOUParser.extrair_seguro",
                return_value=mock_resultado), \
          patch("app.services.parsers.sefaz_sp_parser.SefazSPParser.extrair_seguro",
                return_value=mock_resultado), \

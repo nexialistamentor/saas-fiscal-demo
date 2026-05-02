@@ -2,9 +2,10 @@
 Parser DOU — extrai publicações relevantes do Diário Oficial da União.
 
 Fontes (tentadas em ordem):
-1. INLABS (https://inlabs.in.gov.br) — XML estruturado, requer credenciais
-   nas env vars INLABS_USER e INLABS_PASS. Desde 2020-01-01 a Imprensa
-   Nacional disponibiliza acesso gratuito mediante cadastro.
+1. INLABS (https://inlabs.in.gov.br) — XML estruturado via fluxo oficial
+   (`logar.php` + ZIP em `index.php?p=`), credenciais em INLABS_USER /
+   INLABS_PASS. O módulo `inlabs_official.py` replica o script publicado em
+   https://github.com/Imprensa-Nacional/inlabs em `public/python/inlabs-auto-download-xml.py`.
 2. Scraping HTML de https://www.in.gov.br/consulta/-/buscar/dou — público,
    sem autenticação. Atenção: o buscador é uma SPA — o HTML inicial não
    contém os resultados, eles são preenchidos por JavaScript após o load.
@@ -19,8 +20,11 @@ from __future__ import annotations
 
 import logging
 import os
+import urllib.parse
+import zipfile
 from datetime import date, timedelta
 
+import requests
 from bs4 import BeautifulSoup
 
 from app.services.parsers.base_parser import (
@@ -29,12 +33,12 @@ from app.services.parsers.base_parser import (
     ResultadoParser,
     fetch_com_diagnostico,
 )
+from app.services.parsers import inlabs_official as inlabs
 from app.services.pipeline_normativo import RegraNormativa
 
 logger = logging.getLogger(__name__)
 
 _DOU_BUSCA_URL = "https://www.in.gov.br/consulta/-/buscar/dou"
-_INLABS_BASE_URL = "https://inlabs.in.gov.br"
 
 _TERMOS_MVA = [
     "MVA substituição tributária ICMS",
@@ -43,7 +47,7 @@ _TERMOS_MVA = [
     "PMPF bebidas substituição tributária",
     "Convênio ICMS alíquota substituição",
 ]
-_IMPORTADO_POR = "dou_parser.py v1.2"
+_IMPORTADO_POR = "dou_parser.py v1.3"
 
 # Headers extra para sinalizar preferência por JSON. O endpoint `/consulta/`
 # do in.gov.br não tem API pública estruturada — é uma SPA — mas o header
@@ -291,32 +295,129 @@ def _tentar_inlabs(
     usuario: str, senha: str, dias_atras: int
 ) -> tuple[list[RegraNormativa], list[str], list[DiagnosticoHTTP]]:
     """
-    Stub da integração INLABS — login + descarga de XML.
+    Login INLABS (POST logar.php + cookie) e varredura de ZIPs XML oficiais
+    nos últimos N dias à procura dos termos em `_TERMOS_MVA`.
 
-    O INLABS exige login via formulário e devolve um cookie de sessão; depois
-    permite descarregar pacotes ZIP com XML por data. Implementar download
-    completo + extracção de XML excede o escopo da Fase 1 — esta função apenas
-    tenta o login e regista o diagnóstico para que possamos validar credenciais
-    em produção.
+    Usa `requests` e o mesmo contrato de cabeçalhos do script oficial da
+    Imprensa Nacional — não depende de cookies copiados do browser.
+
+    Limite de dias: `INLABS_MAX_DIAS_XML` ou min(dias_atras, 14) por defeito
+    para não sobrecarregar o serviço.
     """
+    regras: list[RegraNormativa] = []
     erros: list[str] = []
     diagnosticos: list[DiagnosticoHTTP] = []
+    cfg = inlabs.config_from_env()
 
-    login_url = f"{_INLABS_BASE_URL}/login.php"
-    resp, diagnostico = fetch_com_diagnostico(login_url, timeout=15)
-    diagnosticos.append(diagnostico)
-    if resp is None or resp.status_code >= 400:
-        erros.append(
-            f"INLABS login GET retornou {diagnostico.status_code} — "
-            f"verifique conectividade ou URL"
+    max_dias_raw = os.getenv("INLABS_MAX_DIAS_XML", "").strip()
+    if max_dias_raw:
+        max_dias = max(1, min(int(max_dias_raw), dias_atras))
+    else:
+        max_dias = max(1, min(14, dias_atras))
+
+    try:
+        session, resp_login = inlabs.login_com_resposta(usuario, senha, cfg)
+        diagnosticos.append(inlabs.resposta_para_diagnostico(resp_login))
+    except requests.HTTPError as exc:
+        if exc.response is not None:
+            diagnosticos.append(inlabs.resposta_para_diagnostico(exc.response))
+        else:
+            diagnosticos.append(
+                DiagnosticoHTTP(
+                    url=inlabs.URL_LOGIN,
+                    status_code=None,
+                    bytes_recebidos=0,
+                    content_type="",
+                    preview="",
+                    erro=str(exc),
+                )
+            )
+        erros.append(f"INLABS login HTTP falhou: {exc}")
+        return [], erros, diagnosticos
+    except inlabs.InlabsAuthError as exc:
+        erros.append(f"INLABS: {exc}")
+        return [], erros, diagnosticos
+    except requests.RequestException as exc:
+        erros.append(f"INLABS login rede: {exc}")
+        diagnosticos.append(
+            DiagnosticoHTTP(
+                url=inlabs.URL_LOGIN,
+                status_code=None,
+                bytes_recebidos=0,
+                content_type="",
+                preview="",
+                erro=str(exc),
+            )
         )
         return [], erros, diagnosticos
 
-    erros.append(
-        "INLABS detectado mas extracção XML não implementada na Fase 1 — "
-        "credenciais validadas via GET; download ZIP/XML pendente"
-    )
-    return [], erros, diagnosticos
+    vistos: set[tuple[str, str]] = set()
+    downloads_nao_ok = 0
+    hoje = date.today()
+
+    for offset in range(max_dias):
+        d = hoje - timedelta(days=offset)
+        for secao in cfg.secoes_xml:
+            try:
+                zbytes, resp_zip = inlabs.descarregar_zip(
+                    session, d, secao, cfg=cfg
+                )
+            except requests.RequestException as exc:
+                erros.append(f"INLABS ZIP {d.isoformat()} {secao}: {exc}")
+                continue
+
+            if resp_zip.status_code != 200 or not zbytes:
+                if downloads_nao_ok < 20:
+                    diagnosticos.append(inlabs.resposta_para_diagnostico(resp_zip))
+                    downloads_nao_ok += 1
+                continue
+
+            try:
+                pares_xml = inlabs.iter_xml_de_zip(zbytes)
+            except (zipfile.BadZipFile, OSError) as exc:
+                erros.append(
+                    f"INLABS ZIP inválido {d.isoformat()} {secao}: {exc}"
+                )
+                continue
+
+            for nome_arq, xml_txt in pares_xml:
+                if not inlabs.texto_coincide_termos(xml_txt, _TERMOS_MVA):
+                    continue
+                titulo = inlabs.extrair_identifica_xml(xml_txt)
+                uf = _extrair_uf_do_titulo(titulo) or _extrair_uf_do_titulo(
+                    xml_txt[:8000]
+                )
+                if not uf:
+                    continue
+                chave = (uf, titulo[:160])
+                if chave in vistos:
+                    continue
+                vistos.add(chave)
+                q = urllib.parse.quote(titulo[:120])
+                url_fonte = f"{_DOU_BUSCA_URL}?q={q}"
+                regras.append(
+                    RegraNormativa(
+                        estado=uf,
+                        ncm="",
+                        mva=0.0,
+                        aliquota_interna=0.0,
+                        vigencia_inicio=d,
+                        vigencia_fim=None,
+                        fonte_legal=f"DOU (INLABS XML): {titulo[:200]}",
+                        url_fonte=url_fonte,
+                        nivel_confianca="candidata_oficial",
+                        importado_por=_IMPORTADO_POR,
+                    )
+                )
+
+    if not regras:
+        erros.append(
+            "INLABS: login OK mas nenhuma publicação casou termos MVA "
+            f"no período de {max_dias} dia(s) (secções: "
+            f"{' '.join(cfg.secoes_xml)})."
+        )
+
+    return regras, erros, diagnosticos
 
 
 def _extrair_uf_do_titulo(titulo: str) -> str | None:

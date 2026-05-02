@@ -9,6 +9,7 @@ from dataclasses import asdict
 from datetime import datetime
 
 from app.database import SessionLocal
+from app.services.parsers.dou_dados_abertos_parser import DOUDadosAbertosParser
 from app.services.parsers.dou_parser import DOUParser
 from app.services.parsers.sefaz_sp_parser import SefazSPParser
 from app.services.parsers.sefaz_mg_parser import SefazMGParser
@@ -28,6 +29,7 @@ def executar_parsers(dry_run: bool = True) -> dict:
     - diagnostico HTTP detalhado (status_code, bytes, content_type, preview)
     """
     parsers = [
+        DOUDadosAbertosParser(dias_atras=30),
         DOUParser(dias_atras=30),
         SefazSPParser(),
         SefazMGParser(),
