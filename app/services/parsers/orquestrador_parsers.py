@@ -5,6 +5,7 @@ Executa todos os parsers, submete ao pipeline e regista resultados.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import asdict
 from datetime import datetime
 
@@ -16,6 +17,8 @@ from app.services.parsers.sefaz_mg_parser import SefazMGParser
 from app.services.pipeline_normativo import importar_regras
 
 logger = logging.getLogger(__name__)
+
+_ENV_DOU_ZIP_BASE = "DOU_DADOS_ABERTOS_ZIP_BASE"
 
 
 def executar_parsers(dry_run: bool = True) -> dict:
@@ -29,11 +32,13 @@ def executar_parsers(dry_run: bool = True) -> dict:
     - diagnostico HTTP detalhado (status_code, bytes, content_type, preview)
     """
     parsers = [
-        DOUDadosAbertosParser(dias_atras=30),
         DOUParser(dias_atras=30),
         SefazSPParser(),
         SefazMGParser(),
     ]
+    dou_zip_base = (os.environ.get(_ENV_DOU_ZIP_BASE) or "").strip()
+    if dou_zip_base:
+        parsers.insert(0, DOUDadosAbertosParser(dias_atras=30))
 
     resumo: dict = {
         "dry_run": dry_run,
@@ -43,6 +48,18 @@ def executar_parsers(dry_run: bool = True) -> dict:
 
     db = SessionLocal()
     try:
+        if not dou_zip_base:
+            resumo["parsers"].append(
+                {
+                    "fonte": DOUDadosAbertosParser.nome,
+                    "estado": "aguarda_configuracao",
+                    "url": DOUDadosAbertosParser.url_base,
+                    "regras_extraidas": 0,
+                    "erros_parser": [],
+                    "diagnostico": [],
+                }
+            )
+
         for parser in parsers:
             resultado_parser = parser.extrair_seguro()
             entrada: dict = {

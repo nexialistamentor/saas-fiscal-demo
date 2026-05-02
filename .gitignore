@@ -41,6 +41,8 @@ venv311/
 .vercel/
 
 # temporários
+inspect_inlabs.py
+_test_inlabs.py
 tmp-browser/
 teste_*.xml
 *.png

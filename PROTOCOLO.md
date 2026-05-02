@@ -230,7 +230,7 @@ python -m pytest tests\ -q   # sempre antes de commitar
 | AG-ABERTURA | Agente de abertura de empresa (MEI/ME/EPP) com REDESIM |
 | AG-ENCERRAMENTO | Agente de baixa de empresa com verificação fiscal |
 | INLABS | Parser DOU XML estruturado — aguarda credenciais |
-| DOU_DADOS_ABERTOS_ZIP_BASE | URL real dos ZIPs públicos do portal ainda desconhecido — capturar pedido de download via DevTools (Network) no browser e fixar `DOU_DADOS_ABERTOS_ZIP_BASE` |
+| DOU Dados Abertos | URLs no portal in.gov.br usam UUIDs Liferay dinâmicos (não há URL previsível por data/mês sem catalogar primeiro). Para automatizar: implementar cliente da API `dados.gov.br/dados/api/publico` para descobrir URLs actuais dos recursos por conjunto de dados da IN. Até lá, o orquestrador regista `aguarda_configuracao` quando `DOU_DADOS_ABERTOS_ZIP_BASE` não está definida. Alternativa: INLABS quando bloqueio F5 for resolvido. |
 | DOU candidatas vs `_validar_regra` | Regras só com sinal de publicação (`mva=0`, `ncm=""`, etc.) não passam `_validar_regra` em `pipeline_normativo` — correcto: são candidatas/notícia normativa, não dados fiscais directos até enriquecimento |
 | Alíquotas 26 UFs | Verificação RICMS estadual por UF |
 | Rotação JWT | `kid` no header + suporte múltiplas chaves |

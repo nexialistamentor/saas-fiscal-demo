@@ -195,7 +195,9 @@ def test_orquestrador_dry_run_nao_grava():
         regras=[], erros=[], fonte="TEST",
         url_consultada="http://test", data_consulta="2026-01-01"
     )
-    with patch(
+    env = {"DOU_DADOS_ABERTOS_ZIP_BASE": "https://exemplo.invalido/base"}
+    with patch.dict("os.environ", env, clear=False), \
+         patch(
         "app.services.parsers.dou_dados_abertos_parser.DOUDadosAbertosParser.extrair_seguro",
         return_value=mock_resultado,
     ), \
@@ -207,6 +209,38 @@ def test_orquestrador_dry_run_nao_grava():
                return_value=mock_resultado):
         resultado = executar_parsers(dry_run=True)
     assert resultado["dry_run"] is True
+
+
+def test_orquestrador_dou_dados_abertos_aguarda_configuracao_sem_zip_base():
+    """Sem DOU_DADOS_ABERTOS_ZIP_BASE o orquestrador não chama o parser."""
+    from app.services.parsers.orquestrador_parsers import executar_parsers
+
+    mock_resultado = ResultadoParser(
+        regras=[], erros=[], fonte="TEST",
+        url_consultada="http://test", data_consulta="2026-01-01"
+    )
+    with patch.dict("os.environ", {"DOU_DADOS_ABERTOS_ZIP_BASE": ""}, clear=False), \
+         patch(
+            "app.services.parsers.dou_dados_abertos_parser.DOUDadosAbertosParser.extrair_seguro",
+        ) as mock_dou_dados, \
+         patch(
+            "app.services.parsers.dou_parser.DOUParser.extrair_seguro",
+            return_value=mock_resultado,
+         ), \
+         patch(
+            "app.services.parsers.sefaz_sp_parser.SefazSPParser.extrair_seguro",
+            return_value=mock_resultado,
+         ), \
+         patch(
+            "app.services.parsers.sefaz_mg_parser.SefazMGParser.extrair_seguro",
+            return_value=mock_resultado,
+         ):
+        resultado = executar_parsers(dry_run=True)
+    mock_dou_dados.assert_not_called()
+    primeiro = resultado["parsers"][0]
+    assert primeiro.get("estado") == "aguarda_configuracao"
+    assert primeiro.get("fonte") == "DOU (Dados Abertos)"
+    assert len(resultado["parsers"]) == 4
 
 
 # ── Diagnóstico HTTP ──────────────────────────────────────────────────
