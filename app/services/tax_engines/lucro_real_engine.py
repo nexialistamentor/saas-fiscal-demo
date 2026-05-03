@@ -1,4 +1,5 @@
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
+from app.services.tax_engines.csll_engine import CSLLEngine
 from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
 from app.services.tax_engines.response_formatter import formatar_resposta_tributaria
 
@@ -39,7 +40,9 @@ class LucroRealEngine(BaseTaxEngine):
     @staticmethod
     def calcular_irpj_csll(lucro_contabil: float) -> tuple[float, float, float]:
         base = max(0.0, float(lucro_contabil or 0))
-        return base * 0.15, base * 0.09, base
+        irpj = base * 0.15
+        csll = CSLLEngine().execute({"lucro": base})["valor"]
+        return irpj, csll, base
 
 
 def _calcular_creditos_pis_cofins(dados_fiscais: dict, pis_bruto: float, cofins_bruto: float) -> tuple[float, float, float, list[str]]:
