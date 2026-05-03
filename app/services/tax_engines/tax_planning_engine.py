@@ -19,29 +19,7 @@ class TaxPlanningEngine(BaseTaxEngine):
     name = "tax_planning"
 
     def execute(self, context: dict):
-        faturamento = context.get("faturamento", 0)
-        custos = context.get("custos", 0)
-
-        lucro = faturamento - custos
-
-        # Lucro Real
-        irpj_real = lucro * 0.15
-        csll_real = lucro * 0.09
-        carga_real = irpj_real + csll_real
-
-        # Lucro Presumido
-        base_presumida = faturamento * 0.08
-        irpj_presumido = base_presumida * 0.15
-        csll_presumido = faturamento * 0.12 * 0.09
-        carga_presumida = irpj_presumido + csll_presumido
-
-        melhor_regime = "lucro_real" if carga_real < carga_presumida else "lucro_presumido"
-
-        return {
-            "carga_lucro_real": carga_real,
-            "carga_lucro_presumido": carga_presumida,
-            "melhor_regime": melhor_regime
-        }
+        return simular_regimes(context)
 
 
 def simular_regimes(dados_fiscais: dict):

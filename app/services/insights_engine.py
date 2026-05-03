@@ -284,8 +284,9 @@ class InsightEngine:
 
         comparativo_regime = {}
         tax_planning = resultados_engines.get("tax_planning", {})
-        carga_real = tax_planning.get("carga_lucro_real")
-        carga_presumido = tax_planning.get("carga_lucro_presumido")
+        comparacao = tax_planning.get("comparacao", {})
+        carga_real = comparacao.get("lucro_real")
+        carga_presumido = comparacao.get("lucro_presumido")
 
         if carga_real is not None and carga_presumido is not None:
             comparativo_regime = {
