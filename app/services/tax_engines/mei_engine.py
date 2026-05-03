@@ -1,3 +1,5 @@
+# DEPRECATED: motor legado; usar MEITaxEngine em mei_tax_engine.py.
+
 class MEIEngine:
     def execute(self, context: dict):
         faturamento = context.get("faturamento", 0)
