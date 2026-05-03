@@ -1,4 +1,5 @@
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
+from app.services.tax_engines.irpj_adicional import calcular_adicional_irpj_presumido
 
 
 class IRPJEngine(BaseTaxEngine):
@@ -15,9 +16,7 @@ class IRPJEngine(BaseTaxEngine):
         base_calculo = context.get("base_calculo", 0.0)
 
         irpj = base_calculo * 0.15
-        adicional_irpj = 0
-        if base_calculo > 20000:
-            adicional_irpj = (base_calculo - 20000) * 0.10
+        adicional_irpj = calcular_adicional_irpj_presumido(base_calculo, context)
 
         total_irpj = irpj + adicional_irpj
 

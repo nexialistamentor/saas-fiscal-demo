@@ -1,5 +1,6 @@
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
 from app.services.tax_engines.csll_engine import CSLLEngine
+from app.services.tax_engines.irpj_adicional import calcular_adicional_irpj_presumido
 from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
 from app.services.tax_engines.response_formatter import formatar_resposta_tributaria
 
@@ -26,9 +27,9 @@ def calcular_lucro_presumido(dados_fiscais: dict):
 
     irpj = base_calculo_irpj * 0.15
 
-    adicional_irpj = 0
-    if base_calculo_irpj > 20000:
-        adicional_irpj = (base_calculo_irpj - 20000) * 0.10
+    adicional_irpj = calcular_adicional_irpj_presumido(
+        base_calculo_irpj, dados_fiscais
+    )
 
     total_irpj = irpj + adicional_irpj
 
