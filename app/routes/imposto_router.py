@@ -1,9 +1,10 @@
 from typing import Literal
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 from app.services.analysis_orchestrator import executar_analise
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
+from app.services.tax_engines.mei_constants import MEI_LIMITE_ANUAL_FATURAMENTO
 
 router = APIRouter()
 
@@ -12,12 +13,20 @@ class DadosImposto(BaseModel):
     tipo_usuario: Literal["CPF", "MEI"]
     faturamento_mensal: float
     despesas: float = 0
+    atividade: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("atividade", "atividade_mei"),
+    )
 
 
 class SimulacaoAnual(BaseModel):
     tipo_usuario: Literal["CPF", "MEI"]
     faturamento_mensal: float
     despesas: float = 0
+    atividade: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("atividade", "atividade_mei"),
+    )
 
 
 @router.post("/calcular")
@@ -44,11 +53,12 @@ def calcular_imposto(dados: DadosImposto):
         }
 
     if tipo == "mei":
+        ctx_mei = {"faturamento": dados.faturamento_mensal}
+        if dados.atividade:
+            ctx_mei["atividade"] = dados.atividade
         resultado = executar_analise(
             "mei_tax",
-            {
-                "faturamento": dados.faturamento_mensal
-            }
+            ctx_mei,
         )
 
         das = resultado.get("tributos", {}).get("das", 0)
@@ -70,7 +80,8 @@ def simular_ano(dados: SimulacaoAnual):
     mensal = calcular_imposto_simples(
         faturamento=dados.faturamento_mensal,
         despesas=dados.despesas,
-        tipo=dados.tipo_usuario
+        tipo=dados.tipo_usuario,
+        atividade=dados.atividade,
     )
 
     imposto_mensal = mensal["imposto"]
@@ -81,11 +92,11 @@ def simular_ano(dados: SimulacaoAnual):
     alertas = mensal.get("alertas", [])
 
     # alerta adicional para limite do MEI
-    if dados.tipo_usuario.upper() == "MEI" and faturamento_anual > 81000:
+    if dados.tipo_usuario.upper() == "MEI" and faturamento_anual >= MEI_LIMITE_ANUAL_FATURAMENTO:
         alertas.append("Faturamento anual ultrapassa limite do MEI")
 
-    percentual_limite_mei = round((faturamento_anual / 81000) * 100, 2)
-    valor_restante_limite = max(0, 81000 - faturamento_anual)
+    percentual_limite_mei = round((faturamento_anual / MEI_LIMITE_ANUAL_FATURAMENTO) * 100, 2)
+    valor_restante_limite = max(0, MEI_LIMITE_ANUAL_FATURAMENTO - faturamento_anual)
 
     return {
         "tipo_usuario": dados.tipo_usuario,

@@ -2,34 +2,23 @@
 Serviço de cálculo de impostos para CPF e MEI.
 """
 
-import logging
 from datetime import datetime
 
-# Salário mínimo vigente por ano (fonte: legislação federal)
-_SALARIO_MINIMO_POR_ANO = {
-    2023: 1320.00,
-    2024: 1412.00,
-    2025: 1518.00,
-    2026: 1621.00,
-}
-
-
-def _obter_salario_minimo(ano: int) -> float:
-    """Retorna o salário mínimo do ano. Se ano futuro, usa o último conhecido."""
-    if ano not in _SALARIO_MINIMO_POR_ANO:
-        logging.warning(
-            f"Salário mínimo não definido para {ano}, usando último valor conhecido."
-        )
-    return _SALARIO_MINIMO_POR_ANO.get(
-        ano,
-        _SALARIO_MINIMO_POR_ANO[max(_SALARIO_MINIMO_POR_ANO)]
-    )
+from app.services.tax_engines.mei_constants import (
+    MEI_ATIVIDADE_SERVICOS,
+    MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE,
+    MEI_LIMITE_ANUAL_FATURAMENTO,
+    calcular_das_mei,
+    normalizar_atividade_mei,
+    obter_salario_minimo,
+)
 
 
 def calcular_imposto_simples(
     faturamento: float,
     despesas: float = 0,
     tipo: str = "MEI",
+    atividade: str | None = None,
 ) -> dict:
     """
     Calcula imposto estimado para CPF ou MEI.
@@ -40,14 +29,12 @@ def calcular_imposto_simples(
     ano_atual = datetime.now().year
 
     if tipo.upper() == "MEI":
-        # DAS MEI: 5% do salário mínimo + R$ 1,00 (ICMS comércio/indústria)
-        sal_min = _obter_salario_minimo(ano_atual)
-        imposto = round(sal_min * 0.05 + 1.00, 2)
-        # Limite anual MEI: R$ 81.000
+        sal_min = obter_salario_minimo(ano_atual)
+        imposto = calcular_das_mei(sal_min, atividade)
         faturamento_anual_projetado = faturamento * 12
-        if faturamento_anual_projetado >= 81_000:
+        if faturamento_anual_projetado >= MEI_LIMITE_ANUAL_FATURAMENTO:
             alertas.append("faturamento excedeu o limite anual do MEI")
-        elif faturamento_anual_projetado >= 75_000:
+        elif faturamento_anual_projetado >= MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE:
             alertas.append("faturamento próximo do limite anual")
     else:
         # CPF / autônomo: base real
@@ -72,7 +59,10 @@ def calcular_imposto_simples(
         alertas.append("Cálculo baseado em tabela progressiva IRPF (estimado)")
 
     if tipo.upper() == "MEI":
-        aliquota_info = "DAS fixo (comércio/indústria)"
+        if normalizar_atividade_mei(atividade) == MEI_ATIVIDADE_SERVICOS:
+            aliquota_info = "DAS fixo (serviços)"
+        else:
+            aliquota_info = "DAS fixo (comércio/indústria)"
     else:
         aliquota_info = "Tabela progressiva IRPF (estimado mensal)"
     base = faturamento - despesas if tipo.upper() != "MEI" else faturamento

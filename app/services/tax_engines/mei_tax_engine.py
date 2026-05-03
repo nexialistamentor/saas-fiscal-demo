@@ -1,7 +1,13 @@
 from datetime import datetime
 
-from app.services.imposto_service import _obter_salario_minimo
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
+from app.services.tax_engines.mei_constants import (
+    MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE,
+    MEI_LIMITE_ANUAL_FATURAMENTO,
+    calcular_das_mei,
+    normalizar_atividade_mei,
+    obter_salario_minimo,
+)
 
 
 class MEITaxEngine(BaseTaxEngine):
@@ -9,7 +15,7 @@ class MEITaxEngine(BaseTaxEngine):
     Engine MEI extraída do legado (imposto_service).
 
     Regras:
-    - DAS: 5% do salário mínimo + R$ 1 (ICMS)
+    - DAS: 5% do salário mínimo + parcela fixa (ICMS comércio/indústria ou ISS serviços)
     - Limite anual: R$ 81.000
     """
 
@@ -18,16 +24,20 @@ class MEITaxEngine(BaseTaxEngine):
     def execute(self, context: dict):
         faturamento_mensal = float(context.get("faturamento", 0))
         faturamento_anual = faturamento_mensal * 12
+        atividade = context.get("atividade") or context.get(
+            "atividade_mei", "comercio"
+        )
 
         ano_atual = datetime.now().year
-        sal_min = _obter_salario_minimo(ano_atual)
-        imposto = round(sal_min * 0.05 + 1.00, 2)
+        sal_min = obter_salario_minimo(ano_atual)
+        imposto = calcular_das_mei(sal_min, atividade)
 
         alertas = []
 
-        if faturamento_anual >= 81_000:
+        # Limite legal é anual — comparar sempre com projeção anual (12 × mensal).
+        if faturamento_anual >= MEI_LIMITE_ANUAL_FATURAMENTO:
             alertas.append("faturamento excedeu o limite anual do MEI")
-        elif faturamento_anual >= 75_000:
+        elif faturamento_anual >= MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE:
             alertas.append("faturamento próximo do limite anual")
 
         return {
@@ -37,7 +47,8 @@ class MEITaxEngine(BaseTaxEngine):
             },
             "bases_calculo": {
                 "faturamento_mensal": faturamento_mensal,
-                "faturamento_anual": faturamento_anual
+                "faturamento_anual": faturamento_anual,
+                "atividade": normalizar_atividade_mei(atividade),
             },
             "alertas": alertas
         }
