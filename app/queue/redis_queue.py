@@ -1,6 +1,7 @@
-import redis
 from rq import Queue
 
-redis_conn = redis.Redis(host="localhost", port=6379, db=0)
+from app.redis_connection import criar_cliente_redis
+
+redis_conn = criar_cliente_redis()
 
 analysis_queue = Queue("analysis", connection=redis_conn)

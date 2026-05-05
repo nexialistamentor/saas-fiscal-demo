@@ -6,7 +6,6 @@ Protecção anti-brute-force em duas camadas:
      Armazenamento: Redis (produção) com fallback para memória (se Redis indisponível)
 """
 
-import os
 import time
 import threading
 import logging
@@ -16,6 +15,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.requests import Request
 
+from app.redis_connection import get_redis_connection
 from app.security import verificar_token
 
 logger = logging.getLogger(__name__)
@@ -81,20 +81,14 @@ class LoginThrottle:
         self._lockout = lockout
 
         # Tentativa de conexão Redis
-        self._redis = None
-        redis_url = os.environ.get("REDIS_URL")
-        if redis_url:
-            try:
-                import redis as redis_lib
-
-                client = redis_lib.from_url(redis_url, socket_connect_timeout=2)
-                client.ping()
-                self._redis = client
-                logger.info("LoginThrottle: usando Redis (%s)", redis_url)
-            except Exception as exc:
-                logger.warning(
-                    "LoginThrottle: Redis indisponível (%s) — fallback para memória", exc
-                )
+        client, redis_url, err = get_redis_connection()
+        self._redis = client
+        if self._redis:
+            logger.info("LoginThrottle: usando Redis (%s)", redis_url)
+        elif redis_url:
+            logger.warning(
+                "LoginThrottle: Redis indisponível (%s) — fallback para memória", err
+            )
         else:
             logger.warning(
                 "LoginThrottle: REDIS_URL não definida — fallback para memória "
