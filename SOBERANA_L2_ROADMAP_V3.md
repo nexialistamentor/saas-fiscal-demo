@@ -2,7 +2,7 @@
 
 > Critérios de abertura ao utilizador e rota para Fintech
 
-> Data: 2026-05-02 | HEAD: 772c01c
+> Data: 2026-05-05 | HEAD: 1cf6385
 
 ---
 
@@ -95,6 +95,14 @@ A plataforma só abre ao utilizador quando TODOS os itens abaixo estiverem ✅.
 **Fix:** identificar resolução SEFAZ-RJ vigente e importar
 
 **Critério:** pelo menos "DEMAIS MARCAS" NCM 22021000 com PMPF real
+
+#### Decisão Deep — D2/D3 e encerramento Sprint 2 (2026-05-05)
+
+**D2 (SP):** Para o MVP, não é obrigatório preencher `tabela_pmpf` com todas as marcas/embalagens do Anexo II da Portaria SRE 89/2025. A cobertura operacional para **refrigerantes NCM 2202** (incl. 22021000) em SP fica assegurada pelo **`sefaz_sp_parser`**: MVA subsidiário **66%**, vigências **SRE 89/2025** e continuidade após **SRE 09/2026** (refrigerantes até 2026-06-30 sob SRE 89), com URLs e calibração registadas no próprio parser e referência em `PROTOCOLO.md` (pipeline normativo — parsers activos). Importação massiva PMPF por marca/embalagem SP mantém-se como **extensão pós-abertura**, em linha com «Cobertura PMPF nacional» na rota Fintech.
+
+**D3 (RJ):** Mantém-se **sem parser PMPF RJ** até haver acto normativo com URL oficial estável e pipeline de importação equivalente ao MG/SP. **Não bloqueia abertura**: quando não há PMPF por UF, a hierarquia de ST já definida em `PROTOCOLO.md` (pipeline normativo) recua para **IVA-ST** (`tabela_mva`), sem inventar valores.
+
+**Sprint 2:** Marcada como **encerrada em 2026-05-05** quanto a D2/D3 com esta decisão documentada; D1 e D4 permanecem itens activos no roadmap conforme abaixo.
 
 ### D4 — DOU automático (ALTO)
 
@@ -204,13 +212,13 @@ E4 PIS/COFINS fix    [ALTO]
 
 E6 TaxPlanning fix   [MÉDIO]
 
-SPRINT 2 — Dados (2 semanas):
+SPRINT 2 — Dados (2 semanas) — **encerrada 2026-05-05** (D2/D3 via decisão Deep; D1/D4 seguem):
 
 D1 PA confirmar      [CRÍTICO]
 
-D2 PMPF SP           [ALTO]
+D2 PMPF SP           [ALTO] ✅ baseline parser (ver decisão Deep acima)
 
-D3 PMPF RJ           [ALTO]
+D3 PMPF RJ           [ALTO] ✅ hierarquia IVA-ST até parser (ver decisão Deep acima)
 
 D4 DOU automático    [ALTO]
 
@@ -288,9 +296,9 @@ Antes de qualquer utilizador real aceder:
 
 - [ ] D1 PA alíquota confirmada
 
-- [ ] D2 PMPF SP importado
+- [x] D2 SP — baseline ST (`sefaz_sp_parser`, SRE 89/2025 + SRE 09/2026); PMPF marca/embalagem = extensão futura
 
-- [ ] D3 PMPF RJ importado
+- [x] D3 RJ — sem PMPF na BD até parser; uso de IVA-ST conforme hierarquia normativa
 
 - [ ] I1 Redis Railway activo
 
@@ -304,6 +312,6 @@ Antes de qualquer utilizador real aceder:
 
 ---
 
-*Última actualização: 2026-05-02 | HEAD: 772c01c*
+*Última actualização: 2026-05-05 | HEAD: 1cf6385*
 
 *Critério de abertura: TODOS os itens do checklist ✅*
