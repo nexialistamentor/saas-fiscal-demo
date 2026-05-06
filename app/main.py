@@ -15,6 +15,8 @@ from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+from app.redis_connection import get_redis_connection
+from app.constants import VERSAO_TERMOS_ATUAL, TERMOS_CACHE_TTL
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -489,37 +491,73 @@ class TermosMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if request.method == "OPTIONS":
             return await call_next(request)
-        from app.database import SessionLocal
-        from app.models import TermosAceitacao
-        from app.security import verificar_token
+
+        ip_real = request.client.host if request.client else None
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            ip_real = forwarded.split(",")[0].strip()
+        else:
+            real_ip = request.headers.get("X-Real-IP")
+            if real_ip:
+                ip_real = real_ip.strip()
 
         token = request.headers.get("Authorization", "").replace("Bearer ", "")
         if not token:
             return await call_next(request)
+
+        from app.security import verificar_token
+
         payload = verificar_token(token)
         if not payload:
             return await call_next(request)
-        user_id = None
-        db = SessionLocal()
-        try:
+
+        email = payload.get("sub")
+        if not email:
+            return await call_next(request)
+
+        redis_client, _, _ = get_redis_connection()
+        cache_key = f"termos:v{VERSAO_TERMOS_ATUAL}:{email}"
+        aceite = False
+
+        if redis_client:
+            try:
+                cached = redis_client.get(cache_key)
+                if cached is not None:
+                    aceite = cached.decode("utf-8") == "1"
+                else:
+                    raise ValueError("cache miss")
+            except Exception:
+                redis_client = None
+
+        if not redis_client or not aceite:
+            from app.database import SessionLocal
+            from app.models import TermosAceitacao
             from app import models as m
 
-            user = db.query(m.User).filter(m.User.email == payload.get("sub")).first()
-            if user:
-                user_id = user.id
-                aceite = db.query(TermosAceitacao).filter(
-                    TermosAceitacao.user_id == user_id,
-                    TermosAceitacao.versao_termos == "1.0",
-                ).first()
-                if not aceite:
-                    return JSONResponse(
-                        status_code=403,
-                        content={
-                            "detail": "Termos de Uso não aceites. Aceda a /auth/accept-terms."
-                        },
-                    )
-        finally:
-            db.close()
+            db = SessionLocal()
+            try:
+                user = db.query(m.User).filter(m.User.email == email).first()
+                if user:
+                    reg = db.query(TermosAceitacao).filter(
+                        TermosAceitacao.user_id == user.id,
+                        TermosAceitacao.versao_termos == VERSAO_TERMOS_ATUAL,
+                    ).first()
+                    aceite = reg is not None
+                    redis_c, _, _ = get_redis_connection()
+                    if redis_c:
+                        try:
+                            redis_c.setex(cache_key, TERMOS_CACHE_TTL, "1" if aceite else "0")
+                        except Exception:
+                            pass
+            finally:
+                db.close()
+
+        if not aceite:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Termos de Uso não aceites. Aceda a /auth/accept-terms."}
+            )
+
         return await call_next(request)
 
 

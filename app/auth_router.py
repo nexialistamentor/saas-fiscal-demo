@@ -19,10 +19,9 @@ from app.security import (
 from app.token_revocation import revogacao_jti
 from app.seed_data import ensure_planos
 from app.rate_limit import limiter, login_throttle
+from app.constants import VERSAO_TERMOS_ATUAL, TERMOS_CACHE_TTL
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-
-VERSAO_TERMOS_ATUAL = "1.0"
 
 
 def _consulta_liberada_no_registro() -> bool:
@@ -147,6 +146,15 @@ def accept_terms(
     )
     db.add(aceitacao)
     db.commit()
+    try:
+        from app.redis_connection import get_redis_connection
+
+        redis_client, _, _ = get_redis_connection()
+        if redis_client:
+            cache_key = f"termos:v{VERSAO_TERMOS_ATUAL}:{usuario_atual.email}"
+            redis_client.setex(cache_key, TERMOS_CACHE_TTL, "1")
+    except Exception:
+        pass
     return {"status": "aceito"}
 
 
