@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -20,6 +21,8 @@ from app.seed_data import ensure_planos
 from app.rate_limit import limiter, login_throttle
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+VERSAO_TERMOS_ATUAL = "1.0"
 
 
 def _consulta_liberada_no_registro() -> bool:
@@ -127,6 +130,36 @@ def login(
 @router.get("/me", response_model=UserSession)
 def me(usuario_atual: models.User = Depends(get_usuario_atual)) -> UserSession:
     return usuario_atual
+
+
+@router.post("/accept-terms")
+def accept_terms(
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    ip = request.client.host if request.client else None
+    aceitacao = models.TermosAceitacao(
+        user_id=usuario_atual.id,
+        versao_termos=VERSAO_TERMOS_ATUAL,
+        aceite_em=datetime.utcnow(),
+        ip_address=ip,
+    )
+    db.add(aceitacao)
+    db.commit()
+    return {"status": "aceito"}
+
+
+@router.get("/has-accepted-terms")
+def has_accepted_terms(
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    aceitacao = db.query(models.TermosAceitacao).filter(
+        models.TermosAceitacao.user_id == usuario_atual.id,
+        models.TermosAceitacao.versao_termos == VERSAO_TERMOS_ATUAL,
+    ).first()
+    return {"accepted": aceitacao is not None}
 
 
 @router.post("/logout")

@@ -13,6 +13,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, UploadFile, File, Depends, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -459,6 +461,69 @@ async def log_requests(request: Request, call_next):
 
 scheduler = AgentScheduler()
 
+
+ROTAS_FISCAIS = (
+    "/fiscal",
+    "/lote",
+    "/relatorio",
+    "/imposto",
+    "/estoque",
+    "/analise-st",
+    "/empresas",
+    "/dashboard",
+    "/documentos",
+    "/inteligencia",
+    "/insights",
+    "/perguntar",
+    "/cpf",
+)
+ROTAS_EXCLUIDAS = ("/auth", "/health", "/docs", "/openapi", "/metrics")
+
+
+class TermosMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        if not any(path.startswith(r) for r in ROTAS_FISCAIS):
+            return await call_next(request)
+        if any(path.startswith(r) for r in ROTAS_EXCLUIDAS):
+            return await call_next(request)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        from app.database import SessionLocal
+        from app.models import TermosAceitacao
+        from app.security import verificar_token
+
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            return await call_next(request)
+        payload = verificar_token(token)
+        if not payload:
+            return await call_next(request)
+        user_id = None
+        db = SessionLocal()
+        try:
+            from app import models as m
+
+            user = db.query(m.User).filter(m.User.email == payload.get("sub")).first()
+            if user:
+                user_id = user.id
+                aceite = db.query(TermosAceitacao).filter(
+                    TermosAceitacao.user_id == user_id,
+                    TermosAceitacao.versao_termos == "1.0",
+                ).first()
+                if not aceite:
+                    return JSONResponse(
+                        status_code=403,
+                        content={
+                            "detail": "Termos de Uso não aceites. Aceda a /auth/accept-terms."
+                        },
+                    )
+        finally:
+            db.close()
+        return await call_next(request)
+
+
+app.add_middleware(TermosMiddleware)
 
 app.include_router(auth_router)
 app.include_router(fiscal_router, prefix="/fiscal")
