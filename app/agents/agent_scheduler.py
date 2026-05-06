@@ -73,6 +73,38 @@ class AgentScheduler:
                 )
             except Exception as exc:
                 logger.error("AG-VALIDACAO falhou no ciclo global: %s", exc)
+
+            try:
+                db_watchdog = SessionLocal()
+                try:
+                    from app.models import TabelaMVA
+
+                    regras = db_watchdog.query(TabelaMVA).all()
+                    tabela = [
+                        {
+                            "estado": r.estado,
+                            "ncm": r.ncm,
+                            "vigencia_fim": r.vigencia_fim.isoformat()
+                            if r.vigencia_fim
+                            else None,
+                            "fonte_legal": r.fonte_legal,
+                            "nivel_confianca_fonte": r.nivel_confianca_fonte,
+                        }
+                        for r in regras
+                    ]
+                finally:
+                    db_watchdog.close()
+                from app.agents.normative_watchdog_agent import normative_watchdog_agent
+
+                resultado_watchdog = await normative_watchdog_agent.run(
+                    {"tabela_normativa": tabela}
+                )
+                logger.info(
+                    "AG-REPARADOR: total_alertas=%d",
+                    resultado_watchdog.get("total_alertas", 0),
+                )
+            except Exception as exc:
+                logger.error("AG-REPARADOR falhou no ciclo global: %s", exc)
         finally:
             db.close()
         analysis_cache.clear()

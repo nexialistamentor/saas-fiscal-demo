@@ -121,6 +121,27 @@ class NormativeWatchdogAgent:
     name = "normative_agent"  # mantém o name do registry
     permissions = ["monitor_normative", "read_tabela_mva", "read_insights"]
 
+    async def _persistir_alertas(self, alertas: List[Dict], db) -> None:
+        for alerta in alertas:
+            existente = (
+                db.query(AlertaFiscalModel)
+                .filter(
+                    AlertaFiscalModel.tipo == alerta["tipo"],
+                    AlertaFiscalModel.descricao == alerta["descricao"],
+                    AlertaFiscalModel.criado_em >= datetime.utcnow() - timedelta(hours=24),
+                )
+                .first()
+            )
+            if not existente:
+                db.add(
+                    AlertaFiscalModel(
+                        tipo=alerta["tipo"],
+                        descricao=alerta["descricao"],
+                        nivel=alerta["nivel"],
+                        agente=self.name,
+                    )
+                )
+
     async def run(self, context: Dict) -> Dict:
         alertas: List[Dict] = []
         hoje = date.today()
@@ -243,6 +264,15 @@ class NormativeWatchdogAgent:
                     "alto",
                 )
             )
+
+        db = SessionLocal()
+        try:
+            await self._persistir_alertas(alertas, db)
+            db.commit()
+        except Exception as exc:
+            logger.error("AG3: erro ao persistir alertas: %s", exc)
+        finally:
+            db.close()
 
         return {
             "agent": self.name,
