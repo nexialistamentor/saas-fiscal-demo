@@ -3,6 +3,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -262,3 +263,74 @@ def logout(request: Request, token: str = Depends(oauth2_scheme)) -> dict[str, s
             return {"detail": "Sessão encerrada"}
         revogacao_jti.registrar(jti, exp)
     return {"detail": "Sessão encerrada"}
+
+
+@router.get("/my-data")
+def obter_meus_dados(
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    """Direito de acesso — LGPD art. 18, II."""
+    empresas = (
+        db.query(func.count(models.Empresa.id))
+        .filter(models.Empresa.user_id == usuario_atual.id)
+        .scalar()
+    )
+    analises = (
+        db.query(func.count(models.RelatorioAnalise.id))
+        .filter(models.RelatorioAnalise.user_id == usuario_atual.id)
+        .scalar()
+    )
+    termos = db.query(models.TermosAceitacao).filter(
+        models.TermosAceitacao.user_id == usuario_atual.id
+    ).all()
+    consentimentos = db.query(models.ConsentimentoLGPD).filter(
+        models.ConsentimentoLGPD.user_id == usuario_atual.id
+    ).all()
+    return {
+        "email": usuario_atual.email,
+        "cpf": usuario_atual.cpf,
+        "role": usuario_atual.role,
+        "empresas_registadas": empresas,
+        "analises_realizadas": analises,
+        "termos_aceites": [
+            {"versao": t.versao_termos, "aceite_em": t.aceite_em.isoformat() if t.aceite_em else None, "ip": t.ip_address}
+            for t in termos
+        ],
+        "consentimentos_lgpd": [
+            {"versao_politica": c.versao_politica, "finalidade": c.finalidade, "consentiu_em": c.consentiu_em.isoformat() if c.consentiu_em else None, "ip": c.ip_address}
+            for c in consentimentos
+        ],
+    }
+
+
+@router.delete("/my-data")
+def eliminar_meus_dados(
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    """
+    Direito de eliminação — LGPD art. 18, VI.
+    Dados fiscais são anonimizados (não apagados) por obrigação legal (CTN art. 195 — 5 anos).
+    Dados pessoais identificáveis são eliminados ou anonimizados.
+    """
+    user_id = usuario_atual.id
+
+    # 1. Revogar todos os tokens activos
+    revogacao_jti.revogar_todos_do_user(user_id) if hasattr(revogacao_jti, "revogar_todos_do_user") else None
+
+    # 2. Eliminar consentimentos e termos
+    db.query(models.ConsentimentoLGPD).filter(models.ConsentimentoLGPD.user_id == user_id).delete()
+    db.query(models.TermosAceitacao).filter(models.TermosAceitacao.user_id == user_id).delete()
+
+    # 3. Anonimizar dados pessoais do utilizador (não apagar — dados fiscais ficam)
+    usuario_atual.email = f"deleted_{user_id}@anon.saas"
+    usuario_atual.hashed_password = "ELIMINADO"
+    usuario_atual.cpf = None
+
+    db.commit()
+
+    return {
+        "status": "dados pessoais anonimizados",
+        "aviso": "Dados fiscais retidos por obrigação legal (CTN art. 195 — 5 anos).",
+    }

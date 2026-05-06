@@ -6,6 +6,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.rate_limit import limiter
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limit_storage():
+    """Evita 429 na suite quando muitos testes chamam /auth/register (3/min)."""
+    limiter.reset()
+    yield
 
 
 def _cpf_unico_valido() -> str:
