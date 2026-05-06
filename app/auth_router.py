@@ -19,7 +19,12 @@ from app.security import (
 from app.token_revocation import revogacao_jti
 from app.seed_data import ensure_planos
 from app.rate_limit import limiter, login_throttle
-from app.constants import VERSAO_TERMOS_ATUAL, TERMOS_CACHE_TTL
+from app.constants import (
+    VERSAO_TERMOS_ATUAL,
+    TERMOS_CACHE_TTL,
+    VERSAO_POLITICA_PRIVACIDADE,
+    FINALIDADE_SIMULACAO,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -168,6 +173,80 @@ def has_accepted_terms(
         models.TermosAceitacao.versao_termos == VERSAO_TERMOS_ATUAL,
     ).first()
     return {"accepted": aceitacao is not None}
+
+
+@router.get("/privacy", include_in_schema=False)
+def politica_privacidade():
+    from fastapi.responses import HTMLResponse
+
+    html = """
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head><meta charset="UTF-8"><title>Política de Privacidade</title></head>
+    <body>
+    <h1>Política de Privacidade</h1>
+    <p><strong>Versão 1.0 — vigente a partir de maio de 2026</strong></p>
+    <h2>1. Quem somos</h2>
+    <p>Esta plataforma é uma ferramenta de simulação tributária. Os dados recolhidos são usados exclusivamente para gerar simulações e insights fiscais.</p>
+    <h2>2. Dados recolhidos</h2>
+    <p>Email, CPF (opcional), endereço IP, dados fiscais enviados via XML (valores, NCM, ICMS). Estes dados são necessários para o funcionamento do serviço.</p>
+    <h2>3. Finalidade</h2>
+    <p>Simulação tributária, geração de insights fiscais e melhoria do serviço. Os dados não são partilhados com terceiros para fins comerciais.</p>
+    <h2>4. Base legal</h2>
+    <p>Consentimento explícito do titular (art. 7º, I, LGPD) e execução de contrato (art. 7º, V, LGPD).</p>
+    <h2>5. Armazenamento</h2>
+    <p>PostgreSQL e Redis hospedados no Railway (EUA). Dados encriptados em trânsito (TLS).</p>
+    <h2>6. Retenção</h2>
+    <p>Dados fiscais podem ser retidos por até 5 anos por obrigação legal (art. 195, CTN). Outros dados pessoais são eliminados ou anonimizados a pedido.</p>
+    <h2>7. Direitos do titular</h2>
+    <p>Acesso, rectificação, eliminação e portabilidade. Contacto: privacidade@saas-fiscal.com</p>
+    <h2>8. Aviso legal</h2>
+    <p>Esta plataforma é uma ferramenta de simulação e não substitui a consulta a um contador ou profissional qualificado.</p>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
+
+
+@router.post("/consent")
+def registar_consentimento(
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    ip = request.client.host if request.client else None
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        ip = forwarded.split(",")[0].strip()
+
+    consentimento = models.ConsentimentoLGPD(
+        user_id=usuario_atual.id,
+        versao_politica=VERSAO_POLITICA_PRIVACIDADE,
+        finalidade=FINALIDADE_SIMULACAO,
+        consentiu=True,
+        consentiu_em=datetime.utcnow(),
+        ip_address=ip,
+    )
+    db.add(consentimento)
+    db.commit()
+    return {"status": "consentimento registado", "versao_politica": VERSAO_POLITICA_PRIVACIDADE}
+
+
+@router.get("/has-consented")
+def verificar_consentimento(
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    consentimento = (
+        db.query(models.ConsentimentoLGPD)
+        .filter(
+            models.ConsentimentoLGPD.user_id == usuario_atual.id,
+            models.ConsentimentoLGPD.versao_politica == VERSAO_POLITICA_PRIVACIDADE,
+            models.ConsentimentoLGPD.consentiu.is_(True),
+        )
+        .first()
+    )
+    return {"consented": consentimento is not None}
 
 
 @router.post("/logout")

@@ -74,6 +74,18 @@ class TermosAceitacao(Base):
     ip_address = Column(String(45), nullable=True)
 
 
+class ConsentimentoLGPD(Base):
+    __tablename__ = "consentimentos_lgpd"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    versao_politica = Column(String(50), nullable=False)
+    finalidade = Column(String(200), nullable=False)
+    consentiu = Column(Boolean, nullable=False)
+    consentiu_em = Column(DateTime, default=datetime.utcnow)
+    ip_address = Column(String(45), nullable=True)
+
+
 # Regimes tributários esperados pelo regime_router (fluxo BLOCO 10)
 # empresa → regime_tributario → regime_router → engine tributário correto
 REGIMES_TRIBUTARIOS = ("simples", "presumido", "real", "mei")
