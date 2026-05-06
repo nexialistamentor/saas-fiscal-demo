@@ -59,3 +59,4 @@ _debug_*.txt
 _cmdout.txt
 _rem.txt
 *.log
+.env

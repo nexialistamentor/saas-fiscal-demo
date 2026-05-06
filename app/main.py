@@ -390,11 +390,16 @@ def debug_insights_mva(empresa_id: int, usuario: models.User = Depends(require_r
 
 @app.middleware("http")
 async def add_security_headers(request, call_next):
-    """Headers de segurança HTTP: XSS, clickjacking, MIME sniffing, HSTS."""
+    """Headers de segurança HTTP: XSS, clickjacking, MIME sniffing, HSTS, referrer e APIs sensíveis."""
     response = await call_next(request)
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = (
+        "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), "
+        "microphone=(), payment=(), usb=()"
+    )
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
