@@ -1,3 +1,4 @@
+import asyncio
 import re
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
@@ -5,6 +6,9 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func
 
 from app import models
+from app.agents.ag_abertura_agent import ag_abertura_agent
+from app.agents.ag_encerramento_agent import ag_encerramento_agent
+from app.constants import PALAVRAS_ABERTURA, PALAVRAS_ENCERRAMENTO
 from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.insights_engine import InsightEngine
 from app.services.analysis_orchestrator import executar_analise
@@ -85,6 +89,11 @@ def identificar_intencao(pergunta: str) -> str:
 
     if "lucro presumido ou lucro real" in p or "melhor regime" in p:
         return "planejamento_tributario"
+
+    if any(palavra in p for palavra in PALAVRAS_ABERTURA):
+        return "abertura_empresa"
+    if any(palavra in p for palavra in PALAVRAS_ENCERRAMENTO):
+        return "encerramento_empresa"
 
     return "desconhecida"
 
@@ -536,6 +545,45 @@ def responder_pergunta(
             ),
             "requires_payment": True,
             "analysis_type": "tax_recovery",
+        }
+
+    if intencao == "abertura_empresa":
+        tipo = "mei"
+        if any(p in pergunta.lower() for p in ["me ", "epp", "ltda", "empresa", "slu"]):
+            tipo = "empresa"
+        resultado_agente = asyncio.run(ag_abertura_agent.run({"tipo_contribuinte": tipo}))
+        return {
+            "resposta": resultado_agente["resposta"],
+            "requires_payment": False,
+            "analysis_type": resultado_agente["analysis_type"],
+            "schema_type": resultado_agente.get("schema_type"),
+            "versao": resultado_agente.get("versao"),
+            "payload_estruturado": resultado_agente.get("payload_estruturado"),
+        }
+
+    if intencao == "encerramento_empresa":
+        tipo = "mei"
+        if any(p in pergunta.lower() for p in ["me ", "epp", "ltda", "empresa", "slu"]):
+            tipo = "empresa"
+        empresa_id = (
+            usuario.empresas[0].id if usuario and getattr(usuario, "empresas", None) else None
+        )
+        resultado_agente = asyncio.run(
+            ag_encerramento_agent.run(
+                {
+                    "tipo_contribuinte": tipo,
+                    "empresa_id": empresa_id,
+                    "db": db,
+                }
+            )
+        )
+        return {
+            "resposta": resultado_agente["resposta"],
+            "requires_payment": False,
+            "analysis_type": resultado_agente["analysis_type"],
+            "schema_type": resultado_agente.get("schema_type"),
+            "versao": resultado_agente.get("versao"),
+            "payload_estruturado": resultado_agente.get("payload_estruturado"),
         }
 
     contribuinte = identificar_contribuinte(pergunta)

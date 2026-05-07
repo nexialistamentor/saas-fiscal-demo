@@ -45,9 +45,15 @@ class PerguntaRequest(BaseModel):
 
 class AssistenteResponse(BaseModel):
     """Estrutura padrão das respostas do Assistente Fiscal.
-    Garante compatibilidade entre frontend, assistente, relatórios e pagamento."""
+    Garante compatibilidade entre frontend, assistente, relatórios e pagamento.
+
+    Campos estendidos (IA, multi-idioma, API pública, SEO estruturado):
+    ``payload_estruturado``, ``schema_type`` (ex.: HowTo), ``versao`` do formato."""
 
     resposta: str
     analysis_type: str | None = None  # mei_tax | tax_planning | tax_recovery
     requires_payment: bool = False
     preview: dict | None = None
+    payload_estruturado: dict | None = None
+    schema_type: str | None = None
+    versao: str | None = None

@@ -9,6 +9,8 @@ from app.agents.performance_agent import performance_agent
 from app.agents.repair_agent import repair_agent
 from app.agents.security_audit_agent import security_audit_agent
 from app.agents.state_recovery_agent import state_recovery_agent
+from app.agents.ag_abertura_agent import ag_abertura_agent
+from app.agents.ag_encerramento_agent import ag_encerramento_agent
 
 
 class AgentRegistry:
@@ -29,6 +31,8 @@ class AgentRegistry:
         self.register(memorial_validator_agent)
         self.register(security_audit_agent)
         self.register(state_recovery_agent)
+        self.register(ag_abertura_agent)
+        self.register(ag_encerramento_agent)
 
     def register(self, agent):
         self._agents[agent.name] = agent

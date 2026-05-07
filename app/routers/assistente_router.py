@@ -33,4 +33,7 @@ def perguntar(
         analysis_type=resultado.get("analysis_type"),
         requires_payment=resultado.get("requires_payment", False),
         preview=resultado.get("preview"),
+        payload_estruturado=resultado.get("payload_estruturado"),
+        schema_type=resultado.get("schema_type"),
+        versao=resultado.get("versao"),
     )
