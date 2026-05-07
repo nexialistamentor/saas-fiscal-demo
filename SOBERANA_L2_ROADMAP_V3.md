@@ -1,84 +1,84 @@
-# SOBERANA L2 ? ROADMAP V3
+# SOBERANA L2 ‚Äî ROADMAP V3
 
-> CritÈrios de abertura ao utilizador e rota para Fintech
+> Crit√©rios de abertura ao utilizador e rota para Fintech
 
 > Data: 2026-05-05 | HEAD: 1cf6385
 
 ---
 
-## CRIT…RIOS DE ABERTURA (todos obrigatÛrios)
+## CRIT√âRIOS DE ABERTURA (todos obrigat√≥rios)
 
-A plataforma sÛ abre ao utilizador quando TODOS os itens abaixo estiverem ?.
+A plataforma s√≥ abre ao utilizador quando TODOS os itens abaixo estiverem ?.
 
 ---
 
-## BLOCO 1 ? ENGINES FISCAIS CORRECTAS
+## BLOCO 1 ‚Äî ENGINES FISCAIS CORRECTAS
 
-### E1 ? IRPJ (CRÕTICO)
+### E1 ? IRPJ (CR√çTICO)
 
-**Problema:** limiar adicional R$20.000 total em vez de R$20.000/mÍs
+**Problema:** limiar adicional R$20.000 total em vez de R$20.000/m√™s
 
-**Fix:** `irpj_engine.py` ? limiar = R$20.000 ◊ meses do perÌodo
+**Fix:** `irpj_engine.py` ? limiar = R$20.000 √ó meses do per√≠odo
 
-**Base legal:** RIR/2018 art. 622 ? adicional 10% sobre excesso de R$20.000/mÍs
+**Base legal:** RIR/2018 art. 622 ? adicional 10% sobre excesso de R$20.000/m√™s
 
-**CritÈrio:** c·lculo correcto para empresa com lucro R$500k/ano
+**Crit√©rio:** c√°lculo correcto para empresa com lucro R$500k/ano
 
-### E2 ? CSLL (CRÕTICO)
+### E2 ? CSLL (CR√çTICO)
 
-**Problema:** 9% fixo sem distinÁ„o de regime
+**Problema:** 9% fixo sem distin√ß√£o de regime
 
-**Fix:** `csll_engine.py` ? 9% Lucro Real, 9% sobre base presumida (12% comÈrcio / 32% serviÁos)
+**Fix:** `csll_engine.py` ? 9% Lucro Real, 9% sobre base presumida (12% com√©rcio / 32% servi√ßos)
 
-**Base legal:** Lei 7.689/88 + alteraÁıes
+**Base legal:** Lei 7.689/88 + altera√ß√µes
 
-**CritÈrio:** resultado diferente e correcto para presumido vs real
+**Crit√©rio:** resultado diferente e correcto para presumido vs real
 
 ### E3 ? MEI (ALTO)
 
-**Problema:** SM fixo R$1.412 (desactualizado), sÛ comÈrcio
+**Problema:** SM fixo R$1.412 (desactualizado), s√≥ com√©rcio
 
-**Fix:** `mei_engine.py` ? SM 2026 = R$1.518, distinÁ„o comÈrcio/ind˙stria/serviÁos
+**Fix:** `mei_engine.py` ? SM 2026 = R$1.518, distin√ß√£o com√©rcio/ind√∫stria/servi√ßos
 
-**Base legal:** LC 123/2006 + ResoluÁ„o CGSN 2026
+**Base legal:** LC 123/2006 + Resolu√ß√£o CGSN 2026
 
-**CritÈrio:** DAS correcto para as 3 actividades
+**Crit√©rio:** DAS correcto para as 3 actividades
 
-### E4 ? PIS/COFINS n„o-cumulativo (ALTO)
+### E4 ? PIS/COFINS n√£o-cumulativo (ALTO)
 
-**Problema:** crÈditos opcionais mas n„o calculados correctamente
+**Problema:** cr√©ditos opcionais mas n√£o calculados correctamente
 
-**Fix:** `pis_cofins_engine.py` ? crÈditos sobre entradas tributadas (art. 3∫ Lei 10.637/2002)
+**Fix:** `pis_cofins_engine.py` ? cr√©ditos sobre entradas tributadas (art. 3¬∫ Lei 10.637/2002)
 
-**CritÈrio:** crÈdito calculado sobre insumos quando regime n„o-cumulativo
+**Crit√©rio:** cr√©dito calculado sobre insumos quando regime n√£o-cumulativo
 
-### E5 ? TaxRecovery (M…DIO)
+### E5 ? TaxRecovery (M√âDIO)
 
-**Problema:** sÛ detecta ICMS, sem compensaÁ„o/prazo
+**Problema:** s√≥ detecta ICMS, sem compensa√ß√£o/prazo
 
 **Fix:** expandir para PIS/COFINS pagos a maior, IRPJ/CSLL estimativa antecipada
 
-**CritÈrio:** 3 tipos de crÈdito recuper·vel identificados
+**Crit√©rio:** 3 tipos de cr√©dito recuper√°vel identificados
 
-### E6 ? TaxPlanningEngine (M…DIO)
+### E6 ? TaxPlanningEngine (M√âDIO)
 
-**Problema:** `.execute()` usa presunÁıes erradas
+**Problema:** `.execute()` usa presun√ß√µes erradas
 
 **Fix:** substituir por chamada a `simular_regimes`
 
-**CritÈrio:** comparaÁ„o presumido vs real usa os motores correctos
+**Crit√©rio:** compara√ß√£o presumido vs real usa os motores correctos
 
 ---
 
-## BLOCO 2 ? DADOS NORMATIVOS COMPLETOS
+## BLOCO 2 ‚Äî DADOS NORMATIVOS COMPLETOS
 
-### D1 ? PA alÌquota modal (CRÕTICO)
+### D1 ? PA al√≠quota modal (CR√çTICO)
 
 **Problema:** BD tem 0.18, RICMS/PA art. 20 cita 19%
 
-**Fix:** confirmar alÌquota vigente 2026 via SEFAZ-PA e actualizar
+**Fix:** confirmar al√≠quota vigente 2026 via SEFAZ-PA e actualizar
 
-**CritÈrio:** fonte_legal com artigo confirmado
+**Crit√©rio:** fonte_legal com artigo confirmado
 
 ### D2 ? PMPF SP (ALTO)
 
@@ -86,149 +86,149 @@ A plataforma sÛ abre ao utilizador quando TODOS os itens abaixo estiverem ?.
 
 **Fix:** importar Portaria SRE 89/2025 Anexo II ? valores por marca/embalagem
 
-**CritÈrio:** pelo menos "DEMAIS MARCAS" NCM 22021000 com PMPF real
+**Crit√©rio:** pelo menos "DEMAIS MARCAS" NCM 22021000 com PMPF real
 
 ### D3 ? PMPF RJ (ALTO)
 
 **Problema:** `tabela_pmpf` sem dados reais para RJ
 
-**Fix:** identificar resoluÁ„o SEFAZ-RJ vigente e importar
+**Fix:** identificar resolu√ß√£o SEFAZ-RJ vigente e importar
 
-**CritÈrio:** pelo menos "DEMAIS MARCAS" NCM 22021000 com PMPF real
+**Crit√©rio:** pelo menos "DEMAIS MARCAS" NCM 22021000 com PMPF real
 
-#### Decis„o Deep ? D2/D3 e encerramento Sprint 2 (2026-05-05)
+#### Decis√£o Deep ? D2/D3 e encerramento Sprint 2 (2026-05-05)
 
-**D2 (SP):** Para o MVP, n„o È obrigatÛrio preencher `tabela_pmpf` com todas as marcas/embalagens do Anexo II da Portaria SRE 89/2025. A cobertura operacional para **refrigerantes NCM 2202** (incl. 22021000) em SP fica assegurada pelo **`sefaz_sp_parser`**: MVA subsidi·rio **66%**, vigÍncias **SRE 89/2025** e continuidade apÛs **SRE 09/2026** (refrigerantes atÈ 2026-06-30 sob SRE 89), com URLs e calibraÁ„o registadas no prÛprio parser e referÍncia em `PROTOCOLO.md` (pipeline normativo ? parsers activos). ImportaÁ„o massiva PMPF por marca/embalagem SP mantÈm-se como **extens„o pÛs-abertura**, em linha com ´Cobertura PMPF nacionalª na rota Fintech.
+**D2 (SP):** Para o MVP, n√£o √© obrigat√≥rio preencher `tabela_pmpf` com todas as marcas/embalagens do Anexo II da Portaria SRE 89/2025. A cobertura operacional para **refrigerantes NCM 2202** (incl. 22021000) em SP fica assegurada pelo **`sefaz_sp_parser`**: MVA subsidi√°rio **66%**, vig√™ncias **SRE 89/2025** e continuidade ap√≥s **SRE 09/2026** (refrigerantes at√© 2026-06-30 sob SRE 89), com URLs e calibra√ß√£o registadas no pr√≥prio parser e refer√™ncia em `PROTOCOLO.md` (pipeline normativo ? parsers activos). Importa√ß√£o massiva PMPF por marca/embalagem SP mant√©m-se como **extens√£o p√≥s-abertura**, em linha com ¬´Cobertura PMPF nacional¬ª na rota Fintech.
 
-**D3 (RJ):** MantÈm-se **sem parser PMPF RJ** atÈ haver acto normativo com URL oficial est·vel e pipeline de importaÁ„o equivalente ao MG/SP. **N„o bloqueia abertura**: quando n„o h· PMPF por UF, a hierarquia de ST j· definida em `PROTOCOLO.md` (pipeline normativo) recua para **IVA-ST** (`tabela_mva`), sem inventar valores.
+**D3 (RJ):** Mant√©m-se **sem parser PMPF RJ** at√© haver acto normativo com URL oficial est√°vel e pipeline de importa√ß√£o equivalente ao MG/SP. **N√£o bloqueia abertura**: quando n√£o h√° PMPF por UF, a hierarquia de ST j√° definida em `PROTOCOLO.md` (pipeline normativo) recua para **IVA-ST** (`tabela_mva`), sem inventar valores.
 
-**Sprint 2:** Marcada como **encerrada em 2026-05-05** quanto a D2/D3 com esta decis„o documentada; D1 e D4 permanecem itens activos no roadmap conforme abaixo.
+**Sprint 2:** Marcada como **encerrada em 2026-05-05** quanto a D2/D3 com esta decis√£o documentada; D1 e D4 permanecem itens activos no roadmap conforme abaixo.
 
-### D4 ? DOU autom·tico (ALTO)
+### D4 ? DOU autom√°tico (ALTO)
 
-**Problema:** INLABS bloqueado por F5, portal dados abertos sem URL est·vel
+**Problema:** INLABS bloqueado por F5, portal dados abertos sem URL est√°vel
 
-**Fix (opÁ„o A):** contactar Imprensa Nacional para acesso program·tico
+**Fix (op√ß√£o A):** contactar Imprensa Nacional para acesso program√°tico
 
-**Fix (opÁ„o B):** implementar cliente `dados.gov.br/dados/api/publico` para descoberta din‚mica de URLs
+**Fix (op√ß√£o B):** implementar cliente `dados.gov.br/dados/api/publico` para descoberta din√¢mica de URLs
 
-**CritÈrio:** AG3 detecta publicaÁ„o nova no DOU sem intervenÁ„o humana
+**Crit√©rio:** AG3 detecta publica√ß√£o nova no DOU sem interven√ß√£o humana
 
 ---
 
-## BLOCO 3 ? INFRAESTRUTURA PRODU«√O
+## BLOCO 3 ‚Äî INFRAESTRUTURA PRODU√á√ÉO
 
-### I1 ? Redis Railway (CRÕTICO)
+### I1 ? Redis Railway (CR√çTICO)
 
-**Problema:** sem Redis, throttle e revogaÁ„o JWT em memÛria ? inseguro multi-worker
+**Problema:** sem Redis, throttle e revoga√ß√£o JWT em mem√≥ria ? inseguro multi-worker
 
 **Fix:** activar add-on Redis no Railway + definir `REDIS_URL`
 
-**CritÈrio:** `LoginThrottle` e `RevogacaoJti` confirmados com Redis activo
+**Crit√©rio:** `LoginThrottle` e `RevogacaoJti` confirmados com Redis activo
 
-### I2 ? RotaÁ„o JWT (ALTO)
+### I2 ? Rota√ß√£o JWT (ALTO)
 
-**Problema:** `SECRET_KEY` est·tica ? compromisso permanente se vazar
+**Problema:** `SECRET_KEY` est√°tica ? compromisso permanente se vazar
 
-**Fix:** suporte a `kid` no header JWT + m˙ltiplas chaves activas
+**Fix:** suporte a `kid` no header JWT + m√∫ltiplas chaves activas
 
-**CritÈrio:** rotaÁ„o de chave sem invalidar tokens activos
+**Crit√©rio:** rota√ß√£o de chave sem invalidar tokens activos
 
-### I3 ? Deploy Railway completo (CRÕTICO)
+### I3 ? Deploy Railway completo (CR√çTICO)
 
-**Problema:** plataforma sÛ existe no PC local
+**Problema:** plataforma s√≥ existe no PC local
 
-**Fix:** pipeline de deploy automatizado, vari·veis de ambiente configuradas
+**Fix:** pipeline de deploy automatizado, vari√°veis de ambiente configuradas
 
-**CritÈrio:** URL p˙blica acessÌvel, migrations rodadas, health check verde
+**Crit√©rio:** URL p√∫blica acess√≠vel, migrations rodadas, health check verde
 
-### I4 ? Frontend produÁ„o (CRÕTICO)
+### I4 ? Frontend produ√ß√£o (CR√çTICO)
 
 **Problema:** frontend aponta para localhost
 
-**Fix:** vari·veis Vercel apontando para Railway, CORS configurado
+**Fix:** vari√°veis Vercel apontando para Railway, CORS configurado
 
-**CritÈrio:** utilizador acede via URL p˙blica sem erros
+**Crit√©rio:** utilizador acede via URL p√∫blica sem erros
 
 ---
 
-## BLOCO 4 ? AGENTES NOVOS
+## BLOCO 4 ‚Äî AGENTES NOVOS
 
 ### AG-REPARADOR (ALTO)
 
-**Papel:** quando alÌquota muda no DOU ? actualiza `tabela_mva`/`tabela_pmpf` ? invalida insights afectados (`superseded=True`) ? notifica utilizador
+**Papel:** quando al√≠quota muda no DOU ? actualiza `tabela_mva`/`tabela_pmpf` ? invalida insights afectados (`superseded=True`) ? notifica utilizador
 
 **Disparo:** AG3 detecta ? AlertaFiscal criado ? AG-REPARADOR age
 
-**CritÈrio:** ciclo completo testado com mock de mudanÁa normativa
+**Crit√©rio:** ciclo completo testado com mock de mudan√ßa normativa
 
-### AG-ABERTURA (M…DIO)
+### AG-ABERTURA (M√âDIO)
 
 **Papel:** guia utilizador na abertura de empresa (MEI/ME/EPP) via REDESIM
 
-**CritÈrio:** fluxo completo MEI funcional
+**Crit√©rio:** fluxo completo MEI funcional
 
-### AG-ENCERRAMENTO (M…DIO)
+### AG-ENCERRAMENTO (M√âDIO)
 
-**Papel:** guia baixa de empresa com verificaÁ„o de pendÍncias fiscais
+**Papel:** guia baixa de empresa com verifica√ß√£o de pend√™ncias fiscais
 
-**CritÈrio:** checklist de pendÍncias gerado correctamente
+**Crit√©rio:** checklist de pend√™ncias gerado correctamente
 
 ---
 
-## BLOCO 5 ? SEGURAN«A E COMPLIANCE
+## BLOCO 5 ‚Äî SEGURAN√áA E COMPLIANCE
 
-### S1 ? Penetration test b·sico (ALTO)
+### S1 ? Penetration test b√°sico (ALTO)
 
 **Fix:** testar endpoints com OWASP Top 10
 
-**CritÈrio:** zero vulnerabilidades crÌticas
+**Crit√©rio:** zero vulnerabilidades cr√≠ticas
 
-### S2 ? Termos de uso + aviso legal (CRÕTICO)
+### S2 ? Termos de uso + aviso legal (CR√çTICO)
 
-**Fix:** termos no frontend, aviso "simulaÁ„o n„o substitui contador"
+**Fix:** termos no frontend, aviso "simula√ß√£o n√£o substitui contador"
 
-**CritÈrio:** utilizador confirma antes de usar
+**Crit√©rio:** utilizador confirma antes de usar
 
 ### S3 ? LGPD compliance (ALTO)
 
-**Fix:** polÌtica de privacidade, consentimento de dados
+**Fix:** pol√≠tica de privacidade, consentimento de dados
 
-**CritÈrio:** documento publicado e consentimento registado
+**Crit√©rio:** documento publicado e consentimento registado
 
 ---
 
-## ORDEM DE EXECU«√O
+## ORDEM DE EXECU√á√ÉO
 
 SPRINT 1 ? Engines (2 semanas):
 
-E1 IRPJ fix          [CRÕTICO]
+E1 IRPJ fix          [CR√çTICO]
 
-E2 CSLL fix          [CRÕTICO]
+E2 CSLL fix          [CR√çTICO]
 
 E3 MEI actualizar    [ALTO]
 
 E4 PIS/COFINS fix    [ALTO]
 
-E6 TaxPlanning fix   [M…DIO]
+E6 TaxPlanning fix   [M√âDIO]
 
-SPRINT 2 ? Dados (2 semanas) ? **encerrada 2026-05-05** (D2/D3 via decis„o Deep; D1/D4 seguem):
+SPRINT 2 ? Dados (2 semanas) ? **encerrada 2026-05-05** (D2/D3 via decis√£o Deep; D1/D4 seguem):
 
-D1 PA confirmar      [CRÕTICO]
+D1 PA confirmar      [CR√çTICO]
 
-D2 PMPF SP           [ALTO] ? baseline parser (ver decis„o Deep acima)
+D2 PMPF SP           [ALTO] ? baseline parser (ver decis√£o Deep acima)
 
-D3 PMPF RJ           [ALTO] ? hierarquia IVA-ST atÈ parser (ver decis„o Deep acima)
+D3 PMPF RJ           [ALTO] ? hierarquia IVA-ST at√© parser (ver decis√£o Deep acima)
 
-D4 DOU autom·tico    [ALTO]
+D4 DOU autom√°tico    [ALTO]
 
 SPRINT 3 ? Infra + Agentes (1 semana):
 
-I1 Redis Railway     [CRÕTICO]
+I1 Redis Railway     [CR√çTICO]
 
-I3 Deploy Railway    [CRÕTICO]
+I3 Deploy Railway    [CR√çTICO]
 
-I4 Frontend prod     [CRÕTICO]
+I4 Frontend prod     [CR√çTICO]
 
 AG-REPARADOR         [ALTO]
 
@@ -236,45 +236,45 @@ SPRINT 4 ? Compliance + Abertura (1 semana):
 
 S1 Pentest           [ALTO]
 
-S2 Termos uso        [CRÕTICO]
+S2 Termos uso        [CR√çTICO]
 
 S3 LGPD              [ALTO]
 
-I2 RotaÁ„o JWT       [ALTO]
+I2 Rota√ß√£o JWT       [ALTO]
 
-AG-ABERTURA          [M…DIO]
+AG-ABERTURA          [M√âDIO]
 
-AG-ENCERRAMENTO      [M…DIO]
+AG-ENCERRAMENTO      [M√âDIO]
 
 ---
 
-## ROTA PARA FINTECH (pÛs-abertura)
+## ROTA PARA FINTECH (p√≥s-abertura)
 
-FASE FINTECH 1 ? Credibilidade (mÍs 1-3 pÛs-abertura):
+FASE FINTECH 1 ? Credibilidade (m√™s 1-3 p√≥s-abertura):
 
 Assinatura digital contador (ICP-Brasil)
 
-Memorial de c·lculo com validade legal
+Memorial de c√°lculo com validade legal
 
-IntegraÁ„o SPED/EFD autom·tica
+Integra√ß√£o SPED/EFD autom√°tica
 
 Certificado digital A1/A3
 
-FASE FINTECH 2 ? Escala (mÍs 3-6):
+FASE FINTECH 2 ? Escala (m√™s 3-6):
 
-API p˙blica para integradores (contabilidades, ERPs)
+API p√∫blica para integradores (contabilidades, ERPs)
 
 Cobertura PMPF nacional (todos os estados)
 
-Parser autom·tico portarias SEFAZ (todos os estados)
+Parser autom√°tico portarias SEFAZ (todos os estados)
 
 Multi-tenant com SLA documentado
 
-FASE FINTECH 3 ? Produto Financeiro (mÍs 6-12):
+FASE FINTECH 3 ? Produto Financeiro (m√™s 6-12):
 
-AntecipaÁ„o de restituiÁ„o ST
+Antecipa√ß√£o de restitui√ß√£o ST
 
-CrÈdito fiscal como garantia
+Cr√©dito fiscal como garantia
 
 Dashboard financeiro integrado
 
@@ -294,17 +294,17 @@ Antes de qualquer utilizador real aceder:
 
 - [ ] E4 PIS/COFINS correcto
 
-- [ ] D1 PA alÌquota confirmada
+- [ ] D1 PA al√≠quota confirmada
 
-- [x] D2 SP ? baseline ST (`sefaz_sp_parser`, SRE 89/2025 + SRE 09/2026); PMPF marca/embalagem = extens„o futura
+- [x] D2 SP ? baseline ST (`sefaz_sp_parser`, SRE 89/2025 + SRE 09/2026); PMPF marca/embalagem = extens√£o futura
 
-- [x] D3 RJ ? sem PMPF na BD atÈ parser; uso de IVA-ST conforme hierarquia normativa
+- [x] D3 RJ ? sem PMPF na BD at√© parser; uso de IVA-ST conforme hierarquia normativa
 
 - [ ] I1 Redis Railway activo
 
 - [ ] I3 Deploy Railway verde
 
-- [ ] I4 Frontend produÁ„o
+- [ ] I4 Frontend produ√ß√£o
 
 - [ ] S2 Termos de uso publicados
 
