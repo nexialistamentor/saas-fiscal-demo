@@ -3,7 +3,7 @@
 builder = "nixpacks"
 
 [deploy]
-preDeployCommand = "alembic upgrade head"
+preDeployCommand = "alembic stamp 0000_baseline_soberana"
 startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
