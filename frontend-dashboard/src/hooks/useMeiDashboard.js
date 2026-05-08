@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { API_BASE, getToken, isAuthenticated } from "../config"
+import { API_BASE, fetchAutenticado, isAuthenticated } from "../config"
 
 export default function useMeiDashboard(contexto = {}) {
   const [data, setData] = useState(null)
@@ -11,23 +11,18 @@ export default function useMeiDashboard(contexto = {}) {
 
   const carregar = useCallback(async () => {
     if (!isAuthenticated()) { setLoading(false); return }
-    const TOKEN = getToken()
-    if (!TOKEN) { setLoading(false); return }
     try {
-      const res = await fetch(`${API_BASE}/imposto/calcular`, {
+      const res = await fetchAutenticado(`${API_BASE}/imposto/calcular`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${TOKEN}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipo_usuario: "MEI",
           faturamento_mensal: faturamentoMensal,
           despesas: despesasMensais
         })
       })
-      if (!res.ok) {
-        console.error("[Dashboard MEI] falhou:", res.status)
+      if (!res || !res.ok) {
+        console.error("[Dashboard MEI] falhou:", res?.status)
         setLoading(false)
         return
       }

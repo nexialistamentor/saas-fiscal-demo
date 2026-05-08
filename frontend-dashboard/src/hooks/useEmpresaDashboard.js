@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { API_BASE, clearToken, getToken, isAuthenticated } from "../config"
+import { API_BASE, fetchAutenticado, isAuthenticated } from "../config"
 export default function useEmpresaDashboard(idPerfil) {
   const [data, setData] = useState(null)
   const [historico, setHistorico] = useState([])
@@ -8,19 +8,15 @@ export default function useEmpresaDashboard(idPerfil) {
   const carregar = useCallback(async () => {
     if (!idPerfil) { setLoading(false); return }
     if (!isAuthenticated()) { setLoading(false); return }
-    const TOKEN = getToken()
-    if (!TOKEN) { setLoading(false); return }
     try {
-      const headers = { Authorization: `Bearer ${TOKEN}` }
       const baseURL = `${API_BASE}/inteligencia`
       const [resMapa, resHistorico, resTendencia] = await Promise.all([
-        fetch(`${baseURL}/mapa-oportunidades/${idPerfil}`, { headers }),
-        fetch(`${baseURL}/historico-inteligencia/${idPerfil}`, { headers }),
-        fetch(`${baseURL}/tendencia-inteligencia/${idPerfil}`, { headers })
+        fetchAutenticado(`${baseURL}/mapa-oportunidades/${idPerfil}`),
+        fetchAutenticado(`${baseURL}/historico-inteligencia/${idPerfil}`),
+        fetchAutenticado(`${baseURL}/tendencia-inteligencia/${idPerfil}`)
       ])
-      if (resMapa.status === 401) {
-        clearToken()
-        window.location.reload()
+      if (!resMapa) {
+        setLoading(false)
         return
       }
       if (!resMapa.ok) {
@@ -28,8 +24,8 @@ export default function useEmpresaDashboard(idPerfil) {
         return
       }
       const mapaJson = await resMapa.json()
-      const historicoJson = resHistorico.ok ? await resHistorico.json() : []
-      const tendenciaJson = resTendencia.ok ? await resTendencia.json() : null
+      const historicoJson = resHistorico?.ok ? await resHistorico.json() : []
+      const tendenciaJson = resTendencia?.ok ? await resTendencia.json() : null
       const mapaSeguro =
         mapaJson != null && typeof mapaJson === "object" && !Array.isArray(mapaJson)
           ? mapaJson : null

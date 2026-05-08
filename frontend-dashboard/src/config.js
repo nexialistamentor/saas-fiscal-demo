@@ -25,16 +25,10 @@ export function isAuthenticated() {
 }
 
 export async function logout() {
-  const t = getToken()
-  if (!t) {
-    clearToken()
-    return
-  }
   try {
-    await fetch(`${API_BASE}/auth/logout`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${t}` },
-    })
+    await fetchAutenticado(`${API_BASE}/auth/logout`, { method: "POST" })
+  } catch (err) {
+    // ignora erro — limpa token na mesma
   } finally {
     clearToken()
   }
@@ -62,4 +56,26 @@ export async function login(email, password) {
   setToken(data.access_token)
 
   return data
+}
+
+/**
+ * fetchAutenticado — wrapper global para todos os pedidos autenticados.
+ * Trata 401 automaticamente: limpa token e redireciona para login.
+ */
+export async function fetchAutenticado(url, opcoes = {}) {
+  const token = getToken()
+  const headers = {
+    ...opcoes.headers,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+
+  const res = await fetch(url, { ...opcoes, headers })
+
+  if (res.status === 401) {
+    clearToken()
+    window.location.href = '/login'
+    return null
+  }
+
+  return res
 }
