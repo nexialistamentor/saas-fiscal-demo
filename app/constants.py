@@ -20,14 +20,15 @@ PALAVRAS_ABERTURA = [
     "abrir empresa", "abrir mei", "abrir negócio", "formalizar", "formalização",
     "registrar empresa", "cnpj", "redesim", "portal do empreendedor",
     "virar mei", "ser mei", "como abro", "quero abrir", "abrir cnpj",
-    "microempreendedor", "microempresa", "me abrir", "constituir empresa",
+    "microempresa", "me abrir", "constituir empresa",
 ]
 
 # Sinónimos para detecção de intenção — encerramento
 
 PALAVRAS_ENCERRAMENTO = [
     "fechar empresa", "fechar mei", "encerrar", "encerramento", "baixa",
-    "baixar cnpj", "cancelar mei", "extinguir", "encerrar cnpj",
+    "baixar cnpj", "cancelar mei", "cancelar cnpj", "cancelar o cnpj",
+    "baixar mei", "extinguir", "encerrar cnpj",
     "dar baixa", "fechar negócio", "como fecho", "quero fechar",
     "encerrar empresa", "liquidar empresa",
 ]

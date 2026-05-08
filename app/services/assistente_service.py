@@ -90,10 +90,10 @@ def identificar_intencao(pergunta: str) -> str:
     if "lucro presumido ou lucro real" in p or "melhor regime" in p:
         return "planejamento_tributario"
 
-    if any(palavra in p for palavra in PALAVRAS_ABERTURA):
-        return "abertura_empresa"
     if any(palavra in p for palavra in PALAVRAS_ENCERRAMENTO):
         return "encerramento_empresa"
+    if any(palavra in p for palavra in PALAVRAS_ABERTURA):
+        return "abertura_empresa"
 
     return "desconhecida"
 
