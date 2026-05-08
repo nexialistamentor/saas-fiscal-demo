@@ -2,7 +2,7 @@
 
 > Critérios de abertura ao utilizador e rota para Fintech
 
-> Data: 2026-05-05 | HEAD: 1cf6385
+> Data: 2026-05-08 | HEAD: 310f4e7
 
 ---
 
@@ -286,33 +286,45 @@ Open Finance / Open Insurance
 
 Antes de qualquer utilizador real aceder:
 
-- [ ] E1 IRPJ correcto
+- [x] E1 IRPJ correcto
 
-- [ ] E2 CSLL correcto
+- [x] E2 CSLL correcto
 
-- [ ] E3 MEI actualizado
+- [x] E3 MEI actualizado
 
-- [ ] E4 PIS/COFINS correcto
+- [x] E4 PIS/COFINS correcto
 
-- [ ] D1 PA alíquota confirmada
+- [x] E6 TaxPlanningEngine correcto
+
+- [x] D1 PA alíquota confirmada
 
 - [x] D2 SP ? baseline ST (`sefaz_sp_parser`, SRE 89/2025 + SRE 09/2026); PMPF marca/embalagem = extensão futura
 
 - [x] D3 RJ ? sem PMPF na BD até parser; uso de IVA-ST conforme hierarquia normativa
 
-- [ ] I1 Redis Railway activo
+- [x] I1 Redis Railway activo
 
-- [ ] I3 Deploy Railway verde
+- [x] I3 Deploy Railway verde
 
-- [ ] I4 Frontend produção
+- [x] I2 Rotação JWT
 
-- [ ] S2 Termos de uso publicados
+- [x] I4 Frontend produção
 
-- [ ] S3 LGPD compliance
+- [x] S1 Penetration test básico
+
+- [x] S2 Termos de uso publicados
+
+- [x] S3 LGPD compliance
+
+- [x] AG-REPARADOR
+
+- [x] AG-ABERTURA
+
+- [x] AG-ENCERRAMENTO
 
 ---
 
-*Última actualização: 2026-05-05 | HEAD: 1cf6385*
+*Última actualização: 2026-05-08 | HEAD: 310f4e7*
 
 *Critério de abertura: TODOS os itens do checklist ✅*
 
