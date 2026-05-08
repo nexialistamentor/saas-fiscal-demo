@@ -8,6 +8,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -28,6 +29,12 @@ class Plano(Base):
     nome = Column(String, nullable=False)
     limite_cnpjs = Column(Integer, nullable=False)
     limite_analises = Column(Integer, default=100, nullable=False)  # análises/mês por empresa
+
+    # Campos financeiros soberanos
+    preco = Column(Numeric(10, 2), nullable=False, default=0)
+    billing_type = Column(String, nullable=False, default="monthly")  # monthly, yearly, one_time
+    ativo = Column(Boolean, default=True, nullable=False)
+    tipo_acesso = Column(String, nullable=False, default="relatorio")  # relatorio, analise, full
 
     usuarios = relationship("User", back_populates="plano")
 
@@ -72,6 +79,35 @@ class TermosAceitacao(Base):
     versao_termos = Column(String(50), nullable=False)
     aceite_em = Column(DateTime, default=datetime.utcnow)
     ip_address = Column(String(45), nullable=True)
+
+
+class Pagamento(Base):
+    __tablename__ = "pagamentos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    plano_id = Column(Integer, ForeignKey("planos.id"), nullable=True)
+    relatorio_analise_id = Column(Integer, ForeignKey("relatorios_analise.id"), nullable=True)
+
+    # Idempotência — previne cobranças duplicadas
+    idempotency_key = Column(String, unique=True, index=True, nullable=False)
+
+    # Valores financeiros soberanos — Numeric, não Float
+    valor = Column(Numeric(10, 2), nullable=False)
+
+    # Estado interno soberano
+    status = Column(String, nullable=False, default="pending")  # pending, approved, rejected, refunded
+    confirmado_em = Column(DateTime, nullable=True)
+
+    # Integração Mercado Pago — apenas referência externa
+    mp_payment_id = Column(String, unique=True, index=True, nullable=True)
+    mp_status_raw = Column(String, nullable=True)  # resposta bruta para auditoria
+    payment_method_id = Column(String, nullable=False, default="pix")
+    qr_code = Column(String, nullable=True)
+    qr_code_base64 = Column(String, nullable=True)
+
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class ConsentimentoLGPD(Base):
