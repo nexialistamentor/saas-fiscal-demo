@@ -171,14 +171,45 @@ São chamados directamente em `AgentScheduler._finalizar_ciclo_metricas_e_cache(
 
 ---
 
-## 7. DADOS E MIGRAÇÕES
+## 7. DADOS E MIGRAÇÕES — POLÍTICA SOBERANA
 
-- ORM: SQLAlchemy + Alembic
-- Toda migration: verificar que só toca a tabela pretendida (autogenerate detecta ruído)
-- SQLite local / PostgreSQL Railway — testar compatibilidade antes de push
-- `Base.metadata.create_all` no startup (novas instâncias) + `alembic upgrade head` (instâncias existentes)
-- Dados imutáveis: `superseded` (insights), `vigencia_fim` (MVA/PMPF), `processado` (alertas)
-- `func.concat()` proibido — usar Python para concatenação de strings em updates ORM
+ORM: SQLAlchemy + Alembic. `Base.metadata.create_all` no startup (novas instâncias) + `alembic upgrade head` (instâncias existentes). Dados imutáveis: `superseded` (insights), `vigencia_fim` (MVA/PMPF), `processado` (alertas). `func.concat()` proibido — usar Python para concatenação de strings em updates ORM.
+
+### 7.1 Regra fundamental
+
+- **PostgreSQL Railway = fonte da verdade oficial**
+- **SQLite local = ambiente descartável de conveniência**
+- Nunca validar migrações financeiras críticas primeiro no SQLite
+
+### 7.2 Política de migrações Alembic
+
+- Uma migração = uma intenção atómica
+- Sempre remover drift de outras tabelas do autogenerate
+- Colunas NOT NULL novas em tabelas com dados = obrigatório `server_default`
+- Nunca usar `alembic stamp` em produção sem aprovação explícita
+- Nunca alterar schema fora do Alembic (nem via psql directo)
+- Validar migração contra PostgreSQL Railway antes de merge em main
+
+### 7.3 Política SQLite local
+
+- `test.db` é descartável — nunca depender do seu estado
+- Reset obrigatório via `scripts/reset_dev_db.ps1` quando schema divergir
+- Migrações que usam `ALTER COLUMN type` falham no SQLite — usar `try/except` apenas localmente; em produção o PostgreSQL executa correctamente
+
+### 7.4 Reset local (quando SQLite divergir)
+
+```powershell
+# scripts/reset_dev_db.ps1
+Remove-Item -Force test.db -ErrorAction SilentlyContinue
+alembic upgrade head
+python -m app.seed_data
+```
+
+### 7.5 Rollback de emergência (produção)
+
+- Nunca fazer rollback sem backup
+- `alembic downgrade -1` apenas com aprovação
+- Migrações financeiras (pagamentos, planos) = rollback proibido sem análise de impacto
 
 ---
 
@@ -253,4 +284,4 @@ python -m pytest tests\ -q   # sempre antes de commitar
 
 ---
 
-*Última actualização: 2026-05-02*
+*Última actualização: 2026-05-08*
