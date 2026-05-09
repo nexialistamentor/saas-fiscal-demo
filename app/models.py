@@ -106,8 +106,47 @@ class Pagamento(Base):
     qr_code = Column(String, nullable=True)
     qr_code_base64 = Column(String, nullable=True)
 
+    # Metadados soberanos do gateway (checkout, boleto, payload auditável)
+    checkout_url = Column(String, nullable=True)
+    checkout_expires_at = Column(DateTime, nullable=True)
+    gateway_provider = Column(String, nullable=True, server_default="mercadopago")
+    gateway_payment_type = Column(String, nullable=True)
+    gateway_external_reference = Column(String, nullable=True)
+    boleto_url = Column(String, nullable=True)
+    boleto_barcode = Column(String, nullable=True)
+    gateway_payload = Column(JSON, nullable=True)
+
     criado_em = Column(DateTime, default=datetime.utcnow)
     atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    tentativas = relationship("PagamentoTentativa", back_populates="pagamento")
+
+
+class PagamentoTentativa(Base):
+    """Ledger operacional de tentativas de cobrança por pagamento (auditável)."""
+
+    __tablename__ = "pagamento_tentativas"
+
+    id = Column(Integer, primary_key=True)
+    pagamento_id = Column(Integer, ForeignKey("pagamentos.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+
+    gateway_provider = Column(String, nullable=False, index=True)
+    payment_type = Column(String, nullable=False)
+    status = Column(String, nullable=False, index=True)
+    error_code = Column(String, nullable=True, index=True)
+    error_message = Column(String, nullable=True)
+    error_origin = Column(String, nullable=True)
+    http_status = Column(Integer, nullable=True)
+
+    request_payload = Column(JSON, nullable=True)
+    response_payload = Column(JSON, nullable=True)
+
+    started_at = Column(DateTime, nullable=False, server_default=func.now())
+    finished_at = Column(DateTime, nullable=True)
+
+    pagamento = relationship("Pagamento", back_populates="tentativas")
+    user = relationship("User")
 
 
 class ConsentimentoLGPD(Base):
