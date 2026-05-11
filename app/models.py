@@ -100,6 +100,39 @@ class PerfilContador(Base):
     atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="perfil_contador")
+    homologacoes = relationship("HomologacaoDocumental", back_populates="contador")
+
+
+class HomologacaoDocumental(Base):
+    """Homologação humana de documento ingerido por contador parceiro."""
+
+    __tablename__ = "homologacoes_documentais"
+
+    id = Column(Integer, primary_key=True, index=True)
+    documento_ingerido_id = Column(Integer, ForeignKey("documentos_ingeridos.id"), nullable=False, index=True)
+    contador_id = Column(Integer, ForeignKey("perfis_contador.id"), nullable=False, index=True)
+
+    # Tipo e versão do parecer
+    tipo_decisao = Column(String(50), nullable=False, default="homologacao_documental")
+    # homologacao_documental | revisao_ocr | parecer_fiscal
+    versao_parecer = Column(String(10), nullable=False, default="1.0")
+
+    # Estado soberano
+    status = Column(String(20), nullable=False, default="pendente", server_default="pendente")
+    # pendente | aprovado | rejeitado
+
+    # Parecer auditável
+    parecer_texto = Column(Text, nullable=True)
+    assinatura_logica = Column(String(64), nullable=True)
+    # SHA-256(parecer_texto + contador_id + decidido_em) — V1 lógico
+
+    # Timestamps
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    decidido_em = Column(DateTime, nullable=True)
+
+    # Relationships
+    documento_ingerido = relationship("DocumentoIngerido", back_populates="homologacoes")
+    contador = relationship("PerfilContador", back_populates="homologacoes")
 
 
 class TermosAceitacao(Base):
@@ -538,6 +571,7 @@ class DocumentoIngerido(Base):
 
     user = relationship("User", back_populates="documentos_ingeridos")
     empresa = relationship("Empresa", back_populates="documentos_ingeridos")
+    homologacoes = relationship("HomologacaoDocumental", back_populates="documento_ingerido")
 
 
 # =========================
