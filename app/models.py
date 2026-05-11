@@ -65,6 +65,7 @@ class User(Base):
     plano = relationship("Plano", back_populates="usuarios")
     empresas = relationship("Empresa", back_populates="owner")
     documentos_rendimento = relationship("DocumentoRendimento", back_populates="owner")
+    documentos_ingeridos = relationship("DocumentoIngerido", back_populates="user")
 
     @property
     def is_admin(self) -> bool:
@@ -181,6 +182,7 @@ class Empresa(Base):
 
     owner = relationship("User", back_populates="empresas")
     documentos_fiscais = relationship("DocumentoFiscal", back_populates="empresa")
+    documentos_ingeridos = relationship("DocumentoIngerido", back_populates="empresa")
 
 
 # =========================
@@ -472,6 +474,40 @@ class DocumentoRendimento(Base):
     criado_em = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="documentos_rendimento")
+
+
+# =========================
+# DOCUMENTO INGERIDO (pipeline documental — evidência persistida)
+# Alinhado a app.services.document_ingestion.audit.EvidenciaDocumental
+# =========================
+class DocumentoIngerido(Base):
+    __tablename__ = "documentos_ingeridos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)
+
+    conteudo_sha256 = Column(String(64), nullable=False, index=True)
+    evidencia_em = Column(DateTime, nullable=False, default=datetime.utcnow)
+    versao_pipeline = Column(String(32), nullable=False)
+    tipo_documento = Column(String(32), nullable=False, index=True)
+    score_confianca = Column(Float, nullable=False)
+    decisao = Column(String(32), nullable=False, index=True)
+    requereu_ocr = Column(Boolean, nullable=False, default=False, server_default="false")
+
+    campos_extraidos = Column(JSON, nullable=True)
+    campos_nao_extraidos = Column(JSON, nullable=True)
+    motivos = Column(JSON, nullable=True)
+
+    validado_humano = Column(Boolean, nullable=False, default=False, server_default="false")
+    validado_por = Column(String(255), nullable=True)
+    validado_em = Column(DateTime, nullable=True)
+
+    nome_ficheiro = Column(String(512), nullable=True)
+    tamanho_bytes = Column(Integer, nullable=False, default=0)
+
+    user = relationship("User", back_populates="documentos_ingeridos")
+    empresa = relationship("Empresa", back_populates="documentos_ingeridos")
 
 
 # =========================
