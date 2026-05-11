@@ -35,12 +35,13 @@ def _pdf_digital(texto: str | None = None) -> bytes:
 
 
 def _pdf_vazio() -> bytes:
-    """PDF sem texto (simula scan)."""
+    """PDF sem texto (simula scan). drawString vazio garante 1 página no pdfplumber."""
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
+    c.drawString(100, 750, "")
     c.save()
     return buf.getvalue()
 
