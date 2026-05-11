@@ -22,6 +22,7 @@
 | PagamentoService (máquina de estados, idempotência, ledger) | ✅ Código | Aguarda credenciais MP |
 | Parsers (DOU, SEFAZ MG/SP, InLabs) | ✅ Código | |
 | Pipeline normativo | ✅ Código | |
+| Núcleo regulatório V1 (PerfilContador, HomologacaoDocumental, API contador) | ✅ Produção | HomologacaoService + assinatura lógica SHA-256 |
 | Serviço PDF | ✅ Código | A auditar |
 
 ---
@@ -73,20 +74,32 @@
 
 ---
 
-### 🟡 BLOCO 3 — Núcleo Regulatório (Contadores Parceiros)
-**Dependência:** Bloco 2 concluído (contador assina o que a plataforma processou)
+### 🟢 BLOCO 3 — Núcleo Regulatório (Contadores Parceiros) — PRODUÇÃO
+**Commit:** 5eab23a  
+**Dependência:** Bloco 2 satisfeito (contador homologa o que a plataforma processou)
 
 | Tarefa | Ficheiro | Estado |
 |--------|----------|--------|
-| Modelo `Contador` (CRC, status, reputação) | `app/models.py` | ❌ |
-| Modelo `HomologacaoContador` | `app/models.py` | ❌ |
-| Modelo `PareceContador` | `app/models.py` | ❌ |
-| Migration tabelas contador | `migrations/versions/0005_*.py` | ❌ |
-| Portal parceiro contador | `app/routers/contador_router.py` | ❌ |
-| Fluxo homologação (relatório → parecer → selo) | `app/services/homologacao_service.py` | ❌ |
-| Assinatura digital V1 (lógica/auditável) | `app/services/assinatura_service.py` | ❌ |
+| Modelo `PerfilContador` (CRC, UF, status, reputação) | `app/models.py` | ✅ Produção |
+| Modelo `HomologacaoDocumental` (parecer + assinatura lógica V1) | `app/models.py` | ✅ Produção |
+| Migration perfis contador | `migrations/versions/0005_create_perfis_contador.py` | ✅ Produção |
+| Migration homologações documentais | `migrations/versions/0006_create_homologacoes_documentais.py` | ✅ Produção |
+| API parceiro contador | `app/routers/contador_router.py` | ✅ Produção |
+| Fluxo homologação (fila → parecer → assinatura lógica SHA-256) | `app/services/homologacao_service.py` | ✅ Produção |
+| `assinatura_service.py` modular (PKI / rotas dedicadas) | — | 🔮 Fase futura |
 | Assinatura ICP-Brasil V2 | — | 🔮 Fase futura |
-| Testes domínio contador | `tests/test_contador_service.py` | ❌ |
+| Testes domínio homologação | `tests/test_homologacao_service.py` | ✅ Produção |
+
+**Escopo V1 — limites documentados:**
+
+- ✅ Perfil regulatório do contador (CRC, estados pendente/aprovado/suspenso, reputação)
+- ✅ Fila de homologação documental com uma homologação activa relevante por documento (regra no serviço V1)
+- ✅ Decisão aprovado/rejeitado com parecer textual auditável
+- ✅ Assinatura lógica V1 (SHA-256 sobre parecer + identidades + timestamp — não PKI)
+- ✅ Endpoints de assumir homologação e registar parecer (`contador_router`)
+- ❌ Assinatura criptográfica / ICP-Brasil / e-CNPJ
+- ❌ Serviço `assinatura_service.py` separado da lógica já encapsulada em `HomologacaoService`
+- ❌ Portal UI dedicado ao parceiro (fora do núcleo API V1)
 
 **Princípio:** contador não bloqueia operação — é camada premium de confiança
 
@@ -144,10 +157,10 @@ Plataforma Soberana L2
 │   ├── regime_engine.py
 │   └── formalizacao_router.py
 │
-└── Núcleo Regulatório     ← A CONSTRUIR (após documental)
-    ├── contador_service.py
+└── Núcleo Regulatório     ← PRODUÇÃO V1 (API + homologação)
+    ├── contador_router.py
     ├── homologacao_service.py
-    └── assinatura_service.py
+    └── assinatura_service.py (PKI — futuro)
 ```
 
 ---
