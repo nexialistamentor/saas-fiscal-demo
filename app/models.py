@@ -66,10 +66,40 @@ class User(Base):
     empresas = relationship("Empresa", back_populates="owner")
     documentos_rendimento = relationship("DocumentoRendimento", back_populates="owner")
     documentos_ingeridos = relationship("DocumentoIngerido", back_populates="user")
+    perfil_contador = relationship("PerfilContador", back_populates="user", uselist=False)
 
     @property
     def is_admin(self) -> bool:
         return self.role == "admin"
+
+
+class PerfilContador(Base):
+    """Entidade regulatória do contador parceiro — separada de User."""
+
+    __tablename__ = "perfis_contador"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), unique=True, nullable=False, index=True)
+
+    # Identificação regulatória
+    crc = Column(String(20), nullable=False, unique=True, index=True)
+    uf_crc = Column(String(2), nullable=False)
+
+    # Estado soberano
+    status = Column(String(20), nullable=False, default="pendente", server_default="pendente")
+    # pendente | aprovado | suspenso
+
+    # Reputação operacional
+    reputacao_score = Column(Numeric(5, 2), nullable=False, default=0, server_default="0")
+
+    # Auditoria de aprovação
+    aprovado_em = Column(DateTime, nullable=True)
+    aprovado_por = Column(String(255), nullable=True)  # email do admin aprovador
+
+    criado_em = Column(DateTime, default=datetime.utcnow)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="perfil_contador")
 
 
 class TermosAceitacao(Base):
