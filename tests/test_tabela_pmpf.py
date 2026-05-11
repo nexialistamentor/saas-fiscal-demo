@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 
 from app.database import SessionLocal
-from app.models import TabelaPMPF
+from app.models import TabelaMVA, TabelaPMPF
 from app.services.tabela_normativa_service import buscar_pmpf, resolver_base_calculo_st
 
 
@@ -66,7 +66,38 @@ def test_sem_pmpf_retorna_none():
 
 
 def test_resolver_fallback_para_iva_st_quando_sem_pmpf():
+    """Sem PMPF para o par UF+NCM: usa IVA-ST via MVA (requer linha MVA na BD)."""
     db = SessionLocal()
-    r = resolver_base_calculo_st(db, "PA", "22021000", valor_produto=10.0)
-    db.close()
-    assert r["metodo"] in ("pmpf", "iva_st")
+    try:
+        db.query(TabelaPMPF).filter(
+            TabelaPMPF.estado == "PA", TabelaPMPF.ncm == "22021000"
+        ).delete()
+        db.query(TabelaMVA).filter(
+            TabelaMVA.estado == "PA", TabelaMVA.ncm == "22021000"
+        ).delete()
+        db.commit()
+        db.add(
+            TabelaMVA(
+                estado="PA",
+                ncm="22021000",
+                mva=30.0,
+                aliquota_interna=0.18,
+                vigencia_inicio=date(2020, 1, 1),
+                vigencia_fim=None,
+                nivel_confianca_fonte="oficial",
+                fonte_legal="pytest resolver_base_calculo_st",
+            )
+        )
+        db.commit()
+        r = resolver_base_calculo_st(db, "PA", "22021000", valor_produto=10.0)
+        assert r["metodo"] == "iva_st"
+        assert r["base_calculo"] is not None
+    finally:
+        db.query(TabelaPMPF).filter(
+            TabelaPMPF.estado == "PA", TabelaPMPF.ncm == "22021000"
+        ).delete()
+        db.query(TabelaMVA).filter(
+            TabelaMVA.estado == "PA", TabelaMVA.ncm == "22021000"
+        ).delete()
+        db.commit()
+        db.close()

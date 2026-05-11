@@ -3,7 +3,7 @@ import os
 from typing import Generator
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -127,6 +127,40 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 from app import models  # noqa: F401, E402
+
+
+def _sqlite_add_missing_columns(model_cls: type) -> None:
+    """Acrescenta colunas do modelo em falta (histórico: DB criado antes do modelo atual)."""
+    table_name = model_cls.__tablename__
+    insp = inspect(engine)
+    if table_name not in insp.get_table_names():
+        return
+    existing = {c["name"] for c in insp.get_columns(table_name)}
+    dialect = engine.dialect
+    with engine.begin() as conn:
+        for col in model_cls.__table__.columns:
+            if col.primary_key or col.name in existing:
+                continue
+            coltype = col.type.compile(dialect=dialect)
+            ddl = f"ALTER TABLE {table_name} ADD COLUMN {col.name} {coltype}"
+            if not col.nullable:
+                ddl += " NOT NULL"
+            conn.execute(text(ddl))
+
+
+def ensure_sqlite_schema_compat() -> None:
+    """
+    SQLite legado: ``create_all`` não altera tabelas já criadas.
+    Alinha colunas das tabelas normativas com os modelos (pytest / test.db).
+    """
+    if _parse_scheme(DATABASE_URL) != "sqlite":
+        return
+    models.Base.metadata.create_all(bind=engine)
+    _sqlite_add_missing_columns(models.TabelaMVA)
+    _sqlite_add_missing_columns(models.TabelaPMPF)
+
+
+ensure_sqlite_schema_compat()
 
 
 def get_db() -> Generator:
