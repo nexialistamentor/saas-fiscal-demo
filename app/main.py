@@ -47,6 +47,7 @@ from app.routers.st_router import router as st_router
 from app.routers.insights_router import router as insights_router
 from app.routers.empresa_router import router as empresa_router
 from app.routers.documento_router import router as documento_router
+from app.routers.ingestion_router import router as ingestion_router
 from app.routers.inteligencia_router import inteligencia_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.assistente_router import assistente_router
@@ -577,6 +578,7 @@ app.include_router(st_router)
 app.include_router(insights_router)
 app.include_router(empresa_router)
 app.include_router(documento_router)
+app.include_router(ingestion_router)
 app.include_router(inteligencia_router)
 app.include_router(dashboard_router)
 app.include_router(assistente_router)
