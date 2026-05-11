@@ -47,21 +47,29 @@
 
 ---
 
-### 🟡 BLOCO 2 — Auditoria Documental (pipeline inteligente)
-**Dependência:** auditar o que já existe antes de construir
+### 🟢 BLOCO 2 — Pipeline Documental Soberano V1 — PRODUÇÃO
+**Commit:** 24bf9d9
 
-| Tarefa | Ficheiro | Estado |
-|--------|----------|--------|
-| Auditar serviço PDF existente | `app/services/pdf*.py` | 🔍 A auditar |
-| Auditar parsers existentes | `app/services/parsers/` | 🔍 A auditar |
-| Pipeline OCR (prints, scans, DANFE) | `app/services/document_ingestion/` | ❌ |
-| Classificador documental | `app/services/document_ingestion/classificador.py` | ❌ |
-| Extractor fiscal (PDF/imagem → dados estruturados) | `app/services/document_ingestion/extractor.py` | ❌ |
-| Confidence score por documento | `app/services/document_ingestion/confidence.py` | ❌ |
-| Normalização → motor fiscal | `app/services/document_ingestion/normalizador.py` | ❌ |
-| Migration tabela `documentos_ingeridos` | `migrations/versions/0004_*.py` | ❌ |
+| Módulo | Estado |
+|--------|--------|
+| `classifier.py` | ✅ Produção |
+| `extractor.py` | ✅ Produção |
+| `confidence.py` | ✅ Produção |
+| `normalizer.py` | ✅ Produção |
+| `audit.py` | ✅ Produção |
+| `ingestion_router.py` | ✅ Produção |
+| Migration `0004_documentos_ingeridos` | ✅ Produção |
 
-**Princípio:** OCR confiança ≥ 95% → auto-processa; < 95% → fila homologação
+**Escopo V1 — limites documentados:**
+
+- ✅ Pipeline determinístico auditável
+- ✅ Deduplicação por SHA-256
+- ✅ Trilha probatória (EvidenciaDocumental)
+- ❌ OCR automático (requer pytesseract + Tesseract)
+- ❌ Antifraude ML
+- ❌ Assinatura ICP-Brasil
+- ❌ Persistência S3/distribuída
+- ❌ Fila assíncrona
 
 ---
 
