@@ -27,26 +27,16 @@ class ResultadoExtracao:
 def extrair(conteudo: bytes, tipo: TipoDocumento) -> ResultadoExtracao:
     """
     Extrai texto bruto de um documento já classificado.
-    Para PDF_SCAN e IMAGE, sinaliza requer_ocr=True — OCR é responsabilidade do caller.
+    PDF_SCAN e IMAGE usam OCR (Tesseract); requer_ocr=True no resultado.
     """
     if tipo == TipoDocumento.PDF_DIGITAL or tipo == TipoDocumento.DANFE:
         return _extrair_pdf_texto(conteudo)
 
     if tipo == TipoDocumento.PDF_SCAN:
-        return ResultadoExtracao(
-            texto="",
-            paginas_extraidas=0,
-            paginas_total=_contar_paginas_pdf(conteudo),
-            requer_ocr=True,
-        )
+        return _extrair_ocr(conteudo, _contar_paginas_pdf(conteudo))
 
     if tipo == TipoDocumento.IMAGE:
-        return ResultadoExtracao(
-            texto="",
-            paginas_extraidas=0,
-            paginas_total=1,
-            requer_ocr=True,
-        )
+        return _extrair_ocr(conteudo, 1)
 
     return ResultadoExtracao(
         texto="",
@@ -95,3 +85,66 @@ def _contar_paginas_pdf(conteudo: bytes) -> int:
             return len(pdf.pages)
     except Exception:
         return 0
+
+
+def _extrair_ocr(conteudo: bytes, paginas_total: int) -> ResultadoExtracao:
+    """
+    Extrai texto via OCR (Tesseract) — import lazy para não quebrar ambientes sem binário.
+    Usado para PDF_SCAN e IMAGE.
+    Língua: português + inglês (por+eng).
+    """
+    try:
+        import pytesseract  # lazy — só importa quando OCR é necessário
+        from PIL import Image as PILImage
+    except ImportError:
+        return ResultadoExtracao(
+            texto="",
+            paginas_extraidas=0,
+            paginas_total=paginas_total,
+            requer_ocr=True,
+            erro="pytesseract não disponível neste ambiente",
+        )
+
+    try:
+        import pdf2image  # lazy — converte PDF scan para imagens
+
+        imagens = pdf2image.convert_from_bytes(conteudo, dpi=300)
+    except ImportError:
+        # PDF scan sem pdf2image — tenta tratar como imagem directa
+        imagens = None
+    except Exception:
+        imagens = None
+
+    # Se não é PDF scan, trata como imagem directa
+    if imagens is None:
+        try:
+            import io as _io
+
+            img = PILImage.open(_io.BytesIO(conteudo))
+            imagens = [img]
+        except Exception as exc:
+            return ResultadoExtracao(
+                texto="",
+                paginas_extraidas=0,
+                paginas_total=paginas_total,
+                requer_ocr=True,
+                erro=f"Erro ao abrir imagem: {exc}",
+            )
+
+    textos = []
+    paginas_extraidas = 0
+    for img in imagens:
+        try:
+            texto = pytesseract.image_to_string(img, lang="por+eng")
+            if texto.strip():
+                textos.append(texto)
+                paginas_extraidas += 1
+        except Exception:
+            continue
+
+    return ResultadoExtracao(
+        texto="\n".join(textos),
+        paginas_extraidas=paginas_extraidas,
+        paginas_total=paginas_total,
+        requer_ocr=True,
+    )

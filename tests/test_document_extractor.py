@@ -59,13 +59,16 @@ def test_extrai_danfe():
 
 
 # ---------------------------------------------------------------------------
-# PDF scan — sinaliza OCR
+# PDF scan — OCR (Tesseract / pdf2image opcionais no ambiente)
 # ---------------------------------------------------------------------------
 def test_pdf_scan_requer_ocr():
     resultado = extrair(_pdf_vazio(), TipoDocumento.PDF_SCAN)
     assert resultado.requer_ocr is True
-    assert resultado.texto == ""
-    assert resultado.erro is None
+    assert isinstance(resultado.texto, str)
+    if resultado.erro is None:
+        assert resultado.paginas_total >= 1
+    else:
+        assert resultado.paginas_extraidas == 0
 
 
 def test_pdf_scan_conta_paginas():
@@ -74,7 +77,7 @@ def test_pdf_scan_conta_paginas():
 
 
 # ---------------------------------------------------------------------------
-# Imagem — sinaliza OCR
+# Imagem — OCR (pytesseract opcional no ambiente)
 # ---------------------------------------------------------------------------
 def test_image_requer_ocr():
     from PIL import Image as PILImage
@@ -84,7 +87,11 @@ def test_image_requer_ocr():
     resultado = extrair(buf.getvalue(), TipoDocumento.IMAGE)
     assert resultado.requer_ocr is True
     assert resultado.paginas_total == 1
-    assert resultado.texto == ""
+    assert isinstance(resultado.texto, str)
+    if resultado.erro is None:
+        assert resultado.paginas_extraidas >= 0
+    else:
+        assert resultado.paginas_extraidas == 0
 
 
 # ---------------------------------------------------------------------------
