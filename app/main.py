@@ -48,6 +48,7 @@ from app.routers.insights_router import router as insights_router
 from app.routers.empresa_router import router as empresa_router
 from app.routers.documento_router import router as documento_router
 from app.routers.ingestion_router import router as ingestion_router
+from app.routers.formalizacao_router import router as formalizacao_router
 from app.routers.contador_router import router as contador_router
 from app.routers.inteligencia_router import inteligencia_router
 from app.routers.dashboard_router import router as dashboard_router
@@ -479,6 +480,7 @@ ROTAS_FISCAIS = (
     "/estoque",
     "/analise-st",
     "/empresas",
+    "/formalizacao",
     "/dashboard",
     "/documentos",
     "/inteligencia",
@@ -578,6 +580,7 @@ app.include_router(imposto_router, prefix="/imposto")
 app.include_router(st_router)
 app.include_router(insights_router)
 app.include_router(empresa_router)
+app.include_router(formalizacao_router)
 app.include_router(documento_router)
 app.include_router(ingestion_router)
 app.include_router(contador_router)
