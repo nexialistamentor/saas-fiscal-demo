@@ -130,6 +130,8 @@
 | Unificação `routers/` vs `routes/` | ❌ |
 | Migração `legacy/` → arquivo ou remoção | ❌ |
 
+- [ ] `CheckConstraint` comprimento CNPJ em `empresas` — evitar chaves contaminadas
+
 ---
 
 ## ARQUITECTURA DOS 4 NÚCLEOS
