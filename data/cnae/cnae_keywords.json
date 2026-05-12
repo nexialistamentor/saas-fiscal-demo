@@ -1,0 +1,47 @@
+{
+  "versao": "1.0",
+  "descricao": "Inteligência de keywords da plataforma — separado da fonte normativa IBGE",
+  "secoes_prioritarias": {
+    "J": {
+      "descricao": "Informação e Comunicação",
+      "keywords": ["software", "sistema", "tecnologia", "ti", "dados", "plataforma", "aplicativo", "app", "desenvolvimento", "programação", "web", "digital", "saas", "api", "banco de dados", "inteligência artificial", "ia", "nuvem", "cloud", "hospedagem", "streaming"],
+      "peso_secao": 1.5
+    },
+    "K": {
+      "descricao": "Atividades Financeiras e de Seguros",
+      "keywords": ["financeiro", "fintech", "pagamento", "crédito", "seguro", "investimento", "banco", "fiscal", "tributário", "contabil", "contabilidade", "auditoria"],
+      "peso_secao": 1.3
+    },
+    "M": {
+      "descricao": "Atividades Profissionais, Científicas e Técnicas",
+      "keywords": ["consultoria", "assessoria", "engenharia", "arquitetura", "pesquisa", "design", "marketing", "publicidade", "jurídico", "advocacia", "médico", "veterinário"],
+      "peso_secao": 1.2
+    },
+    "G": {
+      "descricao": "Comércio",
+      "keywords": ["venda", "comércio", "loja", "varejo", "atacado", "revenda", "produto", "mercadoria", "importação", "exportação"],
+      "peso_secao": 1.0
+    },
+    "I": {
+      "descricao": "Alojamento e Alimentação",
+      "keywords": ["restaurante", "lanchonete", "bar", "hotel", "pousada", "alimentação", "comida", "delivery", "buffet"],
+      "peso_secao": 1.0
+    },
+    "S": {
+      "descricao": "Outras Atividades de Serviços",
+      "keywords": ["serviço", "manutenção", "reparo", "limpeza", "beleza", "estética", "cabeleireiro", "manicure", "lavanderia", "costura"],
+      "peso_secao": 0.9
+    }
+  },
+  "restricoes_mei": {
+    "secoes_nao_permitidas": ["K"],
+    "keywords_alerta": ["banco", "financeiro", "crédito", "seguro", "investimento"],
+    "motivo_padrao": "Atividades financeiras não são permitidas para MEI"
+  },
+  "pesos": {
+    "match_keyword_exacto": 2.0,
+    "match_keyword_parcial": 1.0,
+    "bonus_secao_prioritaria": 0.5,
+    "penalidade_restricao_mei": -3.0
+  }
+}
