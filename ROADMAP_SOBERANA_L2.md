@@ -1,6 +1,6 @@
 # ROADMAP SOBERANO — Plataforma L2 → FinTech
-**Auditado em:** 2026-05-11  
-**HEAD:** cd616c3  
+**Auditado em:** 2026-05-12  
+**HEAD:** f2e569b  
 **Testes:** 104 passando (87 fiscais + 17 domínio financeiro)  
 **Princípio:** persistir primeiro → enriquecer depois → só então usar inteligência
 
@@ -23,6 +23,7 @@
 | Parsers (DOU, SEFAZ MG/SP, InLabs) | ✅ Código | |
 | Pipeline normativo | ✅ Código | |
 | Núcleo regulatório V1 (PerfilContador, HomologacaoDocumental, API contador) | ✅ Produção | HomologacaoService + assinatura lógica SHA-256 |
+| Núcleo empresarial V1 (CNAE, regime tributário, formalização stateless, extensão `empresas`) | ✅ Produção | `cnae_engine`, `regime_engine`, `formalizacao_router`, migration `0008` |
 | Serviço PDF | ✅ Código | A auditar |
 
 ---
@@ -105,17 +106,28 @@
 
 ---
 
-### 🟡 BLOCO 4 — Núcleo Empresarial
-**Dependência:** independente — pode avançar em paralelo
+### 🟢 BLOCO 4 — Núcleo Empresarial V1 — PRODUÇÃO
+**Commit:** f2e569b (stack: CNAE → regime → formalização)  
+**Dependência:** independente — V1 stateless; persistência via fluxos existentes de empresa
 
 | Tarefa | Ficheiro | Estado |
 |--------|----------|--------|
-| Motor de decisão CNAE | `app/services/tax_engines/cnae_engine.py` | ❌ |
-| Motor regime tributário (Simples/LP/LR + Fator R) | `app/services/tax_engines/regime_engine.py` | ❌ |
+| Motor de enquadramento CNAE (keywords + parser soberano) | `app/services/cnae_engine.py` | ✅ Produção |
+| Motor regime tributário (MEI/Simples/LP/LR + Fator R + comparação) | `app/services/regime_engine.py` | ✅ Produção |
+| Router formalização stateless (recomendar CNAE, comparar regimes, simular empresa) | `app/routers/formalizacao_router.py` | ✅ Produção |
+| Migration extensão `empresas` (CNAE, localização, porte, tributário, métricas) | `migrations/versions/0008_expand_empresa_nucleo_empresarial.py` | ✅ Produção |
 | Checklist abertura empresa (estrangeiros incluídos) | `app/services/abertura_service.py` | 🔍 Auditar AG-ABERTURA |
 | Viabilidade municipal | `app/services/viabilidade_service.py` | ❌ |
-| Roadmap formalização guiado | `app/routers/formalizacao_router.py` | ❌ |
-| Migration `empresas` expansão | `migrations/versions/0006_*.py` | ❌ |
+| Wizard persistido multi-passo / portal guiado | — | 🔮 Fase futura |
+
+**Escopo V1 — limites documentados:**
+
+- ✅ Recomendação CNAE heurística (sem ML)
+- ✅ Comparação de regimes com Fator R onde aplicável
+- ✅ Endpoints stateless sob `/formalizacao/*`
+- ✅ Modelo `empresas` enriquecido para perfil operacional (migration `0008`)
+- ❌ Viabilidade municipal e integrações prefectura
+- ❌ OCR ou ingestão automática de contrato social na formalização
 
 ---
 
@@ -154,7 +166,7 @@ Plataforma Soberana L2
 │   ├── document_ingestion/ (novo)
 │   └── [contador homologa baixa-confiança]
 │
-├── Núcleo Empresarial     ← A CONSTRUIR
+├── Núcleo Empresarial     ← PRODUÇÃO V1 (stateless + empresas expandido)
 │   ├── cnae_engine.py
 │   ├── regime_engine.py
 │   └── formalizacao_router.py
