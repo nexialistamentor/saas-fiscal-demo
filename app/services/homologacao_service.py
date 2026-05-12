@@ -19,7 +19,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.models import HomologacaoDocumental, PerfilContador
+from app.models import DocumentoIngerido, HomologacaoDocumental, PerfilContador
 
 
 class HomologacaoError(Exception):
@@ -149,6 +149,20 @@ def registar_decisao(
     homologacao.decidido_em = decidido_em
 
     db.flush()
+
+    # Actualizar estado do documento — transição soberana após decisão do contador
+    documento = db.query(DocumentoIngerido).filter(
+        DocumentoIngerido.id == homologacao.documento_ingerido_id
+    ).first()
+
+    if documento:
+        if status_decisao == "aprovado":
+            documento.decisao = "auto_processar"
+            documento.validado_humano = True
+        else:
+            documento.decisao = "rejeitado"
+        db.flush()
+
     return homologacao
 
 

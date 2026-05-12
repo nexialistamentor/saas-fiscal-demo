@@ -77,6 +77,12 @@ class PerfilContador(Base):
     """Entidade regulatória do contador parceiro — separada de User."""
 
     __tablename__ = "perfis_contador"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pendente', 'aprovado', 'suspenso')",
+            name="ck_perfis_contador_status_valido",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("usuarios.id"), unique=True, nullable=False, index=True)
