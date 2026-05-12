@@ -242,12 +242,39 @@ REGIMES_TRIBUTARIOS = ("simples", "presumido", "real", "mei")
 class Empresa(Base):
     __tablename__ = "empresas"
 
+    __table_args__ = (
+        CheckConstraint(
+            "status_empresa IN ('ativa', 'em_abertura', 'suspensa', 'encerrada')",
+            name="ck_empresas_status_valido",
+        ),
+        CheckConstraint(
+            "porte IN ('mei', 'me', 'epp', 'medio', 'grande')",
+            name="ck_empresas_porte_valido",
+        ),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     cnpj = Column(String, nullable=True)
     razao_social = Column(String, nullable=True)
-    regime_tributario = Column(String, nullable=True, index=True)  # simples | presumido | real | mei
-
+    regime_tributario = Column(String, nullable=True, index=True)
     user_id = Column(Integer, ForeignKey("usuarios.id"))
+
+    # Núcleo Empresarial V1
+    cnae_principal = Column(String(10), nullable=True, index=True)
+    cnae_secundarios = Column(JSON, nullable=True)
+    municipio = Column(String(100), nullable=True)
+    uf = Column(String(2), nullable=True, index=True)
+    porte = Column(String(20), nullable=True, index=True)
+    status_empresa = Column(String(20), nullable=True, default="ativa", server_default="ativa", index=True)
+    data_abertura = Column(Date, nullable=True)
+    capital_social = Column(Numeric(15, 2), nullable=True)
+    optante_simples = Column(Boolean, nullable=True, default=False)
+    optante_mei = Column(Boolean, nullable=True, default=False)
+
+    # Inputs para cálculo Fator R — nunca guardar o ratio derivado
+    faturamento_anual = Column(Numeric(15, 2), nullable=True)
+    folha_anual = Column(Numeric(15, 2), nullable=True)
+    # fator_r = folha_anual / faturamento_anual — calculado pelo motor fiscal
 
     owner = relationship("User", back_populates="empresas")
     documentos_fiscais = relationship("DocumentoFiscal", back_populates="empresa")
