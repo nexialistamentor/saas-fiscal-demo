@@ -343,3 +343,117 @@ deliberadamente, antes de qualquer ADR que decida o futuro do
 domínio documental.*
 
 *O conhecimento não está na conversa. Está no repositório.*
+
+---
+
+## ANEXO — Fecho da Investigação Genealógica (2026-06-18, mesma sessão)
+
+A pergunta central deixada em aberto por este documento foi investigada
+
+com rigor genealógico completo: rastreamento de introdução de entidades
+
+(`git log --follow -p`), pickaxe exaustivo sem filtro de path
+
+(`git log -S`, 5 commits confirmados, zero ficheiros ocultos), e
+
+inspecção de corpo de commit e documentação coeva
+
+(`docs/CHECKLIST_PIPELINE_DOCUMENTAL_L2.md`).
+
+**Resultado: Cenário A confirmado — fragmentação, não divergência.**
+
+Evidência decisiva:
+
+1. **Schema desde o nascimento** (commit `9ca7257`): `DocumentoIngerido`
+
+   nunca foi desenhado como substituto ou candidato a fusão com
+
+   `DocumentoFiscal`. Os dois modelos têm propósitos estruturalmente
+
+   distintos — ledger de ingestão probatória vs. entidade fiscal
+
+   normalizada — consistente com o precedente já existente no
+
+   codebase (`DocumentoRendimento`, que segue o mesmo padrão).
+
+2. **Intenção declarada no checklist** (commit `65ae5de`,
+
+   `CHECKLIST_PIPELINE_DOCUMENTAL_L2.md`): o domínio documental nasceu
+
+   deliberadamente como D2 autónomo, com fronteira arquitectural
+
+   explícita face ao pipeline existente — não por omissão.
+
+3. **Escopo declarado no próprio código** (commit `24bf9d9`,
+
+   `ingestion_router.py`): comentário explícito *"V1 síncrono. V2:
+
+   service layer transacional com fila/OCR/ledger"*. A ausência da
+
+   ponte não é descuido — é escopo de V1 conscientemente fechado, com
+
+   o trabalho seguinte (V2) já nomeado no momento da decisão.
+
+4. **Camada intermédia já prevista**: `DocumentoFiscalNormalizado`
+
+   (dataclass tipada em `normalizer.py`) existe precisamente como
+
+   ponte conceptual entre evidência e entidade fiscal — mas nunca foi
+
+   ligada ao terceiro passo (criação de `DocumentoFiscal` a partir
+
+   dela).
+
+**Cadeia real, com o elo em falta identificado:**
+
+DocumentoIngerido (evidência, V1 — completo)
+
+↓
+
+DocumentoFiscalNormalizado (normalização em memória — existe, não ligado)
+
+↓
+
+DocumentoFiscal (entidade fiscal persistida)  ← PASSO NUNCA IMPLEMENTADO
+
+**O que isto estabelece para o ADR de integração futuro:**
+
+- **Rejeitado pela evidência:** fusão de `DocumentoIngerido` com
+
+  `DocumentoFiscal`. A separação estrutural é intencional e
+
+  consistente com padrão pré-existente na plataforma.
+
+- **Caminho correcto:** ADR de "ponte de promotion" — um mecanismo
+
+  que, após homologação (ou score de confiança ≥ limiar já definido
+
+  em `confidence.py`), invoque o terceiro passo da cadeia já prevista,
+
+  criando `DocumentoFiscal` a partir dos dados já validados em
+
+  `DocumentoIngerido`, sem absorver ou substituir o ledger de
+
+  ingestão.
+
+**Classificação final da divergência identificada no corpo deste
+
+documento:** fragmentação por âmbito de V1 deliberadamente fechado,
+
+com V2 nomeado e nunca executado — não abandono da visão fundacional,
+
+não divergência consciente de rumo.
+
+A pergunta que abriu este documento — *"a plataforma que existe hoje
+
+ainda é a plataforma que foi originalmente concebida?"* — tem agora
+
+resposta com evidência: **sim, fragmentada num ponto nomeado e
+
+conhecido, não desviada.**
+
+*Investigação encerrada na mesma sessão em que o documento foi criado,
+
+por decisão de Miguel de não adiar o fecho enquanto a evidência estava
+
+completa e disponível.*
