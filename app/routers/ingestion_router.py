@@ -16,6 +16,7 @@ from app.services.document_ingestion.classifier import TipoDocumento, classifica
 from app.services.document_ingestion.confidence import calcular
 from app.services.document_ingestion.extractor import extrair
 from app.services.document_ingestion.normalizer import normalizar
+from app.services.document_ingestion.serializacao import serializar_campos_estruturados
 
 router = APIRouter(prefix="/ingestao", tags=["ingestao"])
 
@@ -127,6 +128,7 @@ async def ingerir_documento(
         decisao=evidencia.decisao.value,
         requereu_ocr=evidencia.requereu_ocr,
         campos_extraidos=evidencia.campos_extraidos,
+        campos_estruturados=serializar_campos_estruturados(doc_norm),
         campos_nao_extraidos=evidencia.campos_nao_extraidos,
         motivos=evidencia.motivos,
         validado_humano=evidencia.validado_humano,

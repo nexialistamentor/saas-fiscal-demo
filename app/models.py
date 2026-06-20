@@ -592,6 +592,7 @@ class DocumentoIngerido(Base):
     requereu_ocr = Column(Boolean, nullable=False, default=False, server_default="false")
 
     campos_extraidos = Column(JSON, nullable=True)
+    campos_estruturados = Column(JSON, nullable=True)  # DT-DOC-01 — CT-DOC-001 §3
     campos_nao_extraidos = Column(JSON, nullable=True)
     motivos = Column(JSON, nullable=True)
 
