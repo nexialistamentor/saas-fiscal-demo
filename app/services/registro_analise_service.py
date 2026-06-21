@@ -11,6 +11,8 @@ import logging
 import time
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
+
 from app.models import Empresa, RelatorioAnalise, AlertaFiscal
 from app.services.analysis_orchestrator import executar_analise_xml
 from app.xml_service import DuplicataFiscalError, processar_e_persistir_xml
@@ -144,9 +146,30 @@ def executar_e_registrar_analise_xml(
                 "xml_chave": xml_chave,
             }
 
-    rel = criar_registro_analise(
-        db, user_id, "xml_analise", empresa_id=empresa_id, xml_chave=xml_chave
-    )
+    try:
+        rel = criar_registro_analise(
+            db, user_id, "xml_analise", empresa_id=empresa_id, xml_chave=xml_chave
+        )
+    except IntegrityError:
+        db.rollback()
+        if empresa_id and xml_chave:
+            rel_existente = (
+                db.query(RelatorioAnalise)
+                .filter(
+                    RelatorioAnalise.empresa_id == empresa_id,
+                    RelatorioAnalise.analysis_type == "xml_analise",
+                    RelatorioAnalise.xml_chave == xml_chave,
+                )
+                .order_by(RelatorioAnalise.id.desc())
+                .first()
+            )
+            if rel_existente:
+                return rel_existente, {
+                    "status": "duplicado",
+                    "relatorio_id": rel_existente.id,
+                    "xml_chave": xml_chave,
+                }
+        raise
 
     if empresa_id:
         try:

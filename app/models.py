@@ -453,6 +453,14 @@ class RelatorioMei(Base):
 # =========================
 class RelatorioAnalise(Base):
     __tablename__ = "relatorios_analise"
+    __table_args__ = (
+        UniqueConstraint(
+            "empresa_id",
+            "xml_chave",
+            "analysis_type",
+            name="uq_relatorios_analise_empresa_xml_tipo",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)

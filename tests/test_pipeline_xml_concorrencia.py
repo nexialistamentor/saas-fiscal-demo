@@ -1,17 +1,12 @@
 """
-Testes de concorrência — DT-FLUXO-03 (caracterização, não correção).
+Testes de concorrência — DT-FLUXO-03.
 
-Primeiro teste de race no repositório. Documenta vulnerabilidade
-TOCTOU conhecida em executar_e_registrar_analise_xml: a verificação
-de duplicata em RelatorioAnalise.xml_chave ocorre após a persistência
-de DocumentoFiscal, sem UNIQUE constraint nem lock — duas chamadas
-concorrentes para o mesmo XML podem, em tese, criar dois
-RelatorioAnalise para a mesma xml_chave.
+Proteção via UNIQUE(empresa_id, xml_chave, analysis_type) em
+relatorios_analise (migration 0011 + ORM) e IntegrityError em
+executar_e_registrar_analise_xml.
 
-xfail(strict=True): documenta o bug sem normalizar. Se a correção
-for implementada (UNIQUE constraint, upsert, lock), este teste
-falha com XPASS e obriga a remover o marcador — fechando DT-FLUXO-03
-corretamente, não por omissão.
+O teste de race só é fiável contra PostgreSQL (skipif em SQLite local).
+Confirmação em produção depende do deploy aplicar a migration 0011.
 """
 
 import threading
@@ -177,16 +172,7 @@ def test_chamadas_sequenciais_nao_duplicam_relatorio():
     not _USA_POSTGRES,
     reason=(
         "DT-FLUXO-03 race test só é fiável contra PostgreSQL. "
-        "SQLite local serializa escritas ao nível do ficheiro e "
-        "mascara/intermitentemente expõe a janela TOCTOU (confirmado "
-        "por 30 execuções locais com ~50% de falsos negativos)."
-    ),
-)
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DT-FLUXO-03: dedup de RelatorioAnalise.xml_chave ocorre apos "
-        "persistencia de DocumentoFiscal, sem UNIQUE constraint nem lock."
+        "SQLite local serializa escritas ao nível do ficheiro."
     ),
 )
 def test_executar_e_registrar_analise_xml_mesmo_xml_concorrente_nao_duplica():
