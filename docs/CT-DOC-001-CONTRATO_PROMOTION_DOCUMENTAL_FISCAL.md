@@ -464,3 +464,67 @@ válida, com o passo 2 agora detalhado:
 o que ainda não foi decidido — para que a próxima implementação não
 confunda "vocabulário aprovado por contrato" com "vocabulário
 implementado em código".*
+
+---
+
+## CORREÇÃO A.5 — 2026-06-20 (mesma sessão do adendo v1.1)
+
+**Estado revisto: DT-DOC-02c volta a bloqueada.**
+
+Após leitura completa de `tests/test_document_normalizer.py` e dos
+demais testes documentais do repositório, confirmou-se que **não
+existe amostra textual real** (PDF DANFE digital, foto de DANFE
+impresso, ou texto extraído por OCR) contendo `numero_nota`, `tipo`,
+`uf_emit` ou `uf_dest`. O corpus sintético actual (`TEXTO_DANFE`) não
+menciona nenhum destes quatro campos.
+
+A redacção original de A.5 desbloqueava DT-DOC-02c com base apenas
+em A.4 não a bloquear — um critério correcto mas incompleto. Faltava
+verificar se existia evidência textual suficiente para a extracção,
+não apenas destino confirmado em `DocumentoFiscal`.
+
+**Princípio que esta correcção formaliza:**
+
+> Contrato aprovado não é evidência textual para regex.
+>
+> DT-DOC-02b (vocabulário) pode ser aprovado por decisão contratual,
+> sem amostra real — é uma decisão sobre o que a plataforma deve
+> capturar. DT-DOC-02c (implementação da extracção) não pode avançar
+> sem amostra real — é uma decisão sobre como o texto realmente se
+> apresenta, que nenhum contrato consegue substituir.
+
+**Estado correcto, com esta correcção:**
+
+```
+DT-DOC-02a (valor_icms) ........... bloqueada — sem amostra real
+DT-DOC-02b (vocabulário) .......... válido — aprovado por contrato
+DT-DOC-02c (numero_nota, tipo,
+            uf_emit, uf_dest) ..... bloqueada — sem amostra real
+                                     (mesmo motivo de DT-DOC-02a)
+A.4 (destino CNPJ/CPF) ............ pendência separada, sem alteração
+```
+
+**Não autorizado por esta correcção:**
+
+- Criação de `TEXTO_DANFE_COMPLETO` ou qualquer corpus sintético
+  fabricado para os quatro campos de DT-DOC-02c
+- Qualquer regex escrita contra texto inventado, mesmo que
+  explicitamente marcada como "hipótese V1"
+- Uso de tags XML estruturadas (`nNF`, `tpNF`, `UF`) como prova de
+  formato textual em PDF/OCR — XML confirma semântica e destino
+  fiscal (ground truth), nunca layout de texto extraído
+
+**Condição de desbloqueio, comum a DT-DOC-02a e DT-DOC-02c:**
+
+Recolha de, no mínimo:
+
+- 1 PDF DANFE digital real
+- 1 foto de DANFE impresso (para validar robustez do OCR)
+- Texto efectivamente extraído desses documentos pelo pipeline
+  actual (`classifier.py` + `pdfplumber`/OCR), não transcrito à mão
+- Idealmente, o XML correspondente de cada amostra, para servir de
+  ground truth fiscal e permitir validar a extracção contra o valor
+  oficial, não apenas contra a presença sintáctica do campo
+
+Até essa recolha existir, `normalizer.py` permanece sem alterações
+para `valor_icms`, `numero_nota`, `tipo`, `uf_emit` e `uf_dest`.
