@@ -268,3 +268,199 @@ explicitamente o atalho que campos sintacticamente válidos, por si
 só, poderiam abrir.*
 
 *O conhecimento não está na conversa. Está no repositório.*
+
+---
+
+## ADENDO v1.1 — Formalização da Divisão DT-DOC-02
+
+**Data do adendo:** 2026-06-20
+**Natureza:** Adendo contratual. Não revoga nem altera as secções 1-6
+  da versão 1.0. Formaliza a divisão de DT-DOC-02 em três frentes
+  distintas, com riscos e pré-requisitos de evidência diferentes,
+  conforme decisão registada em sessão.
+**Estado de implementação:** Nenhuma das três frentes está
+  implementada por este adendo. Este documento é contrato, não código.
+
+---
+
+### A.1 — Por que DT-DOC-02 precisava de divisão
+
+A redacção original da secção 1 ("Campos com mapeamento ainda não
+implementado") tratava `numero_nota`, `tipo`, `uf_emit`, `uf_dest`,
+`cnpj_emitente`, `cnpj_destinatario` como um bloco homogéneo de
+trabalho pendente. A auditoria de código revelou que este bloco
+mistura três naturezas de risco distintas, que não devem ser
+resolvidas no mesmo passo:
+
+1. Um campo cuja extracção depende de **regex sobre texto cuja forma
+   real ainda não foi observada** (`valor_icms`)
+2. Campos cujo **nome já existe** no vocabulário fechado de 13, mas
+   cuja **captação ou mapeamento ainda não está confirmado como
+   completo** (`cnpj_emitente`, `cnpj_destinatario`, `cpf_destinatario`)
+3. Campos **genuinamente ausentes** do vocabulário e do dataclass
+   `DocumentoFiscalNormalizado` actual (`numero_nota`, `tipo`,
+   `uf_emit`, `uf_dest`)
+
+Tratar as três como uma única tarefa cria risco de, ao resolver a
+mais fácil, dar a impressão de que a mais arriscada também está
+resolvida.
+
+---
+
+### A.2 — DT-DOC-02a — `valor_icms`
+
+**Estado: bloqueado.**
+
+`valor_icms` está declarado em `CampoNormalizado`/
+`DocumentoFiscalNormalizado` desde a origem, mas nunca é populado
+por `normalizar()`. Não existe, no repositório, amostra real de
+texto extraído de PDF DANFE ou de OCR que permita desenhar uma regex
+ou marcador textual com evidência — apenas XML estruturado (que tem
+`vICMS` como tag, não como texto corrido) e texto sintético de teste.
+
+Escrever uma regex para `valor_icms` sem essa evidência violaria
+directamente o princípio de CT-DOC-001 §5: campo sintacticamente
+plausível não é prova suficiente. O mesmo princípio aplica-se à
+**construção** do campo, não apenas à sua **avaliação** na promotion.
+
+**Condição de desbloqueio:** existência de 1-3 amostras reais ou
+anonimizadas de texto extraído (PDF DANFE digital ou texto OCR de
+scan) onde o valor de ICMS esteja presente, permitindo observar o(s)
+rótulo(s) e formato(s) reais usados antes de qualquer regex ser
+escrita.
+
+Até essa condição ser satisfeita, `valor_icms` permanece `None` em
+todo `DocumentoFiscalNormalizado` produzido, e qualquer promotion que
+dependa dele como único campo de base de cálculo de ICMS (CT-DOC-001
+§1, "pelo menos um de: `base_calculo`, `valor_icms`") deve satisfazer
+essa exigência através de `base_calculo`.
+
+---
+
+### A.3 — DT-DOC-02b — Vocabulário expandido (contratual)
+
+**Estado: aberto para resolução contratual agora. Sem implementação
+de código nesta fase.**
+
+Este adendo declara, formalmente, a intenção de expandir o
+vocabulário de `DocumentoFiscalNormalizado` com os seguintes campos
+**genuinamente novos**:
+
+| Campo novo | Mapeia para | Necessidade |
+|---|---|---|
+| `numero_nota` | `DocumentoFiscal.numero_nota` | Identificação da nota, distinta da chave de acesso |
+| `tipo` | `DocumentoFiscal.tipo` (entrada/saída) | Sem este campo, promotion não pode popular direção fiscal do documento |
+| `uf_emit` | `DocumentoFiscal.uf_emit` | Necessário para cálculo de ST e MVA pós-promotion |
+| `uf_dest` | `DocumentoFiscal.uf_dest` | Idem |
+
+**Sobre `cnpj_emitente`, `cnpj_destinatario`, `cpf_destinatario`:**
+estes **já fazem parte** do vocabulário fechado de 13 campos
+estabelecido em DT-DOC-01 (confirmado em `audit.py::_campos_extraidos`
+e persistido via `campos_estruturados` desde o commit `fcba03d`). Este
+adendo **não os trata como campos novos**. O trabalho pendente sobre
+eles é de **mapeamento para `DocumentoFiscal`** (secção 2.1 do
+contrato actual não os lista no cabeçalho de `DocumentoFiscal`, porque
+`DocumentoFiscal` não tem colunas próprias para CNPJ emitente/
+destinatário — ver A.4) — não de captação por `normalizer()`, que já
+existe via `_RE_CNPJ`/`_RE_CPF`.
+
+**Consequência declarada, não implementada:** qualquer expansão do
+vocabulário fechado de 13 para 17 campos (13 + os 4 genuinamente
+novos) exige, no momento da implementação:
+
+- Revisão de `app/services/document_ingestion/serializacao.py` —
+  `_CAMPOS_VOCABULARIO` precisa de reflectir o novo total
+- Revisão dos testes em `tests/test_serializacao_campos_estruturados.py`
+  — a asserção `len(resultado) == 13` deixa de ser válida
+- Nova migração Alembic **não é necessária** — `campos_estruturados`
+  é `JSON`/`JSONB`, aceita o vocabulário expandido sem alteração de
+  schema SQL
+
+Este adendo não autoriza essa implementação. Apenas a declara como
+trabalho aprovado contratualmente, pendente de execução (DT-DOC-02c).
+
+---
+
+### A.4 — Achado adicional: `cnpj_emitente`/`cnpj_destinatario` sem destino em `DocumentoFiscal`
+
+A auditoria desta sessão revela que `DocumentoFiscal` (modelo
+persistido, `app/models.py`) **não possui colunas próprias** para
+CNPJ emitente ou destinatário no cabeçalho. A secção 2.1 do contrato
+original já reflectia isto implicitamente (não os lista na tabela de
+mapeamento), mas não o declarava como achado explícito.
+
+Isto significa que, mesmo com captação confirmada no normalizer
+(A.3), a promotion destes dois campos específicos exige uma decisão
+adicional não coberta por este contrato: se `DocumentoFiscal` deve
+ganhar colunas novas para os acolher, ou se eles permanecem apenas
+em `DocumentoIngerido`/evidência, sem promoção directa ao cabeçalho
+fiscal canónico.
+
+**Esta decisão fica registada como pendente, não resolvida por este
+adendo.** Não é DT-DOC-02b nem 02c — é uma quarta questão, a nomear
+formalmente se e quando a implementação de A.3 avançar.
+
+---
+
+### A.5 — DT-DOC-02c — Implementação (escopo limitado aos quatro campos genuinamente novos)
+
+**Estado: bloqueado apenas até ratificação deste adendo** (conforme
+processo Evidência → Auditoria → Ratificação de ADR-001). **Não
+bloqueado por A.4.**
+
+A.4 é uma questão de **destino institucional** de campos que **já
+existem** no vocabulário fechado desde DT-DOC-01
+(`cnpj_emitente`, `cnpj_destinatario`, `cpf_destinatario`). Não tem
+relação de dependência com os quatro campos **genuinamente novos**
+de DT-DOC-02c, que já têm destino directo e sem ambiguidade em
+`DocumentoFiscal` (`numero_nota`, `tipo`, `uf_emit`, `uf_dest`).
+
+**Escopo de DT-DOC-02c, explicitamente limitado:**
+
+> DT-DOC-02c implementa apenas `numero_nota`, `tipo`, `uf_emit`,
+> `uf_dest` — os quatro campos com destino directo e já confirmado
+> em `DocumentoFiscal` (secção 2.1 do contrato original). Não inclui
+> `cnpj_emitente`, `cnpj_destinatario` ou `cpf_destinatario`.
+
+A questão de destino institucional dos CNPJs/CPF (A.4) fica como
+**pendência separada**, a tratar em decisão própria — nomeada como
+candidata a DT-DOC-04 — antes de qualquer tentativa de os promover
+para `DocumentoFiscal`. Esta pendência bloqueia apenas a promotion
+*desses três campos específicos*; não bloqueia DT-DOC-02c, não
+bloqueia DT-DOC-02b, e não bloqueia o service de promotion para
+documentos cuja elegibilidade (CT-DOC-001 §5) não dependa deles.
+
+Quando ratificado, DT-DOC-02c implementa, nesta ordem: `numero_nota`,
+`tipo`, `uf_emit`, `uf_dest` no `normalizer.py` (regex novas) →
+expansão de `_CAMPOS_VOCABULARIO` em `serializacao.py` (de 13 para
+17 campos) → actualização dos testes de serialização → sem tocar em
+`valor_icms` (continua sob A.2, independente) → sem tocar em CNPJ/CPF
+(continua sob A.4, pendente).
+
+---
+
+### A.6 — Síntese da ordem de resolução, actualizada
+
+A "ORDEM DE RESOLUÇÃO DAS PRÉ-CONDIÇÕES" da versão 1.0 mantém-se
+válida, com o passo 2 agora detalhado:
+
+```
+1. DT-DOC-01 ............... ✔ resolvida (fcba03d)
+2. DT-DOC-02a (valor_icms) .. bloqueada — aguarda amostra real
+   DT-DOC-02b (vocabulário) . aberta para aprovação contratual (este adendo)
+   DT-DOC-02c (4 campos novos) bloqueada só até ratificação deste adendo
+                                 — independente de A.4
+   A.4 (CNPJ/CPF destino) ... pendência separada (candidata a DT-DOC-04)
+                                 — bloqueia só a promotion desses 3 campos
+3. DT-DOC-03 ................ ✔ resolvida (1b7948a)
+4. Service de promotion ..... bloqueado (depende de 02a + 02c completos
+                                 para os campos que efectivamente usar)
+5. Testes ................... conforme secção 6, antes de produção
+```
+
+---
+
+*Este adendo não altera o que já foi decidido. Nomeia, com precisão,
+o que ainda não foi decidido — para que a próxima implementação não
+confunda "vocabulário aprovado por contrato" com "vocabulário
+implementado em código".*
