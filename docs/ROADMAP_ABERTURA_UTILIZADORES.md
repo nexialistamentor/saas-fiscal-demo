@@ -88,16 +88,26 @@ robusto, demonstrável e sem dívida activa conhecida.
 - [ ] Confirmar cobertura real do `InsightEngine` (16+ analisadores)
 
 ### 1.2 — Resolução de dívidas já nomeadas
-- [ ] DT-FLUXO-01 — `/upload-xml`: integrar no pipeline canónico ou
-      declarar formalmente como caminho secundário não-auditável
-- [ ] DT-FLUXO-02 — mesma decisão para `/lote/analisar-lote`
-- [ ] DT-FLUXO-03 — corrigir ordem de dedup em
-      `registro_analise_service.py`
+- [x] DT-FLUXO-01 — `/upload-xml`: ✔ decidido (DC-002) — BLOQUEANTE
+      para Bloco 13 até (a) wrapper canónico ou (b) desactivação
+      implementada
+- [x] DT-FLUXO-02 — `/lote/analisar-lote`: ✔ decidido (DC-002) —
+      não-bloqueante, ferramenta interna declarada
+- [x] DT-FLUXO-03 — dedup TOCTOU: ✔ corrigido e confirmado em
+      produção (`4a5ddab`, deploy `19709822`)
 - [ ] DT-MVA-01 — decidir escopo realista para o lançamento (nacional
       vs. só Pará com aviso explícito)
 
 **Critério de saída:** suite XML 100% verde; três dívidas de fluxo
 decididas; MVA com escopo declarado.
+
+**Estado das dívidas de fluxo (DC-002, 2026-06-20):**
+
+```
+DT-FLUXO-01 (/upload-xml)         ✔ decidido — BLOQUEANTE para Bloco 13
+DT-FLUXO-02 (/lote/analisar-lote) ✔ decidido — não-bloqueante
+DT-FLUXO-03 (dedup TOCTOU)        ✔ corrigido em produção (4a5ddab)
+```
 
 ---
 
