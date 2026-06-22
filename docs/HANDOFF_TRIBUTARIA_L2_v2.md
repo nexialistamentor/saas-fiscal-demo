@@ -8,7 +8,8 @@
 
 **Repositório:** nexialistamentor/saas-fiscal-demo | Branch: main
 
-**HEAD:** a1d6c4d
+**HEAD de referência antes deste handoff:** a1d6c4d
+**Nota:** após commitar este ficheiro, o HEAD será posterior.
 
 **Produção:** https://saas-fiscal-demo-production.up.railway.app/health → {"status":"ok"}
 
@@ -16,13 +17,13 @@
 
 ## QUEM SOMOS E COMO TRABALHAMOS
 
-**Miguel** — fundador, autoridade de produto, decisão final.
+**Miguel** — fundador, autoridade final de produto e ratificação.
 
-**Claude** — produção de código e análise com base em evidência.
+**Claude** — propõe código, analisa evidência e prepara execução.
 
 **GPT** — auditor arquitectural, revê decisões estruturais antes de commit.
 
-**Cursor** — executor em disco. Nunca cria ficheiros independentemente.
+**Cursor** — executor em disco sob instrução. Nunca cria ficheiros independentemente.
 
 **Processo obrigatório para decisões estruturais:**
 
@@ -145,9 +146,14 @@ DT-MVA-01 (escopo MVA/ST)             ✔ arquitectura nacional, dados progressi
 9.2 Matriz e testes de acesso cruzado     ⏸ PRÓXIMO PASSO
     Faltam: testes formais de que utilizador A não acede
     empresa B, e que contador sem vínculo não acede documento
+    Regra: começar por testes de caracterização, não por correcção.
+    Primeiro provar o comportamento actual. Só depois alterar security,
+    router ou service.
 DC-004 Promoção de roles                  ✔
 ADR-003 Acesso contador↔empresa           ✔
 DT-CONTADOR-01 Implementação do pool      ⏸ bloqueado até escolha Modelo A/B/C/D
+    Nenhum endpoint novo de pool deve ser criado antes da escolha explícita
+    do modelo A/B/C/D definido pela ADR-003.
 ```
 
 **⚠️ BLOQUEIO CRÍTICO:** `POST /contador/homologacoes/{documento_id}/assumir`
@@ -332,6 +338,9 @@ A produção mostrou a dívida antiga.
 A migration tem de pagar essa dívida antes de fechar a porta.
 
 O conhecimento não está na conversa. Está no repositório.
+
+O próximo agente não deve continuar a conversa.
+Deve continuar o repositório.
 ```
 
 ---
