@@ -126,9 +126,6 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
-from app import models  # noqa: F401, E402
-
-
 def _sqlite_add_missing_columns(model_cls: type) -> None:
     """Acrescenta colunas do modelo em falta (histórico: DB criado antes do modelo atual)."""
     table_name = model_cls.__tablename__
@@ -152,15 +149,19 @@ def ensure_sqlite_schema_compat() -> None:
     """
     SQLite legado: ``create_all`` não altera tabelas já criadas.
     Alinha colunas das tabelas normativas com os modelos (pytest / test.db).
+    Import local de models evita ciclo de import com Alembic.
     """
     if _parse_scheme(DATABASE_URL) != "sqlite":
         return
+    from app import models  # import local — evita ciclo com Alembic/env.py
+
     models.Base.metadata.create_all(bind=engine)
     _sqlite_add_missing_columns(models.TabelaMVA)
     _sqlite_add_missing_columns(models.TabelaPMPF)
 
 
-ensure_sqlite_schema_compat()
+if os.getenv("ALEMBIC_RUNNING") != "1":
+    ensure_sqlite_schema_compat()
 
 
 def get_db() -> Generator:
