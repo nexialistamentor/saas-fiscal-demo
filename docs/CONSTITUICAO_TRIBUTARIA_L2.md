@@ -164,8 +164,10 @@ por lei ou por política de confiança documental.
 **§2.** A decisão do contador é registada com parecer auditável e assinatura
 lógica. Não existe decisão sem registo.
 
-**§3.** O pool de contadores é aberto — nenhum contador tem exclusividade
-sobre um contribuinte.
+**§3.** O pool de contadores é aberto à elegibilidade, não ao acesso — nenhum
+contador tem exclusividade sobre um contribuinte. O acesso a documentos fiscais
+exige vínculo autorizado, atribuição válida, escopo definido e registo auditável,
+conforme ADR-004.
 
 ---
 
