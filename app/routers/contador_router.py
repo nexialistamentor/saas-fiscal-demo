@@ -1,18 +1,17 @@
 """
 Router do contador parceiro — domínio regulatório soberano.
-
-Fluxo pool aberto V1:
+Fluxo DT-CONTADOR-01 (vínculo soberano):
     documento pendente (fila_homologacao)
-    → contador assume
+    → validar vínculo activo contador↔empresa
+    → criar HomologacaoAtribuicao (aceite)
+    → criar HomologacaoDocumental (pendente)
     → contador decide (aprovado/rejeitado + parecer)
-
 Princípio: contador assina — não opera o motor fiscal.
+ADR-004: sem vínculo activo, /assumir devolve 403.
 """
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
 from app.database import get_db
 from app.models import DocumentoIngerido, PerfilContador, User
 from app.security import get_usuario_atual
@@ -25,9 +24,13 @@ from app.services.homologacao_service import (
     obter_homologacoes_pendentes,
     registar_decisao,
 )
+from app.services.vinculo_service import (
+    AtribuicaoActivaExisteError,
+    VinculoError,
+    validar_vinculo_e_aceitar_atribuicao,
+)
 
 router = APIRouter(prefix="/contador", tags=["contador"])
-
 
 # ---------------------------------------------------------------------------
 # Schemas de entrada
@@ -35,11 +38,9 @@ router = APIRouter(prefix="/contador", tags=["contador"])
 class AssumirHomologacaoRequest(BaseModel):
     tipo_decisao: str = "homologacao_documental"
 
-
 class DecisaoRequest(BaseModel):
     status_decisao: str   # aprovado | rejeitado
     parecer_texto: str
-
 
 # ---------------------------------------------------------------------------
 # Dependency — valida que o utilizador é contador aprovado
@@ -64,10 +65,10 @@ def _get_perfil_contador(
         )
     return perfil
 
-
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 @router.get("/homologacoes/pendentes")
 def listar_pendentes(
     perfil: PerfilContador = Depends(_get_perfil_contador),
@@ -96,36 +97,64 @@ def assumir_homologacao(
 ):
     """
     Contador assume documento da fila de homologação.
-    Pool aberto V1: primeiro contador aprovado que assume fica responsável.
+    DT-CONTADOR-01: exige vínculo activo contador↔empresa (ADR-004).
+    Piloto manual: escopo_chave=homologacao_documental, modo=manual.
     """
+    # Carregar e validar documento
     documento = db.query(DocumentoIngerido).filter(
         DocumentoIngerido.id == documento_id,
     ).first()
-
     if not documento:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Documento não encontrado",
         )
-
     if documento.decisao != "fila_homologacao":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Documento não está em fila de homologação — decisão actual: {documento.decisao}",
         )
 
+    # Piloto DT-CONTADOR-01: só aceita homologacao_documental
+    if body.tipo_decisao != "homologacao_documental":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="DT-CONTADOR-01 piloto aceita apenas tipo_decisao='homologacao_documental'",
+        )
+    escopo_chave = body.tipo_decisao  # escopo_chave == tipo_decisao — sem divergência
+
+    # DT-CONTADOR-01: validar vínculo e criar atribuição aceite
+    try:
+        validar_vinculo_e_aceitar_atribuicao(
+            db=db,
+            documento=documento,
+            perfil=perfil,
+            escopo_chave=escopo_chave,
+            complexidade="baixa",
+            modo_atribuicao="manual",
+        )
+    except AtribuicaoActivaExisteError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.mensagem)
+    except VinculoError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.mensagem)
+
+    # Criar HomologacaoDocumental (só alcançado após atribuição aceite)
     try:
         homologacao = criar_fila_homologacao(
             db=db,
             documento_ingerido_id=documento_id,
             contador_id=perfil.id,
-            tipo_decisao=body.tipo_decisao,
+            tipo_decisao=escopo_chave,
         )
         db.commit()
         db.refresh(homologacao)
     except HomologacaoJaExisteError as e:
+        db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.mensagem)
     except ContadorNaoAprovadoError as e:
+        db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.mensagem)
 
     return {
@@ -154,7 +183,6 @@ def decidir_homologacao(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Parecer não pode estar vazio",
         )
-
     try:
         homologacao = registar_decisao(
             db=db,
