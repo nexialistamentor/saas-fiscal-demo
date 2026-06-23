@@ -126,6 +126,8 @@ def test_extrair_regras_pdf_bytes_so_anexo_i():
         raw = httpx.get(url, follow_redirects=True, timeout=120).content
     except Exception:
         return
+    if not _parece_pdf(raw):
+        return  # URL devolveu HTML, redirect ou bloqueio — tratar como falha externa
 
     regs, erros = extrair_regras_mg_pdf_de_bytes(raw, apenas_anexos=frozenset({"I"}))
     assert not erros
