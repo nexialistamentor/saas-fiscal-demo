@@ -67,6 +67,16 @@ class User(Base):
     documentos_rendimento = relationship("DocumentoRendimento", back_populates="owner")
     documentos_ingeridos = relationship("DocumentoIngerido", back_populates="user")
     perfil_contador = relationship("PerfilContador", back_populates="user", uselist=False)
+    vinculos_criados = relationship(
+        "ContadorEmpresaVinculo",
+        back_populates="criado_por",
+        foreign_keys="ContadorEmpresaVinculo.criado_por_user_id",
+    )
+    vinculos_revogados = relationship(
+        "ContadorEmpresaVinculo",
+        back_populates="revogado_por",
+        foreign_keys="ContadorEmpresaVinculo.revogado_por_user_id",
+    )
 
     @property
     def is_admin(self) -> bool:
@@ -107,6 +117,8 @@ class PerfilContador(Base):
 
     user = relationship("User", back_populates="perfil_contador")
     homologacoes = relationship("HomologacaoDocumental", back_populates="contador")
+    vinculos_empresa = relationship("ContadorEmpresaVinculo", back_populates="contador")
+    atribuicoes = relationship("HomologacaoAtribuicao", back_populates="contador")
 
 
 class HomologacaoDocumental(Base):
@@ -139,6 +151,93 @@ class HomologacaoDocumental(Base):
     # Relationships
     documento_ingerido = relationship("DocumentoIngerido", back_populates="homologacoes")
     contador = relationship("PerfilContador", back_populates="homologacoes")
+
+
+class ContadorEmpresaVinculo(Base):
+    """Vínculo soberano contador↔empresa — ADR-004 / DT-CONTADOR-01."""
+
+    __tablename__ = "contador_empresa_vinculo"
+
+    id = Column(Integer, primary_key=True, index=True)
+    contador_id = Column(Integer, ForeignKey("perfis_contador.id"), nullable=False, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+
+    escopo_chave = Column(String(100), nullable=False)
+    escopo = Column(JSON, nullable=True)
+
+    origem = Column(String(20), nullable=False)
+    status = Column(String(20), nullable=False, default="activo", server_default="activo", index=True)
+    # activo | suspenso | revogado | expirado
+
+    criado_por_user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    criado_por_email = Column(String(255), nullable=False)
+    criado_em = Column(DateTime, nullable=False, default=datetime.utcnow)
+    validade = Column(DateTime, nullable=True)
+    policy_version = Column(String(50), nullable=True)
+
+    revogado_em = Column(DateTime, nullable=True)
+    revogado_por_user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+
+    contador = relationship("PerfilContador", back_populates="vinculos_empresa")
+    empresa = relationship("Empresa", back_populates="vinculos_contador")
+    criado_por = relationship(
+        "User",
+        back_populates="vinculos_criados",
+        foreign_keys=[criado_por_user_id],
+    )
+    revogado_por = relationship(
+        "User",
+        back_populates="vinculos_revogados",
+        foreign_keys=[revogado_por_user_id],
+    )
+    atribuicoes = relationship("HomologacaoAtribuicao", back_populates="vinculo")
+
+
+class HomologacaoAtribuicao(Base):
+    """Atribuição soberana documento↔contador — ADR-004 / DT-CONTADOR-01.
+
+    INV-VINCULO-01: coerência empresa_id entre documento, atribuição e vínculo
+    é garantida provisoriamente pela service layer (DT-CONTADOR-02).
+
+    No fluxo DT-CONTADOR-01, HomologacaoDocumental só deve ser criada após
+    HomologacaoAtribuicao com status=aceite.
+    """
+
+    __tablename__ = "homologacao_atribuicao"
+
+    id = Column(Integer, primary_key=True, index=True)
+    documento_ingerido_id = Column(
+        Integer, ForeignKey("documentos_ingeridos.id"), nullable=False, index=True
+    )
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    contador_id = Column(Integer, ForeignKey("perfis_contador.id"), nullable=False, index=True)
+    vinculo_id = Column(
+        Integer, ForeignKey("contador_empresa_vinculo.id"), nullable=False, index=True
+    )
+
+    escopo_chave = Column(String(100), nullable=False)
+    escopo = Column(JSON, nullable=True)
+
+    status = Column(String(20), nullable=False, default="atribuida", server_default="atribuida", index=True)
+    # atribuida | aceite | concluida | recusada | expirada
+    complexidade = Column(String(20), nullable=False)
+    # baixa | media | alta
+    modo_atribuicao = Column(String(20), nullable=False)
+    # automatico | recomendado | manual
+
+    policy_version = Column(String(50), nullable=True)
+    regra_matching_id = Column(String(100), nullable=True)
+
+    atribuido_em = Column(DateTime, nullable=False, default=datetime.utcnow)
+    aceite_em = Column(DateTime, nullable=True)
+    concluido_em = Column(DateTime, nullable=True)
+
+    auditoria = Column(JSON, nullable=True)
+
+    documento_ingerido = relationship("DocumentoIngerido", back_populates="atribuicoes")
+    empresa = relationship("Empresa", back_populates="atribuicoes_homologacao")
+    contador = relationship("PerfilContador", back_populates="atribuicoes")
+    vinculo = relationship("ContadorEmpresaVinculo", back_populates="atribuicoes")
 
 
 class TermosAceitacao(Base):
@@ -279,6 +378,8 @@ class Empresa(Base):
     owner = relationship("User", back_populates="empresas")
     documentos_fiscais = relationship("DocumentoFiscal", back_populates="empresa")
     documentos_ingeridos = relationship("DocumentoIngerido", back_populates="empresa")
+    vinculos_contador = relationship("ContadorEmpresaVinculo", back_populates="empresa")
+    atribuicoes_homologacao = relationship("HomologacaoAtribuicao", back_populates="empresa")
 
 
 # =========================
@@ -614,6 +715,7 @@ class DocumentoIngerido(Base):
     user = relationship("User", back_populates="documentos_ingeridos")
     empresa = relationship("Empresa", back_populates="documentos_ingeridos")
     homologacoes = relationship("HomologacaoDocumental", back_populates="documento_ingerido")
+    atribuicoes = relationship("HomologacaoAtribuicao", back_populates="documento_ingerido")
 
 
 # =========================
