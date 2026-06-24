@@ -18,7 +18,7 @@ router = APIRouter()
 _SYNC_JOB = "__sync_analysis__"
 
 
-def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int) -> dict:
+def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int, owner_id: int) -> dict:
     inline = os.getenv("ANALISE_XML_INLINE", "").strip().lower() in ("1", "true", "yes", "on")
     if inline:
         resultado = processar_xml_job(conteudo, empresa_id)
@@ -36,7 +36,7 @@ def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int) -> dict:
         from app.queue.redis_queue import analysis_queue, redis_conn
 
         redis_conn.ping()
-        job = analysis_queue.enqueue(processar_xml_job, conteudo, empresa_id)
+        job = analysis_queue.enqueue(processar_xml_job, conteudo, empresa_id, meta={"owner_id": owner_id})
         return {"job_id": job.id}
     except Exception:
         resultado = processar_xml_job(conteudo, empresa_id)
@@ -65,7 +65,7 @@ async def analisar_xml_fiscal(
         verificar_empresa_do_usuario(empresa_id, usuario_atual, db)
         emp = db.query(Empresa).filter(Empresa.id == empresa_id).first()
         if emp:
-            return _enqueue_or_run_sync(conteudo, empresa_id)
+            return _enqueue_or_run_sync(conteudo, empresa_id, usuario_atual.id)
     resultado = executar_analise_xml(conteudo)
     return {
         "status": "XML analisado",
