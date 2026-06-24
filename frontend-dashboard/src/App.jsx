@@ -26,12 +26,9 @@ import {
   Legend
 } from "recharts"
 
-const dadosNCM = [
-  { nome: "3004", valor: 35 },
-  { nome: "2203", valor: 20 },
-  { nome: "8708", valor: 25 },
-  { nome: "9403", valor: 20 }
-]
+// B2-DASH-02: NCM real virá de itens_fiscais via endpoint dedicado futuro.
+// Sem mock: quando não há NCM real, a UI mostra estado indisponível.
+const dadosNCM = []
 
 const TIPOS_RENDIMENTO_OPTS = [
   { id: "salario", label: "Salário" },
@@ -1058,22 +1055,28 @@ function App() {
 
           <div className="chart-wrap">
             <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={dadosNCM}
-                  dataKey="valor"
-                  nameKey="nome"
-                  outerRadius={90}
-                  label
-                >
-                  <Cell fill="#1e3a8a" />
-                  <Cell fill="#2563eb" />
-                  <Cell fill="#3b82f6" />
-                  <Cell fill="#60a5fa" />
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
+              {dadosNCM.length === 0 ? (
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textAlign: "center", padding: "1rem 0" }}>
+                  Dados de NCM indisponíveis para este relatório.
+                </p>
+              ) : (
+                <PieChart>
+                  <Pie
+                    data={dadosNCM}
+                    dataKey="valor"
+                    nameKey="nome"
+                    outerRadius={90}
+                    label
+                  >
+                    <Cell fill="#1e3a8a" />
+                    <Cell fill="#2563eb" />
+                    <Cell fill="#3b82f6" />
+                    <Cell fill="#60a5fa" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              )}
             </ResponsiveContainer>
           </div>
         </section>
