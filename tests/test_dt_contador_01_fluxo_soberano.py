@@ -154,6 +154,7 @@ def _contador_com_vinculo(client, _empresa_com_documento):
             empresa_id=empresa_id,
             escopo_chave="homologacao_documental",
             origem="admin",
+            origem_cliente="plataforma_directa",
             status="activo",
             criado_por_user_id=user.id,
             criado_por_email=user.email,
@@ -271,6 +272,7 @@ class TestDtContador01Negativo:
                 empresa_id=empresa_id,
                 escopo_chave="homologacao_documental",
                 origem="admin",
+                origem_cliente="plataforma_directa",
                 status="suspenso",  # não activo
                 criado_por_user_id=user.id,
                 criado_por_email=user.email,
@@ -323,6 +325,7 @@ class TestDtContador01Negativo:
                 empresa_id=outra_empresa.id,  # empresa errada
                 escopo_chave="homologacao_documental",
                 origem="admin",
+                origem_cliente="plataforma_directa",
                 status="activo",
                 criado_por_user_id=user.id,
                 criado_por_email=user.email,

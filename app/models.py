@@ -166,6 +166,10 @@ class ContadorEmpresaVinculo(Base):
     escopo = Column(JSON, nullable=True)
 
     origem = Column(String(20), nullable=False)
+    # ADR-005: origem_cliente = de onde veio a relação comercial do cliente
+    # Valores: contador_parceiro | plataforma_directa | empresa_directa | legado
+    # INV-CARTEIRA-06: novos vínculos devem declarar explicitamente; legado só para backfill
+    origem_cliente = Column(String(30), nullable=False)
     status = Column(String(20), nullable=False, default="activo", server_default="activo", index=True)
     # activo | suspenso | revogado | expirado
 
@@ -177,6 +181,33 @@ class ContadorEmpresaVinculo(Base):
 
     revogado_em = Column(DateTime, nullable=True)
     revogado_por_user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "origem IN ('admin', 'cliente', 'sistema')",
+            name="ck_vinculo_origem_valida",
+        ),
+        CheckConstraint(
+            "status IN ('activo', 'suspenso', 'revogado', 'expirado')",
+            name="ck_vinculo_status_valido",
+        ),
+        CheckConstraint(
+            "origem != 'sistema' OR policy_version IS NOT NULL",
+            name="ck_vinculo_sistema_exige_policy",
+        ),
+        CheckConstraint(
+            "escopo_chave = lower(escopo_chave)",
+            name="ck_vinculo_escopo_chave_normalizado",
+        ),
+        CheckConstraint(
+            "length(trim(escopo_chave)) > 0",
+            name="ck_vinculo_escopo_chave_nao_vazio",
+        ),
+        CheckConstraint(
+            "origem_cliente IN ('contador_parceiro', 'plataforma_directa', 'empresa_directa', 'legado')",
+            name="ck_vinculo_origem_cliente_dominio",
+        ),
+    )
 
     contador = relationship("PerfilContador", back_populates="vinculos_empresa")
     empresa = relationship("Empresa", back_populates="vinculos_contador")

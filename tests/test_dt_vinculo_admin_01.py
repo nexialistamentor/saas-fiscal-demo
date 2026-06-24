@@ -285,6 +285,7 @@ class TestDtVinculoAdmin01Positivo:
                 empresa_id=_empresa_id,
                 escopo_chave="homologacao_documental",
                 origem="admin",
+                origem_cliente="plataforma_directa",
                 status="revogado",  # encerrado — não bloqueia novo
                 criado_por_user_id=admin_user.id if admin_user else perfil.user_id,
                 criado_por_email="admin@test.com",
@@ -444,6 +445,7 @@ class TestDtVinculoAdmin01Negativo:
                 empresa_id=_empresa_id,
                 escopo_chave="homologacao_documental",
                 origem="admin",
+                origem_cliente="plataforma_directa",
                 status="suspenso",  # suspenso = ainda institucionalmente pendente
                 criado_por_user_id=admin_user.id if admin_user else perfil.user_id,
                 criado_por_email="admin@test.com",

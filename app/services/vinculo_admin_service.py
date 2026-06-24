@@ -137,6 +137,7 @@ def criar_vinculo_contador_empresa(
     validade: datetime | None = None,
     policy_version: str | None = None,
     escopo_detalhe: dict | None = None,
+    origem_cliente: str = "plataforma_directa",
 ) -> ContadorEmpresaVinculo:
     """
     Cria ContadorEmpresaVinculo com origem="admin".
@@ -199,12 +200,23 @@ def criar_vinculo_contador_empresa(
     if existente:
         raise VinculoDuplicadoActivoError(perfil.id, empresa_id, escopo_chave)
 
+    # INV-CARTEIRA-06: origem_cliente obrigatório — nunca usar "legado" em código novo
+    _ORIGENS_CLIENTE_VALIDAS = frozenset({
+        "contador_parceiro", "plataforma_directa", "empresa_directa", "legado"
+    })
+    if origem_cliente not in _ORIGENS_CLIENTE_VALIDAS:
+        raise VinculoAdminError(
+            f"origem_cliente inválido: '{origem_cliente}'. "
+            f"Válidos: {sorted(_ORIGENS_CLIENTE_VALIDAS)}"
+        )
+
     vinculo = ContadorEmpresaVinculo(
         contador_id=perfil.id,
         empresa_id=empresa_id,
         escopo_chave=escopo_chave,
         escopo=escopo_detalhe,
         origem="admin",
+        origem_cliente=origem_cliente,
         status="activo",
         criado_por_user_id=admin_user.id,
         criado_por_email=admin_user.email,

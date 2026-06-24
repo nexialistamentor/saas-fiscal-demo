@@ -135,13 +135,18 @@ def _sqlite_add_missing_columns(model_cls: type) -> None:
     existing = {c["name"] for c in insp.get_columns(table_name)}
     dialect = engine.dialect
     with engine.begin() as conn:
+        row_count = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar() or 0
         for col in model_cls.__table__.columns:
             if col.primary_key or col.name in existing:
                 continue
             coltype = col.type.compile(dialect=dialect)
             ddl = f"ALTER TABLE {table_name} ADD COLUMN {col.name} {coltype}"
             if not col.nullable:
-                ddl += " NOT NULL"
+                if row_count and col.server_default is None and col.name == "origem_cliente":
+                    # 0014 / ADR-005: backfill retroactivo em SQLite de testes (sem migration Alembic)
+                    ddl += " NOT NULL DEFAULT 'legado'"
+                else:
+                    ddl += " NOT NULL"
             conn.execute(text(ddl))
 
 
@@ -158,6 +163,7 @@ def ensure_sqlite_schema_compat() -> None:
     models.Base.metadata.create_all(bind=engine)
     _sqlite_add_missing_columns(models.TabelaMVA)
     _sqlite_add_missing_columns(models.TabelaPMPF)
+    _sqlite_add_missing_columns(models.ContadorEmpresaVinculo)
 
 
 if os.getenv("ALEMBIC_RUNNING") != "1":
