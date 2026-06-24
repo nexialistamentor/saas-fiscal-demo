@@ -11,14 +11,14 @@ def test_convenio_base_sem_aliquota_usa_fallback_e_estimativa():
     db = SessionLocal()
     try:
         db.query(TabelaMVA).filter(
-            TabelaMVA.estado == "XS", TabelaMVA.ncm == "22021000"
+            TabelaMVA.estado == "PA", TabelaMVA.ncm == "99999998"
         ).delete()
         db.commit()
 
         db.add(
             TabelaMVA(
-                estado="XS",
-                ncm="22021000",
+                estado="PA",
+                ncm="99999998",
                 mva=40.0,
                 aliquota_interna=0.0,
                 vigencia_inicio=date(2018, 10, 16),
@@ -29,7 +29,7 @@ def test_convenio_base_sem_aliquota_usa_fallback_e_estimativa():
         )
         db.commit()
 
-        res = resolver_aliquota_e_mva(db, "XS", "22021000")
+        res = resolver_aliquota_e_mva(db, "PA", "99999998")
         assert res["fonte"] == "tabela"
         assert res["confianca"] == "estimativa"
         assert res["mva"] == 0.40
@@ -38,7 +38,7 @@ def test_convenio_base_sem_aliquota_usa_fallback_e_estimativa():
         assert "RICMS" in res["aviso"]
     finally:
         db.query(TabelaMVA).filter(
-            TabelaMVA.estado == "XS", TabelaMVA.ncm == "22021000"
+            TabelaMVA.estado == "PA", TabelaMVA.ncm == "99999998"
         ).delete()
         db.commit()
         db.close()

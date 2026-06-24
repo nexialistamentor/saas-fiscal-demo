@@ -32,7 +32,8 @@ def calcular_potencial_recuperacao(db, empresa_id):
             continue
 
         res = resolver_aliquota_e_mva(db, "", ncm)
-
+        if not res.get("calculo_autorizado", True) or res.get("calculo_parcial", False):
+            continue
         aliquota = res["aliquota"]
 
         st_devida = base_st * aliquota

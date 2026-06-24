@@ -493,6 +493,8 @@ class InsightEngine:
             None,
             data_referencia=context.get("data_referencia"),
         )
+        if not res_aliq.get("calculo_autorizado", True) or res_aliq.get("calculo_parcial", False):
+            return insights
         st_devida = base_st_total * res_aliq["aliquota"]
         restituicao_estimada = st_total - st_devida
 

@@ -31,6 +31,8 @@ def detectar_distorcoes(db: Session, empresa_id: int):
         margem_real = (preco_medio - base_st) / preco_medio
 
         res = resolver_aliquota_e_mva(db, "", ncm)
+        if not res.get("mva_autorizada", res.get("calculo_autorizado", True)):
+            continue
         mva_oficial = res["mva"]
         distorcao = mva_oficial - margem_real
 

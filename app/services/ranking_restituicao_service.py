@@ -27,6 +27,8 @@ def gerar_ranking_restituicao(db: Session, empresa_id: int):
         st_pago = float(row.st_pago or 0)
         base_st = float(row.base_st or 0)
         res = resolver_aliquota_e_mva(db, "", ncm)
+        if not res.get("calculo_autorizado", True) or res.get("calculo_parcial", False):
+            continue
         aliquota = res["aliquota"]
         st_devida = base_st * aliquota
         restituicao = max(st_pago - st_devida, 0)
