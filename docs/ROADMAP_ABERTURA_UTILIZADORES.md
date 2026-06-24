@@ -95,8 +95,9 @@ robusto, demonstrável e sem dívida activa conhecida.
       não-bloqueante, ferramenta interna declarada
 - [x] DT-FLUXO-03 — dedup TOCTOU: ✔ corrigido e confirmado em
       produção (`4a5ddab`, deploy `19709822`)
-- [ ] DT-MVA-01 — decidir escopo realista para o lançamento (nacional
-      vs. só Pará com aviso explícito)
+- [x] DT-MVA-01 — escopo MVA/ST: piloto PA, calculo_autorizado soberano
+      ✔ Fechado em ee7b0ac (2026-06-24) — lacuna normativa bloqueia cálculo;
+      outras UFs fora de escopo; suite 331 passed, 5 skipped
 
 **Critério de saída:** suite XML 100% verde; três dívidas de fluxo
 decididas; MVA com escopo declarado.
@@ -112,6 +113,9 @@ DT-FLUXO-03 (dedup TOCTOU)        ✔ corrigido em produção (4a5ddab)
 ---
 
 ## BLOCO 9 — IDENTIDADE, PERMISSÕES E MULTI-TENANT
+
+**Estado:** ✔ Fechado em 240e573/ee7b0ac (2026-06-24) — MT-01 a MT-15,
+DT-CONTADOR-01/01B, DT-VINCULO-ADMIN-01/02
 
 **Objectivo:** garantir que cada utilizador, empresa e contador vê
 apenas o que tem autorização para ver. Sem isto, o motor pode estar
@@ -399,7 +403,7 @@ legais revistos contra o estado actual do produto.
 
 ```
 1.  Bloco 1  — Núcleo XML                      ← começar aqui, hoje
-2.  Bloco 9  — Identidade/permissões            ← logo a seguir, fundação
+2.  Bloco 9  — Identidade/permissões ✔ fechado   ← fundação concluída
 3.  Bloco 2  — Relatório/Dashboard              ← depende de 1 estável
 4.  Bloco 10 — Jornada utilizador/contador      ← depende de 2
 5.  Bloco 11 — Segurança/LGPD                   ← antes de qualquer dado real
