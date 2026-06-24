@@ -432,7 +432,7 @@ legais revistos contra o estado actual do produto.
 ```
 1.  Bloco 1  — Núcleo XML ✔ fechado
 2.  Bloco 9  — Identidade/permissões ✔ fechado   ← fundação concluída
-3.  Bloco 2  — Relatório/Dashboard              ← começar aqui, hoje
+3.  Bloco 2  — Relatório/Dashboard ✔ Fechado (2026-06-24)
 4.  Bloco 10 — Jornada utilizador/contador      ← depende de 2
 5.  Bloco 11 — Segurança/LGPD                   ← antes de qualquer dado real
 6.  Bloco 3  — Motor de anomalias               ← pode correr com 4/5
@@ -479,3 +479,20 @@ a sequência de execução do que já está institucionalmente decidido,
 mais o que falta decidir em cada bloco.*
 
 *O conhecimento não está na conversa. Está no repositório.*
+
+## Registo 2026-06-24 (sessão tarde)
+
+**Bloco 2 — Relatório/Dashboard: FECHADO**
+
+Commits:
+- `6427008` — E2E upload XML → memorial PDF (relatorio_id, score, gate 402/200, bytes PDF)
+- `3a7daa9` — GET /relatorio/{id} enriquecido com score_resultante/total_alertas; hardcodes MEI/CPF removidos; N/D para dados indisponíveis
+- `2fd69d6` — mock NCM removido; gráfico mostra estado indisponível quando sem dados reais
+
+**Dívidas documentadas (não bloqueantes para piloto):**
+- `Pagamento.approved → RelatorioAnalise.pago` — a ligar quando gateway Mercado Pago integrado (Bloco 8)
+- NCM real via `itens_fiscais` — endpoint dedicado futuro (B2-DASH-03)
+
+**Suite:** 336 passed, 5 skipped | Build frontend OK
+
+**Próximo:** Bloco 10 — Jornada utilizador/contador (quando Bloco 5 bloqueado por DANFE)
