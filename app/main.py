@@ -163,6 +163,15 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 admin_router = APIRouter()
 
+# Inserir na secção de Payloads admin (≈ linha 167), junto dos outros BaseModel
+
+class CriarVinculoContadorPayload(BaseModel):
+    contador_user_id: int           # user_id do contador (não perfil_id)
+    empresa_id: int
+    escopo_chave: str = "homologacao_documental"
+    validade: str | None = None     # ISO 8601, ex: "2027-01-01T00:00:00"
+    policy_version: str | None = None
+
 
 # ── Payloads admin ──────────────────────────────────────────────────────
 class SetRolePayload(BaseModel):
@@ -591,6 +600,74 @@ app.include_router(metrics_router)
 app.include_router(auditoria_router, prefix="/estoque")
 app.include_router(estoque_dashboard_router, prefix="/estoque")
 app.include_router(cpf_router)
+# Inserir na secção Endpoints admin (≈ linha 213)
+
+@admin_router.post("/admin/contadores/vinculos", status_code=201)
+@limiter.limit("20/minute")
+def admin_criar_vinculo_contador_empresa(
+    request: Request,
+    payload: CriarVinculoContadorPayload,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """
+    DT-VINCULO-ADMIN-01: cria vínculo soberano contador↔empresa.
+    Exige role=admin. Origem=admin. Audita criado_por_user_id/email.
+    Escopos admissíveis V1: homologacao_documental, parecer_tecnico, analise_xml.
+    """
+    from datetime import datetime as _dt
+    from app.services.vinculo_admin_service import (
+        ContadorNaoEncontradoError,
+        ContadorNaoAprovadoParaVinculoError,
+        EmpresaNaoEncontradaError,
+        VinculoDuplicadoActivoError,
+        VinculoAdminError,
+        criar_vinculo_contador_empresa as _criar_vinculo,
+    )
+
+    validade = None
+    if payload.validade:
+        try:
+            validade = _dt.fromisoformat(payload.validade)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="validade deve ser ISO 8601: ex. '2027-01-01T00:00:00'",
+            )
+
+    try:
+        vinculo = _criar_vinculo(
+            db=db,
+            admin_user=usuario,
+            contador_user_id=payload.contador_user_id,
+            empresa_id=payload.empresa_id,
+            escopo_chave=payload.escopo_chave,
+            validade=validade,
+            policy_version=payload.policy_version,
+        )
+        db.commit()
+        db.refresh(vinculo)
+    except (ContadorNaoEncontradoError, EmpresaNaoEncontradaError) as e:
+        raise HTTPException(status_code=404, detail=e.mensagem)
+    except VinculoDuplicadoActivoError as e:
+        raise HTTPException(status_code=409, detail=e.mensagem)
+    except VinculoAdminError as e:
+        raise HTTPException(status_code=422, detail=e.mensagem)
+
+    return {
+        "status": "vinculo criado",
+        "vinculo_id": vinculo.id,
+        "contador_id": vinculo.contador_id,
+        "empresa_id": vinculo.empresa_id,
+        "escopo_chave": vinculo.escopo_chave,
+        "origem": vinculo.origem,
+        "status_vinculo": vinculo.status,
+        "criado_por_email": vinculo.criado_por_email,
+        "criado_em": vinculo.criado_em.isoformat() if vinculo.criado_em else None,
+        "validade": vinculo.validade.isoformat() if vinculo.validade else None,
+    }
+
+
 app.include_router(admin_router)
 
 
