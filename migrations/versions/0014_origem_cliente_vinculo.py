@@ -16,16 +16,16 @@ INV-CARTEIRA-06: "legado" só para backfill histórico.
 Novos vínculos devem declarar origem_cliente explicitamente.
 server_default é removido após backfill para forçar declaração explícita.
 
-Revision ID: 0014
-Revises: 0013
+Revision ID: 0014_origem_cliente_vinculo
+Revises: 0013_homologacao_atribuicao
 Create Date: 2026-06-24
 """
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0014"
-down_revision = "0013"
+revision: str = "0014_origem_cliente_vinculo"
+down_revision: str = "0013_homologacao_atribuicao"
 branch_labels = None
 depends_on = None
 
