@@ -668,6 +668,112 @@ def admin_criar_vinculo_contador_empresa(
     }
 
 
+@admin_router.get("/admin/contadores/vinculos")
+@limiter.limit("30/minute")
+def admin_listar_vinculos(
+    request: Request,
+    status: str | None = None,
+    empresa_id: int | None = None,
+    contador_user_id: int | None = None,
+    escopo_chave: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """
+    DT-VINCULO-ADMIN-02: lista vínculos contador↔empresa com filtros opcionais.
+    Filtros: status, empresa_id, contador_user_id, escopo_chave.
+    status inválido ou escopo inválido → 422 (não lista vazia silenciosa).
+    """
+    from app.services.vinculo_admin_service import (
+        VinculoAdminError,
+        listar_vinculos as _listar,
+    )
+    try:
+        vinculos = _listar(
+            db=db,
+            admin_user=usuario,
+            status=status,
+            empresa_id=empresa_id,
+            contador_user_id=contador_user_id,
+            escopo_chave=escopo_chave,
+        )
+    except VinculoAdminError as e:
+        raise HTTPException(status_code=422, detail=e.mensagem)
+    return {"vinculos": vinculos, "total": len(vinculos)}
+
+
+@admin_router.post("/admin/contadores/vinculos/{vinculo_id}/suspender")
+@limiter.limit("20/minute")
+def admin_suspender_vinculo(
+    request: Request,
+    vinculo_id: int,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """
+    DT-VINCULO-ADMIN-02: suspende vínculo activo.
+    activo → suspenso. Bloqueado se suspenso/revogado/expirado.
+    """
+    from app.services.vinculo_admin_service import (
+        VinculoNaoEncontradoError,
+        VinculoTransicaoInvalidaError,
+        VinculoAdminError,
+        suspender_vinculo as _suspender,
+    )
+    try:
+        vinculo = _suspender(db=db, admin_user=usuario, vinculo_id=vinculo_id)
+        db.commit()
+    except VinculoNaoEncontradoError as e:
+        raise HTTPException(status_code=404, detail=e.mensagem)
+    except VinculoTransicaoInvalidaError as e:
+        raise HTTPException(status_code=409, detail=e.mensagem)
+    except VinculoAdminError as e:
+        raise HTTPException(status_code=422, detail=e.mensagem)
+
+    return {
+        "status": "vinculo suspenso",
+        "vinculo_id": vinculo.id,
+        "status_vinculo": vinculo.status,
+    }
+
+
+@admin_router.post("/admin/contadores/vinculos/{vinculo_id}/revogar")
+@limiter.limit("20/minute")
+def admin_revogar_vinculo(
+    request: Request,
+    vinculo_id: int,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """
+    DT-VINCULO-ADMIN-02: revoga vínculo activo ou suspenso.
+    activo/suspenso → revogado. Preenche revogado_em e revogado_por_user_id.
+    """
+    from app.services.vinculo_admin_service import (
+        VinculoNaoEncontradoError,
+        VinculoTransicaoInvalidaError,
+        VinculoAdminError,
+        revogar_vinculo as _revogar,
+    )
+    try:
+        vinculo = _revogar(db=db, admin_user=usuario, vinculo_id=vinculo_id)
+        db.commit()
+    except VinculoNaoEncontradoError as e:
+        raise HTTPException(status_code=404, detail=e.mensagem)
+    except VinculoTransicaoInvalidaError as e:
+        raise HTTPException(status_code=409, detail=e.mensagem)
+    except VinculoAdminError as e:
+        raise HTTPException(status_code=422, detail=e.mensagem)
+
+    return {
+        "status": "vinculo revogado",
+        "vinculo_id": vinculo.id,
+        "status_vinculo": vinculo.status,
+        "revogado_em": vinculo.revogado_em.isoformat() if vinculo.revogado_em else None,
+        "revogado_por_user_id": vinculo.revogado_por_user_id,
+    }
+
+
 app.include_router(admin_router)
 
 
