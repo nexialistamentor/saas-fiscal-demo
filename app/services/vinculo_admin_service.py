@@ -171,12 +171,13 @@ def criar_vinculo_contador_empresa(
     if not empresa:
         raise EmpresaNaoEncontradaError(empresa_id)
 
-    # INV-VINCULO-03: sem duplicado activo
+    # INV-VINCULO-03: sem duplicado activo ou suspenso
+    # suspenso = ainda institucionalmente pendente; revogado/expirado = encerrado
     existente = db.query(ContadorEmpresaVinculo).filter(
         ContadorEmpresaVinculo.contador_id == perfil.id,
         ContadorEmpresaVinculo.empresa_id == empresa_id,
         ContadorEmpresaVinculo.escopo_chave == escopo_chave,
-        ContadorEmpresaVinculo.status == "activo",
+        ContadorEmpresaVinculo.status.in_(["activo", "suspenso"]),
     ).first()
     if existente:
         raise VinculoDuplicadoActivoError(perfil.id, empresa_id, escopo_chave)
