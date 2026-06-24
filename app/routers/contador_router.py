@@ -20,6 +20,7 @@ from app.services.homologacao_service import (
     HomologacaoError,
     HomologacaoJaExisteError,
     HomologacaoNaoPendenteError,
+    HomologacaoSemAtribuicaoSoberanaError,
     criar_fila_homologacao,
     obter_homologacoes_pendentes,
     registar_decisao,
@@ -193,6 +194,8 @@ def decidir_homologacao(
         )
         db.commit()
         db.refresh(homologacao)
+    except HomologacaoSemAtribuicaoSoberanaError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.mensagem)
     except HomologacaoNaoPendenteError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.mensagem)
     except HomologacaoError as e:

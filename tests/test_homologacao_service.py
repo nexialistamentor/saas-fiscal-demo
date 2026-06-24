@@ -1,28 +1,32 @@
 """
 Testes do HomologacaoService — domínio regulatório soberano.
+DT-CONTADOR-01B: registar_decisao exige HomologacaoAtribuicao aceite.
 """
-
 import hashlib
 from datetime import datetime
 from unittest.mock import MagicMock, patch
-
 import pytest
-
 from app.services.homologacao_service import (
     HomologacaoError,
     HomologacaoJaExisteError,
     HomologacaoNaoPendenteError,
+    HomologacaoSemAtribuicaoSoberanaError,
     ContadorNaoAprovadoError,
     _gerar_assinatura_logica,
     criar_fila_homologacao,
     registar_decisao,
 )
-from app.models import HomologacaoDocumental, PerfilContador
-
+from app.models import (
+    HomologacaoAtribuicao,
+    HomologacaoDocumental,
+    DocumentoIngerido,
+    PerfilContador,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 @pytest.fixture
 def db():
     return MagicMock()
@@ -51,6 +55,7 @@ def homologacao_pendente():
     h.status = "pendente"
     h.contador_id = 1
     h.documento_ingerido_id = 10
+    h.tipo_decisao = "homologacao_documental"
     return h
 
 
@@ -61,12 +66,36 @@ def homologacao_aprovada():
     h.status = "aprovado"
     h.contador_id = 1
     h.documento_ingerido_id = 10
+    h.tipo_decisao = "homologacao_documental"
     return h
+
+
+@pytest.fixture
+def documento_mock():
+    """DocumentoIngerido com empresa_id para INV-VINCULO-01."""
+    d = MagicMock(spec=DocumentoIngerido)
+    d.id = 10
+    d.empresa_id = 99
+    return d
+
+
+@pytest.fixture
+def atribuicao_aceite_mock(documento_mock):
+    """HomologacaoAtribuicao aceite para o mesmo documento/contador/escopo."""
+    a = MagicMock(spec=HomologacaoAtribuicao)
+    a.id = 1
+    a.status = "aceite"
+    a.documento_ingerido_id = 10
+    a.empresa_id = documento_mock.empresa_id  # coerente com INV-VINCULO-01
+    a.contador_id = 1
+    a.escopo_chave = "homologacao_documental"
+    return a
 
 
 # ---------------------------------------------------------------------------
 # Assinatura lógica
 # ---------------------------------------------------------------------------
+
 def test_assinatura_logica_deterministica():
     dt = datetime(2026, 5, 11, 12, 0, 0)
     a1 = _gerar_assinatura_logica("parecer", 1, 10, dt)
@@ -105,6 +134,7 @@ def test_assinatura_muda_com_documento():
 # ---------------------------------------------------------------------------
 # criar_fila_homologacao
 # ---------------------------------------------------------------------------
+
 def test_contador_nao_aprovado_levanta_erro(db, contador_pendente):
     db.query.return_value.filter.return_value.first.return_value = contador_pendente
     with pytest.raises(ContadorNaoAprovadoError):
@@ -138,8 +168,9 @@ def test_criar_fila_sucesso(db, contador_aprovado):
 
 
 # ---------------------------------------------------------------------------
-# registar_decisao
+# registar_decisao — erros
 # ---------------------------------------------------------------------------
+
 def test_status_invalido_levanta_erro(db, homologacao_pendente):
     db.query.return_value.filter.return_value.first.return_value = homologacao_pendente
     with pytest.raises(HomologacaoError):
@@ -158,18 +189,39 @@ def test_homologacao_nao_encontrada_levanta_erro(db):
         registar_decisao(db, 99, "aprovado", "parecer", 1)
 
 
-def test_registar_decisao_aprovado(db, homologacao_pendente):
+def test_decidir_sem_atribuicao_soberana_levanta_erro(
+    db, homologacao_pendente, documento_mock
+):
+    """DT-CONTADOR-01B: sem HomologacaoAtribuicao aceite → HomologacaoSemAtribuicaoSoberanaError."""
+    db.query.return_value.filter.return_value.first.side_effect = [
+        homologacao_pendente,  # HomologacaoDocumental
+        documento_mock,        # DocumentoIngerido
+        None,                  # HomologacaoAtribuicao — não existe
+    ]
+    with pytest.raises(HomologacaoSemAtribuicaoSoberanaError):
+        registar_decisao(db, 1, "aprovado", "parecer", 1)
+
+
+# ---------------------------------------------------------------------------
+# registar_decisao — sucesso (DT-CONTADOR-01B)
+# ---------------------------------------------------------------------------
+
+def test_registar_decisao_aprovado(
+    db, homologacao_pendente, documento_mock, atribuicao_aceite_mock
+):
+    """
+    registar_decisao com atribuição aceite → aprovado.
+    Sequência de queries: HomologacaoDocumental → DocumentoIngerido → HomologacaoAtribuicao
+    """
+    db.query.return_value.filter.return_value.first.side_effect = [
+        homologacao_pendente,    # HomologacaoDocumental
+        documento_mock,          # DocumentoIngerido
+        atribuicao_aceite_mock,  # HomologacaoAtribuicao aceite
+    ]
     fixed_now = datetime(2026, 5, 11, 15, 30, 0)
-    db.query.return_value.filter.return_value.first.return_value = homologacao_pendente
-
-    with patch(
-        "app.services.homologacao_service.datetime"
-    ) as mock_dt:
+    with patch("app.services.homologacao_service.datetime") as mock_dt:
         mock_dt.utcnow.return_value = fixed_now
-
-        resultado = registar_decisao(
-            db, 1, "aprovado", "Documento válido.", 1
-        )
+        resultado = registar_decisao(db, 1, "aprovado", "Documento válido.", 1)
 
     assert resultado is homologacao_pendente
     assert homologacao_pendente.status == "aprovado"
@@ -179,9 +231,22 @@ def test_registar_decisao_aprovado(db, homologacao_pendente):
     )
     assert homologacao_pendente.assinatura_logica == esperado
     assert homologacao_pendente.decidido_em == fixed_now
+    # Atribuição deve ser fechada
+    assert atribuicao_aceite_mock.status == "concluida"
+    assert atribuicao_aceite_mock.concluido_em == fixed_now
 
 
-def test_registar_decisao_rejeitado(db, homologacao_pendente):
-    db.query.return_value.filter.return_value.first.return_value = homologacao_pendente
+def test_registar_decisao_rejeitado(
+    db, homologacao_pendente, documento_mock, atribuicao_aceite_mock
+):
+    """registar_decisao com atribuição aceite → rejeitado."""
+    db.query.return_value.filter.return_value.first.side_effect = [
+        homologacao_pendente,    # HomologacaoDocumental
+        documento_mock,          # DocumentoIngerido
+        atribuicao_aceite_mock,  # HomologacaoAtribuicao aceite
+    ]
     registar_decisao(db, 1, "rejeitado", "Documento ilegível.", 1)
+
     assert homologacao_pendente.status == "rejeitado"
+    # Atribuição deve ser fechada como recusada
+    assert atribuicao_aceite_mock.status == "recusada"

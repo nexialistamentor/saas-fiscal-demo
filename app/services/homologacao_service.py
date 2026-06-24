@@ -1,25 +1,26 @@
 """
 HomologacaoService — domínio regulatório soberano.
-
 Responsabilidades:
 - Criar fila de homologação para documentos com confiança intermédia
 - Registar decisão do contador (aprovado/rejeitado) com parecer auditável
 - Gerar assinatura lógica V1 (não repúdio básico)
 - Garantir 1 homologação activa por documento em V1 (via service layer)
-
 Princípio: assinatura é regra de domínio — gerada aqui, nunca no router.
-
 AVISO ARQUITECTURAL V1:
     assinatura_logica = SHA-256 lógico (não criptográfico PKI).
     V2: ICP-Brasil, certificado e-CNPJ, cadeia PKI completa.
+DT-CONTADOR-01B: registar_decisao exige HomologacaoAtribuicao aceite.
+    Legado pode existir. Legado não produz novo acto soberano sem atribuição.
 """
-
 import hashlib
 from datetime import datetime
-
 from sqlalchemy.orm import Session
-
-from app.models import DocumentoIngerido, HomologacaoDocumental, PerfilContador
+from app.models import (
+    DocumentoIngerido,
+    HomologacaoAtribuicao,
+    HomologacaoDocumental,
+    PerfilContador,
+)
 
 
 class HomologacaoError(Exception):
@@ -43,9 +44,20 @@ class HomologacaoNaoPendenteError(HomologacaoError):
         super().__init__(f"Homologação não pode ser decidida — estado actual: {status}")
 
 
+class HomologacaoSemAtribuicaoSoberanaError(HomologacaoError):
+    """DT-CONTADOR-01B: decisão sem HomologacaoAtribuicao aceite é bloqueada."""
+    def __init__(self, homologacao_id: int, contador_id: int):
+        super().__init__(
+            f"DT-CONTADOR-01B: HomologacaoDocumental {homologacao_id} não tem "
+            f"HomologacaoAtribuicao aceite para contador={contador_id}. "
+            "Decisão requer cadeia soberana completa (ADR-004)."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Assinatura lógica V1
 # ---------------------------------------------------------------------------
+
 def _gerar_assinatura_logica(
     parecer_texto: str,
     contador_id: int,
@@ -54,7 +66,6 @@ def _gerar_assinatura_logica(
 ) -> str:
     """
     SHA-256(parecer + contador_id + documento_id + timestamp).
-
     Não repúdio básico V1 — V2 usa ICP-Brasil.
     """
     payload = (
@@ -69,6 +80,7 @@ def _gerar_assinatura_logica(
 # ---------------------------------------------------------------------------
 # Funções públicas
 # ---------------------------------------------------------------------------
+
 def criar_fila_homologacao(
     db: Session,
     documento_ingerido_id: int,
@@ -77,14 +89,12 @@ def criar_fila_homologacao(
 ) -> HomologacaoDocumental:
     """
     Cria entrada na fila de homologação para documento com confiança intermédia.
-
     V1: garante 1 homologação activa por documento via service layer.
     """
     # Validar contador aprovado
     contador = db.query(PerfilContador).filter(
         PerfilContador.id == contador_id
     ).first()
-
     if not contador or contador.status != "aprovado":
         raise ContadorNaoAprovadoError()
 
@@ -93,7 +103,6 @@ def criar_fila_homologacao(
         HomologacaoDocumental.documento_ingerido_id == documento_ingerido_id,
         HomologacaoDocumental.status.in_(["pendente", "aprovado"]),
     ).first()
-
     if existente:
         raise HomologacaoJaExisteError()
 
@@ -118,8 +127,9 @@ def registar_decisao(
 ) -> HomologacaoDocumental:
     """
     Regista decisão do contador (aprovado/rejeitado) com assinatura lógica.
-
     Só actua sobre homologações pendentes.
+    DT-CONTADOR-01B: exige HomologacaoAtribuicao aceite para o mesmo
+    documento/contador/escopo_chave. Bloqueia decisão sem cadeia soberana.
     """
     if status_decisao not in ("aprovado", "rejeitado"):
         raise HomologacaoError(f"Status inválido: {status_decisao}")
@@ -128,12 +138,32 @@ def registar_decisao(
         HomologacaoDocumental.id == homologacao_id,
         HomologacaoDocumental.contador_id == contador_id,
     ).first()
-
     if not homologacao:
         raise HomologacaoError("Homologação não encontrada para este contador")
 
     if homologacao.status != "pendente":
         raise HomologacaoNaoPendenteError(homologacao.status)
+
+    # Carregar documento antes da atribuição — necessário para INV-VINCULO-01
+    documento = db.query(DocumentoIngerido).filter(
+        DocumentoIngerido.id == homologacao.documento_ingerido_id
+    ).first()
+    if not documento:
+        raise HomologacaoError(
+            "Documento associado à homologação não encontrado"
+        )
+
+    # DT-CONTADOR-01B: verificar atribuição soberana aceite
+    # empresa_id incluído no filtro — INV-VINCULO-01 enforced na query
+    atribuicao = db.query(HomologacaoAtribuicao).filter(
+        HomologacaoAtribuicao.documento_ingerido_id == homologacao.documento_ingerido_id,
+        HomologacaoAtribuicao.empresa_id == documento.empresa_id,
+        HomologacaoAtribuicao.contador_id == contador_id,
+        HomologacaoAtribuicao.escopo_chave == homologacao.tipo_decisao,
+        HomologacaoAtribuicao.status == "aceite",
+    ).first()
+    if not atribuicao:
+        raise HomologacaoSemAtribuicaoSoberanaError(homologacao_id, contador_id)
 
     decidido_em = datetime.utcnow()
     assinatura = _gerar_assinatura_logica(
@@ -142,19 +172,18 @@ def registar_decisao(
         documento_ingerido_id=homologacao.documento_ingerido_id,
         decidido_em=decidido_em,
     )
-
     homologacao.status = status_decisao
     homologacao.parecer_texto = parecer_texto
     homologacao.assinatura_logica = assinatura
     homologacao.decidido_em = decidido_em
+    db.flush()
 
+    # Fechar ciclo de vida da atribuição
+    atribuicao.status = "concluida" if status_decisao == "aprovado" else "recusada"
+    atribuicao.concluido_em = decidido_em
     db.flush()
 
     # Actualizar estado do documento — transição soberana após decisão do contador
-    documento = db.query(DocumentoIngerido).filter(
-        DocumentoIngerido.id == homologacao.documento_ingerido_id
-    ).first()
-
     if documento:
         if status_decisao == "aprovado":
             documento.decisao = "auto_processar"
