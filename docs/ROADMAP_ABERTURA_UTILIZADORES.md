@@ -76,21 +76,28 @@ pontos estiverem verdadeiros, simultaneamente:
 
 ---
 
-## BLOCO 1 — NÚCLEO FISCAL XML (PRIORIDADE IMEDIATA)
+## BLOCO 1 — NÚCLEO FISCAL XML ✔ FECHADO
+
+**Estado:** ✔ Fechado em ee7b0ac/0ca02ee (2026-06-24) — pipeline canónico
+completo, dívidas de fluxo resolvidas, MVA com escopo declarado.
 
 **Objectivo:** o motor fiscal por XML, já canónico e auditável, fica
 robusto, demonstrável e sem dívida activa conhecida.
 
 ### 1.1 — Auditoria de estado actual
-- [ ] Confirmar estado real de `/fiscal/analisar-xml`, `/upload-xml`,
+- [x] Confirmar estado real de `/fiscal/analisar-xml`, `/upload-xml`,
       `/lote/analisar-lote` — reconfirmar DT-FLUXO-01/02/03
-- [ ] Listar testes existentes do pipeline XML, correr suite isolada
-- [ ] Confirmar cobertura real do `InsightEngine` (16+ analisadores)
+      (`tests/test_pipeline_xml_canonico.py`, 4 camadas)
+- [x] Listar testes existentes do pipeline XML, correr suite isolada
+      (25 passed em 2026-06-24)
+- [x] Confirmar cobertura real do `InsightEngine` — 9 engines registadas
+      em `engine_registry.py` + 16 serviços analíticos invocados em
+      `insights_engine.py` e `inteligencia_router.py`
 
 ### 1.2 — Resolução de dívidas já nomeadas
-- [x] DT-FLUXO-01 — `/upload-xml`: ✔ decidido (DC-002) — BLOQUEANTE
-      para Bloco 13 até (a) wrapper canónico ou (b) desactivação
-      implementada
+- [x] DT-FLUXO-01 — `/upload-xml`: ✔ wrapper canónico implementado
+      (`0ca02ee`) — `executar_e_registrar_analise_xml`, sem disco;
+      deixa de bloquear Bloco 13 por rota órfã
 - [x] DT-FLUXO-02 — `/lote/analisar-lote`: ✔ decidido (DC-002) —
       não-bloqueante, ferramenta interna declarada
 - [x] DT-FLUXO-03 — dedup TOCTOU: ✔ corrigido e confirmado em
@@ -105,7 +112,7 @@ decididas; MVA com escopo declarado.
 **Estado das dívidas de fluxo (DC-002, 2026-06-20):**
 
 ```
-DT-FLUXO-01 (/upload-xml)         ✔ decidido — BLOQUEANTE para Bloco 13
+DT-FLUXO-01 (/upload-xml)         ✔ wrapper canónico (0ca02ee) — não bloqueia Bloco 13
 DT-FLUXO-02 (/lote/analisar-lote) ✔ decidido — não-bloqueante
 DT-FLUXO-03 (dedup TOCTOU)        ✔ corrigido em produção (4a5ddab)
 ```
@@ -127,18 +134,22 @@ contaminam todos os blocos seguintes (dashboard, jornada, segurança).
 Resolver depois é retrabalho; resolver agora é fundação.
 
 ### 9.1 — Auditoria
-- [ ] Auditar autenticação actual: login, JWT, roles e permissões reais
-- [ ] Confirmar separação por `empresa_id` em todos os endpoints sensíveis
-- [ ] Confirmar que contador parceiro só vê documentos/empresas
-      atribuídos ou disponíveis no pool autorizado
+- [x] Auditar autenticação actual: login, JWT, roles e permissões reais
+- [x] Confirmar separação por `empresa_id` em todos os endpoints sensíveis
+- [x] Confirmar que contador parceiro só vê documentos/empresas
+      atribuídos ou disponíveis no pool autorizado (DT-CONTADOR-01/01B)
 
 ### 9.2 — Matriz e testes de acesso cruzado
-- [ ] Definir matriz de permissões: admin, utilizador, empresa,
-      contador, suporte
-- [ ] Testar acesso cruzado: utilizador A não pode ver empresa B
-- [ ] Testar contador sem autorização: não pode ver documento
-      pendente fora do seu escopo
-- [ ] Confirmar processo de revogação de acesso de contador
+- [x] Definir matriz de permissões: admin, utilizador, empresa,
+      contador, suporte (DC-004, ADR-003)
+- [x] Testar acesso cruzado: utilizador A não pode ver empresa B
+      (MT-01..MT-15 — `tests/test_acesso_cruzado_bloco9.py`,
+      `test_isolamento_empresa_id_bloco9.py`,
+      `test_isolamento_inteligencia_insights_bloco9.py`)
+- [x] Testar contador sem autorização: não pode ver documento
+      pendente fora do seu escopo (DT-CONTADOR-01)
+- [x] Confirmar processo de revogação de acesso de contador
+      (DT-VINCULO-ADMIN-01/02 — suspender/revogar vínculo)
 
 **Critério de saída:** nenhum endpoint sensível permite acesso
 cruzado entre empresas, utilizadores ou contadores — provado por
@@ -146,24 +157,41 @@ teste, não por inspecção visual.
 
 ---
 
-## BLOCO 2 — RELATÓRIO E DASHBOARD DEMONSTRÁVEIS
+## BLOCO 2 — RELATÓRIO E DASHBOARD DEMONSTRÁVEIS ← PRÓXIMO
+
+**Estado:** ⏸ Auditoria de leitura concluída (2026-06-24). Backend
+sólido; lacunas em testes, alinhamento frontend e demonstração E2E.
 
 **Objectivo:** transformar o que o motor já calcula em algo que um
 cliente, contador ou investidor consiga ver e entender.
 
 ### 2.1 — Relatório PDF
-- [ ] Auditar `pdf_report_service.py` — confirmar o que já gera
+- [x] Auditar `pdf_report_service.py` — confirmar o que já gera
       (Memorial de Cálculo, rodapé com fingerprint)
-- [ ] Confirmar se o relatório reflecte os dados reais do InsightEngine
+      ✔ três geradores: `gerar_pdf_imposto` (MEI/CPF),
+      `gerar_pdf_relatorio` (legado), `gerar_pdf_memorial` (L2 auditável)
+- [x] Confirmar se o relatório reflecte os dados reais do InsightEngine
       ou está desactualizado
+      ✔ memorial via `coletar_contexto_memorial` lê `Insight`, `AlertaFiscal`,
+      `EngineResultado` persistidos; `gerar_pdf_relatorio` é caminho legado
+      separado do fluxo XML
 - [ ] Testar geração ponta a ponta com XML real de exemplo
+      ✘ sem testes automatizados de PDF/memorial em `tests/`;
+      gate `rel.pago=True` bloqueia demo sem pagamento
 
 ### 2.2 — Dashboard
-- [ ] Auditar `dashboard_router.py` — confirmar que todos os
+- [x] Auditar `dashboard_router.py` — confirmar que todos os
       endpoints devolvem dados reais, não placeholders
-- [ ] Confirmar consumo no frontend (hooks `useEmpresaDashboard.js`,
+      ✔ 15 endpoints consultam BD (`AlertaFiscal`, `RelatorioAnalise`,
+      `EngineResultado`); sem mocks
+- [x] Confirmar consumo no frontend (hooks `useEmpresaDashboard.js`,
       `useCpfDashboard.js`, `useMeiDashboard.js`)
+      ✘ desalinhamento: hooks **não** consomem `/dashboard/*` —
+      empresa → `/inteligencia/*`; MEI → `/imposto/calcular`;
+      CPF → `/cpf/dashboard`; risco/pontuação hardcoded em MEI/CPF;
+      gráfico NCM em `App.jsx` usa dados estáticos (`dadosNCM`)
 - [ ] Validar visualmente em ambiente local com dados de teste
+      ✘ critério de saída ainda não cumprido
 
 **Critério de saída:** demonstração completa e reproduzível — upload
 de XML real → relatório PDF correcto → dashboard com os mesmos números.
@@ -402,9 +430,9 @@ legais revistos contra o estado actual do produto.
 ## SEQUÊNCIA RECOMENDADA (visão de topo, reforçada)
 
 ```
-1.  Bloco 1  — Núcleo XML                      ← começar aqui, hoje
+1.  Bloco 1  — Núcleo XML ✔ fechado
 2.  Bloco 9  — Identidade/permissões ✔ fechado   ← fundação concluída
-3.  Bloco 2  — Relatório/Dashboard              ← depende de 1 estável
+3.  Bloco 2  — Relatório/Dashboard              ← começar aqui, hoje
 4.  Bloco 10 — Jornada utilizador/contador      ← depende de 2
 5.  Bloco 11 — Segurança/LGPD                   ← antes de qualquer dado real
 6.  Bloco 3  — Motor de anomalias               ← pode correr com 4/5
@@ -417,6 +445,18 @@ legais revistos contra o estado actual do produto.
 
 Bloco 5 — Ponte Documental ← paralelo a tudo, só quando amostra real chegar
 ```
+
+---
+
+## REGISTO DE DECISÕES TOMADAS NESTA SESSÃO (2026-06-24)
+
+- DT-FLUXO-01: `/upload-xml` virou wrapper canónico (`0ca02ee`) —
+  Bloco 1 fechado; upload-xml deixa de bloquear Bloco 13
+- Bloco 2 auditado (leitura): memorial PDF alinhado ao pipeline
+  persistido; dashboard_router funcional mas não consumido pelo frontend
+  actual; MEI/CPF com métricas hardcoded; zero testes PDF/E2E
+- Próximo trabalho: fechar critério de saída do Bloco 2 (teste E2E
+  XML → memorial PDF → dashboard com números consistentes)
 
 ---
 
