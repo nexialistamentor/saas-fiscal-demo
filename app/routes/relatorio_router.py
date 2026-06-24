@@ -434,7 +434,19 @@ def obter_relatorio(
             "relatorio_id": rel.id,
         }
 
-    return rel.resultado_json
+    resultado = rel.resultado_json or {}
+    payload = dict(resultado) if isinstance(resultado, dict) else {"resultado": resultado}
+    payload.update({
+        "relatorio_id": rel.id,
+        "empresa_id": rel.empresa_id,
+        "status": rel.status,
+        "analysis_type": rel.analysis_type,
+        "score_resultante": rel.score_resultante,
+        "total_alertas": rel.total_alertas,
+        "pago": getattr(rel, "pago", False),
+        "criado_em": rel.criado_em.isoformat() if rel.criado_em else None,
+    })
+    return payload
 
 
 @router.get("/{analysis_type}")

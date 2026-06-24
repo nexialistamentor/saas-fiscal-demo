@@ -108,6 +108,7 @@ function App() {
     tipoPerfil === "cpf" ? cpfResult :
     empresaResult
   const severidadeRisco =
+    risco === -1 ? "indisponivel" :
     risco >= 80 ? "crítico" :
     risco >= 60 ? "alto" :
     risco >= 40 ? "moderado" :
@@ -496,7 +497,7 @@ function App() {
     {
       id: "risco-tributario",
       titulo: "Risco Tributário",
-      valor: `${risco}%`,
+      valor: risco === -1 ? "N/D" : `${risco}%`,
     },
     {
       id: "severidade-risco",
@@ -530,7 +531,7 @@ function App() {
     {
       id: "pontuacao-fiscal",
       titulo: "Pontuação Fiscal",
-      valor: `${pontuacao}/100`,
+      valor: pontuacao === -1 ? "N/D" : `${pontuacao}/100`,
     },
     {
       id: "estoque-fantasma",

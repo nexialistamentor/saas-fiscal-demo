@@ -28,8 +28,10 @@ export default function useCpfDashboard(contexto = {}) {
       const json = await res.json()
       setData({
         impacto_financeiro_anual: json.imposto_anual ?? 0,
-        risco_tributario_percentual: 30,
-        pontuacao_fiscal: 70,
+        risco_tributario_percentual: null,
+        pontuacao_fiscal: null,
+        dados_indisponiveis: true,
+        mensagem_indisponivel: "Análise de risco e pontuação ainda não disponível para CPF.",
         total_insights: json.alertas?.length || 0,
         consulta_paga: true,
         cpf_imposto_mensal: json.imposto_mensal ?? 0,
@@ -46,8 +48,15 @@ export default function useCpfDashboard(contexto = {}) {
     carregar()
   }, [carregar])
 
-  const risco = data ? Math.min(100, data.risco_tributario_percentual ?? 0) : 0
-  const pontuacao = data ? Math.min(100, Math.max(0, data.pontuacao_fiscal ?? 0)) : 0
+  // -1 sentinela de indisponivel — App.jsx detecta e mostra "N/D"
+  const risco = data
+    ? (data.risco_tributario_percentual === null || data.risco_tributario_percentual === undefined
+        ? -1 : Math.min(100, data.risco_tributario_percentual))
+    : -1
+  const pontuacao = data
+    ? (data.pontuacao_fiscal === null || data.pontuacao_fiscal === undefined
+        ? -1 : Math.min(100, Math.max(0, data.pontuacao_fiscal)))
+    : -1
   const impacto = data?.impacto_financeiro_anual ?? 0
 
   return {
