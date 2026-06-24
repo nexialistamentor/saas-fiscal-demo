@@ -53,7 +53,6 @@ from app.routers.contador_router import router as contador_router
 from app.routers.inteligencia_router import inteligencia_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.assistente_router import assistente_router
-from app.xml_service import ler_xml_unico, processar_e_persistir_xml, DuplicataFiscalError
 from app.xml_security import validar_upload_xml
 from app.security import get_usuario_atual, require_role, verificar_token
 from app.rate_limit import limiter
@@ -797,65 +796,62 @@ async def upload_xml(
     db: Session = Depends(get_db),
     usuario_atual: models.User = Depends(get_usuario_atual),
 ):
-
-    total_empresas = db.query(models.Empresa).filter(
-        models.Empresa.user_id == usuario_atual.id
-    ).count()
-
-    plano = db.query(models.Plano).filter(
-        models.Plano.id == usuario_atual.plano_id
-    ).first()
-
-    if total_empresas >= plano.limite_cnpjs:
-        raise HTTPException(
-            status_code=403,
-            detail="Limite de CNPJs atingido para seu plano"
-        )
-
-    pasta = "app/xmls_testes"
-    os.makedirs(pasta, exist_ok=True)
-
-    caminho = os.path.join(pasta, file.filename)
+    """
+    DT-FLUXO-01: wrapper canónico para upload de XML NF-e.
+    Pipeline: validar → parse CNPJ → resolver empresa → executar_e_registrar_analise_xml
+    Remove gravação em disco e motor antigo.
+    Contrato: relatorio_id (documento_id não existe em RelatorioAnalise).
+    """
+    from app.services.registro_analise_service import executar_e_registrar_analise_xml
+    from app.xml_service import ler_xml_unico
 
     conteudo = await validar_upload_xml(file)
 
-    with open(caminho, "wb") as f:
-        f.write(conteudo)
-
-    dados = ler_xml_unico(caminho)
+    dados = ler_xml_unico(xml_bytes=conteudo)
+    cnpj = dados.get("cnpj")
+    if not cnpj:
+        raise HTTPException(
+            status_code=422,
+            detail="XML não contém CNPJ identificável. Verifique o ficheiro.",
+        )
 
     empresa = db.query(models.Empresa).filter(
         models.Empresa.user_id == usuario_atual.id,
-        models.Empresa.cnpj == dados.get("cnpj")
+        models.Empresa.cnpj == cnpj,
     ).first()
+
     if not empresa:
+        plano = db.query(models.Plano).filter(
+            models.Plano.id == usuario_atual.plano_id
+        ).first()
+        total_empresas = db.query(models.Empresa).filter(
+            models.Empresa.user_id == usuario_atual.id
+        ).count()
+        if plano and total_empresas >= plano.limite_cnpjs:
+            raise HTTPException(
+                status_code=403,
+                detail="Limite de CNPJs atingido para seu plano",
+            )
         empresa = models.Empresa(
-            cnpj=dados.get("cnpj"),
-            razao_social=dados.get("razao_social"),
-            user_id=usuario_atual.id
+            cnpj=cnpj,
+            razao_social=dados.get("razao_social", ""),
+            user_id=usuario_atual.id,
         )
         db.add(empresa)
         db.flush()
 
-    try:
-        documento, dados, analise = processar_e_persistir_xml(
-            db=db,
-            usuario_atual=usuario_atual,
-            empresa=empresa,
-            xml_bytes=conteudo,
-            dados_pre_parse=dados,
-        )
-    except DuplicataFiscalError as e:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "erro": "Documento fiscal duplicado",
-                "chave_nfe": e.chave_nfe,
-                "documento_id": e.documento_id,
-                "conteudo_sha256": e.conteudo_sha256,
-            },
-        )
-    return {"documento_id": documento.id}
+    relatorio, resultado = executar_e_registrar_analise_xml(
+        db=db,
+        xml_bytes=conteudo,
+        user_id=usuario_atual.id,
+        empresa_id=empresa.id,
+    )
+
+    return {
+        "relatorio_id": relatorio.id,
+        "empresa_id": empresa.id,
+        "status": resultado.get("status", "processado"),
+    }
 
 
 @app.post("/criar-planos")
