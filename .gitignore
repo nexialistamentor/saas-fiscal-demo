@@ -68,6 +68,7 @@ patch_app_jsx_fix.py
 criar_deploy_checklist.py
 criar_env_example.py
 patch_health_ready.py
+patch_b5_01_classifier.py
 
 # Excepção: .env.example é documentação, não segredo
 !.env.example
