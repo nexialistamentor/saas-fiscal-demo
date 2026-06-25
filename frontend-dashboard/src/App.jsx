@@ -50,6 +50,10 @@ function App() {
   const [verificandoSessao, setVerificandoSessao] = useState(true)
   const [precisaAceitarTermos, setPrecisaAceitarTermos] = useState(false)
   const [erroTermos, setErroTermos] = useState("")
+  const [perfilContador, setPerfilContador] = useState(null)
+  const [carregandoPerfilContador, setCarregandoPerfilContador] = useState(false)
+  const [erroPerfilContador, setErroPerfilContador] = useState("")
+  const [contadorSemPerfil, setContadorSemPerfil] = useState(false)
 
   const [mostrarRegisto, setMostrarRegisto] = useState(false)
   const [nomeRegisto, setNomeRegisto] = useState("")
@@ -326,6 +330,44 @@ function App() {
 
     validarSessao()
   }, [])
+  useEffect(() => {
+    if (!usuario || usuario.role !== "contador") return
+
+    async function carregarPerfilContador() {
+      setErroPerfilContador("")
+      setContadorSemPerfil(false)
+      setPerfilContador(null)
+      setCarregandoPerfilContador(true)
+      try {
+        const res = await fetch(`${API_BASE}/contador/perfil`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        })
+        if (res.status === 401) {
+          clearToken()
+          window.location.reload()
+          return
+        }
+        if (res.status === 404) {
+          setContadorSemPerfil(true)
+          return
+        }
+        if (!res.ok) {
+          setErroPerfilContador("Nao foi possivel carregar o perfil regulatorio. Tente novamente.")
+          return
+        }
+        setPerfilContador(await res.json())
+      } catch (e) {
+        console.warn("[Contador] Erro de rede ao carregar perfil:", e)
+        setErroPerfilContador("Erro de rede ao carregar o perfil regulatorio. Verifique a ligacao e tente novamente.")
+      } finally {
+        setCarregandoPerfilContador(false)
+      }
+    }
+
+    carregarPerfilContador()
+  }, [usuario])
+
+
 
   const planoId = usuario?.plano_id ?? null
   const acessoBasico = planoId === 1
@@ -553,6 +595,129 @@ function App() {
         )}
       </div>
     )
+  }
+
+  if (usuario?.role === "contador") {
+    if (carregandoPerfilContador) {
+      return <p style={{ padding: 40 }}>Carregando perfil regulatorio...</p>
+    }
+
+    if (erroPerfilContador) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+          <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "420px", width: "100%", textAlign: "center", border: "1px solid #ef4444" }}>
+            <h2 style={{ color: "#ef4444", marginBottom: "1rem" }}>Perfil regulatorio indisponivel</h2>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "1.5rem", lineHeight: "1.6" }}>{erroPerfilContador}</p>
+            <button onClick={() => window.location.reload()} style={{ background: "var(--accent-color, #6366f1)", color: "#fff", border: "none", borderRadius: "8px", padding: "0.75rem 1.5rem", cursor: "pointer", marginRight: "0.75rem", fontWeight: "600" }}>
+              Tentar novamente
+            </button>
+            <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "1px solid var(--border-color, #2a2d3e)", borderRadius: "8px", padding: "0.75rem 1.5rem", cursor: "pointer" }}>
+              Sair
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    if (contadorSemPerfil) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+          <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "480px", width: "100%", textAlign: "center", border: "1px solid var(--border-color, #2a2d3e)" }}>
+            <h2 style={{ color: "var(--text-primary, #fff)", marginBottom: "1rem", fontSize: "1.4rem" }}>Perfil de contador nao encontrado</h2>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "1.5rem", lineHeight: "1.6" }}>
+              A sua conta tem role de contador, mas ainda nao possui um PerfilContador registado.
+              Contacte o administrador da plataforma para concluir o onboarding regulatorio.
+            </p>
+            <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "1px solid var(--border-color, #2a2d3e)", borderRadius: "8px", padding: "0.75rem 1.5rem", cursor: "pointer" }}>
+              Sair
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    if (perfilContador?.status === "pendente") {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+          <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "480px", width: "100%", textAlign: "center", border: "1px solid #f59e0b" }}>
+            <h2 style={{ color: "#f59e0b", marginBottom: "1rem", fontSize: "1.4rem" }}>Perfil em analise</h2>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "0.5rem", lineHeight: "1.6" }}>
+              CRC {perfilContador.crc} ({perfilContador.uf_crc}) — status: pendente
+            </p>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "1.5rem", lineHeight: "1.6" }}>
+              O seu perfil de contador parceiro aguarda aprovacao administrativa.
+              Acedera as funcionalidades operacionais apos aprovacao.
+            </p>
+            <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "1px solid var(--border-color, #2a2d3e)", borderRadius: "8px", padding: "0.75rem 1.5rem", cursor: "pointer" }}>
+              Sair
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    if (perfilContador?.status === "suspenso") {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+          <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "480px", width: "100%", textAlign: "center", border: "1px solid #ef4444" }}>
+            <h2 style={{ color: "#ef4444", marginBottom: "1rem", fontSize: "1.4rem" }}>Perfil suspenso</h2>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "0.5rem", lineHeight: "1.6" }}>
+              CRC {perfilContador.crc} ({perfilContador.uf_crc}) — status: suspenso
+            </p>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "1.5rem", lineHeight: "1.6" }}>
+              O seu perfil de contador parceiro encontra-se suspenso.
+              Contacte o administrador da plataforma para mais informacoes.
+            </p>
+            <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "1px solid var(--border-color, #2a2d3e)", borderRadius: "8px", padding: "0.75rem 1.5rem", cursor: "pointer" }}>
+              Sair
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    if (perfilContador?.status === "aprovado") {
+      return (
+        <div style={{ minHeight: "100vh", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+          <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+            <h1 style={{ color: "var(--text-primary, #fff)", fontSize: "1.5rem" }}>Portal do Contador</h1>
+            <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "1px solid var(--border-color, #2a2d3e)", borderRadius: "8px", padding: "0.5rem 1rem", cursor: "pointer" }}>
+              Sair
+            </button>
+          </header>
+          <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2rem", maxWidth: "640px", border: "1px solid #22c55e" }}>
+            <h2 style={{ color: "#22c55e", marginBottom: "1rem" }}>Perfil aprovado</h2>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "0.5rem" }}>
+              CRC {perfilContador.crc} ({perfilContador.uf_crc})
+            </p>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", lineHeight: "1.6" }}>
+              O seu perfil de contador parceiro esta aprovado.
+              As funcionalidades operacionais de homologacao serao disponibilizadas em iteracao seguinte.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    if (perfilContador === null) {
+      return <p style={{ padding: 40 }}>Carregando perfil regulatorio...</p>
+    }
+    if (perfilContador) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+          <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "480px", width: "100%", textAlign: "center", border: "1px solid #ef4444" }}>
+            <h2 style={{ color: "#ef4444", marginBottom: "1rem", fontSize: "1.4rem" }}>Status regulatorio desconhecido</h2>
+            <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "1.5rem", lineHeight: "1.6" }}>
+              O perfil devolveu um status nao reconhecido: {String(perfilContador.status ?? "—")}.
+              Contacte o administrador da plataforma.
+            </p>
+            <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "1px solid var(--border-color, #2a2d3e)", borderRadius: "8px", padding: "0.75rem 1.5rem", cursor: "pointer" }}>
+              Sair
+            </button>
+          </div>
+        </div>
+      )
+    }
   }
 
   if (loading) {
