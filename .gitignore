@@ -65,6 +65,9 @@ _rem.txt
 
 patch_app_jsx.py
 patch_app_jsx_fix.py
+criar_deploy_checklist.py
+criar_env_example.py
+patch_health_ready.py
 
 # Excepção: .env.example é documentação, não segredo
 !.env.example
