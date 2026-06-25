@@ -48,6 +48,8 @@ function App() {
 
   const [mostrarSenhaRegisto, setMostrarSenhaRegisto] = useState(false)
   const [verificandoSessao, setVerificandoSessao] = useState(true)
+  const [precisaAceitarTermos, setPrecisaAceitarTermos] = useState(false)
+  const [erroTermos, setErroTermos] = useState("")
 
   const [mostrarRegisto, setMostrarRegisto] = useState(false)
   const [nomeRegisto, setNomeRegisto] = useState("")
@@ -215,6 +217,29 @@ function App() {
     }
   }
 
+  async function handleAceitarTermos() {
+    try {
+      const res = await fetch(`${API_BASE}/auth/accept-terms`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` }
+      })
+      if (res.status === 401) {
+        clearToken()
+        window.location.reload()
+        return
+      }
+      if (res.ok) {
+        setPrecisaAceitarTermos(false)
+        window.location.reload()
+      } else {
+        alert("Erro ao aceitar os termos. Tente novamente.")
+      }
+    } catch (e) {
+      console.error("[Termos] Erro ao aceitar:", e)
+      alert("Erro de rede. Verifique a ligacao e tente novamente.")
+    }
+  }
+
   async function handleLogout() {
     await logout()
     window.location.reload()
@@ -234,35 +259,63 @@ function App() {
           }
         })
 
-        if (res.ok) {
-          const usuarioJson = await res.json()
-          setUsuario(usuarioJson)
-          const er = await fetch(`${API_BASE}/empresas/`, {
-            headers: { Authorization: `Bearer ${getToken()}` }
-          })
-          if (er.ok) {
-            const list = await er.json()
-            if (Array.isArray(list) && list.length > 0) {
-              const e = list[0]
+        if (!res.ok) {
+          clearToken()
+          setVerificandoSessao(false)
+          return
+        }
 
-              const tipoDerivado = e.regime_tributario === "mei" ? "mei" : "empresa"
+        const usuarioJson = await res.json()
+        setUsuario(usuarioJson)
+        const er = await fetch(`${API_BASE}/empresas/`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        })
+        if (er.ok) {
+          const list = await er.json()
+          if (Array.isArray(list) && list.length > 0) {
+            const e = list[0]
 
-              const perfil = {
-                tipo: tipoDerivado,
-                id: e.id,
-                nome:
-                  e.regime_tributario === "mei"
-                    ? `MEI - ${e.razao_social || `#${e.id}`}`
-                    : e.razao_social || `Empresa #${e.id}`
-              }
-              perfilEmpresaApiRef.current = perfil
-              setPerfilAtual(perfil)
+            const tipoDerivado = e.regime_tributario === "mei" ? "mei" : "empresa"
+
+            const perfil = {
+              tipo: tipoDerivado,
+              id: e.id,
+              nome:
+                e.regime_tributario === "mei"
+                  ? `MEI - ${e.razao_social || `#${e.id}`}`
+                  : e.razao_social || `Empresa #${e.id}`
             }
+            perfilEmpresaApiRef.current = perfil
+            setPerfilAtual(perfil)
           }
         }
 
-        if (!res.ok) {
-          clearToken()
+        // B10-TERMOS-01: verificar aceite de termos — falha controlada, nao silenciosa
+        try {
+          const termosRes = await fetch(`${API_BASE}/auth/has-accepted-terms`, {
+            headers: { Authorization: `Bearer ${getToken()}` }
+          })
+          if (termosRes.status === 401) {
+            clearToken()
+            setVerificandoSessao(false)
+            return
+          }
+          if (!termosRes.ok) {
+            setErroTermos("Nao foi possivel verificar o aceite dos termos. Tente novamente.")
+            setVerificandoSessao(false)
+            return
+          }
+          const termosData = await termosRes.json()
+          if (!termosData.accepted) {
+            setPrecisaAceitarTermos(true)
+            setVerificandoSessao(false)
+            return
+          }
+        } catch (e) {
+          console.warn("[Termos] Erro de rede:", e)
+          setErroTermos("Erro de rede ao verificar os termos. Verifique a ligacao e tente novamente.")
+          setVerificandoSessao(false)
+          return
         }
       } catch {
         clearToken()
@@ -303,6 +356,49 @@ function App() {
 
     carregarRelatorioSeguro(resultadoXML.relatorio_id)
   }, [tipoPerfil, data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
+
+  if (erroTermos) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+        <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "420px", width: "100%", textAlign: "center", border: "1px solid #ef4444" }}>
+          <h2 style={{ color: "#ef4444", marginBottom: "1rem" }}>Verificacao dos termos indisponivel</h2>
+          <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "1.5rem", lineHeight: "1.6" }}>{erroTermos}</p>
+          <button onClick={() => window.location.reload()} style={{ background: "var(--accent-color, #6366f1)", color: "#fff", border: "none", borderRadius: "8px", padding: "0.75rem 1.5rem", cursor: "pointer", marginRight: "0.75rem", fontWeight: "600" }}>
+            Tentar novamente
+          </button>
+          <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "1px solid var(--border-color, #2a2d3e)", borderRadius: "8px", padding: "0.75rem 1.5rem", cursor: "pointer" }}>
+            Sair
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (precisaAceitarTermos) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+        <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "480px", width: "100%", textAlign: "center", border: "1px solid var(--border-color, #2a2d3e)" }}>
+          <h2 style={{ color: "var(--text-primary, #fff)", marginBottom: "1rem", fontSize: "1.4rem" }}>Termos de Uso</h2>
+          <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "1.5rem", lineHeight: "1.6" }}>
+            Para utilizar a plataforma Tributaria L2, e necessario aceitar os Termos de Uso e a Politica de Privacidade.
+            Os seus dados fiscais serao tratados de forma soberana, auditavel e em conformidade com a LGPD.
+          </p>
+          <ul style={{ color: "var(--text-secondary, #9ca3af)", textAlign: "left", marginBottom: "1.5rem", paddingLeft: "1.2rem", lineHeight: "1.8" }}>
+            <li>Os seus documentos sao tratados de forma confidencial</li>
+            <li>Os calculos fiscais sao informativos — nao substituem parecer profissional</li>
+            <li>Pode solicitar a eliminacao dos seus dados a qualquer momento</li>
+            <li>O acesso a analises e pessoal e intransferivel</li>
+          </ul>
+          <button onClick={handleAceitarTermos} style={{ background: "var(--accent-color, #6366f1)", color: "#fff", border: "none", borderRadius: "8px", padding: "0.85rem 2rem", fontSize: "1rem", cursor: "pointer", width: "100%", fontWeight: "600" }}>
+            Aceitar e continuar
+          </button>
+          <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "none", marginTop: "0.75rem", cursor: "pointer", fontSize: "0.9rem", textDecoration: "underline" }}>
+            Sair
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (verificandoSessao) {
     return <p style={{ padding: 40 }}>Validando sessão...</p>
