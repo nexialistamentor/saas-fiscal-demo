@@ -239,3 +239,30 @@ def validar_vinculo_e_aceitar_atribuicao(
         db.rollback()
         raise AtribuicaoActivaExisteError(documento.id, escopo_chave) from exc
     return atribuicao
+
+
+def _serializar_vinculo_visao_empresa(vinculo: ContadorEmpresaVinculo) -> dict:
+    """Visão informacional para o titular da empresa — sem dados de auditoria admin."""
+    perfil = vinculo.contador
+    return {
+        "vinculo_id": vinculo.id,
+        "escopo_chave": vinculo.escopo_chave,
+        "status": vinculo.status,
+        "criado_em": vinculo.criado_em.isoformat() if vinculo.criado_em else None,
+        "contador": {
+            "crc": perfil.crc if perfil else None,
+            "uf_crc": perfil.uf_crc if perfil else None,
+            "status_regulatorio": perfil.status if perfil else None,
+        },
+    }
+
+
+def listar_vinculos_visao_empresa(db: Session, empresa_id: int) -> list[dict]:
+    """Lista vínculos contador↔empresa visíveis ao titular da empresa."""
+    vinculos = (
+        db.query(ContadorEmpresaVinculo)
+        .filter(ContadorEmpresaVinculo.empresa_id == empresa_id)
+        .order_by(ContadorEmpresaVinculo.criado_em.desc())
+        .all()
+    )
+    return [_serializar_vinculo_visao_empresa(v) for v in vinculos]

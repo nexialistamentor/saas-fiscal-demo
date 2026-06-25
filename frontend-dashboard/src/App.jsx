@@ -54,6 +54,9 @@ function App() {
   const [carregandoPerfilContador, setCarregandoPerfilContador] = useState(false)
   const [erroPerfilContador, setErroPerfilContador] = useState("")
   const [contadorSemPerfil, setContadorSemPerfil] = useState(false)
+  const [contadorVinculado, setContadorVinculado] = useState(null)
+  const [carregandoContadorVinculado, setCarregandoContadorVinculado] = useState(false)
+  const [erroContadorVinculado, setErroContadorVinculado] = useState("")
 
   const [mostrarRegisto, setMostrarRegisto] = useState(false)
   const [nomeRegisto, setNomeRegisto] = useState("")
@@ -366,6 +369,46 @@ function App() {
 
     carregarPerfilContador()
   }, [usuario])
+
+  useEffect(() => {
+    if (tipoPerfil !== "empresa" || !idPerfil) {
+      setContadorVinculado(null)
+      setErroContadorVinculado("")
+      return
+    }
+
+    async function carregarContadorVinculado() {
+      setErroContadorVinculado("")
+      setContadorVinculado(null)
+      setCarregandoContadorVinculado(true)
+      try {
+        const res = await fetch(`${API_BASE}/empresas/${idPerfil}/contador-vinculado`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        })
+        if (res.status === 401) {
+          clearToken()
+          window.location.reload()
+          return
+        }
+        if (res.status === 403) {
+          setErroContadorVinculado("Nao tem permissao para consultar o contador desta empresa.")
+          return
+        }
+        if (!res.ok) {
+          setErroContadorVinculado("Nao foi possivel carregar o contador vinculado. Tente novamente.")
+          return
+        }
+        setContadorVinculado(await res.json())
+      } catch (e) {
+        console.warn("[Empresa] Erro de rede ao carregar contador vinculado:", e)
+        setErroContadorVinculado("Erro de rede ao carregar o contador vinculado. Verifique a ligacao e tente novamente.")
+      } finally {
+        setCarregandoContadorVinculado(false)
+      }
+    }
+
+    carregarContadorVinculado()
+  }, [tipoPerfil, idPerfil])
 
 
 
@@ -968,6 +1011,53 @@ function App() {
           </button>
         ))}
       </div>
+
+      {tipoPerfil === "empresa" && idPerfil && (
+        <div
+          className="card"
+          style={{ margin: "16px 24px 0", maxWidth: 560, padding: 20, border: "1px solid #e2e8f0" }}
+        >
+          <h3 style={{ marginTop: 0 }}>Contador parceiro vinculado</h3>
+          {carregandoContadorVinculado && (
+            <p style={{ fontSize: 14, color: "#475569" }}>A carregar contador vinculado...</p>
+          )}
+          {!carregandoContadorVinculado && erroContadorVinculado && (
+            <p style={{ fontSize: 14, color: "#b91c1c" }}>{erroContadorVinculado}</p>
+          )}
+          {!carregandoContadorVinculado && !erroContadorVinculado && contadorVinculado && (
+            <>
+              {contadorVinculado.vinculos?.length > 0 ? (
+                contadorVinculado.vinculos.map((v) => (
+                  <div
+                    key={v.vinculo_id}
+                    style={{
+                      marginTop: 12,
+                      padding: 12,
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      background: "#f8fafc",
+                    }}
+                  >
+                    <p style={{ margin: "0 0 6px", fontSize: 14 }}>
+                      <strong>CRC:</strong> {v.contador?.crc ?? "—"} ({v.contador?.uf_crc ?? "—"})
+                    </p>
+                    <p style={{ margin: "0 0 6px", fontSize: 14 }}>
+                      <strong>Status do vinculo:</strong> {v.status ?? "—"}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 14 }}>
+                      <strong>Status regulatorio:</strong> {v.contador?.status_regulatorio ?? "—"}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p style={{ fontSize: 14, color: "#475569", margin: 0 }}>
+                  Nenhum contador parceiro vinculado a esta empresa.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {tipoPerfil === "cpf" && podeUploadXML && (
         <div
