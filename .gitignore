@@ -62,3 +62,6 @@ _rem.txt
 .env
 
 .cursor/rules.md
+
+patch_app_jsx.py
+patch_app_jsx_fix.py
