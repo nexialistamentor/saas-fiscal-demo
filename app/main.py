@@ -64,6 +64,11 @@ from app.services.normative_update_service import (
     marcar_alerta_processado,
 )
 from app.services.parsers.orquestrador_parsers import executar_parsers
+from app.services.perfil_contador_admin_service import (
+    criar_perfil_contador_pendente,
+    listar_perfis_contador,
+    aprovar_perfil_contador,
+)
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -170,6 +175,12 @@ class CriarVinculoContadorPayload(BaseModel):
     escopo_chave: str = "homologacao_documental"
     validade: str | None = None     # ISO 8601, ex: "2027-01-01T00:00:00"
     policy_version: str | None = None
+
+
+class CriarPerfilContadorPendentePayload(BaseModel):
+    email: str
+    crc: str
+    uf_crc: str
 
 
 # ── Payloads admin ──────────────────────────────────────────────────────
@@ -770,6 +781,68 @@ def admin_revogar_vinculo(
         "status_vinculo": vinculo.status,
         "revogado_em": vinculo.revogado_em.isoformat() if vinculo.revogado_em else None,
         "revogado_por_user_id": vinculo.revogado_por_user_id,
+    }
+
+
+@admin_router.post("/admin/contadores/perfis", status_code=201)
+@limiter.limit("20/minute")
+def admin_criar_perfil_contador_pendente(
+    request: Request,
+    payload: CriarPerfilContadorPendentePayload,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """B10-ADMIN-CONT-01: cria PerfilContador pendente para User existente. Promove role=contador."""
+    perfil = criar_perfil_contador_pendente(
+        db=db,
+        admin_user=usuario,
+        email=payload.email,
+        crc=payload.crc,
+        uf_crc=payload.uf_crc,
+    )
+    return {
+        "status": "perfil criado",
+        "perfil_id": perfil.id,
+        "user_id": perfil.user_id,
+        "crc": perfil.crc,
+        "uf_crc": perfil.uf_crc,
+        "perfil_status": perfil.status,
+    }
+
+
+@admin_router.get("/admin/contadores/perfis")
+@limiter.limit("30/minute")
+def admin_listar_perfis_contador(
+    request: Request,
+    status: str = "pendente",
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """B10-ADMIN-CONT-01: lista PerfilContador por status. Status inválido → 422."""
+    perfis = listar_perfis_contador(db=db, status=status)
+    return {"total": len(perfis), "perfis": perfis}
+
+
+@admin_router.post("/admin/contadores/perfis/{perfil_id}/aprovar", status_code=200)
+@limiter.limit("20/minute")
+def admin_aprovar_perfil_contador(
+    request: Request,
+    perfil_id: int,
+    db: Session = Depends(get_db),
+    usuario: models.User = Depends(require_role("admin")),
+):
+    """B10-ADMIN-CONT-01: transição soberana pendente → aprovado. Preenche aprovado_em/aprovado_por."""
+    perfil = aprovar_perfil_contador(
+        db=db,
+        admin_user=usuario,
+        perfil_id=perfil_id,
+    )
+    return {
+        "status": "perfil aprovado",
+        "perfil_id": perfil.id,
+        "perfil_status": perfil.status,
+        "aprovado_em": perfil.aprovado_em.isoformat(),
+        "aprovado_por": perfil.aprovado_por,
     }
 
 
