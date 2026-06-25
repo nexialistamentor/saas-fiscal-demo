@@ -26,6 +26,7 @@ class TipoDocumento(str, Enum):
     PDF_SCAN = "pdf_scan"
     IMAGE = "image"
     DANFE = "danfe"
+    XML_FISCAL = "xml_fiscal"   # B5-01: XML NF-e/NFC-e SEFAZ com extensão mascarada
     UNKNOWN = "unknown"
 
 
@@ -69,6 +70,16 @@ def classificar(conteudo: bytes, nome_ficheiro: str = "") -> ResultadoClassifica
             motivo_rejeicao=f"Documento excede limite de {MAX_BYTES // (1024*1024)} MB",
         )
 
+    # B5-01: detecta XML fiscal SEFAZ antes de qualquer guard PDF/imagem
+    if _is_xml_fiscal(conteudo):
+        return ResultadoClassificacao(
+            tipo=TipoDocumento.XML_FISCAL,
+            paginas=0,
+            tem_texto=False,
+            tem_imagem=False,
+            detectou_danfe=False,
+        )
+
     # Detecta imagem por magic bytes
     if _is_image(conteudo):
         return ResultadoClassificacao(
@@ -91,6 +102,28 @@ def classificar(conteudo: bytes, nome_ficheiro: str = "") -> ResultadoClassifica
         )
 
     return _classificar_pdf(conteudo)
+
+
+def _is_xml_fiscal(conteudo: bytes) -> bool:
+    """
+    B5-01: detecta XML fiscal SEFAZ (NF-e/NFC-e) pelo conteúdo.
+    Não depende da extensão (.xml, .nexialista, etc.).
+    Exige namespace SEFAZ + estrutura NF-e/NFC-e — evita falsos positivos.
+    """
+    amostra = conteudo[:4096].lstrip().lower()
+
+    if not (amostra.startswith(b"<?xml") or amostra.startswith(b"<")):
+        return False
+
+    tem_namespace_sefaz = b"portalfiscal.inf.br/nfe" in amostra
+    tem_estrutura_nfe = (
+        b"<nfeproc" in amostra
+        or b"<nfe " in amostra
+        or b"<nfe>" in amostra
+        or b"<infnfe" in amostra
+    )
+
+    return tem_namespace_sefaz and tem_estrutura_nfe
 
 
 def _is_image(conteudo: bytes) -> bool:
