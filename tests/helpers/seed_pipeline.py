@@ -34,8 +34,9 @@ from app.security import hash_senha
 # ---------------------------------------------------------------------------
 
 XML_FIXTURE = (
-    Path(__file__).resolve().parents[2] / "app" / "xmls_testes" / "xml_icms10_st_real.xml"
+    Path(__file__).resolve().parents[2] / "app" / "xmls_testes" / "xml_icms10_st_sintetico.xml"
 )
+# Fixture sintética. Não usar XML real no repositório.
 CNPJ_FIXTURE = "12345678000199"
 CHAVE_NFE = "35250912345678000199650100000030011833829765"
 

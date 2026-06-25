@@ -31,7 +31,7 @@ from app.services.analysis_orchestrator import executar_analise_xml
 from app.services.registro_analise_service import executar_e_registrar_analise_xml
 
 XML_FIXTURE = (
-    Path(__file__).resolve().parents[1] / "app" / "xmls_testes" / "xml_icms10_st_real.xml"
+    Path(__file__).resolve().parents[1] / "app" / "xmls_testes" / "xml_icms10_st_sintetico.xml"
 )
 CHAVE_NFE_ICMS10 = "35250912345678000199650100000030011833829765"
 LOTE_ROUTER_PATH = (

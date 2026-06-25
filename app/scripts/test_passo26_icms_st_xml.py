@@ -20,7 +20,7 @@ if str(_raiz) not in sys.path:
     sys.path.insert(0, str(_raiz))
 
 # XML com ICMS10 e ST real
-XML_ICMS10 = Path(__file__).resolve().parent.parent / "xmls_testes" / "xml_icms10_st_real.xml"
+XML_ICMS10 = Path(__file__).resolve().parent.parent / "xmls_testes" / "xml_icms10_st_sintetico.xml"
 # XML sem ST (ICMSSN500) - para testar cálculo
 XML_SEM_ST = Path(__file__).resolve().parent.parent / "xmls_testes" / "xml_icms_st_teste.xml"
 
