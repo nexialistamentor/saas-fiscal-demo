@@ -60,3 +60,5 @@ _cmdout.txt
 _rem.txt
 *.log
 .env
+
+.cursor/rules.md
