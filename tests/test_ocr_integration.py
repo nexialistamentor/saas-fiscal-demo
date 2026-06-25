@@ -45,14 +45,21 @@ def _pdf_scan_bytes() -> bytes:
 
 
 def _jpeg_fiscal() -> bytes:
-    """Imagem JPEG com texto fiscal."""
-    from PIL import Image as PILImage, ImageDraw
+    """Imagem PNG com texto fiscal legivel para OCR (fonte TrueType, imagem grande)."""
+    from PIL import Image as PILImage, ImageDraw, ImageFont
 
-    img = PILImage.new("RGB", (800, 200), color=(255, 255, 255))
+    img = PILImage.new("RGB", (1400, 350), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
-    draw.text((10, 80), "CNPJ 12.345.678/0001-90 CFOP 5102", fill=(0, 0, 0))
+    try:
+        font = ImageFont.truetype("arial.ttf", 36)
+    except Exception:
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", 36)
+        except Exception:
+            font = ImageFont.load_default()
+    draw.text((100, 120), "CNPJ 12.345.678/0001-90 CFOP 5102", fill=(0, 0, 0), font=font)
     buf = io.BytesIO()
-    img.save(buf, format="JPEG")
+    img.save(buf, format="PNG")
     return buf.getvalue()
 
 
