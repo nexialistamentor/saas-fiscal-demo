@@ -67,6 +67,44 @@ def _get_perfil_contador(
     return perfil
 
 # ---------------------------------------------------------------------------
+# Dependency — valida que o utilizador é contador (qualquer status de perfil)
+# ---------------------------------------------------------------------------
+def _get_usuario_contador(
+    usuario: User = Depends(get_usuario_atual),
+) -> User:
+    """Acesso informacional: role=contador obrigatório, status de perfil irrelevante."""
+    if usuario.role != "contador":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a contadores parceiros",
+        )
+    return usuario
+
+@router.get("/perfil")
+def consultar_proprio_perfil(
+    usuario: User = Depends(_get_usuario_contador),
+    db: Session = Depends(get_db),
+):
+    """Contador consulta o próprio estado regulatório. Não exige status=aprovado."""
+    perfil = db.query(PerfilContador).filter(
+        PerfilContador.user_id == usuario.id
+    ).first()
+    if not perfil:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="PerfilContador não encontrado para este utilizador.",
+        )
+    return {
+        "perfil_id": perfil.id,
+        "crc": perfil.crc,
+        "uf_crc": perfil.uf_crc,
+        "status": perfil.status,
+        "aprovado_em": perfil.aprovado_em.isoformat() if perfil.aprovado_em else None,
+        "aprovado_por": perfil.aprovado_por,
+        "criado_em": perfil.criado_em.isoformat() if perfil.criado_em else None,
+    }
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
