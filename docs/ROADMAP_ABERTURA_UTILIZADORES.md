@@ -198,7 +198,9 @@ de XML real → relatório PDF correcto → dashboard com os mesmos números.
 
 ---
 
-## BLOCO 10 — JORNADA REAL DO UTILIZADOR E DO CONTADOR
+## BLOCO 10 — JORNADA REAL DO UTILIZADOR E DO CONTADOR ✔ FECHADO
+
+**Estado:** ✔ Fechado em b803e29..def3f53 (2026-06-25) — termos/LGPD, admin PerfilContador, portal contador, empresa↔contador.
 
 **Objectivo:** garantir que a plataforma é usável por alguém que não
 conhece o sistema por dentro. Abertura real exige fluxo simples, não
@@ -231,6 +233,8 @@ próximo passo.
 ---
 
 ## BLOCO 11 — SEGURANÇA, LGPD E DADOS SENSÍVEIS
+
+**Estado:** Fase 1 fechada (2026-06-25) — B11-01 mapa exposição, B11-01A fixture XML sintética, B11-01B ADR-006. Fases 2-5 pendentes pós-piloto.
 
 **Objectivo:** impedir que o produto abra com risco jurídico ou
 vazamento de dados fiscais. A plataforma lida com XML, CNPJ, CPF,
@@ -291,7 +295,7 @@ dependência de qualquer API externa de IA.
 
 ---
 
-## BLOCO 12 — PRODUÇÃO, MONITORIZAÇÃO E ROLLBACK
+## BLOCO 12 — PRODUÇÃO, MONITORIZAÇÃO E ROLLBACK ✔ FECHADO
 
 **Objectivo:** garantir que a plataforma consegue operar em produção
 sem Miguel depender de prints ou adivinhação quando algo falha.
@@ -383,7 +387,10 @@ documento pendente.
 
 ---
 
-## BLOCO 5 — PONTE DOCUMENTAL-FISCAL (BLOQUEADO ATÉ AMOSTRA REAL)
+## BLOCO 5 — PONTE DOCUMENTAL-FISCAL ✔ FECHADO
+
+**Estado:** ✔ Fechado em b0c3ec5/c10376a/a3b2b51/15591cf (2026-06-25)
+B5-01 XML_FISCAL no classifier; B5-02 EvidenciaFiscalComparavel; B5-03 conciliação DANFE PDF↔XML; B5-04 adapter imagem com validação DV. Suite 404 passed.
 
 **Objectivo:** retomar DT-DOC-02a, DT-DOC-02c e o service de
 promotion — **só quando a amostra real chegar do contador.** Corre
@@ -496,3 +503,21 @@ Commits:
 **Suite:** 336 passed, 5 skipped | Build frontend OK
 
 **Próximo:** Bloco 10 — Jornada utilizador/contador (quando Bloco 5 bloqueado por DANFE)
+
+## Registo 2026-06-25 (sessão)
+**Blocos fechados nesta sessão:** 5, 10, 11 (fase 1), 12
+**HEAD:** 15591cf
+**Suite:** 404 passed, 1 skipped, 1 xfailed
+**Produção:** /health 200 OK, /health/ready 200 OK
+
+| Bloco | Commit(s) chave | Notas |
+|-------|----------------|-------|
+| B5-01 | b0c3ec5 | XML_FISCAL no classifier — extensões mascaradas |
+| B5-02 | c10376a | EvidenciaFiscalComparavel + adapter XML |
+| B5-03 | a3b2b51 | Conciliação DANFE PDF↔XML |
+| B5-04 | 15591cf | Adapter DANFE imagem + validação DV chave NF-e |
+| B10 | b803e29..def3f53 | Termos, admin PerfilContador, portal contador, empresa↔contador |
+| B11 | 4066b4d, b658642 | Fixture XML sintética, ADR-006 LGPD |
+| B12 | 922b4d3..dd3e300 | .env.example, /health/ready, DEPLOY_CHECKLIST |
+
+**Próximo:** Bloco 13 — Piloto controlado

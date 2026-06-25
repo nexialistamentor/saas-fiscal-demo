@@ -69,6 +69,8 @@ criar_deploy_checklist.py
 criar_env_example.py
 patch_health_ready.py
 patch_b5_01_classifier.py
+actualizar_roadmap.py
+actualizar_roadmap_v2.py
 
 # Excepção: .env.example é documentação, não segredo
 !.env.example
