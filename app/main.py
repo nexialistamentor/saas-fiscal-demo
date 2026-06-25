@@ -861,6 +861,50 @@ def health(request: Request):
     return {"status": "ok"}
 
 
+@app.get("/health/ready")
+@limiter.limit("30/minute")
+def health_ready(request: Request, db: Session = Depends(get_db)):
+    """
+    B12-02: readiness check — verifica BD e Redis (advisory).
+    Usado para monitorização operacional.
+    /health (liveness) permanece simples — usado pelo Railway healthcheck.
+    Resposta:
+      200 → database="ok"; redis pode ser ok|not_configured|unavailable
+      503 → database="error" (BD inacessível)
+    """
+    from fastapi.responses import JSONResponse
+    from app.redis_connection import get_redis_connection
+
+    resultado = {
+        "status": "ok",
+        "database": "error",
+        "redis": "not_configured",
+    }
+
+    # Verificar BD
+    try:
+        db.execute(text("SELECT 1"))
+        resultado["database"] = "ok"
+    except Exception:
+        resultado["database"] = "error"
+        resultado["status"] = "degraded"
+
+    # Verificar Redis — advisory, não obrigatório (fallback síncrono existe)
+    try:
+        redis_conn, _, err = get_redis_connection()
+        if redis_conn is not None:
+            resultado["redis"] = "ok"
+        elif err is not None:
+            resultado["redis"] = "unavailable"
+        else:
+            resultado["redis"] = "not_configured"
+    except Exception:
+        resultado["redis"] = "unavailable"
+
+    status_code = 503 if resultado["status"] == "degraded" else 200
+    return JSONResponse(content=resultado, status_code=status_code)
+
+
 @app.post("/upload-xml")
 @limiter.limit("10/minute")
 async def upload_xml(
