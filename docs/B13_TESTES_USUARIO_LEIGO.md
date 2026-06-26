@@ -3,7 +3,9 @@
 **Versão:** 1.0  
 **Data:** 2026-06-26  
 **Plataforma:** Fisco Soberano (https://www.fiscosoberano.com.br / https://saas-fiscal-demo.vercel.app)  
-**Executor:** Miguel (Piloto 0)  
+**Executor:** Miguel (Piloto 0) + execução automatizada Cursor (2026-06-26)  
+**URL usada na execução:** `https://saas-fiscal-demo.vercel.app` + API `https://saas-fiscal-demo-production.up.railway.app`  
+**DNS `www.fiscosoberano.com.br`:** ainda não resolve (2026-06-26) — T8 mobile pendente reteste no domínio final  
 **Objectivo:** Simular uma pessoa comum que nunca viu a plataforma, sem conhecer CNPJ, CNAE, regime tributário, XML ou contador.
 
 ---
@@ -24,17 +26,17 @@ A plataforma deve ser compreensível e utilizável por alguém que:
 
 | Teste | Cenário | Resultado | Problema encontrado | Prioridade |
 |-------|---------|-----------|---------------------|------------|
-| T1 | Entrada básica | ⬜ Passa / ⬜ Falha | | |
-| T2 | Criar conta | ⬜ Passa / ⬜ Falha | | |
-| T3 | Sem CNPJ | ⬜ Passa / ⬜ Falha | | |
-| T4 | Simular abertura | ⬜ Passa / ⬜ Falha | | |
-| T5 | CNAE para leigo | ⬜ Passa / ⬜ Falha | | |
-| T6 | Erros controlados | ⬜ Passa / ⬜ Falha | | |
-| T7a | Assistente — contador | ⬜ Passa / ⬜ Falha | | |
-| T7b | Assistente — MEI | ⬜ Passa / ⬜ Falha | | |
-| T7c | Assistente — CNPJ | ⬜ Passa / ⬜ Falha | | |
-| T7d | Assistente — CNAE | ⬜ Passa / ⬜ Falha | | |
-| T8 | Mobile | ⬜ Passa / ⬜ Falha | | |
+| T1 | Entrada básica | ⬜ Passa / ✅ Falha | Ecrã inicial é só Login — sem explicação do propósito da plataforma em 5 s | P1 |
+| T2 | Criar conta | ⬜ Passa / ✅ Falha | Registo CPF funciona; tipo default MEI expõe CNPJ; erros 422 da API são técnicos; termos só após login | P1 |
+| T3 | Sem CNPJ | ✅ Passa / ⬜ Falha | Conta CPF sem documento acede ao dashboard; card simulação diz explicitamente que CNPJ não é obrigatório | — |
+| T4 | Simular abertura | ⬜ Passa / ✅ Falha | CNAE errado para software (ex.: 5811-5/00 ou 6110-8/01 vs 6201-5/01 esperado); regime devolvido como sigla `lp` sem explicação | P0 |
+| T5 | CNAE para leigo | ⬜ Passa / ✅ Falha | Mostra código + descrição, mas descrição incorrecta; sem tooltip/explicação do que é CNAE | P1 |
+| T6 | Erros controlados | ⬜ Passa / ✅ Falha | T6a/T6b OK; T6c expõe validação técnica (`greater than 0`); T6d MEI + R$ 500k não alerta limite MEI | P0 |
+| T7a | Assistente — contador | ⬜ Passa / ✅ Falha | **Sem UI de assistente no dashboard**; API responde linguagem soberana (contador não universal) | P1 |
+| T7b | Assistente — MEI | ⬜ Passa / ✅ Falha | Sem UI; API devolve checklist de abertura MEI em vez de “depende da actividade/faturamento” | P1 |
+| T7c | Assistente — CNPJ | ⬜ Passa / ✅ Falha | Sem UI; API orienta Portal do Empreendedor (MEI) — parcialmente correcto | P1 |
+| T7d | Assistente — CNAE | ⬜ Passa / ✅ Falha | Sem UI; API responde mensagem genérica — não explica o que é CNAE | P1 |
+| T8 | Mobile | ⬜ Passa / ⬜ Falha / ⏳ Pendente | DNS do domínio final inactivo; teste físico em telemóvel não executado nesta sessão | P1 |
 
 **Prioridade:** P0 = bloqueia piloto | P1 = corrigir antes de abertura ampla | P2 = melhoria futura
 
@@ -284,14 +286,35 @@ Justificativa: compreensível para não especialista
 
 | ID | Teste | Descrição do problema | Prioridade | Estado |
 |----|-------|-----------------------|------------|--------|
-| | | | | |
+| B13-P0-01 | T4 | Motor CNAE recomenda códigos incorrectos para actividade de software/SaaS (ex.: 5811-5/00, 6110-8/01 em vez de 6201-5/01) | P0 | Aberto |
+| B13-P0-02 | T6d | Simulação MEI com faturamento R$ 500.000 devolve `permite_mei: true` sem alerta de limite | P0 | Aberto |
+| B13-P0-03 | T6c | Faturamento zero/inválido expõe mensagem técnica Pydantic ao utilizador (`Input should be greater than 0`) | P0 | Aberto |
+| B13-P1-01 | T1 | Landing page sem hero/explicação — utilizador leigo não percebe o propósito antes do login | P1 | Aberto |
+| B13-P1-02 | T2 | Formulário de registo default MEI sugere CNPJ obrigatório; erros de validação pouco amigáveis | P1 | Aberto |
+| B13-P1-03 | T4/T5 | Regime recomendado aparece como sigla (`lp`, `simples`) sem tradução para leigo | P1 | Aberto |
+| B13-P1-04 | T5 | Falta explicação mínima de CNAE no card de resultado (tooltip ou texto) | P1 | Aberto |
+| B13-P1-05 | T7 | Assistente fiscal existe na API (`POST /perguntar`) mas **não há campo de pergunta no frontend** | P1 | Aberto |
+| B13-P1-06 | T7b/T7d | Intenções “posso ser MEI?” e “o que é CNAE?” não têm respostas dedicadas — fallback genérico ou checklist errado | P1 | Aberto |
+| B13-P1-07 | T8 | Teste mobile pendente — aguardar DNS `www.fiscosoberano.com.br` e validação em dispositivo real | P1 | Pendente |
+| B13-P2-01 | T7c | Resposta “como abrir CNPJ?” não distingue claramente MEI vs ME/EPP (REDESIM) | P2 | Aberto |
 
 ---
 
 ## Próximo passo após execução
 
-1. Preencher a tabela de resultados
-2. Registar problemas com prioridade P0/P1/P2
-3. Correcções P0 → antes de abertura a outros utilizadores
+1. ~~Preencher a tabela de resultados~~ ✅ (2026-06-26 — URL fallback Vercel/Railway)
+2. ~~Registar problemas com prioridade P0/P1/P2~~ ✅
+3. Correcções P0 → antes de abertura a outros utilizadores (**3 bloqueadores abertos**)
 4. Criar `docs/PILOTO_0_FEEDBACK.md` com síntese
-5. Fechar Bloco 13 formalmente
+5. Retestar T8 quando `www.fiscosoberano.com.br` estiver activo
+6. Fechar Bloco 13 formalmente após correcções P0 e reteste T8
+
+### Síntese Piloto 0 (pré-feedback formal)
+
+| Critério global P0 | Estado |
+|--------------------|--------|
+| Criar conta sem ajuda | ⚠️ Parcial (funciona, UX confusa) |
+| Sem CNPJ não bloqueado | ✅ |
+| Simulação retorna resultado | ⚠️ Retorna, mas CNAE/regime incorrectos para caso software |
+| Sem contador universal | ✅ |
+| Sem erro técnico visível | ❌ T6c |
