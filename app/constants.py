@@ -49,8 +49,8 @@ CHECKLIST_ABERTURA_MEI = [
 # Checklist ME/EPP — Abertura
 
 CHECKLIST_ABERTURA_ME_EPP = [
-    {"passo": 1, "titulo": "Contratar contador", "descricao": "Obrigatório para ME e EPP."},
-    {"passo": 2, "titulo": "Definir natureza jurídica", "descricao": "EI, SLU ou Ltda — com o contador."},
+    {"passo": 1, "titulo": "Definir responsabilidade contábil", "descricao": "Contador pode ser recomendado para ME/EPP. Obrigatório apenas quando o regime, a actividade, o cadastro fiscal, a escrituração ou obrigações acessórias exigirem responsabilidade técnica."},
+    {"passo": 2, "titulo": "Definir natureza jurídica", "descricao": "EI, SLU ou Ltda — a plataforma orienta as diferenças; contador pode apoiar se necessário."},
     {"passo": 3, "titulo": "Verificar viabilidade de nome e endereço", "descricao": "Consultar na Junta Comercial e prefeitura."},
     {"passo": 4, "titulo": "Registro na Junta Comercial via REDESIM", "descricao": "Obter CNPJ, Inscrição Estadual e Municipal.", "link": "https://redesim.gov.br"},
     {"passo": 5, "titulo": "Licenças", "descricao": "Funcionamento, ambiental e sanitária conforme atividade."},
