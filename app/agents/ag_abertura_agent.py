@@ -29,8 +29,10 @@ class AgAberturaAgent:
             checklist = CHECKLIST_ABERTURA_ME_EPP
             titulo = "Como abrir uma empresa (ME/EPP) em 2026"
             descricao = (
-                "Para abrir uma ME ou EPP em 2026, o processo passa pela REDESIM "
-                "e requer contador obrigatório. Siga os passos abaixo:"
+                "Para abrir uma ME ou EPP em 2026, o processo passa pela REDESIM. "
+                "A plataforma conduz automaticamente tudo o que puder ser feito com "
+                "regras públicas e fluxos oficiais. Contador entra apenas quando "
+                "a lei, obrigação técnica ou risco fiscal elevado assim exigir:"
             )
         else:
             checklist = CHECKLIST_ABERTURA_MEI
@@ -46,8 +48,9 @@ class AgAberturaAgent:
             resposta += f"**{item['passo']}.** {item['titulo']}: {item['descricao']}{link}\n"
 
         resposta += (
-            "\n\n💡 *Esta plataforma tem contadores parceiros com assinatura digital "
-            "que podem acompanhar todo o processo remotamente.*"
+            "\n\n💡 *Esta plataforma conduz automaticamente tudo o que a lei e os "
+            "dados públicos permitem. Contador entra apenas quando exigido por lei, "
+            "por obrigação técnica ou por escolha do utilizador.*"
         )
 
         return {

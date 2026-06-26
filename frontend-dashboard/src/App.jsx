@@ -152,6 +152,15 @@ function App() {
   const [rendimentoEnviando, setRendimentoEnviando] = useState(false)
   const [rendimentoConfirmado, setRendimentoConfirmado] = useState(null)
   const [rendimentoErro, setRendimentoErro] = useState(null)
+  // B13-01: simulação de abertura soberana
+  const [formAberturaDescricao, setFormAberturaDescricao] = useState("")
+  const [formAberturaFaturamento, setFormAberturaFaturamento] = useState("")
+  const [formAberturaFolha, setFormAberturaFolha] = useState("")
+  const [formAberturaPorte, setFormAberturaPorte] = useState("me")
+  const [formAberturaAtividade, setFormAberturaAtividade] = useState("servicos")
+  const [simulacaoAberturaResultado, setSimulacaoAberturaResultado] = useState(null)
+  const [simulacaoAberturaCarregando, setSimulacaoAberturaCarregando] = useState(false)
+  const [simulacaoAberturaErro, setSimulacaoAberturaErro] = useState(null)
 
   async function iniciarCheckout(e) {
     e.preventDefault()
@@ -966,6 +975,42 @@ function App() {
     }
   }
 
+  // B13-01: simulação de abertura soberana
+  async function simularAbertura(e) {
+    e.preventDefault()
+    setSimulacaoAberturaCarregando(true)
+    setSimulacaoAberturaErro(null)
+    setSimulacaoAberturaResultado(null)
+    try {
+      const res = await fetch(`${API_BASE}/formalizacao/simular-empresa`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          descricao_actividade: formAberturaDescricao,
+          porte: formAberturaPorte,
+          faturamento_anual: Number(formAberturaFaturamento) || 0,
+          folha_anual: Number(formAberturaFolha) || 0,
+          atividade: formAberturaAtividade,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        const detalhe = Array.isArray(err.detail)
+          ? err.detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
+          : err.detail
+        throw new Error(detalhe || "Erro ao simular abertura.")
+      }
+      setSimulacaoAberturaResultado(await res.json())
+    } catch (err) {
+      setSimulacaoAberturaErro(err.message)
+    } finally {
+      setSimulacaoAberturaCarregando(false)
+    }
+  }
+
   async function carregarRelatorioSeguro(relatorio_id) {
     try {
       const res = await fetch(`${API_BASE}/relatorio/${relatorio_id}`, {
@@ -1058,6 +1103,108 @@ function App() {
           )}
         </div>
       )}
+
+      {/* B13-01: Card Simular Abertura Soberana */}
+      <div
+        className="card"
+        style={{ margin: "20px 24px 0", maxWidth: 560, padding: 20, border: "1px solid #6366f1" }}
+      >
+        <h3 style={{ marginTop: 0, color: "var(--text-primary, #fff)" }}>Simular abertura de empresa</h3>
+        <p style={{ fontSize: 14, color: "var(--text-secondary, #9ca3af)", marginBottom: 12 }}>
+          Não precisas de CNPJ para simular. Contador só entra quando a lei,
+          obrigação técnica, risco fiscal ou a tua escolha exigirem.
+        </p>
+        <form onSubmit={simularAbertura} style={{ display: "grid", gap: 10 }}>
+          <label>
+            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Descrição da actividade</span>
+            <input
+              type="text"
+              placeholder="Ex: plataforma SaaS de inteligência tributária"
+              value={formAberturaDescricao}
+              onChange={(e) => setFormAberturaDescricao(e.target.value)}
+              required
+              style={{ width: "100%", marginTop: 4 }}
+            />
+          </label>
+          <label>
+            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Tipo de actividade</span>
+            <select
+              value={formAberturaAtividade}
+              onChange={(e) => setFormAberturaAtividade(e.target.value)}
+              style={{ width: "100%", marginTop: 4 }}
+            >
+              <option value="servicos">Serviços</option>
+              <option value="comercio">Comércio</option>
+              <option value="industria">Indústria</option>
+              <option value="misto">Misto (serviços + comércio)</option>
+            </select>
+          </label>
+          <label>
+            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Porte pretendido</span>
+            <select
+              value={formAberturaPorte}
+              onChange={(e) => setFormAberturaPorte(e.target.value)}
+              style={{ width: "100%", marginTop: 4 }}
+            >
+              <option value="mei">MEI</option>
+              <option value="me">ME (Microempresa)</option>
+              <option value="epp">EPP</option>
+            </select>
+          </label>
+          <label>
+            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Faturamento anual esperado (R$)</span>
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              placeholder="Ex: 120000"
+              value={formAberturaFaturamento}
+              onChange={(e) => setFormAberturaFaturamento(e.target.value)}
+              style={{ width: "100%", marginTop: 4 }}
+            />
+          </label>
+          <label>
+            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Folha salarial anual estimada (R$, opcional)</span>
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              placeholder="Ex: 0 (sem funcionários)"
+              value={formAberturaFolha}
+              onChange={(e) => setFormAberturaFolha(e.target.value)}
+              style={{ width: "100%", marginTop: 4 }}
+            />
+          </label>
+          <button type="submit" disabled={simulacaoAberturaCarregando || !formAberturaDescricao}>
+            {simulacaoAberturaCarregando ? "A simular…" : "Simular abertura"}
+          </button>
+        </form>
+        {simulacaoAberturaErro && (
+          <p style={{ color: "#ef4444", marginTop: 8, fontSize: 13 }}>{simulacaoAberturaErro}</p>
+        )}
+        {simulacaoAberturaResultado && (
+          <div style={{ marginTop: 16, padding: 12, background: "var(--bg-primary, #0f1117)", borderRadius: 8 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 13 }}>
+              <strong>CNAE recomendado:</strong> {simulacaoAberturaResultado.cnae_recomendado?.codigo} — {simulacaoAberturaResultado.cnae_recomendado?.descricao}
+            </p>
+            <p style={{ margin: "0 0 6px", fontSize: 13 }}>
+              <strong>Permite MEI:</strong> {simulacaoAberturaResultado.permite_mei ? "Sim" : "Não"}
+              {simulacaoAberturaResultado.motivo_nao_mei ? ` — ${simulacaoAberturaResultado.motivo_nao_mei}` : ""}
+            </p>
+            <p style={{ margin: "0 0 6px", fontSize: 13 }}>
+              <strong>Regime recomendado:</strong> {simulacaoAberturaResultado.regime_recomendado}
+            </p>
+            <p style={{ margin: "0 0 6px", fontSize: 13 }}>
+              <strong>Economia vs pior regime:</strong> R$ {Number(simulacaoAberturaResultado.economia_anual_vs_pior || 0).toLocaleString("pt-BR")}
+            </p>
+            {simulacaoAberturaResultado.justificativa_cnae?.length > 0 && (
+              <p style={{ margin: "0", fontSize: 12, color: "var(--text-secondary, #9ca3af)" }}>
+                {simulacaoAberturaResultado.justificativa_cnae.join(" · ")}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {tipoPerfil === "cpf" && podeUploadXML && (
         <div
