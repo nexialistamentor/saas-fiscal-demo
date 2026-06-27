@@ -79,6 +79,27 @@ def _detectar_palavras(descricao: str, keywords_data: dict) -> dict[str, list[st
     return detectadas
 
 
+def _expandir_termos_busca(keywords: list[str], keywords_data: dict) -> list[str]:
+    """Expande keywords detectadas com sinónimos para match na descrição CNAE."""
+    sinonimos = keywords_data.get("sinonimos_cnae", {})
+    termos: set[str] = set()
+    for kw in keywords:
+        termos.add(kw)
+        for s in sinonimos.get(kw, []):
+            termos.add(s)
+    return list(termos)
+
+
+def _divisao_prioritaria(keywords: list[str], keywords_data: dict) -> Optional[str]:
+    """Divisão CNAE preferida quando keywords mapeiam actividade conhecida."""
+    mapeamento = keywords_data.get("mapeamento_divisoes", {})
+    for kw in keywords:
+        div = mapeamento.get(kw)
+        if div:
+            return div
+    return None
+
+
 def _calcular_score(
     secao: str,
     keywords_encontradas: list[str],
@@ -166,11 +187,26 @@ def recomendar_cnaes(
     # 3. Buscar CNAEs da secção principal
     cnaes_secao = subclasses_por_secao(secao_principal)
 
-    # Filtrar por keywords na descrição do CNAE
+    # Filtrar por keywords (com sinónimos) na descrição do CNAE
+    termos_busca = _expandir_termos_busca(palavras_detectadas_todas, keywords_data)
     cnaes_relevantes = [
         c for c in cnaes_secao
-        if any(kw in c.descricao.lower() for kw in palavras_detectadas_todas)
+        if any(termo in c.descricao.lower() for termo in termos_busca)
     ]
+
+    # Priorizar divisão mapeada (ex.: software → 62, editora → 58)
+    divisao_alvo = _divisao_prioritaria(palavras_detectadas_todas, keywords_data)
+    if divisao_alvo and cnaes_relevantes:
+        prioritarios = [c for c in cnaes_relevantes if c.codigo_divisao == divisao_alvo]
+        if prioritarios:
+            cnaes_relevantes = prioritarios + [c for c in cnaes_relevantes if c not in prioritarios]
+    elif divisao_alvo and not cnaes_relevantes:
+        cnaes_divisao = [c for c in cnaes_secao if c.codigo_divisao == divisao_alvo]
+        if cnaes_divisao:
+            cnaes_relevantes = cnaes_divisao[: max_resultados + 1]
+            justificativa.append(
+                f"Divisão {divisao_alvo} priorizada por mapeamento de keywords"
+            )
 
     # Fallback para todos da secção se nenhum match
     if not cnaes_relevantes:

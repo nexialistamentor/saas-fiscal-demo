@@ -14,14 +14,21 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import User
 from app.security import get_usuario_atual
 from app.services.cnae_engine import recomendar_cnaes
 from app.services.regime_engine import comparar_regimes
+from app.services.tax_engines.mei_constants import MEI_LIMITE_ANUAL_FATURAMENTO
 
 router = APIRouter(prefix="/formalizacao", tags=["formalizacao"])
+
+
+def _validar_faturamento_positivo(cls, v: Decimal) -> Decimal:
+    if v is None or v <= 0:
+        raise ValueError("O faturamento anual deve ser maior que zero")
+    return v
 
 
 # ---------------------------------------------------------------------------
@@ -34,21 +41,25 @@ class RecomendarCnaeRequest(BaseModel):
 
 
 class CompararRegimesRequest(BaseModel):
-    faturamento_anual: Decimal = Field(..., gt=0)
+    faturamento_anual: Decimal = Field(...)
     folha_anual: Decimal = Field(default=Decimal("0"), ge=0)
     lucro_contabil: Optional[Decimal] = None
     secao_cnae: str = Field(default="J", min_length=1, max_length=2)
     atividade: str = Field(default="servicos")
     regimes_permitidos: Optional[list[str]] = None
 
+    _validar_faturamento = field_validator("faturamento_anual")(_validar_faturamento_positivo)
+
 
 class SimularEmpresaRequest(BaseModel):
     descricao_actividade: str = Field(..., min_length=3, max_length=500)
     porte: str = Field(default="me", pattern="^(mei|me|epp|medio|grande)$")
-    faturamento_anual: Decimal = Field(..., gt=0)
+    faturamento_anual: Decimal = Field(...)
     folha_anual: Decimal = Field(default=Decimal("0"), ge=0)
     lucro_contabil: Optional[Decimal] = None
     atividade: str = Field(default="servicos")
+
+    _validar_faturamento = field_validator("faturamento_anual")(_validar_faturamento_positivo)
 
 
 # ---------------------------------------------------------------------------
@@ -151,11 +162,24 @@ def simular_empresa(
         regimes_permitidos=regimes_para_comparar,
     )
 
+    permite_mei = resultado_cnae.permite_mei
+    motivo_nao_mei = resultado_cnae.motivo_nao_mei
+    alertas_mei: list[str] = []
+
+    if body.porte == "mei" and body.faturamento_anual >= MEI_LIMITE_ANUAL_FATURAMENTO:
+        alertas_mei.append(
+            f"Faturamento anual (R$ {body.faturamento_anual:,.2f}) ultrapassa o limite MEI "
+            f"de R$ {MEI_LIMITE_ANUAL_FATURAMENTO:,.2f}"
+        )
+        permite_mei = False
+        motivo_nao_mei = motivo_nao_mei or "Faturamento acima do limite anual permitido para MEI"
+
     return {
         "cnae_recomendado": _serializar_cnae(resultado_cnae.cnae_principal_sugerido),
         "secao_cnae": secao_cnae,
-        "permite_mei": resultado_cnae.permite_mei,
-        "motivo_nao_mei": resultado_cnae.motivo_nao_mei,
+        "permite_mei": permite_mei,
+        "motivo_nao_mei": motivo_nao_mei,
+        "alertas_mei": alertas_mei,
         "regime_recomendado": resultado_regime.regime_recomendado,
         "economia_anual_vs_pior": str(resultado_regime.economia_anual_vs_pior),
         "regimes_compativeis": resultado_cnae.regimes_compativeis,
