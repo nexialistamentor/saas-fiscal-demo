@@ -318,3 +318,136 @@ Justificativa: compreensível para não especialista
 | Simulação retorna resultado | ⚠️ Retorna, mas CNAE/regime incorrectos para caso software |
 | Sem contador universal | ✅ |
 | Sem erro técnico visível | ❌ T6c |
+
+---
+
+## Anexo L3 — Preparação para Plataforma Soberana Autónoma
+
+> Este anexo não bloqueia o Piloto 0. Serve como camada futura de maturidade para garantir que a plataforma evolui de uma interface funcional para um sistema soberano, auditável, explicável e operacionalmente confiável.
+
+### Objectivo L3
+
+Validar se a plataforma consegue conduzir um utilizador leigo com mínima intervenção humana, mantendo: autonomia operacional, linguagem compreensível, decisões justificadas, rastreabilidade, respeito aos limites legais, contador apenas como gate condicionado, e preparação para agentes especializados.
+
+### Princípios L3
+
+1. Fazer automaticamente tudo o que puder ser feito com regras públicas, dados oficiais e fluxos governamentais
+2. Não depender do fundador para explicar o fluxo
+3. Não depender de contador para etapas em que a lei não exige contador
+4. Não esconder incerteza: quando não souber, deve dizer o que falta
+5. Não devolver decisão fiscal sem evidência
+6. Não usar linguagem técnica sem tradução para o utilizador comum
+7. Registar por que uma recomendação foi feita
+
+### T9 — Explicabilidade da recomendação
+
+- [ ] O sistema explica por que sugeriu aquele CNAE?
+- [ ] O sistema explica por que indicou ou rejeitou MEI?
+- [ ] O sistema explica por que sugeriu determinado regime?
+- [ ] O utilizador entende o próximo passo?
+- [ ] A explicação separa recomendação automática de decisão oficial?
+
+**Critério L3:** nenhuma recomendação relevante pode aparecer sem justificativa compreensível.
+
+### T10 — Rastreabilidade da decisão
+
+| Campo | Presente? |
+|-------|-----------|
+| Descrição informada pelo utilizador | ⬜ |
+| CNAE sugerido + justificativa | ⬜ |
+| Regime recomendado + motivo | ⬜ |
+| Motivo de exclusão de regimes | ⬜ |
+| Data/hora da simulação | ⬜ |
+| Versão do motor | ⬜ |
+| Intervenção de agente/LLM | ⬜ |
+
+**Critério L3:** cada simulação relevante deve poder gerar um registo auditável.
+
+### T11 — Autonomia sem fundador
+
+- [ ] O utilizador entende o que fazer primeiro?
+- [ ] O utilizador entende o resultado?
+- [ ] O utilizador sabe o próximo passo?
+- [ ] O utilizador não precisa chamar suporte para interpretar CNAE/regime?
+- [ ] O utilizador não fica dependente de explicação externa?
+
+**Critério L3:** a plataforma deve orientar sozinha o utilizador comum até uma próxima acção clara.
+
+### T12 — Contador como gate condicionado
+
+| Frase | Resposta soberana? |
+|-------|--------------------|
+| "preciso de contador?" | ⬜ |
+| "sou MEI, preciso de contador?" | ⬜ |
+| "quero abrir ME" | ⬜ |
+| "quero emitir nota" | ⬜ |
+| "vou ter funcionário" | ⬜ |
+| "vou prestar serviço digital" | ⬜ |
+
+**Critério L3:** nunca transformar contador em etapa padrão para todos os casos.
+
+### T13 — Linguagem para leigo
+
+| Termo | Explicação presente? |
+|-------|---------------------|
+| CNAE | ⬜ |
+| CNPJ | ⬜ |
+| MEI / ME / EPP | ⬜ |
+| Simples Nacional | ⬜ |
+| Regime tributário | ⬜ |
+| DAS | ⬜ |
+| Inscrição estadual/municipal | ⬜ |
+| Obrigação acessória | ⬜ |
+
+**Critério L3:** qualquer termo técnico exibido ao utilizador deve ter explicação curta ou contexto.
+
+### T14 — Métrica de fricção
+
+| Métrica | Valor |
+|---------|-------|
+| Tempo até criar conta | |
+| Tempo até encontrar simulação | |
+| Tempo até concluir simulação | |
+| Número de dúvidas durante o fluxo | |
+| Número de erros visíveis | |
+| Vezes que precisou de ajuda externa | |
+| Dispositivo usado | |
+| Browser usado | |
+
+**Critério L3:** reduzir progressivamente tempo, dúvidas e necessidade de suporte.
+
+### T15 — Preparação para agentes
+
+| Campo | Disponível? |
+|-------|------------|
+| Actividade descrita pelo utilizador | ⬜ |
+| Intenção do utilizador | ⬜ |
+| Porte pretendido | ⬜ |
+| Faturamento estimado | ⬜ |
+| Resultado CNAE | ⬜ |
+| Resultado regime | ⬜ |
+| Motivo de não MEI | ⬜ |
+| Próximos passos sugeridos | ⬜ |
+
+**Critério L3:** agente só pode actuar sobre evidência estruturada — não deve inventar dados ausentes.
+
+### T16 — Erro honesto
+
+**Resposta esperada:** dizer o que entendeu, o que não conseguiu determinar, que informação falta, e qual o próximo passo seguro. Nunca inventar CNAE/regime, nunca devolver erro técnico cru.
+
+**Critério L3:** incerteza deve ser explícita e útil.
+
+### Critérios L3 de maturidade
+
+| Critério | Estado |
+|----------|--------|
+| Simulação explicável | ⬜ |
+| Resultado auditável | ⬜ |
+| Contador condicionado | ⬜ |
+| Linguagem leiga | ⬜ |
+| Métricas de fricção registadas | ⬜ |
+| Agentes só com evidência estruturada | ⬜ |
+| Erros honestos e compreensíveis | ⬜ |
+| Fluxo utilizável sem fundador | ⬜ |
+
+> **Nota:** O Piloto 0 fecha B13 com critérios P0. O Anexo L3 não bloqueia B13 — orienta a evolução futura para autonomia, soberania operacional, explicabilidade e agentes confiáveis.
