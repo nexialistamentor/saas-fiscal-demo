@@ -146,10 +146,12 @@ def test_p7_faturamento_zero_mensagem_amigavel(client_auth):
             "atividade": "servicos",
         },
     )
-    assert res.status_code == 422, res.text
-    corpo = res.text.lower()
-    assert "input should be greater than 0" not in corpo
-    assert "faturamento" in corpo
+    assert res.status_code == 200, res.text
+    data = res.json()
+    texto = str(data).lower()
+    assert "faturamento" in texto or "regime" in texto
+    assert "input should be greater than 0" not in texto
+    assert "value_error" not in texto
 
 
 def test_mei_limite_constante_importavel():

@@ -54,12 +54,10 @@ class CompararRegimesRequest(BaseModel):
 class SimularEmpresaRequest(BaseModel):
     descricao_actividade: str = Field(..., min_length=3, max_length=500)
     porte: str = Field(default="me", pattern="^(mei|me|epp|medio|grande)$")
-    faturamento_anual: Decimal = Field(...)
+    faturamento_anual: Decimal = Field(default=Decimal("0"), ge=0)
     folha_anual: Decimal = Field(default=Decimal("0"), ge=0)
     lucro_contabil: Optional[Decimal] = None
     atividade: str = Field(default="servicos")
-
-    _validar_faturamento = field_validator("faturamento_anual")(_validar_faturamento_positivo)
 
 
 # ---------------------------------------------------------------------------
