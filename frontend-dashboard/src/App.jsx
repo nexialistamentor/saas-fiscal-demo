@@ -199,7 +199,7 @@ function App() {
       await login(email, password)
       window.location.reload()
     } catch (err) {
-      setErroLogin("Credenciais inválidas")
+      setErroLogin(err.message || "Credenciais inválidas. Verifique o email e a senha.")
     }
   }
 
@@ -531,7 +531,11 @@ function App() {
 
               <button type="submit">Entrar</button>
 
-              {erroLogin && <p>{erroLogin}</p>}
+              {erroLogin && (
+                <p style={{ color: "#ef4444", fontSize: 13, marginTop: 6, padding: "6px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
+                  {erroLogin}
+                </p>
+              )}
             </form>
 
             <p style={{ marginTop: 16 }}>
@@ -625,7 +629,25 @@ function App() {
 
               <button type="submit">Registar</button>
 
-              {erroRegisto && <p>{erroRegisto}</p>}
+              {erroRegisto && (
+                <div style={{ marginTop: 6 }}>
+                  <p style={{ color: "#ef4444", fontSize: 13, padding: "6px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca", margin: 0 }}>
+                    {erroRegisto}
+                  </p>
+                  {erroRegisto.toLowerCase().includes("cadastrado") && (
+                    <p style={{ fontSize: 12, marginTop: 6, color: "#555" }}>
+                      Este email já tem conta.{" "}
+                      <button
+                        type="button"
+                        onClick={() => setMostrarRegisto(false)}
+                        style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 12 }}
+                      >
+                        Fazer login aqui
+                      </button>
+                    </p>
+                  )}
+                </div>
+              )}
             </form>
 
             <p style={{ marginTop: 16 }}>

@@ -48,7 +48,11 @@ export async function login(email, password) {
   })
 
   if (!res.ok) {
-    throw new Error("Login inválido")
+    const err = await res.json().catch(() => ({}))
+    const detalhe = Array.isArray(err.detail)
+      ? err.detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
+      : err.detail
+    throw new Error(detalhe || "Credenciais inválidas. Verifique o email e a senha.")
   }
 
   const data = await res.json()

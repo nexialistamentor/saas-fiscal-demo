@@ -72,6 +72,7 @@ patch_b5_01_classifier.py
 patch_b13_00_agente.py
 patch_b13_01_frontend.py
 patch_b13_p0_v2.py
+patch_b13_ux_login.py
 actualizar_roadmap.py
 actualizar_roadmap_v2.py
 
