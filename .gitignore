@@ -78,3 +78,5 @@ actualizar_roadmap_v2.py
 
 # Excepção: .env.example é documentação, não segredo
 !.env.example
+
+patch_b13_p0_06_termos.py

@@ -282,31 +282,9 @@ function App() {
         }
 
         const usuarioJson = await res.json()
-        setUsuario(usuarioJson)
-        const er = await fetch(`${API_BASE}/empresas/`, {
-          headers: { Authorization: `Bearer ${getToken()}` }
-        })
-        if (er.ok) {
-          const list = await er.json()
-          if (Array.isArray(list) && list.length > 0) {
-            const e = list[0]
 
-            const tipoDerivado = e.regime_tributario === "mei" ? "mei" : "empresa"
-
-            const perfil = {
-              tipo: tipoDerivado,
-              id: e.id,
-              nome:
-                e.regime_tributario === "mei"
-                  ? `MEI - ${e.razao_social || `#${e.id}`}`
-                  : e.razao_social || `Empresa #${e.id}`
-            }
-            perfilEmpresaApiRef.current = perfil
-            setPerfilAtual(perfil)
-          }
-        }
-
-        // B10-TERMOS-01: verificar aceite de termos — falha controlada, nao silenciosa
+        // B13-P0-06: verificar termos ANTES de setUsuario() e /empresas/
+        // Evita race condition: hooks dependentes de usuario nao disparam antes do gate
         try {
           const termosRes = await fetch(`${API_BASE}/auth/has-accepted-terms`, {
             headers: { Authorization: `Bearer ${getToken()}` }
@@ -332,6 +310,31 @@ function App() {
           setErroTermos("Erro de rede ao verificar os termos. Verifique a ligacao e tente novamente.")
           setVerificandoSessao(false)
           return
+        }
+
+        // Termos aceites — agora sim activar utilizador e carregar dashboard
+        setUsuario(usuarioJson)
+        const er = await fetch(`${API_BASE}/empresas/`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        })
+        if (er.ok) {
+          const list = await er.json()
+          if (Array.isArray(list) && list.length > 0) {
+            const e = list[0]
+
+            const tipoDerivado = e.regime_tributario === "mei" ? "mei" : "empresa"
+
+            const perfil = {
+              tipo: tipoDerivado,
+              id: e.id,
+              nome:
+                e.regime_tributario === "mei"
+                  ? `MEI - ${e.razao_social || `#${e.id}`}`
+                  : e.razao_social || `Empresa #${e.id}`
+            }
+            perfilEmpresaApiRef.current = perfil
+            setPerfilAtual(perfil)
+          }
         }
       } catch {
         clearToken()
