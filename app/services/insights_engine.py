@@ -11,7 +11,6 @@ from app.models import (
 )
 from app.services.motor_predicao_tributaria import prever_impacto_st
 from app.motor_fiscal import carregar_mva
-from app.services.tabela_normativa_service import buscar_mva
 from app.services.fiscal_utils import resolver_aliquota_e_mva, uf_do_documento
 from app.services.motor_decisao_tributaria import decidir_acao_st
 from app.services.ranking_restituicao_service import gerar_ranking_restituicao
@@ -830,6 +829,10 @@ class InsightEngine:
         )
 
         for item in itens:
+            # Guard NCM — alinhado com _analisar_mva_oficial_divergente
+            if not item.ncm:
+                continue
+
             valor = item.valor_produto or 0
             st_pago = item.valor_st or 0
 
@@ -837,21 +840,24 @@ class InsightEngine:
                 continue
 
             uf = uf_do_documento(item.documento)
-            regra = buscar_mva(
+
+            # B13-OPS-09: resolvedor soberano — elimina BYPASS-01
+            res = resolver_aliquota_e_mva(
                 self.db,
                 uf,
                 item.ncm,
                 data_referencia=item.documento.data_emissao,
             )
 
-            if not regra:
+            # Guard normativo: só decide com resolução autorizada e não parcial
+            if not res.get("calculo_autorizado") or res.get("calculo_parcial"):
                 continue
 
             decisao = decidir_acao_st(
                 valor_produto=valor,
                 st_pago=st_pago,
-                mva=regra["mva"] / 100,
-                aliquota=regra["aliquota_interna"]
+                mva=res["mva"],        # já decimal — resolvedor normaliza
+                aliquota=res["aliquota"],
             )
 
             if decisao["decisao"] != "OPERACAO_CORRETA":
@@ -860,7 +866,7 @@ class InsightEngine:
                     "impacto": "alto",
                     "valor_estimado": decisao["valor_estimado"],
                     "descricao": decisao["descricao"],
-                    "recomendacao": decisao["recomendacao"]
+                    "recomendacao": decisao["recomendacao"],
                 })
 
         return insights

@@ -119,28 +119,37 @@ def test_servico_verifica_calculo_autorizado(caminho):
 # 4. Bypass BYPASS-01 documentado (insights_engine linha ~840)
 # ---------------------------------------------------------------------------
 
-def test_bypass_01_documentado_insights_engine():
+def test_bypass_01_eliminado_insights_engine():
     """
-    BYPASS-01: insights_engine._analisar_decisao_st chama buscar_mva() directamente.
-    Este teste documenta o bypass como risco formal.
-    Quando B13-OPS-09 for implementado, este teste deve ser ACTUALIZADO
-    para provar que o bypass foi eliminado.
+    B13-OPS-09: _analisar_decisao_st não chama buscar_mva() directamente.
+    BYPASS-01 foi eliminado.
     """
     source = _ler_source("app/services/insights_engine.py")
-    linhas_buscar_mva = _chamadas_em_source(source, "buscar_mva")
-    assert len(linhas_buscar_mva) > 0, \
-        "BYPASS-01 foi eliminado — actualizar para confirmar uso de resolver_aliquota_e_mva()"
-    # Documenta que o bypass existe — B13-OPS-09 deve eliminar esta chamada directa
+    # Verificar que _analisar_decisao_st não contém chamada directa a buscar_mva
+    # O método termina antes de decidir_acao_st se não houver calculo_autorizado
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "_analisar_decisao_st":
+            func_source = ast.get_source_segment(source, node)
+            assert "buscar_mva" not in func_source, \
+                "BYPASS-01 reintroduzido: _analisar_decisao_st chama buscar_mva() directamente"
+            assert "resolver_aliquota_e_mva" in func_source, \
+                "BYPASS-01 não eliminado: _analisar_decisao_st não usa resolver_aliquota_e_mva()"
+            assert "calculo_autorizado" in func_source, \
+                "_analisar_decisao_st não verifica calculo_autorizado"
+            assert "calculo_parcial" in func_source, \
+                "_analisar_decisao_st não verifica calculo_parcial"
+            return
+    pytest.fail("Método _analisar_decisao_st não encontrado em insights_engine.py")
 
 
-def test_bypass_01_risco_formal():
+def test_bypass_01_resolvedor_soberano_em_insights():
     """
-    BYPASS-01 é risco P1: decisão ST pode usar MVA sem calculo_autorizado.
-    Prova que insights_engine importa buscar_mva directamente.
+    B13-OPS-09: insights_engine usa resolver_aliquota_e_mva em _analisar_decisao_st.
     """
     source = _ler_source("app/services/insights_engine.py")
-    assert "from app.services.tabela_normativa_service import buscar_mva" in source, \
-        "insights_engine já não importa buscar_mva — verificar se bypass foi corrigido em B13-OPS-09"
+    assert "resolver_aliquota_e_mva" in source, \
+        "insights_engine não importa resolver_aliquota_e_mva"
 
 
 # ---------------------------------------------------------------------------
