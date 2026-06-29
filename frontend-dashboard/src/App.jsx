@@ -642,7 +642,12 @@ function App() {
                       Este email já tem conta.{" "}
                       <button
                         type="button"
-                        onClick={() => setMostrarRegisto(false)}
+                        onClick={() => {
+                          setEmail(emailRegisto)
+                          setErroRegisto(null)
+                          setErroLogin(null)
+                          setMostrarRegisto(false)
+                        }}
                         style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 12 }}
                       >
                         Fazer login aqui
