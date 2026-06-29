@@ -127,7 +127,24 @@ class DeepSeekProvider:
             data = response.json()
             latencia_ms = int((time.time() - inicio) * 1000)
             conteudo = data["choices"][0]["message"]["content"]
-            output = json.loads(conteudo)
+            output_raw = json.loads(conteudo)
+
+            # Validação forte — contrato AgentOutputSchema obrigatório
+            try:
+                from app.schemas.llm_schema import AgentOutputSchema
+                AgentOutputSchema(**output_raw)
+                output = output_raw
+            except Exception:
+                return {
+                    "provider": "deepseek",
+                    "modelo": self.modelo,
+                    "output": {},
+                    "dry_run": False,
+                    "tokens_utilizados": data.get("usage", {}).get("total_tokens"),
+                    "latencia_ms": int((time.time() - inicio) * 1000),
+                    "erro": "Output incompleto ou inválido: contrato AgentOutputSchema violado",
+                }
+
             return {
                 "provider": "deepseek",
                 "modelo": self.modelo,

@@ -141,3 +141,58 @@ def test_deepseek_bloqueia_jwt_em_valor(monkeypatch):
             tarefa="diagnostico_erro",
             contexto={"auth": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.abc123"},
         )
+
+
+# --- B13-OPS-02.2 — validação AgentOutputSchema ---
+
+from app.schemas.llm_schema import AgentOutputSchema
+from pydantic import ValidationError
+
+OUTPUT_VALIDO = {
+    "classificacao": "P0",
+    "causa_provavel": "race condition no frontend",
+    "evidencias": ["log linha 42"],
+    "ficheiros_provaveis": ["App.jsx"],
+    "teste_recomendado": "teste manual T3",
+    "patch_sugerido_texto": None,
+    "risco_patch": "baixo",
+    "informacao_em_falta": [],
+}
+
+
+def test_agent_output_schema_valido():
+    schema = AgentOutputSchema(**OUTPUT_VALIDO)
+    assert schema.classificacao == "P0"
+    assert isinstance(schema.evidencias, list)
+
+
+def test_agent_output_schema_sem_classificacao():
+    dados = {k: v for k, v in OUTPUT_VALIDO.items() if k != "classificacao"}
+    with pytest.raises(ValidationError):
+        AgentOutputSchema(**dados)
+
+
+def test_agent_output_schema_classificacao_invalida():
+    dados = {**OUTPUT_VALIDO, "classificacao": "urgente"}
+    with pytest.raises(ValidationError):
+        AgentOutputSchema(**dados)
+
+
+def test_agent_output_schema_evidencias_tipo_errado():
+    dados = {**OUTPUT_VALIDO, "evidencias": "nao sou uma lista"}
+    with pytest.raises(ValidationError):
+        AgentOutputSchema(**dados)
+
+
+def test_agent_output_schema_campo_extra_proibido():
+    dados = {**OUTPUT_VALIDO, "decisao_fiscal": "aprovar MEI"}
+    with pytest.raises(ValidationError):
+        AgentOutputSchema(**dados)
+
+
+def test_mock_provider_output_valida_contra_agent_schema():
+    p = MockProvider()
+    r = p.completar(tarefa="diagnostico_erro", contexto=CONTEXTO_MOCK)
+    # mock devolve classificacao="P2" — deve passar no schema
+    schema = AgentOutputSchema(**r["output"])
+    assert schema.classificacao == "P2"
