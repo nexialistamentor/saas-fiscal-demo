@@ -131,9 +131,11 @@ async def test_evento_desconhecido_never_nao_chama_llm():
 
 
 @pytest.mark.asyncio
-async def test_evento_desconhecido_fallback_chama_llm():
+async def test_evento_desconhecido_fallback_chama_llm(monkeypatch):
     """modo_llm=fallback: evento desconhecido chama LLMRouter mock."""
     from app.schemas.llm_schema import LLMResponse
+
+    monkeypatch.setenv("LLM_ALLOW_REAL_CALLS", "true")
 
     mock_resposta = LLMResponse(
         provider="mock",

@@ -19,6 +19,8 @@ from typing import Literal
 
 from app.schemas.evento_operacional import EventoOperacional
 from app.schemas.llm_schema import AgentOutputSchema, LLMRequest
+from app.schemas.llm_usage_schema import BudgetCheckRequest
+from app.services.llm_budget_guard import verificar as budget_verificar
 
 
 # ---------------------------------------------------------------------------
@@ -256,17 +258,40 @@ class AgentErroOperacional:
         if modo_llm == "fallback":
             from app.services.llm_router import completar
 
+            contexto_sanitizado = {
+                "tipo": evento.tipo,
+                "origem": evento.origem,
+                "mensagem": evento.mensagem,
+                "endpoint": evento.endpoint,
+                "status_http": evento.status_http,
+                "ambiente": evento.ambiente,
+            }
+            input_chars = len(str(contexto_sanitizado))
+
+            budget = budget_verificar(BudgetCheckRequest(
+                provider="deepseek",
+                tarefa="diagnostico_erro",
+                motivo=f"evento_desconhecido:{evento.tipo}",
+                input_chars=input_chars,
+                max_output_tokens=1024,
+            ))
+
+            if not budget.permitido:
+                return AgentOutputSchema(
+                    classificacao="P2",
+                    causa_provavel=f"Chamada LLM bloqueada por política de orçamento: {budget.motivo}",
+                    evidencias=[evento.mensagem],
+                    ficheiros_provaveis=[],
+                    teste_recomendado=None,
+                    patch_sugerido_texto=None,
+                    risco_patch=None,
+                    informacao_em_falta=["Análise humana necessária ou autorizar orçamento LLM."],
+                )
+
             request = LLMRequest(
                 tarefa="diagnostico_erro",
-                contexto={
-                    "tipo": evento.tipo,
-                    "origem": evento.origem,
-                    "mensagem": evento.mensagem,
-                    "endpoint": evento.endpoint,
-                    "status_http": evento.status_http,
-                    "ambiente": evento.ambiente,
-                },
-                provider="mock",  # dry-run por defeito; mudar para "deepseek" quando real
+                contexto=contexto_sanitizado,
+                provider=None,
             )
             resposta = completar(request)
             if resposta.erro:
@@ -280,15 +305,25 @@ class AgentErroOperacional:
                     risco_patch=None,
                     informacao_em_falta=["Rever evento e tentar novamente."],
                 )
-            # Se output do LLM não tiver classificacao válida, usa P2 seguro
             output = resposta.output
             if output.get("classificacao") not in ("P0", "P1", "P2", "dry_run"):
                 output["classificacao"] = "P2"
-            # Garantir campos obrigatórios de lista
             for campo in ("evidencias", "ficheiros_provaveis", "informacao_em_falta"):
                 if not isinstance(output.get(campo), list):
                     output[campo] = []
-            return AgentOutputSchema(**output)
+            try:
+                return AgentOutputSchema(**output)
+            except Exception:
+                return AgentOutputSchema(
+                    classificacao="P2",
+                    causa_provavel="LLMRouter devolveu output inválido ou incompleto.",
+                    evidencias=[],
+                    ficheiros_provaveis=[],
+                    teste_recomendado=None,
+                    patch_sugerido_texto=None,
+                    risco_patch=None,
+                    informacao_em_falta=["Validar contrato AgentOutputSchema do provider."],
+                )
 
         # modo_llm="never" e nenhuma camada reconheceu
         return AgentOutputSchema(
