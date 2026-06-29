@@ -8,6 +8,7 @@ REGRAS DE SEGURANÇA (nunca violar):
 - Output deve ser sempre JSON estruturado; texto livre é erro de contrato.
 """
 import os
+import re
 import time
 import json
 import httpx
@@ -17,6 +18,33 @@ CAMPOS_PROIBIDOS = {
     "cpf", "cnpj", "email", "token", "xml",
     "senha", "password", "authorization", "api_key"
 }
+
+# Padrões sensíveis em valores — nunca devem chegar ao LLM
+_PADROES_VALOR = [
+    (re.compile(r'\b\d{3}[\.\-]?\d{3}[\.\-]?\d{3}[\.\-]?\d{2}\b'), "CPF"),
+    (re.compile(r'\b\d{2}[\.\-]?\d{3}[\.\-]?\d{3}[\/\.\-]?\d{4}[\.\-]?\d{2}\b'), "CNPJ"),
+    (re.compile(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'), "email"),
+    (re.compile(r'Bearer\s+[A-Za-z0-9\-_\.]+'), "Bearer token"),
+    (re.compile(r'eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]*'), "JWT"),
+    (re.compile(r'<NFe|<nfeProc|<enviNFe', re.IGNORECASE), "XML NFe"),
+]
+
+
+def _validar_valores(contexto, caminho: str = "contexto") -> None:
+    """Detecta valores sensíveis em strings — CPF, CNPJ, email, token, JWT, XML."""
+    if isinstance(contexto, dict):
+        for chave, valor in contexto.items():
+            _validar_valores(valor, f"{caminho}.{chave}")
+    elif isinstance(contexto, list):
+        for i, item in enumerate(contexto):
+            _validar_valores(item, f"{caminho}[{i}]")
+    elif isinstance(contexto, str):
+        for padrao, nome in _PADROES_VALOR:
+            if padrao.search(contexto):
+                raise ValueError(
+                    f"Valor em '{caminho}' contém dado sensível ({nome}). "
+                    "Sanitize antes de chamar o LLM."
+                )
 
 
 def _validar_contexto(contexto, caminho: str = "contexto") -> None:
@@ -45,6 +73,7 @@ class DeepSeekProvider:
 
     def completar(self, tarefa: str, contexto: dict, max_tokens: int = 1024, temperatura: float = 0.2) -> dict:
         _validar_contexto(contexto)
+        _validar_valores(contexto)
 
         if self.dry_run or not self.api_key:
             return {

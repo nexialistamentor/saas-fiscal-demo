@@ -17,7 +17,8 @@ CONTEXTO_MOCK = {
 }
 
 
-def test_router_usa_mock_por_defeito():
+def test_router_usa_mock_por_defeito(monkeypatch):
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
     req = LLMRequest(tarefa="diagnostico_erro", contexto=CONTEXTO_MOCK)
     resp = completar(req)
     assert resp.provider == "mock"
@@ -100,3 +101,43 @@ def test_llm_request_defaults():
     assert req.provider is None
     assert req.max_tokens == 1024
     assert req.temperatura == 0.2
+
+
+def test_deepseek_bloqueia_cpf_em_valor(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_DRY_RUN", "true")
+    p = DeepSeekProvider()
+    with pytest.raises(ValueError, match="CPF"):
+        p.completar(
+            tarefa="diagnostico_erro",
+            contexto={"mensagem": "erro do utilizador com CPF 123.456.789-00"},
+        )
+
+
+def test_deepseek_bloqueia_email_em_valor(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_DRY_RUN", "true")
+    p = DeepSeekProvider()
+    with pytest.raises(ValueError, match="email"):
+        p.completar(
+            tarefa="diagnostico_erro",
+            contexto={"mensagem": "utilizador joao@email.com falhou"},
+        )
+
+
+def test_deepseek_bloqueia_xml_nfe_em_valor(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_DRY_RUN", "true")
+    p = DeepSeekProvider()
+    with pytest.raises(ValueError, match="XML NFe"):
+        p.completar(
+            tarefa="diagnostico_erro",
+            contexto={"body": "<NFe xmlns='http://www.portalfiscal.inf.br/nfe'>..."},
+        )
+
+
+def test_deepseek_bloqueia_jwt_em_valor(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_DRY_RUN", "true")
+    p = DeepSeekProvider()
+    with pytest.raises(ValueError, match="JWT"):
+        p.completar(
+            tarefa="diagnostico_erro",
+            contexto={"auth": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.abc123"},
+        )
