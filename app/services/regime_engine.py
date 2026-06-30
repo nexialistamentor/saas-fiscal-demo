@@ -25,9 +25,12 @@ from decimal import Decimal
 from typing import Optional
 
 from app.services.imposto_service import calcular_imposto_simples_nacional
+from app.services.tax_engines.mei_constants import (
+    MEI_LIMITE_ANUAL_FATURAMENTO,
+    calcular_das_mei,
+    obter_salario_minimo,
+)
 
-# Limite MEI 2024 (actualizar anualmente)
-LIMITE_MEI_ANUAL = Decimal("81000.00")
 LIMITE_SIMPLES_ANUAL = Decimal("4800000.00")
 
 # Mapeamento CNAE secção → Anexo Simples Nacional
@@ -219,25 +222,33 @@ def comparar_regimes(
 
     # MEI — limite de faturamento
     if "mei" in regimes_permitidos:
-        if faturamento_anual > LIMITE_MEI_ANUAL:
+        _limite_mei = Decimal(str(MEI_LIMITE_ANUAL_FATURAMENTO))
+        if faturamento_anual > _limite_mei:
             inelegiveis["mei"] = (
                 f"Faturamento R$ {faturamento_anual:,.2f} excede limite MEI de "
-                f"R$ {LIMITE_MEI_ANUAL:,.2f}"
+                f"R$ {_limite_mei:,.2f}"
             )
         else:
-            # DAS MEI fixo — aproximação
+            # B13-OPS-12A: DAS MEI via fonte canónica mei_constants
+            import datetime
+
+            _ano_atual = datetime.date.today().year
+            _das_mensal = calcular_das_mei(obter_salario_minimo(_ano_atual))
+            _das_anual = round(_das_mensal * 12, 2)
             resultados["mei"] = ResultadoRegime(
                 regime="mei",
-                carga_anual=Decimal("756.00"),  # ~R$63/mês (2024)
-                carga_mensal=Decimal("63.00"),
+                carga_anual=Decimal(str(_das_anual)),
+                carga_mensal=Decimal(str(_das_mensal)),
                 aliquota_efetiva_pct=round(
-                    float(Decimal("756") / faturamento_anual * 100), 2
+                    float(Decimal(str(_das_anual)) / faturamento_anual * 100), 2
                 )
                 if faturamento_anual
                 else 0,
                 anexo_simples=None,
                 fator_r=None,
-                alertas=["DAS MEI fixo — valor aproximado 2024"],
+                alertas=[
+                    "DAS MEI calculado por fonte interna canónica; validação normativa L3 pendente.",
+                ],
                 detalhes={},
             )
 

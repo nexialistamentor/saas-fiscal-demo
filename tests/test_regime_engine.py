@@ -2,12 +2,13 @@
 Testes do motor de regime tributário soberano V1.
 """
 
+import datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
 from app.services.regime_engine import (
-    LIMITE_MEI_ANUAL,
     LIMITE_SIMPLES_ANUAL,
     ResultadoComparacao,
     ResultadoRegime,
@@ -15,6 +16,11 @@ from app.services.regime_engine import (
     _calcular_fator_r,
     calcular_simples,
     comparar_regimes,
+)
+from app.services.tax_engines.mei_constants import (
+    MEI_LIMITE_ANUAL_FATURAMENTO,
+    calcular_das_mei,
+    obter_salario_minimo,
 )
 
 
@@ -92,18 +98,23 @@ def test_mei_elegivel_abaixo_limite():
 
 def test_mei_inelegivel_acima_limite():
     r = comparar_regimes(
-        faturamento_anual=LIMITE_MEI_ANUAL + Decimal("1"),
+        faturamento_anual=Decimal(str(MEI_LIMITE_ANUAL_FATURAMENTO)) + Decimal("1"),
         regimes_permitidos=["mei"],
     )
     assert "mei" in r.regimes_inelegiveis
 
 
 def test_mei_carga_fixa():
+    """DAS MEI calculado via fonte canónica — não hardcoded."""
     r = comparar_regimes(
         faturamento_anual=Decimal("60000"),
         regimes_permitidos=["mei"],
     )
-    assert r.resultados["mei"].carga_anual == Decimal("756.00")
+    ano = datetime.date.today().year
+    das_mensal_esperado = Decimal(str(calcular_das_mei(obter_salario_minimo(ano))))
+    das_anual_esperado = Decimal(str(round(float(das_mensal_esperado) * 12, 2)))
+    assert r.resultados["mei"].carga_mensal == das_mensal_esperado
+    assert r.resultados["mei"].carga_anual == das_anual_esperado
 
 
 # ---------------------------------------------------------------------------
@@ -214,3 +225,26 @@ def test_resultados_monetarios_sao_decimal():
 def test_secao_desconhecida_fallback_anexo_iii():
     anexo = _anexo_por_secao_e_fator_r("ZZ", None)
     assert anexo == "III"
+
+
+def test_pad001_das_mei_sem_hardcoded_legacy():
+    for caminho in [
+        "app/services/regime_engine.py",
+        "app/services/tax_engines/mei_engine.py",
+    ]:
+        src = Path(caminho).read_text(encoding="utf-8")
+        assert "756" not in src
+        assert "63.00" not in src
+        assert "1412" not in src
+        assert "0.05 + 1" not in src
+        assert "salario_minimo = 1412" not in src
+
+
+def test_pad001_das_mei_usa_fonte_canonica():
+    for caminho in [
+        "app/services/regime_engine.py",
+        "app/services/tax_engines/mei_engine.py",
+    ]:
+        src = Path(caminho).read_text(encoding="utf-8")
+        assert "calcular_das_mei" in src
+        assert "obter_salario_minimo" in src
