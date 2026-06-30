@@ -1,6 +1,5 @@
 """Constantes e utilitários do regime MEI usados pelo motor fiscal."""
 
-import logging
 from typing import Optional
 
 # Limite anual de faturamento (R$).
@@ -30,21 +29,22 @@ SALARIO_MINIMO_POR_ANO = {
     2023: 1320.00,
     2024: 1412.00,
     2025: 1518.00,
-    2026: 1518.00,
+    2026: 1621.00,  # Decreto nº 12.797/2025 — vigência 1º jan 2026
 }
 
 
 def obter_salario_minimo(ano: int) -> float:
-    """Retorna o salário mínimo do ano. Se ano futuro sem entrada, usa o último conhecido."""
+    """Retorna salário mínimo internalizado para o ano.
+
+    L3: não faz fallback silencioso. Se o ano não estiver internalizado,
+    bloqueia o cálculo para evitar uso normativo desactualizado.
+    """
     if ano not in SALARIO_MINIMO_POR_ANO:
-        logging.warning(
-            "Salário mínimo não definido para %s, usando último valor conhecido.",
-            ano,
+        raise ValueError(
+            f"Salário mínimo não internalizado para o ano {ano}. "
+            "Actualização normativa obrigatória antes do cálculo."
         )
-    return SALARIO_MINIMO_POR_ANO.get(
-        ano,
-        SALARIO_MINIMO_POR_ANO[max(SALARIO_MINIMO_POR_ANO)],
-    )
+    return SALARIO_MINIMO_POR_ANO[ano]
 
 
 def normalizar_atividade_mei(valor: Optional[str]) -> str:

@@ -132,3 +132,60 @@ def test_vedacao_llm_campos_correctos(fontes):
     assert vedacao["pode_ser_usada_por_llm"] is False
     assert vedacao["forma_internalizacao"] == "proibida"
     assert vedacao["confianca"] == "nula"
+
+
+# --- B13-OPS-12B — fontes ausentes adicionadas ---
+
+
+def test_salario_minimo_001_existe(fontes):
+    ids = [f["id"] for f in fontes]
+    assert "SALARIO-MINIMO-001" in ids
+
+
+def test_salario_minimo_001_aponta_para_decreto_nao_lei(fontes):
+    fonte = next(f for f in fontes if f["id"] == "SALARIO-MINIMO-001")
+    assert "l14663" not in fonte["url_base"].lower()
+    assert "decreto" in fonte["url_base"].lower()
+
+
+def test_irpf_progressivo_001_existe(fontes):
+    ids = [f["id"] for f in fontes]
+    assert "IRPF-PROGRESSIVO-001" in ids
+
+
+@pytest.mark.parametrize("fonte_id", ["SALARIO-MINIMO-001", "IRPF-PROGRESSIVO-001"])
+def test_fontes_12b_em_revisao(fontes, fonte_id):
+    fonte = next(f for f in fontes if f["id"] == fonte_id)
+    assert fonte["status"] == "em_revisao", f"{fonte_id} deve estar em_revisao"
+
+
+@pytest.mark.parametrize("fonte_id", ["SALARIO-MINIMO-001", "IRPF-PROGRESSIVO-001"])
+def test_fontes_12b_nao_fundamentam_decisao(fontes, fonte_id):
+    fonte = next(f for f in fontes if f["id"] == fonte_id)
+    assert fonte["pode_fundamentar_decisao"] is False
+
+
+@pytest.mark.parametrize("fonte_id", ["SALARIO-MINIMO-001", "IRPF-PROGRESSIVO-001"])
+def test_fontes_12b_sem_hash(fontes, fonte_id):
+    fonte = next(f for f in fontes if f["id"] == fonte_id)
+    assert fonte["hash_referencia"] is None
+
+
+def test_source_authority_guard_bloqueia_salario_minimo_fundamentar():
+    from app.schemas.source_authority_schema import SourceAuthorityRequest
+    from app.services.source_authority_guard import verificar
+    r = verificar(SourceAuthorityRequest(
+        fonte_id="SALARIO-MINIMO-001",
+        uso_pretendido="fundamentar_decisao",
+    ))
+    assert not r.permitido
+
+
+def test_source_authority_guard_bloqueia_irpf_fundamentar():
+    from app.schemas.source_authority_schema import SourceAuthorityRequest
+    from app.services.source_authority_guard import verificar
+    r = verificar(SourceAuthorityRequest(
+        fonte_id="IRPF-PROGRESSIVO-001",
+        uso_pretendido="fundamentar_decisao",
+    ))
+    assert not r.permitido
