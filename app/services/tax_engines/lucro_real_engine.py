@@ -35,13 +35,24 @@ def _resolver_lucro_e_receita(dados_fiscais: dict) -> tuple[float, float]:
 class LucroRealEngine(BaseTaxEngine):
 
     def execute(self, context: dict):
-        return calcular_lucro_real(context)
+        ano_referencia = self.resolver_ano_referencia(context)
+        resultado = calcular_lucro_real(context)
+        resultado["_ano_referencia"] = ano_referencia
+        resultado["_estado_temporal"] = "resolvido"
+        return resultado
 
     @staticmethod
-    def calcular_irpj_csll(lucro_contabil: float) -> tuple[float, float, float]:
+    def calcular_irpj_csll(
+        lucro_contabil: float, context: dict | None = None
+    ) -> tuple[float, float, float]:
+        context = context or {}
         base = max(0.0, float(lucro_contabil or 0))
         irpj = base * 0.15
-        csll = CSLLEngine().execute({"lucro": base})["valor"]
+        csll_ctx: dict = {"lucro": base}
+        for key in ("data_referencia", "data_emissao", "ano_referencia", "ano_calendario"):
+            if context.get(key) is not None:
+                csll_ctx[key] = context[key]
+        csll = CSLLEngine().execute(csll_ctx)["valor"]
         return irpj, csll, base
 
 
@@ -60,7 +71,7 @@ def _alertas_credito_excede_debito(
 
 def calcular_lucro_real(dados_fiscais: dict):
     lucro_contabil, faturamento = _resolver_lucro_e_receita(dados_fiscais)
-    irpj, csll, base = LucroRealEngine.calcular_irpj_csll(lucro_contabil)
+    irpj, csll, base = LucroRealEngine.calcular_irpj_csll(lucro_contabil, dados_fiscais)
 
     dados_pis = {**dados_fiscais, "faturamento": faturamento}
     resultado_pis_cofins = calcular_pis_cofins(dados_pis, regime="real")

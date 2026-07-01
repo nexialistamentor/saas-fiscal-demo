@@ -2,8 +2,7 @@
 Serviço de cálculo de impostos para CPF e MEI.
 """
 
-from datetime import datetime
-
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 from app.services.tax_engines.mei_constants import (
     MEI_ATIVIDADE_SERVICOS,
     MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE,
@@ -19,6 +18,7 @@ def calcular_imposto_simples(
     despesas: float = 0,
     tipo: str = "MEI",
     atividade: str | None = None,
+    ano_referencia: int | None = None,
 ) -> dict:
     """
     Calcula imposto estimado para CPF ou MEI.
@@ -26,10 +26,16 @@ def calcular_imposto_simples(
     """
     alertas = []
     imposto = 0.0
-    ano_atual = datetime.now().year
+    ano_atual = None
 
     if tipo.upper() == "MEI":
-        sal_min = obter_salario_minimo(ano_atual)
+        if ano_referencia is None:
+            raise TempoNormativoAusenteError(
+                "calcular_imposto_simples() requer ano_referencia para MEI. "
+                "Bloqueado por B13-OPS-13A."
+            )
+        ano_atual = ano_referencia
+        sal_min = obter_salario_minimo(ano_referencia)
         imposto = calcular_das_mei(sal_min, atividade)
         faturamento_anual_projetado = faturamento * 12
         if faturamento_anual_projetado >= MEI_LIMITE_ANUAL_FATURAMENTO:

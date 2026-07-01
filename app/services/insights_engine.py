@@ -25,6 +25,7 @@ from app.services.score_global_tributario_service import calcular_score_global_t
 from app.services.risco_tributario_service import calcular_risco_tributario
 from app.services.maturidade_tributaria_service import calcular_maturidade_tributaria
 from app.services.engine_registry import ENGINES
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
 from app.services.context_flags_service import (
     anexar_flags_nos_resultados_engines,
@@ -48,6 +49,12 @@ def executar_engines(context: dict) -> dict:
                 resultados[nome] = calcular_pis_cofins(dados, regime=regime)
             else:
                 resultados[nome] = engine.execute(context)
+        except TempoNormativoAusenteError as e:
+            resultados[nome] = {
+                "erro": str(e),
+                "codigo": "TEMPO_NORMATIVO_AUSENTE",
+                "estado_l3": "bloqueado",
+            }
         except Exception as e:
             resultados[nome] = {"erro": str(e)}
     return resultados
@@ -334,7 +341,6 @@ class InsightEngine:
             if eng is not None:
                 cls = type(eng)
                 res["_versao_engine"] = getattr(cls, "versao", None)
-                res["_ano_vigencia"] = getattr(cls, "ano_vigencia", None)
             resultados_engines_enriquecidos[nome] = res
 
             registro = EngineResultado(

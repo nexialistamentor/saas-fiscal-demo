@@ -17,6 +17,7 @@ from app.motor_fiscal import analisar_xml
 from app.services.engine_fallback_service import gerar_fallback
 from app.services.engine_registry import ENGINE_REGISTRY
 from app.services.context_flags_service import inferir_flags_xml
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +204,10 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
+        except TempoNormativoAusenteError:
+            if hasattr(signal, "SIGALRM"):
+                signal.alarm(0)
+            raise
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -269,6 +274,10 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
+        except TempoNormativoAusenteError:
+            if hasattr(signal, "SIGALRM"):
+                signal.alarm(0)
+            raise
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -335,6 +344,10 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
+        except TempoNormativoAusenteError:
+            if hasattr(signal, "SIGALRM"):
+                signal.alarm(0)
+            raise
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -397,6 +410,10 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
+        except TempoNormativoAusenteError:
+            if hasattr(signal, "SIGALRM"):
+                signal.alarm(0)
+            raise
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)
@@ -459,6 +476,10 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
                 "erro": "engine_timeout",
                 "mensagem": "Tempo limite da análise excedido"
             }
+        except TempoNormativoAusenteError:
+            if hasattr(signal, "SIGALRM"):
+                signal.alarm(0)
+            raise
         except Exception:
             if hasattr(signal, "SIGALRM"):
                 signal.alarm(0)

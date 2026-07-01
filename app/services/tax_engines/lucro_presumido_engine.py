@@ -8,7 +8,11 @@ from app.services.tax_engines.response_formatter import formatar_resposta_tribut
 class LucroPresumidoEngine(BaseTaxEngine):
 
     def execute(self, context: dict):
-        return calcular_lucro_presumido(context)
+        ano_referencia = self.resolver_ano_referencia(context)
+        resultado = calcular_lucro_presumido(context)
+        resultado["_ano_referencia"] = ano_referencia
+        resultado["_estado_temporal"] = "resolvido"
+        return resultado
 
 
 def calcular_lucro_presumido(dados_fiscais: dict):
@@ -35,7 +39,11 @@ def calcular_lucro_presumido(dados_fiscais: dict):
 
     percentuais_csll = {"comercio": 0.12, "industria": 0.12, "servicos": 0.32}
     base_calculo_csll = faturamento * percentuais_csll.get(atividade, 0.12)
-    resultado_csll = CSLLEngine().execute({"lucro": base_calculo_csll})
+    resultado_csll = CSLLEngine().execute({
+        "lucro": base_calculo_csll,
+        "data_referencia": dados_fiscais.get("data_referencia"),
+        "ano_referencia": dados_fiscais.get("ano_referencia"),
+    })
     resultado_pis_cofins = calcular_pis_cofins(dados_fiscais, regime="presumido")
 
     tributos = {

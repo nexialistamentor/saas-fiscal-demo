@@ -19,7 +19,11 @@ class TaxPlanningEngine(BaseTaxEngine):
     name = "tax_planning"
 
     def execute(self, context: dict):
-        return simular_regimes(context)
+        ano_referencia = self.resolver_ano_referencia(context)
+        resultado = simular_regimes(context)
+        resultado["_ano_referencia"] = ano_referencia
+        resultado["_estado_temporal"] = "resolvido"
+        return resultado
 
 
 def simular_regimes(dados_fiscais: dict):

@@ -1,9 +1,10 @@
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import AliasChoices, BaseModel, Field
 from app.services.analysis_orchestrator import executar_analise
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 from app.services.tax_engines.mei_constants import MEI_LIMITE_ANUAL_FATURAMENTO
 
 router = APIRouter()
@@ -17,6 +18,7 @@ class DadosImposto(BaseModel):
         default=None,
         validation_alias=AliasChoices("atividade", "atividade_mei"),
     )
+    ano_referencia: int | None = Field(default=None, ge=2000, le=2100)
 
 
 class SimulacaoAnual(BaseModel):
@@ -27,6 +29,7 @@ class SimulacaoAnual(BaseModel):
         default=None,
         validation_alias=AliasChoices("atividade", "atividade_mei"),
     )
+    ano_referencia: int | None = Field(default=None, ge=2000, le=2100)
 
 
 @router.post("/calcular")
@@ -56,10 +59,23 @@ def calcular_imposto(dados: DadosImposto):
         ctx_mei = {"faturamento": dados.faturamento_mensal}
         if dados.atividade:
             ctx_mei["atividade"] = dados.atividade
-        resultado = executar_analise(
-            "mei_tax",
-            ctx_mei,
-        )
+        if dados.ano_referencia is not None:
+            ctx_mei["ano_referencia"] = dados.ano_referencia
+        try:
+            resultado = executar_analise(
+                "mei_tax",
+                ctx_mei,
+            )
+        except TempoNormativoAusenteError as e:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "bloqueado": True,
+                    "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                    "estado_l3": "bloqueado",
+                    "erro": str(e),
+                },
+            )
 
         das = resultado.get("tributos", {}).get("das", 0)
 
@@ -77,12 +93,24 @@ def calcular_imposto(dados: DadosImposto):
 
 @router.post("/simular-ano")
 def simular_ano(dados: SimulacaoAnual):
-    mensal = calcular_imposto_simples(
-        faturamento=dados.faturamento_mensal,
-        despesas=dados.despesas,
-        tipo=dados.tipo_usuario,
-        atividade=dados.atividade,
-    )
+    try:
+        mensal = calcular_imposto_simples(
+            faturamento=dados.faturamento_mensal,
+            despesas=dados.despesas,
+            tipo=dados.tipo_usuario,
+            atividade=dados.atividade,
+            ano_referencia=dados.ano_referencia,
+        )
+    except TempoNormativoAusenteError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                "estado_l3": "bloqueado",
+                "erro": str(e),
+            },
+        )
 
     imposto_mensal = mensal["imposto"]
 

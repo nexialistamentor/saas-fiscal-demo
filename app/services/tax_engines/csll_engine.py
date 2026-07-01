@@ -13,6 +13,7 @@ class CSLLEngine(BaseTaxEngine):
         lucro contábil (Lucro Real) ou margem presumida 12% comércio/indústria / 32%
         serviços sobre o faturamento (Lucro Presumido), conforme ``lucro_presumido_engine``.
         """
+        ano_referencia = self.resolver_ano_referencia(context)
         raw = context.get("lucro", 0)
         try:
             base = max(0.0, float(raw or 0))
@@ -24,4 +25,6 @@ class CSLLEngine(BaseTaxEngine):
         return {
             "tributo": "CSLL",
             "valor": csll,
+            "_ano_referencia": ano_referencia,
+            "_estado_temporal": "resolvido",
         }

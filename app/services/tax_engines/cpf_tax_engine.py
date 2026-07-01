@@ -14,6 +14,7 @@ class CPFTaxEngine(BaseTaxEngine):
     name = "cpf_tax"
 
     def execute(self, context: dict):
+        ano_referencia = self.resolver_ano_referencia(context)
         faturamento = float(context.get("faturamento", 0))
         despesas = float(context.get("despesas", 0))
 
@@ -35,5 +36,7 @@ class CPFTaxEngine(BaseTaxEngine):
             },
             "alertas": [
                 "Cálculo simplificado (6%) — motor IRPF ainda não implementado"
-            ]
+            ],
+            "_ano_referencia": ano_referencia,
+            "_estado_temporal": "resolvido",
         }

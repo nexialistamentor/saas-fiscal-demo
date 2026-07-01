@@ -9,7 +9,7 @@ from app.services.tax_engines.mei_tax_engine import MEITaxEngine
 
 def _assert_parity(faturamento_mensal: float, atividade: str | None = None):
     engine = MEITaxEngine()
-    ctx = {"faturamento": faturamento_mensal}
+    ctx = {"faturamento": faturamento_mensal, "ano_referencia": 2026}
     if atividade is not None:
         ctx["atividade"] = atividade
     l2 = engine.execute(ctx)
@@ -18,6 +18,7 @@ def _assert_parity(faturamento_mensal: float, atividade: str | None = None):
         despesas=0,
         tipo="MEI",
         atividade=atividade,
+        ano_referencia=2026,
     )
 
     assert l2["regime"] == "mei"

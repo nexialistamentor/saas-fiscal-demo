@@ -10,6 +10,7 @@ class TaxRecoveryEngine(BaseTaxEngine):
     name = "tax_recovery"
 
     def execute(self, context: dict):
+        ano_referencia = self.resolver_ano_referencia(context)
         creditos = []
 
         icms_pago = context.get("icms_pago", 0)
@@ -24,5 +25,7 @@ class TaxRecoveryEngine(BaseTaxEngine):
 
         return {
             "creditos_identificados": creditos,
-            "total_creditos": sum(c["valor"] for c in creditos) if creditos else 0
+            "total_creditos": sum(c["valor"] for c in creditos) if creditos else 0,
+            "_ano_referencia": ano_referencia,
+            "_estado_temporal": "resolvido",
         }

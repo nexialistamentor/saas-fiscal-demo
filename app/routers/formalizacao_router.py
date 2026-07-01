@@ -11,6 +11,7 @@ Persistência é responsabilidade do utilizador via empresa_router.
 """
 
 from decimal import Decimal
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -20,9 +21,23 @@ from app.models import User
 from app.security import get_usuario_atual
 from app.services.cnae_engine import recomendar_cnaes
 from app.services.regime_engine import comparar_regimes
+from app.services.tax_engines.base_tax_engine import BaseTaxEngine, TempoNormativoAusenteError
 from app.services.tax_engines.mei_constants import MEI_LIMITE_ANUAL_FATURAMENTO
 
 router = APIRouter(prefix="/formalizacao", tags=["formalizacao"])
+
+
+def _exigir_tempo_normativo(
+    ano_referencia: Optional[int] = None,
+    data_referencia: Optional[date] = None,
+) -> int:
+    """Resolve ano normativo — bloqueia se ausente (B13-OPS-13A)."""
+    ctx: dict = {}
+    if ano_referencia is not None:
+        ctx["ano_referencia"] = ano_referencia
+    if data_referencia is not None:
+        ctx["data_referencia"] = data_referencia
+    return BaseTaxEngine().resolver_ano_referencia(ctx)
 
 
 def _validar_faturamento_positivo(cls, v: Decimal) -> Decimal:
@@ -47,6 +62,8 @@ class CompararRegimesRequest(BaseModel):
     secao_cnae: str = Field(default="J", min_length=1, max_length=2)
     atividade: str = Field(default="servicos")
     regimes_permitidos: Optional[list[str]] = None
+    ano_referencia: Optional[int] = Field(default=None, ge=2000, le=2100)
+    data_referencia: Optional[date] = None
 
     _validar_faturamento = field_validator("faturamento_anual")(_validar_faturamento_positivo)
 
@@ -58,6 +75,9 @@ class SimularEmpresaRequest(BaseModel):
     folha_anual: Decimal = Field(default=Decimal("0"), ge=0)
     lucro_contabil: Optional[Decimal] = None
     atividade: str = Field(default="servicos")
+    ano_referencia: Optional[int] = Field(default=None, ge=2000, le=2100)
+    data_referencia: Optional[date] = None
+    data_referencia: Optional[date] = None
 
 
 # ---------------------------------------------------------------------------
@@ -99,14 +119,27 @@ def comparar_regimes_endpoint(
     Compara regimes tributários e recomenda o mais vantajoso.
     Stateless — não persiste nada.
     """
-    resultado = comparar_regimes(
-        faturamento_anual=body.faturamento_anual,
-        folha_anual=body.folha_anual,
-        lucro_contabil=body.lucro_contabil,
-        secao_cnae=body.secao_cnae,
-        atividade=body.atividade,
-        regimes_permitidos=body.regimes_permitidos,
-    )
+    try:
+        ano_referencia = _exigir_tempo_normativo(body.ano_referencia, body.data_referencia)
+        resultado = comparar_regimes(
+            faturamento_anual=body.faturamento_anual,
+            folha_anual=body.folha_anual,
+            lucro_contabil=body.lucro_contabil,
+            secao_cnae=body.secao_cnae,
+            atividade=body.atividade,
+            regimes_permitidos=body.regimes_permitidos,
+            ano_referencia=ano_referencia,
+        )
+    except TempoNormativoAusenteError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                "estado_l3": "bloqueado",
+                "erro": str(e),
+            },
+        )
 
     return {
         "regime_recomendado": resultado.regime_recomendado,
@@ -151,14 +184,27 @@ def simular_empresa(
     ]
 
     # 3. Comparar regimes
-    resultado_regime = comparar_regimes(
-        faturamento_anual=body.faturamento_anual,
-        folha_anual=body.folha_anual,
-        lucro_contabil=body.lucro_contabil,
-        secao_cnae=secao_cnae,
-        atividade=body.atividade,
-        regimes_permitidos=regimes_para_comparar,
-    )
+    try:
+        ano_referencia = _exigir_tempo_normativo(body.ano_referencia, body.data_referencia)
+        resultado_regime = comparar_regimes(
+            faturamento_anual=body.faturamento_anual,
+            folha_anual=body.folha_anual,
+            lucro_contabil=body.lucro_contabil,
+            secao_cnae=secao_cnae,
+            atividade=body.atividade,
+            regimes_permitidos=regimes_para_comparar,
+            ano_referencia=ano_referencia,
+        )
+    except TempoNormativoAusenteError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                "estado_l3": "bloqueado",
+                "erro": str(e),
+            },
+        )
 
     permite_mei = resultado_cnae.permite_mei
     motivo_nao_mei = resultado_cnae.motivo_nao_mei

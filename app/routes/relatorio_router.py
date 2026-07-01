@@ -20,6 +20,7 @@ from app.services.assistente_service import (
 from app.services.insights_engine import InsightEngine
 from app.services.pdf_report_service import gerar_pdf_imposto, gerar_pdf_relatorio, gerar_pdf_memorial
 from app.services.imposto_service import calcular_imposto_simples
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
 from app.services.context_flags_service import default_context_flags
@@ -514,11 +515,24 @@ async def gerar_relatorio_mei_tax(
             status_code=402,
             detail="Libere a análise fiscal para acessar o relatório.",
         )
-    resultado = calcular_imposto_simples(
-        faturamento=dados.faturamento_mensal,
-        despesas=dados.despesas,
-        tipo=dados.tipo_usuario,
-    )
+    try:
+        resultado = calcular_imposto_simples(
+            faturamento=dados.faturamento_mensal,
+            despesas=dados.despesas,
+            tipo=dados.tipo_usuario,
+            atividade=dados.atividade,
+            ano_referencia=dados.ano_referencia,
+        )
+    except TempoNormativoAusenteError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                "estado_l3": "bloqueado",
+                "erro": str(e),
+            },
+        )
     rel = models.RelatorioAnalise(
         user_id=usuario_atual.id,
         analysis_type=ANALYSIS_TYPE_MEI_TAX,
@@ -563,11 +577,24 @@ async def imposto_pdf(
     Gera PDF com cálculo detalhado de imposto (MEI ou CPF/autônomo).
     Fluxo: /imposto/calcular → preview → pagamento → /relatorio/imposto-pdf.
     """
-    resultado = calcular_imposto_simples(
-        faturamento=dados.faturamento_mensal,
-        despesas=dados.despesas,
-        tipo=dados.tipo_usuario,
-    )
+    try:
+        resultado = calcular_imposto_simples(
+            faturamento=dados.faturamento_mensal,
+            despesas=dados.despesas,
+            tipo=dados.tipo_usuario,
+            atividade=dados.atividade,
+            ano_referencia=dados.ano_referencia,
+        )
+    except TempoNormativoAusenteError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                "estado_l3": "bloqueado",
+                "erro": str(e),
+            },
+        )
     pdf = gerar_pdf_imposto(resultado)
     return StreamingResponse(
         iter([pdf.getvalue()]),

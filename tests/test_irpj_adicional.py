@@ -41,7 +41,7 @@ def test_irpj_engine_usa_limiar_escalado_pelo_contexto():
 
 def test_lucro_presumido_irpj_alinha_com_motor_irpj_servicos():
     # Faturamento 100k serviços → base IRPJ 32%
-    dados = {"faturamento": 100_000.0, "atividade": "servicos"}
+    dados = {"faturamento": 100_000.0, "atividade": "servicos", "ano_referencia": 2026}
     pres = calcular_lucro_presumido(dados)
-    irpj_eng = IRPJEngine().execute({"base_calculo": 32_000.0})
+    irpj_eng = IRPJEngine().execute({"base_calculo": 32_000.0, "ano_referencia": 2026})
     assert pres["data"]["tributos"]["irpj"] == irpj_eng["total_irpj"]

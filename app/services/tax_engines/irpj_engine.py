@@ -13,6 +13,7 @@ class IRPJEngine(BaseTaxEngine):
         """
         Executa cálculo de IRPJ.
         """
+        ano_referencia = self.resolver_ano_referencia(context)
         base_calculo = context.get("base_calculo", 0.0)
 
         irpj = base_calculo * 0.15
@@ -29,5 +30,7 @@ class IRPJEngine(BaseTaxEngine):
             "alertas": [
                 "Cálculo estimado baseado na base informada.",
                 "Apuração oficial depende da escrituração contábil."
-            ]
+            ],
+            "_ano_referencia": ano_referencia,
+            "_estado_temporal": "resolvido",
         }

@@ -76,6 +76,7 @@ class PISCOFINSEngine(BaseTaxEngine):
         """
         Calcula PIS e COFINS conforme regime tributário.
         """
+        ano_referencia = self.resolver_ano_referencia(context)
         faturamento = context.get("faturamento", 0)
         regime = context.get("regime", "presumido")
         # Base de cálculo: faturamento líquido do ICMS (mesma lógica de bases_calculo.base_pis_cofins)
@@ -94,7 +95,9 @@ class PISCOFINSEngine(BaseTaxEngine):
         return {
             "tributo": "PIS_COFINS",
             "pis": pis,
-            "cofins": cofins
+            "cofins": cofins,
+            "_ano_referencia": ano_referencia,
+            "_estado_temporal": "resolvido",
         }
 
 
@@ -115,6 +118,9 @@ def calcular_pis_cofins(dados_fiscais: dict, regime="presumido"):
         "base_pis_cofins": base_pis_cofins,
         "regime": regime,
     }
+    for key in ("data_referencia", "data_emissao", "ano_referencia", "ano_calendario"):
+        if dados_fiscais.get(key) is not None:
+            context[key] = dados_fiscais[key]
     result = PISCOFINSEngine().execute(context)
 
     aliquota_pis = 0.0065 if regime == "presumido" else _ALIQ_PIS_NAO_CUMUL

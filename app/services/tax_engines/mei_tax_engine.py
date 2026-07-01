@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
 from app.services.tax_engines.mei_constants import (
     MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE,
@@ -22,14 +20,14 @@ class MEITaxEngine(BaseTaxEngine):
     name = "mei_tax"
 
     def execute(self, context: dict):
+        ano_referencia = self.resolver_ano_referencia(context)
         faturamento_mensal = float(context.get("faturamento", 0))
         faturamento_anual = faturamento_mensal * 12
         atividade = context.get("atividade") or context.get(
             "atividade_mei", "comercio"
         )
 
-        ano_atual = datetime.now().year
-        sal_min = obter_salario_minimo(ano_atual)
+        sal_min = obter_salario_minimo(ano_referencia)
         imposto = calcular_das_mei(sal_min, atividade)
 
         alertas = []
@@ -50,5 +48,7 @@ class MEITaxEngine(BaseTaxEngine):
                 "faturamento_anual": faturamento_anual,
                 "atividade": normalizar_atividade_mei(atividade),
             },
-            "alertas": alertas
+            "alertas": alertas,
+            "_ano_referencia": ano_referencia,
+            "_estado_temporal": "resolvido",
         }

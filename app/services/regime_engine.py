@@ -25,11 +25,14 @@ from decimal import Decimal
 from typing import Optional
 
 from app.services.imposto_service import calcular_imposto_simples_nacional
+from app.services.tax_engines.base_tax_engine import BaseTaxEngine, TempoNormativoAusenteError
 from app.services.tax_engines.mei_constants import (
     MEI_LIMITE_ANUAL_FATURAMENTO,
     calcular_das_mei,
     obter_salario_minimo,
 )
+
+_resolver_temporal = BaseTaxEngine()
 
 LIMITE_SIMPLES_ANUAL = Decimal("4800000.00")
 
@@ -84,6 +87,14 @@ class ResultadoComparacao:
     regimes_inelegiveis: dict[str, str]  # regime → motivo
 
 
+def _resolver_ano_referencia(ano_referencia: Optional[int]) -> int:
+    """Resolve ano normativo via BaseTaxEngine — bloqueia se ausente."""
+    ctx: dict = {}
+    if ano_referencia is not None:
+        ctx["ano_referencia"] = ano_referencia
+    return _resolver_temporal.resolver_ano_referencia(ctx)
+
+
 def _calcular_fator_r(folha_anual: Decimal, faturamento_anual: Decimal) -> Optional[float]:
     if not faturamento_anual or faturamento_anual <= 0:
         return None
@@ -102,6 +113,7 @@ def calcular_simples(
     faturamento_anual: Decimal,
     folha_anual: Decimal,
     secao_cnae: str,
+    ano_referencia: int,
 ) -> ResultadoRegime:
     """Calcula carga Simples Nacional com Fator R."""
     fator_r = _calcular_fator_r(folha_anual, faturamento_anual)
@@ -136,6 +148,7 @@ def calcular_simples(
 def calcular_lp(
     faturamento_anual: Decimal,
     atividade: str = "servicos",
+    ano_referencia: Optional[int] = None,
 ) -> ResultadoRegime:
     """Calcula carga Lucro Presumido delegando ao engine existente."""
     from app.services.tax_engines.lucro_presumido_engine import calcular_lucro_presumido
@@ -144,6 +157,7 @@ def calcular_lp(
         "faturamento": float(faturamento_anual),
         "receita_bruta": float(faturamento_anual),
         "atividade": atividade,
+        "ano_referencia": ano_referencia,
     }
     resultado = calcular_lucro_presumido(dados_fiscais)
     data = resultado.get("data") or {}
@@ -166,6 +180,7 @@ def calcular_lr(
     faturamento_anual: Decimal,
     lucro_contabil: Decimal,
     atividade: str = "servicos",
+    ano_referencia: Optional[int] = None,
 ) -> ResultadoRegime:
     """Calcula carga Lucro Real delegando ao engine existente."""
     from app.services.tax_engines.lucro_real_engine import calcular_lucro_real
@@ -175,6 +190,7 @@ def calcular_lr(
         "receita_bruta": float(faturamento_anual),
         "lucro_contabil": float(lucro_contabil),
         "atividade": atividade,
+        "ano_referencia": ano_referencia,
     }
     resultado = calcular_lucro_real(dados_fiscais)
     data = resultado.get("data") or {}
@@ -200,6 +216,7 @@ def comparar_regimes(
     secao_cnae: str = "J",
     atividade: str = "servicos",
     regimes_permitidos: Optional[list[str]] = None,
+    ano_referencia: Optional[int] = None,
 ) -> ResultadoComparacao:
     """
     Compara regimes tributários e recomenda o mais vantajoso.
@@ -211,7 +228,14 @@ def comparar_regimes(
         secao_cnae: secção CNAE da empresa (para Anexo Simples)
         atividade: tipo de atividade para LP/LR
         regimes_permitidos: lista de regimes a comparar (None = todos elegíveis)
+        ano_referencia: ano normativo para DAS MEI e tributos LP/LR
     """
+    if ano_referencia is None:
+        raise TempoNormativoAusenteError(
+            "comparar_regimes() requer ano_referencia explícito. "
+            "Bloqueado por B13-OPS-13A."
+        )
+
     resultados: dict[str, ResultadoRegime] = {}
     inelegiveis: dict[str, str] = {}
     justificativa = []
@@ -229,11 +253,7 @@ def comparar_regimes(
                 f"R$ {_limite_mei:,.2f}"
             )
         else:
-            # B13-OPS-12A: DAS MEI via fonte canónica mei_constants
-            import datetime
-
-            _ano_atual = datetime.date.today().year
-            _das_mensal = calcular_das_mei(obter_salario_minimo(_ano_atual))
+            _das_mensal = calcular_das_mei(obter_salario_minimo(ano_referencia))
             _das_anual = round(_das_mensal * 12, 2)
             resultados["mei"] = ResultadoRegime(
                 regime="mei",
@@ -249,7 +269,7 @@ def comparar_regimes(
                 alertas=[
                     "DAS MEI calculado por fonte interna canónica; validação normativa L3 pendente.",
                 ],
-                detalhes={},
+                detalhes={"_ano_referencia": ano_referencia},
             )
 
     # Simples Nacional — limite de faturamento
@@ -260,14 +280,20 @@ def comparar_regimes(
             )
         else:
             try:
-                resultados["simples"] = calcular_simples(faturamento_anual, folha_anual, secao_cnae)
+                resultados["simples"] = calcular_simples(
+                    faturamento_anual, folha_anual, secao_cnae, ano_referencia
+                )
+            except TempoNormativoAusenteError:
+                raise
             except Exception as e:
                 inelegiveis["simples"] = f"Erro no cálculo: {e}"
 
     # Lucro Presumido
     if "lp" in regimes_permitidos:
         try:
-            resultados["lp"] = calcular_lp(faturamento_anual, atividade)
+            resultados["lp"] = calcular_lp(faturamento_anual, atividade, ano_referencia)
+        except TempoNormativoAusenteError:
+            raise
         except Exception as e:
             inelegiveis["lp"] = f"Erro no cálculo: {e}"
 
@@ -277,7 +303,11 @@ def comparar_regimes(
             inelegiveis["lr"] = "Lucro contábil não informado — necessário para Lucro Real"
         else:
             try:
-                resultados["lr"] = calcular_lr(faturamento_anual, lucro_contabil, atividade)
+                resultados["lr"] = calcular_lr(
+                    faturamento_anual, lucro_contabil, atividade, ano_referencia
+                )
+            except TempoNormativoAusenteError:
+                raise
             except Exception as e:
                 inelegiveis["lr"] = f"Erro no cálculo: {e}"
 

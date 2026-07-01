@@ -12,6 +12,7 @@ from app.constants import PALAVRAS_ABERTURA, PALAVRAS_ENCERRAMENTO
 from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.insights_engine import InsightEngine
 from app.services.analysis_orchestrator import executar_analise
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -140,12 +141,25 @@ def _resposta_assistente_mei(pergunta: str) -> dict:
     """MEI via MEITaxEngine (mesmo fluxo do orquestrador L2)."""
     faturamento = extrair_faturamento(pergunta) or 5000
 
-    resultado = executar_analise(
-        "mei_tax",
-        {
-            "faturamento": faturamento
+    try:
+        resultado = executar_analise(
+            "mei_tax",
+            {
+                "faturamento": faturamento
+            }
+        )
+    except TempoNormativoAusenteError:
+        return {
+            "resposta": (
+                "Para calcular o DAS do MEI preciso do ano de referência normativo "
+                "(ex.: 2025 ou 2026). Informe o ano para continuar."
+            ),
+            "requires_payment": False,
+            "analysis_type": "mei_tax",
+            "bloqueado": True,
+            "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+            "estado_l3": "bloqueado",
         }
-    )
 
     if resultado.get("erro"):
         return {

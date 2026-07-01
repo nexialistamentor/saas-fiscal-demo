@@ -89,6 +89,7 @@ def test_p5_endpoint_simular_empresa_200(client_auth):
             "faturamento_anual": "120000",
             "folha_anual": "0",
             "atividade": "servicos",
+            "ano_referencia": 2026,
         },
     )
     assert res.status_code == 200, res.text
@@ -107,6 +108,7 @@ def test_p6_mei_faturamento_acima_limite(client_auth):
             "faturamento_anual": acima,
             "folha_anual": "0",
             "atividade": "servicos",
+            "ano_referencia": 2026,
         },
     )
     assert res.status_code == 200, res.text
@@ -124,6 +126,7 @@ def test_p6_mei_500k_sem_permite_mei_silencioso(client_auth):
             "faturamento_anual": "500000",
             "folha_anual": "0",
             "atividade": "servicos",
+            "ano_referencia": 2026,
         },
     )
     assert res.status_code == 200, res.text
@@ -144,6 +147,7 @@ def test_p7_faturamento_zero_mensagem_amigavel(client_auth):
             "faturamento_anual": "0",
             "folha_anual": "0",
             "atividade": "servicos",
+            "ano_referencia": 2026,
         },
     )
     assert res.status_code == 200, res.text
