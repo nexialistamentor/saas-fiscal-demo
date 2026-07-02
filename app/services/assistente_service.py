@@ -273,7 +273,7 @@ def _obter_icms_empresa(db: "Session", empresa_id: int) -> float | None:
     return float(resultado) if resultado and float(resultado) >= 0 else None
 
 
-def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
+def responder_empresa(pergunta: str, usuario, db: "Session") -> dict:
     """
     Analisa empresa após verificação de pagamento.
     Fluxo: Simples Nacional (calcula sem pagamento) → crédito → verificar pagamento.
@@ -281,8 +281,6 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
     """
     p = pergunta.lower()
 
-    # Simples Nacional: "Quanto minha empresa paga no Simples Nacional?"
-    # Não exige consulta_paga — cálculo disponível para qualquer empresa.
     if (
         "simples nacional" in p
         or "simples" in p
@@ -292,15 +290,13 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
         rbt12 = None
         empresa_id = usuario.empresas[0].id if usuario.empresas else None
 
-        # 1) Tentar faturamento da pergunta (ex: "50 mil por mês")
         faturamento_pergunta = extrair_faturamento(pergunta)
         if faturamento_pergunta:
             if "mil" in p or faturamento_pergunta >= 1000:
                 rbt12 = faturamento_pergunta * 12
             else:
-                rbt12 = faturamento_pergunta * 12  # assumir mensal
+                rbt12 = faturamento_pergunta * 12
 
-        # 2) Se tem empresa e NF-e, usar dados das notas
         if rbt12 is None and empresa_id:
             rbt12 = _obter_rbt12_empresa(db, empresa_id)
 
@@ -313,10 +309,18 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
                     anexo=anexo,
                 )
             except TempoNormativoAusenteError:
-                return (
-                    "Para calcular o Simples Nacional preciso do ano de referência "
-                    "normativo (ex.: 2025 ou 2026). Informe o ano para continuar."
-                )
+                return {
+                    "resposta": (
+                        "Para calcular o Simples Nacional preciso do ano de referência "
+                        "normativo (ex.: 2025 ou 2026). Informe o ano para continuar."
+                    ),
+                    "requires_payment": False,
+                    "analysis_type": "simples_nacional",
+                    "bloqueado": True,
+                    "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                    "estado_l3": "bloqueado",
+                }
+
             fonte = (
                 "com base nas NF-e cadastradas"
                 if empresa_id and not faturamento_pergunta
@@ -334,53 +338,83 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
             if resultado.get("alertas"):
                 msg += "\n\n" + " ".join(resultado["alertas"])
             msg += f"\n\n*(Estimativa {fonte} — consulte um contador para valores oficiais.)*"
-            return msg
+            return {
+                "resposta": msg,
+                "requires_payment": False,
+                "analysis_type": "simples_nacional",
+            }
 
-        return (
-            "Para calcular quanto sua empresa paga no Simples Nacional, informe o faturamento "
-            "mensal (ex: \"faturamos 50 mil por mês\") ou envie os XMLs das NF-e para usarmos "
-            "o faturamento real da empresa."
-        )
+        return {
+            "resposta": (
+                "Para calcular quanto sua empresa paga no Simples Nacional, informe o faturamento "
+                "mensal (ex: \"faturamos 50 mil por mês\") ou envie os XMLs das NF-e para usarmos "
+                "o faturamento real da empresa."
+            ),
+            "requires_payment": False,
+            "analysis_type": "simples_nacional",
+        }
 
-    # Perguntas sobre créditos tributários → orientação + convite para análise
     if "icms" in p or "pis" in p or "cofins" in p or "credito" in p:
         if not usuario.consulta_paga:
-            return (
-                "É possível identificar créditos de ICMS, PIS ou COFINS analisando "
-                "as notas fiscais da empresa. Para isso a plataforma precisa analisar "
-                "os arquivos XML das NF-e da empresa.\n\n"
-                "Após liberar a análise fiscal, o sistema calcula automaticamente "
-                "o potencial de recuperação tributária."
-            )
+            return {
+                "resposta": (
+                    "É possível identificar créditos de ICMS, PIS ou COFINS analisando "
+                    "as notas fiscais da empresa. Para isso a plataforma precisa analisar "
+                    "os arquivos XML das NF-e da empresa.\n\n"
+                    "Após liberar a análise fiscal, o sistema calcula automaticamente "
+                    "o potencial de recuperação tributária."
+                ),
+                "requires_payment": True,
+                "analysis_type": "tax_recovery",
+            }
 
-        # Pagamento liberado → análise completa
         empresa_id = usuario.empresas[0].id if usuario.empresas else None
         if not empresa_id:
-            return (
-                "Nenhuma empresa vinculada ao seu usuário. "
-                "Cadastre uma empresa para receber análises fiscais personalizadas."
-            )
+            return {
+                "resposta": (
+                    "Nenhuma empresa vinculada ao seu usuário. "
+                    "Cadastre uma empresa para receber análises fiscais personalizadas."
+                ),
+                "requires_payment": True,
+                "analysis_type": "tax_recovery",
+            }
+
         engine = InsightEngine(db)
         resultado = engine.gerar_insights_empresa(empresa_id)
-        return formatar_resposta_insights(resultado)
+        return {
+            "resposta": formatar_resposta_insights(resultado),
+            "requires_payment": True,
+            "analysis_type": "tax_recovery",
+        }
 
-    # Outras perguntas de empresa
     if not usuario.consulta_paga:
-        return (
-            "Posso analisar possíveis créditos de ICMS, PIS e COFINS na sua empresa. "
-            "Para isso é necessário enviar o XML das NF-e e liberar a análise."
-        )
+        return {
+            "resposta": (
+                "Posso analisar possíveis créditos de ICMS, PIS e COFINS na sua empresa. "
+                "Para isso é necessário enviar o XML das NF-e e liberar a análise."
+            ),
+            "requires_payment": True,
+            "analysis_type": "tax_recovery",
+        }
 
     empresa_id = usuario.empresas[0].id if usuario.empresas else None
     if not empresa_id:
-        return (
-            "Nenhuma empresa vinculada ao seu usuário. "
-            "Cadastre uma empresa para receber análises fiscais personalizadas."
-        )
+        return {
+            "resposta": (
+                "Nenhuma empresa vinculada ao seu usuário. "
+                "Cadastre uma empresa para receber análises fiscais personalizadas."
+            ),
+            "requires_payment": True,
+            "analysis_type": "tax_recovery",
+        }
 
     engine = InsightEngine(db)
     resultado = engine.gerar_insights_empresa(empresa_id)
-    return formatar_resposta_insights(resultado)
+    return {
+        "resposta": formatar_resposta_insights(resultado),
+        "requires_payment": True,
+        "analysis_type": "tax_recovery",
+    }
 
 
 def responder_cpf(pergunta: str) -> dict:
@@ -644,12 +678,7 @@ def responder_pergunta(
                 "requires_payment": True,
                 "analysis_type": "tax_recovery",
             }
-        resp = responder_empresa(pergunta, usuario, db)
-        return {
-            "resposta": resp,
-            "requires_payment": True,
-            "analysis_type": "tax_recovery",
-        }
+        return responder_empresa(pergunta, usuario, db)
 
     if contribuinte == "cpf":
         cpf_resultado = responder_cpf(pergunta)
