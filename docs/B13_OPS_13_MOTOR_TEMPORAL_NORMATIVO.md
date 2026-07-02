@@ -241,7 +241,7 @@ ou responder como parcial/não provado — nunca silenciosamente "funcionar".
 
 | **B13-OPS-13B** | Manifesto: EC132-001, LC214-001, CBS-IBS-2026-001 | `em_revisao`, `pode_fundamentar_decisao=false` |
 
-| **B13-OPS-13C** | Matriz de impacto por endpoint (G/D/E/F/relatórios/dashboard) | Quais endpoints ficam `bloqueado`/`parcial` até resolução |
+| **B13-OPS-13C** | Matriz de impacto por endpoint (G/D/E/F/relatórios/dashboard) | Quais endpoints ficam `bloqueado`/`parcial` até resolução — ver `docs/B13_OPS_13C_MATRIZ_IMPACTO_ENDPOINTS.md` |
 
 
 
