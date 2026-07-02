@@ -147,18 +147,17 @@ def _fmt_br(valor: float, decimais: int = 2) -> str:
 def _resposta_assistente_mei(pergunta: str) -> dict:
     """MEI via MEITaxEngine (mesmo fluxo do orquestrador L2)."""
     faturamento = extrair_faturamento(pergunta) or 5000
+    dados: dict = {"faturamento": faturamento}
+    ano = extrair_ano_referencia(pergunta)
+    if ano is not None:
+        dados["ano_referencia"] = ano
 
     try:
-        resultado = executar_analise(
-            "mei_tax",
-            {
-                "faturamento": faturamento
-            }
-        )
+        resultado = executar_analise("mei_tax", dados)
     except TempoNormativoAusenteError:
         return {
             "resposta": (
-                "Para calcular o DAS do MEI preciso do ano de referência normativo "
+                "Para calcular o imposto do MEI preciso do ano de referência normativo "
                 "(ex.: 2025 ou 2026). Informe o ano para continuar."
             ),
             "requires_payment": False,
@@ -302,11 +301,13 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> dict:
 
         if rbt12 and rbt12 > 0:
             anexo = _inferir_anexo_simples(pergunta)
+            ano = extrair_ano_referencia(pergunta)
             try:
                 resultado = calcular_imposto_simples_nacional(
                     rbt12=rbt12,
                     receita_mes=rbt12 / 12,
                     anexo=anexo,
+                    ano_referencia=ano,
                 )
             except TempoNormativoAusenteError:
                 return {

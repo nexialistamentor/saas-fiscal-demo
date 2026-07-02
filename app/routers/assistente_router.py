@@ -36,4 +36,7 @@ def perguntar(
         payload_estruturado=resultado.get("payload_estruturado"),
         schema_type=resultado.get("schema_type"),
         versao=resultado.get("versao"),
+        bloqueado=resultado.get("bloqueado"),
+        tipo_bloqueio=resultado.get("tipo_bloqueio"),
+        estado_l3=resultado.get("estado_l3"),
     )

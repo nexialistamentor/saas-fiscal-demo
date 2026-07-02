@@ -57,3 +57,6 @@ class AssistenteResponse(BaseModel):
     payload_estruturado: dict | None = None
     schema_type: str | None = None
     versao: str | None = None
+    bloqueado: bool | None = None
+    tipo_bloqueio: str | None = None
+    estado_l3: str | None = None
