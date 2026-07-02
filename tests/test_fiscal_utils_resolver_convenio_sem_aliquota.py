@@ -29,7 +29,7 @@ def test_convenio_base_sem_aliquota_usa_fallback_e_estimativa():
         )
         db.commit()
 
-        res = resolver_aliquota_e_mva(db, "PA", "99999998")
+        res = resolver_aliquota_e_mva(db, "PA", "99999998", data_referencia=date(2026, 1, 1))
         assert res["fonte"] == "tabela"
         assert res["confianca"] == "estimativa"
         assert res["mva"] == 0.40

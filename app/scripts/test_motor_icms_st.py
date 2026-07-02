@@ -16,6 +16,7 @@ Executar da raiz do projeto:
 
 import sys
 import defusedxml.ElementTree as ET
+from datetime import date, datetime
 from pathlib import Path
 
 # Garante que a raiz do projeto está no PYTHONPATH
@@ -38,6 +39,16 @@ def _extrair_texto(elemento, tag: str, ns: dict):
     return el.text if el is not None else None
 
 
+def _parse_data_referencia(dh_emi: str | None) -> date:
+    if not dh_emi:
+        return date(2026, 1, 1)
+    try:
+        parte = dh_emi.split("T")[0].split(" ")[0][:10]
+        return datetime.strptime(parte, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return date(2026, 1, 1)
+
+
 def processar_xml_e_calcular_icms_st(caminho_xml: Path):
     """Processa XML, extrai itens e calcula ICMS-ST usando MVA do banco."""
     tree = ET.parse(caminho_xml)
@@ -47,6 +58,9 @@ def processar_xml_e_calcular_icms_st(caminho_xml: Path):
     uf_emit = root.findtext(".//nfe:emit/nfe:enderEmit/nfe:UF", namespaces=ns)
     uf_dest = root.findtext(".//nfe:dest/nfe:enderDest/nfe:UF", namespaces=ns)
     uf_operacao = uf_dest if uf_dest else uf_emit
+
+    ide = root.find(".//nfe:ide", ns)
+    data_referencia = _parse_data_referencia(_extrair_texto(ide, "nfe:dhEmi", ns))
 
     resultados = []
     for det in root.findall(".//nfe:det", ns):
@@ -63,8 +77,8 @@ def processar_xml_e_calcular_icms_st(caminho_xml: Path):
         if valor <= 0:
             continue
 
-        # Consulta MVA no banco (passando UF para usar tabela_mva)
-        mva = carregar_mva(ncm, uf_operacao)
+        # Consulta MVA no banco (passando UF e data de emissão para tabela_mva)
+        mva = carregar_mva(ncm, uf_operacao, data_referencia=data_referencia)
         if mva is None:
             continue  # Não calcula ST quando MVA não encontrada
         base_st = MotorFiscal.calcular_base_st(valor, mva)

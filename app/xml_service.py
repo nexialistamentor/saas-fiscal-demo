@@ -186,6 +186,7 @@ def enriquecer_st_se_necessario(dados: dict, analise: dict) -> None:
     Modifica dados in-place.
     """
     uf = dados.get("uf_dest") or dados.get("uf_emit") or analise.get("uf_operacao")
+    data_referencia = _parse_data_emissao(dados.get("data_emissao"))
     mva_doc = analise.get("mva_utilizada") or analise.get("mva_percentual")
     if mva_doc is not None:
         mva_doc = _parse_float(mva_doc)
@@ -205,7 +206,7 @@ def enriquecer_st_se_necessario(dados: dict, analise: dict) -> None:
         if valor_prod is None or valor_prod <= 0 or not ncm:
             continue
 
-        mva = mva_doc or carregar_mva(ncm, uf)
+        mva = mva_doc or carregar_mva(ncm, uf, data_referencia=data_referencia)
         if mva is None:
             continue
         base_st_calc = MotorFiscal.calcular_base_st(valor_prod, mva)
@@ -221,7 +222,9 @@ def enriquecer_st_se_necessario(dados: dict, analise: dict) -> None:
     if mva_doc is None and dados.get("itens"):
         first_ncm = next((i.get("ncm") for i in dados["itens"] if i.get("ncm")), None)
         if first_ncm:
-            dados["mva_utilizada"] = carregar_mva(first_ncm, uf)
+            dados["mva_utilizada"] = carregar_mva(
+                first_ncm, uf, data_referencia=data_referencia
+            )
 
 
 def _parse_data_emissao(val):

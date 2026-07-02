@@ -37,7 +37,7 @@ def test_oficial_prevalece_sobre_convenio_base():
         )
         db.commit()
 
-        resultado = buscar_mva(db, "XT", "99999999")
+        resultado = buscar_mva(db, "XT", "99999999", data_referencia=date(2026, 1, 1))
         assert resultado is not None
         assert resultado["nivel_confianca_fonte"] == "oficial"
         assert resultado["mva"] == 35.0

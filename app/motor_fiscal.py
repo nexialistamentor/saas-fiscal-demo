@@ -100,7 +100,11 @@ class MotorFiscal:
         return max(0.0, round(restituicao, 2))
 
 
-def carregar_mva(ncm: str, uf: str | None = None) -> float | None:
+def carregar_mva(
+    ncm: str,
+    uf: str | None = None,
+    data_referencia=None,
+) -> float | None:
     """
     Adaptador de compatibilidade para consulta de MVA.
     Fonte prioritária: tabela_mva via buscar_mva.
@@ -111,7 +115,7 @@ def carregar_mva(ncm: str, uf: str | None = None) -> float | None:
         if uf:
             from app.services.tabela_normativa_service import buscar_mva
 
-            regra = buscar_mva(db, uf, ncm)
+            regra = buscar_mva(db, uf, ncm, data_referencia=data_referencia)
             if regra and regra.get("mva") is not None:
                 return float(regra["mva"])
     finally:

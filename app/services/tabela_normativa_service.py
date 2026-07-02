@@ -4,6 +4,16 @@ from sqlalchemy import case, or_
 from sqlalchemy.orm import Session
 
 from app.models import TabelaMVA, TabelaPMPF
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
+
+
+def _exigir_data_referencia_normativa(data_referencia):
+    if data_referencia is None:
+        raise TempoNormativoAusenteError(
+            "Consulta normativa ST/PMPF/MVA requer data_referencia explícita. "
+            "Bloqueado por B13-OPS-13E.1."
+        )
+    return data_referencia
 
 _PRIORIDADE_FONTE = case(
     (TabelaMVA.nivel_confianca_fonte == "oficial", 0),
@@ -56,7 +66,7 @@ def buscar_pmpf(
     4. "DEMAIS MARCAS" + qualquer embalagem
     Retorna None se não houver PMPF — caller usa buscar_mva como fallback.
     """
-    ref = data_referencia or date.today()
+    ref = _exigir_data_referencia_normativa(data_referencia)
     uf = (estado or "").strip().upper()[:2]
     ncm_norm = (ncm or "").strip()
     if not uf or not ncm_norm:
@@ -119,10 +129,11 @@ def resolver_base_calculo_st(
     """
     from app.services.fiscal_utils import _ALIQUOTA_ICMS_FALLBACK
 
+    ref = _exigir_data_referencia_normativa(data_referencia)
     uf = (estado or "").strip().upper()[:2]
     ncm_norm = (ncm or "").strip()
 
-    pmpf = buscar_pmpf(db, uf, ncm_norm, marca, embalagem_ml, data_referencia)
+    pmpf = buscar_pmpf(db, uf, ncm_norm, marca, embalagem_ml, ref)
     if pmpf:
         return {
             "base_calculo": pmpf["pmpf_reais"],
@@ -146,7 +157,7 @@ def resolver_base_calculo_st(
             ),
         }
 
-    mva = buscar_mva(db, uf, ncm_norm, data_referencia)
+    mva = buscar_mva(db, uf, ncm_norm, ref)
     if mva:
         nivel = mva.get("nivel_confianca_fonte") or "sem_fonte"
         mva_val = (
@@ -192,23 +203,24 @@ def buscar_mva(
     ncm: str,
     data_referencia: date | None = None,
 ):
+    ref = _exigir_data_referencia_normativa(data_referencia)
     q = (
         db.query(TabelaMVA)
         .filter(TabelaMVA.estado == estado)
         .filter(TabelaMVA.ncm == ncm)
-    )
-    if data_referencia is not None:
-        q = q.filter(
+        .filter(
             or_(
                 TabelaMVA.vigencia_inicio.is_(None),
-                TabelaMVA.vigencia_inicio <= data_referencia,
-            )
-        ).filter(
-            or_(
-                TabelaMVA.vigencia_fim.is_(None),
-                TabelaMVA.vigencia_fim >= data_referencia,
+                TabelaMVA.vigencia_inicio <= ref,
             )
         )
+        .filter(
+            or_(
+                TabelaMVA.vigencia_fim.is_(None),
+                TabelaMVA.vigencia_fim >= ref,
+            )
+        )
+    )
     registro = q.order_by(
         _PRIORIDADE_FONTE,
         TabelaMVA.vigencia_inicio.desc(),
