@@ -235,9 +235,9 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
-| G1 | POST `/imposto/calcular` | Cálculo CPF/MEI mensal | `tests/test_mei.py` (engine) | parcial | alto |
-| G2 | POST `/imposto/simular-ano` | Projeção anual + alertas MEI | `tests/test_mei.py` (engine) | parcial | alto |
-| G3 | POST `/imposto/simples-nacional` | DAS Simples por anexo | `tests/test_regime_engine.py` (serviço) | parcial | alto |
+| G1 | POST `/imposto/calcular` | Cálculo CPF/MEI mensal | `tests/test_imposto_router_contract.py` | provado | baixo |
+| G2 | POST `/imposto/simular-ano` | Projeção anual + alertas MEI | `tests/test_imposto_router_contract.py` | provado | baixo |
+| G3 | POST `/imposto/simples-nacional` | DAS Simples por anexo | `tests/test_imposto_router_contract.py` | provado | baixo |
 
 ---
 
