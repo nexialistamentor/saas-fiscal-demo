@@ -67,7 +67,9 @@ def _validar_regra_pmpf(reg: TabelaPMPF) -> list[str]:
 
 def _tem_conflito_oficial_mva(db: Session, reg: TabelaMVA) -> bool:
     """Verifica se já existe regra 'oficial' conflituante (mesmo estado/ncm e vigência sobreposta)."""
-    ref_ini = reg.vigencia_inicio or date.today()
+    if reg.vigencia_inicio is None:
+        return True  # sem vigência definida — tratar como conflito conservador
+    ref_ini = reg.vigencia_inicio
     return (
         db.query(TabelaMVA)
         .filter(

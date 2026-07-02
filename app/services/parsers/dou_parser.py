@@ -180,20 +180,9 @@ def _consultar_html(
             uf = _extrair_uf_do_titulo(pub["titulo"])
             if not uf:
                 continue
-            regras.append(
-                RegraNormativa(
-                    estado=uf,
-                    ncm="",
-                    mva=0.0,
-                    aliquota_interna=0.0,
-                    vigencia_inicio=date.today(),
-                    vigencia_fim=None,
-                    fonte_legal=f"DOU: {pub['titulo'][:200]}",
-                    url_fonte=pub["url"] or _DOU_BUSCA_URL,
-                    nivel_confianca="candidata_oficial",
-                    importado_por=_IMPORTADO_POR,
-                )
-            )
+
+            # B13-OPS-13E.2: sem data de publicação extraída, não inventar vigência
+            continue  # skip — HTML DOU não extrai data; ver dou_dados_abertos_parser para caminho com data real
 
     return regras, erros, diagnosticos
 

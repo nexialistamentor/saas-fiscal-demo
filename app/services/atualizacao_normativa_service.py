@@ -44,7 +44,12 @@ def atualizar_mva(
 
     else:
 
-        inicio = vigencia_inicio if vigencia_inicio is not None else date.today()
+        if vigencia_inicio is None:
+            raise ValueError(
+                "vigencia_inicio é obrigatória para inserir nova regra em TabelaMVA. "
+                "Não é permitido inferir vigência pela data de importação."
+            )
+        inicio = vigencia_inicio
         novo = TabelaMVA(
             estado=estado,
             ncm=ncm,
