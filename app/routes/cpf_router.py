@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -7,6 +9,7 @@ from app import models
 from app.security import get_usuario_atual
 from app.services.cpf_dashboard_service import CPFDashboardService
 from app.models import TIPOS_RENDIMENTO
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 
 router = APIRouter(prefix="/cpf", tags=["CPF"])
 
@@ -14,6 +17,8 @@ router = APIRouter(prefix="/cpf", tags=["CPF"])
 class CPFRequest(BaseModel):
     faturamento_mensal: float
     despesas: float = 0
+    ano_referencia: int | None = Field(default=None, ge=2000, le=2100)
+    data_referencia: date | None = None
 
 
 class RendimentoConfirmado(BaseModel):
@@ -29,11 +34,27 @@ class RendimentoConfirmado(BaseModel):
 
 @router.post("/dashboard")
 def dashboard_cpf(dados: CPFRequest):
+    ano_referencia = dados.ano_referencia
+    if ano_referencia is None and dados.data_referencia is not None:
+        ano_referencia = dados.data_referencia.year
     service = CPFDashboardService()
-    return service.calcular_resumo(
-        faturamento_mensal=dados.faturamento_mensal,
-        despesas=dados.despesas
-    )
+    try:
+        return service.calcular_resumo(
+            faturamento_mensal=dados.faturamento_mensal,
+            despesas=dados.despesas,
+            ano_referencia=ano_referencia,
+            data_referencia=dados.data_referencia,
+        )
+    except TempoNormativoAusenteError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                "estado_l3": "bloqueado",
+                "erro": str(e),
+            },
+        )
 
 
 @router.post("/documentos/upload")

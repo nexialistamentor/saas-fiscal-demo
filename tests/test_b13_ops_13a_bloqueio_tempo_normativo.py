@@ -142,3 +142,76 @@ def test_calcular_imposto_simples_nacional_com_ano_retorna_metadados():
     resultado = calcular_imposto_simples_nacional(rbt12=360000.0, anexo="I", ano_referencia=2026)
     assert resultado["_ano_referencia"] == 2026
     assert resultado["_estado_temporal"] == "resolvido"
+
+
+# ---------------------------------------------------------------------------
+# CPF — tempo normativo (B13-OPS-13D)
+# ---------------------------------------------------------------------------
+
+def test_cpf_dashboard_sem_ano_referencia_bloqueia(client_auth):
+    res = client_auth.post(
+        "/cpf/dashboard",
+        json={"faturamento_mensal": 5000.0, "despesas": 0},
+    )
+    assert res.status_code == 422
+    _payload_bloqueio_valido(res.json()["detail"])
+
+
+def test_cpf_dashboard_com_ano_referencia_calcula(client_auth):
+    res = client_auth.post(
+        "/cpf/dashboard",
+        json={"faturamento_mensal": 5000.0, "despesas": 0, "ano_referencia": 2026},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["_ano_referencia"] == 2026
+    assert body["_estado_temporal"] == "resolvido"
+
+
+def test_imposto_calcular_cpf_sem_ano_referencia_bloqueia(client_auth):
+    res = client_auth.post(
+        "/imposto/calcular",
+        json={
+            "tipo_usuario": "CPF",
+            "faturamento_mensal": 5000.0,
+        },
+    )
+    assert res.status_code == 422
+    _payload_bloqueio_valido(res.json()["detail"])
+
+
+def test_imposto_calcular_cpf_com_ano_referencia_calcula(client_auth):
+    res = client_auth.post(
+        "/imposto/calcular",
+        json={
+            "tipo_usuario": "CPF",
+            "faturamento_mensal": 5000.0,
+            "ano_referencia": 2026,
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["tipo"] == "cpf"
+    assert body["_ano_referencia"] == 2026
+
+
+def test_assistente_cpf_sem_ano_pede_ano_referencia():
+    from app.services.assistente_service import responder_cpf
+
+    resultado = responder_cpf("quanto pago de imposto como autonomo com faturamento de 5000")
+
+    assert resultado.get("bloqueado") is True
+    assert resultado.get("tipo_bloqueio") == "TEMPO_NORMATIVO_AUSENTE"
+    assert resultado.get("estado_l3") == "bloqueado"
+    assert "ano" in resultado.get("resposta", "").lower()
+
+
+def test_assistente_cpf_com_ano_calcula():
+    from app.services.assistente_service import responder_cpf
+
+    resultado = responder_cpf(
+        "quanto pago de imposto como autonomo cpf com faturamento de 5000 em 2026"
+    )
+
+    assert resultado.get("bloqueado") is not True
+    assert resultado.get("payload", {}).get("_ano_referencia") == 2026

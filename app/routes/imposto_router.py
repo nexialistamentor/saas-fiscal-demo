@@ -39,13 +39,24 @@ def calcular_imposto(dados: DadosImposto):
     tipo = dados.tipo_usuario.lower()
 
     if tipo == "cpf":
-        resultado = executar_analise(
-            "cpf_tax",
-            {
-                "faturamento": dados.faturamento_mensal,
-                "despesas": dados.despesas
-            }
-        )
+        ctx_cpf: dict = {
+            "faturamento": dados.faturamento_mensal,
+            "despesas": dados.despesas,
+        }
+        if dados.ano_referencia is not None:
+            ctx_cpf["ano_referencia"] = dados.ano_referencia
+        try:
+            resultado = executar_analise("cpf_tax", ctx_cpf)
+        except TempoNormativoAusenteError as e:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "bloqueado": True,
+                    "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                    "estado_l3": "bloqueado",
+                    "erro": str(e),
+                },
+            )
 
         imposto = resultado.get("tributos", {}).get("imposto", 0)
 
@@ -53,7 +64,9 @@ def calcular_imposto(dados: DadosImposto):
             "tipo": "cpf",
             "imposto_mensal": imposto,
             "imposto_anual": imposto * 12,
-            "alertas": resultado.get("alertas", [])
+            "alertas": resultado.get("alertas", []),
+            "_ano_referencia": resultado.get("_ano_referencia"),
+            "_estado_temporal": resultado.get("_estado_temporal"),
         }
 
     if tipo == "mei":

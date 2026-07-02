@@ -113,6 +113,13 @@ def _parse_valor_br(s: str) -> float:
     return float(s)
 
 
+def extrair_ano_referencia(pergunta: str) -> int | None:
+    anos = re.findall(r"\b(20\d{2})\b", pergunta)
+    if not anos:
+        return None
+    return int(anos[-1])
+
+
 def extrair_faturamento(pergunta: str):
     numeros = re.findall(r"\d+[.,]?\d*", pergunta)
     if numeros:
@@ -379,8 +386,24 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
 def responder_cpf(pergunta: str) -> dict:
     """CPF/autônomo: assistente → executar_analise('cpf_tax', dados)."""
     faturamento = extrair_faturamento(pergunta) or 5000
-    dados = {"faturamento": faturamento, "despesas": 0}
-    resultado = executar_analise("cpf_tax", dados)
+    dados: dict = {"faturamento": faturamento, "despesas": 0}
+    ano = extrair_ano_referencia(pergunta)
+    if ano is not None:
+        dados["ano_referencia"] = ano
+
+    try:
+        resultado = executar_analise("cpf_tax", dados)
+    except TempoNormativoAusenteError:
+        return {
+            "resposta": (
+                "Para calcular o imposto de autônomo (CPF) preciso do ano de referência normativo "
+                "(ex.: 2025 ou 2026). Informe o ano para continuar."
+            ),
+            "payload": None,
+            "bloqueado": True,
+            "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+            "estado_l3": "bloqueado",
+        }
 
     if resultado.get("erro"):
         msg = resultado.get("mensagem") or "Não foi possível concluir a análise de CPF no momento."
@@ -630,6 +653,15 @@ def responder_pergunta(
 
     if contribuinte == "cpf":
         cpf_resultado = responder_cpf(pergunta)
+        if cpf_resultado.get("bloqueado"):
+            return {
+                "resposta": cpf_resultado["resposta"],
+                "requires_payment": False,
+                "analysis_type": "cpf_tax",
+                "bloqueado": True,
+                "tipo_bloqueio": cpf_resultado["tipo_bloqueio"],
+                "estado_l3": cpf_resultado["estado_l3"],
+            }
         if usuario is None or db is None:
             return {
                 "resposta": cpf_resultado["resposta"],
