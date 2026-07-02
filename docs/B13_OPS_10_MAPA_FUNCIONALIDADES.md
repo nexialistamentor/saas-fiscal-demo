@@ -248,7 +248,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | H1 | GET `/analise-st/{empresa_id}` | Painel ST por empresa | `tests/test_isolamento_empresa_id_bloco9.py` | provado | alto |
 | H2 | GET `/analise-st/resumo/{empresa_id}` | Resumo ST consolidado | — | provado | alto |
 | H3 | GET `/analise-st/ncm/{empresa_id}` | ST por NCM | — | provado | alto |
-| H4 | GET /analise-st/periodo/{empresa_id} | Análise ST por período com `data_inicio`/`data_fim` e isolamento por tenant | tests/test_ops11_h4_l2_m4_contract.py | parcial | alto |
+| H4 | GET `/analise-st/periodo/{empresa_id}` | Análise ST por período com `data_inicio`/`data_fim`, isolamento tenant e validação semântica do body (`st_pago`, `st_devido`, `restituicao`) | tests/test_ops11_h4_l2_m4_contract.py | provado | baixo |
 
 ---
 
@@ -363,10 +363,10 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **37** |
-| `parcial` | **40** |
+| `provado` | **38** |
+| `parcial` | **39** |
 | `nao_provado` | **13** |
-| Risco L3 `alto` sem mitigação | **14** |
+| Risco L3 `alto` sem mitigação | **13** |
 | Domínios A–O | **15** |
 
 **Próximo passo:** B13-OPS-11 — fechar os 14 `nao_provado` e elevar os 40 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
