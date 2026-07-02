@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
@@ -141,6 +142,8 @@ class SimplesNacionalRequest(BaseModel):
     rbt12: float  # Receita bruta últimos 12 meses (R$)
     receita_mes: float | None = None  # Receita do mês (opcional, default: rbt12/12)
     anexo: Literal["I", "II", "III", "IV", "V"] = "I"
+    ano_referencia: int | None = Field(default=None, ge=2000, le=2100)
+    data_referencia: date | None = None
 
 
 @router.post("/simples-nacional")
@@ -149,9 +152,24 @@ def calcular_simples_nacional(dados: SimplesNacionalRequest):
     Calcula DAS estimado para empresa no Simples Nacional.
     Anexos: I (comércio), II (indústria), III (serviços), IV (INSS sep.), V (intelectual).
     """
-    resultado = calcular_imposto_simples_nacional(
-        rbt12=dados.rbt12,
-        receita_mes=dados.receita_mes,
-        anexo=dados.anexo,
-    )
+    ano_referencia = dados.ano_referencia
+    if ano_referencia is None and dados.data_referencia is not None:
+        ano_referencia = dados.data_referencia.year
+    try:
+        resultado = calcular_imposto_simples_nacional(
+            rbt12=dados.rbt12,
+            receita_mes=dados.receita_mes,
+            anexo=dados.anexo,
+            ano_referencia=ano_referencia,
+        )
+    except TempoNormativoAusenteError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+                "estado_l3": "bloqueado",
+                "erro": str(e),
+            },
+        )
     return resultado

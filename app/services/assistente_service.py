@@ -299,11 +299,17 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> str:
 
         if rbt12 and rbt12 > 0:
             anexo = _inferir_anexo_simples(pergunta)
-            resultado = calcular_imposto_simples_nacional(
-                rbt12=rbt12,
-                receita_mes=rbt12 / 12,
-                anexo=anexo,
-            )
+            try:
+                resultado = calcular_imposto_simples_nacional(
+                    rbt12=rbt12,
+                    receita_mes=rbt12 / 12,
+                    anexo=anexo,
+                )
+            except TempoNormativoAusenteError:
+                return (
+                    "Para calcular o Simples Nacional preciso do ano de referência "
+                    "normativo (ex.: 2025 ou 2026). Informe o ano para continuar."
+                )
             fonte = (
                 "com base nas NF-e cadastradas"
                 if empresa_id and not faturamento_pergunta

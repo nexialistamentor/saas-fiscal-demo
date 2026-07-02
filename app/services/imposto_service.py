@@ -176,6 +176,7 @@ def calcular_imposto_simples_nacional(
     rbt12: float,
     receita_mes: float = None,
     anexo: str = "I",
+    ano_referencia: int | None = None,
 ) -> dict:
     """
     Calcula DAS estimado para empresa no Simples Nacional.
@@ -183,6 +184,11 @@ def calcular_imposto_simples_nacional(
     receita_mes: Receita do mês atual (se None, usa rbt12/12)
     anexo: I (comércio), II (indústria), III (serviços), IV (INSS sep.), V (intelectual)
     """
+    if ano_referencia is None:
+        raise TempoNormativoAusenteError(
+            "calcular_imposto_simples_nacional() requer ano_referencia. "
+            "Bloqueado por B13-OPS-13A."
+        )
     if anexo.upper() not in _ANEXOS:
         anexo = "I"
     nome_anexo, tabela = _ANEXOS[anexo.upper()]
@@ -200,7 +206,8 @@ def calcular_imposto_simples_nacional(
     das_anual = round(rbt12 * aliquota_efetiva, 2)
 
     alertas = [
-        "Valor estimado. A alíquota efetiva pode variar conforme o faturamento acumulado."
+        "Valor estimado. A alíquota efetiva pode variar conforme o faturamento acumulado.",
+        "Tabela Simples Nacional interna; validação normativa L3 pendente.",
     ]
     if rbt12 > 4_800_000:
         alertas.append("Faturamento acima do teto do Simples Nacional (R$ 4,8 milhões)")
@@ -218,4 +225,6 @@ def calcular_imposto_simples_nacional(
         "aliquota_nominal_pct": round(aliquota_nom * 100, 2),
         "parcela_deduzir": parcela,
         "alertas": alertas,
+        "_ano_referencia": ano_referencia,
+        "_estado_temporal": "resolvido",
     }

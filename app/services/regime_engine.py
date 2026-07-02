@@ -124,6 +124,7 @@ def calcular_simples(
         rbt12=rbt12,
         receita_mes=rbt12 / 12,
         anexo=anexo,
+        ano_referencia=ano_referencia,
     )
 
     alertas = list(resultado.get("alertas", []))

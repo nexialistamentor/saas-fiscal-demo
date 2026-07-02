@@ -107,3 +107,38 @@ def test_assistente_mei_sem_ano_pede_ano_referencia():
     assert resultado.get("tipo_bloqueio") == "TEMPO_NORMATIVO_AUSENTE"
     assert resultado.get("estado_l3") == "bloqueado"
     assert "ano" in resultado.get("resposta", "").lower()
+
+
+def test_simples_nacional_sem_ano_referencia_bloqueia(client_auth):
+    res = client_auth.post(
+        "/imposto/simples-nacional",
+        json={"rbt12": 360000.0, "anexo": "I"},
+    )
+    assert res.status_code == 422
+    _payload_bloqueio_valido(res.json()["detail"])
+
+
+def test_simples_nacional_com_ano_referencia_calcula(client_auth):
+    res = client_auth.post(
+        "/imposto/simples-nacional",
+        json={"rbt12": 360000.0, "anexo": "I", "ano_referencia": 2026},
+    )
+    assert res.status_code == 200
+    assert res.json()["_ano_referencia"] == 2026
+
+
+def test_calcular_imposto_simples_nacional_sem_ano_bloqueia():
+    from app.services.imposto_service import calcular_imposto_simples_nacional
+    from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
+    import pytest as _pytest
+
+    with _pytest.raises(TempoNormativoAusenteError):
+        calcular_imposto_simples_nacional(rbt12=360000.0, anexo="I")
+
+
+def test_calcular_imposto_simples_nacional_com_ano_retorna_metadados():
+    from app.services.imposto_service import calcular_imposto_simples_nacional
+
+    resultado = calcular_imposto_simples_nacional(rbt12=360000.0, anexo="I", ano_referencia=2026)
+    assert resultado["_ano_referencia"] == 2026
+    assert resultado["_estado_temporal"] == "resolvido"
