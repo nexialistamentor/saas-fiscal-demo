@@ -111,6 +111,70 @@ def buscar_pmpf(
     return None
 
 
+def verificar_cobertura_normativa_st(
+    db: Session,
+    uf: str,
+    ncm: str,
+    data_referencia: date,
+) -> str | None:
+    """
+    Detecta regra MVA/PMPF expirada em data_referencia sem substituto vigente.
+    Retorna 'expirada_sem_substituto' ou None (vigente ou lacuna).
+    """
+    uf_norm = (uf or "").strip().upper()[:2]
+    ncm_norm = (ncm or "").strip()
+    if not uf_norm or not ncm_norm:
+        return None
+
+    if buscar_mva(db, uf_norm, ncm_norm, data_referencia):
+        return None
+
+    pmpf_vigente = (
+        db.query(TabelaPMPF)
+        .filter(
+            TabelaPMPF.estado == uf_norm,
+            TabelaPMPF.ncm == ncm_norm,
+            TabelaPMPF.vigencia_inicio <= data_referencia,
+            or_(
+                TabelaPMPF.vigencia_fim.is_(None),
+                TabelaPMPF.vigencia_fim >= data_referencia,
+            ),
+        )
+        .first()
+    )
+    if pmpf_vigente:
+        return None
+
+    mva_expirada = (
+        db.query(TabelaMVA)
+        .filter(
+            TabelaMVA.estado == uf_norm,
+            TabelaMVA.ncm == ncm_norm,
+            or_(
+                TabelaMVA.vigencia_inicio.is_(None),
+                TabelaMVA.vigencia_inicio <= data_referencia,
+            ),
+            TabelaMVA.vigencia_fim.isnot(None),
+            TabelaMVA.vigencia_fim < data_referencia,
+        )
+        .first()
+    )
+    pmpf_expirada = (
+        db.query(TabelaPMPF)
+        .filter(
+            TabelaPMPF.estado == uf_norm,
+            TabelaPMPF.ncm == ncm_norm,
+            TabelaPMPF.vigencia_inicio <= data_referencia,
+            TabelaPMPF.vigencia_fim.isnot(None),
+            TabelaPMPF.vigencia_fim < data_referencia,
+        )
+        .first()
+    )
+    if mva_expirada or pmpf_expirada:
+        return "expirada_sem_substituto"
+    return None
+
+
 def resolver_base_calculo_st(
     db: Session,
     estado: str,
@@ -142,6 +206,20 @@ def resolver_base_calculo_st(
             "confianca": pmpf["nivel_confianca_fonte"],
             "fonte_legal": pmpf["fonte_legal"],
             "marca": pmpf["marca"],
+        }
+
+    cobertura = verificar_cobertura_normativa_st(db, uf, ncm_norm, ref)
+    if cobertura == "expirada_sem_substituto":
+        return {
+            "base_calculo": None,
+            "aliquota_interna": None,
+            "metodo": "bloqueado_cobertura_expirada",
+            "confianca": "indisponivel",
+            "fonte_legal": None,
+            "aviso": (
+                f"Regra MVA/PMPF para {uf}/{ncm_norm} expirou sem substituto "
+                f"na data {ref}."
+            ),
         }
 
     if not uf or not uf_tem_dados_mva(db, uf):
