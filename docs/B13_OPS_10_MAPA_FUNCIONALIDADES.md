@@ -61,8 +61,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
 | `provado` | 36 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 41 | Teste de serviço/isolamento ou cobertura < 80% |
-| `nao_provado` | 13 | Sem teste dedicado na suite |
+| `parcial` | 40 | Teste de serviço/isolamento ou cobertura < 80% |
+| `nao_provado` | 14 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
 
@@ -248,7 +248,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | H1 | GET `/analise-st/{empresa_id}` | Painel ST por empresa | `tests/test_isolamento_empresa_id_bloco9.py` | provado | alto |
 | H2 | GET `/analise-st/resumo/{empresa_id}` | Resumo ST consolidado | — | provado | alto |
 | H3 | GET `/analise-st/ncm/{empresa_id}` | ST por NCM | — | provado | alto |
-| H4 | GET `/analise-st/periodo/{empresa_id}` | ST por período | — | parcial | alto |
+| H4 | GET `/analise-st/periodo/{empresa_id}` | ST por período (`data_inicio`/`data_fim`) | — | nao_provado | alto |
 
 ---
 
@@ -300,7 +300,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
-| K1 | POST `/insights/{empresa_id}` | Dispara InsightEngine pós-persistência | `tests/test_isolamento_inteligencia_insights_bloco9.py` | parcial | alto |
+| K1 | POST `/insights/{empresa_id}` | Dispara InsightEngine pós-persistência | `tests/test_isolamento_inteligencia_insights_bloco9.py` (MT-15 isolamento) | parcial | alto |
 
 ---
 
@@ -309,7 +309,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
 | L1 | GET `/documentos/` | Lista documentos fiscais tenant | — | provado | medio |
-| L2 | POST `/ingestao/documentos` | Pipeline ingestão PDF/imagem | `tests/test_ingestion_campos_estruturados.py` | parcial | alto |
+| L2 | POST `/ingestao/documentos` | Pipeline ingestão PDF/imagem | `tests/test_ingestion_campos_estruturados.py` (pipeline serviço) | parcial | alto |
 | L3 | POST `/cpf/dashboard` | Resumo tributário CPF | — | provado | medio |
 | L4 | POST `/cpf/documentos/upload` | Upload rendimento CPF | — | provado | medio |
 | L5 | POST `/cpf/documentos/confirmar` | Persistência rendimento confirmado | — | provado | medio |
@@ -323,7 +323,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | M1 | GET `/contador/perfil` | Perfil regulatório contador | `tests/test_dt_perfil_contador_portal_01.py` | provado | medio |
 | M2 | GET `/contador/homologacoes/pendentes` | Fila homologações | `tests/test_acesso_cruzado_bloco9.py` | provado | medio |
 | M3 | POST `/contador/homologacoes/{doc}/assumir` | Assunção com vínculo soberano | `tests/test_dt_contador_01_fluxo_soberano.py` | provado | alto |
-| M4 | POST `/contador/homologacoes/{id}/decidir` | Parecer + decisão homologação | `tests/test_homologacao_service.py` (serviço) | parcial | alto |
+| M4 | POST `/contador/homologacoes/{id}/decidir` | Parecer + decisão homologação (assinatura lógica V1) | `tests/test_homologacao_service.py` (serviço, sem HTTP) | parcial | alto |
 
 ---
 
@@ -340,7 +340,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
-| O1 | POST `/perguntar` | Respostas assistente (motor-first + LLM) | `tests/test_agent_erro_operacional.py` (eventos) | parcial | alto |
+| O1 | POST `/perguntar` | Orquestração assistente motor-first (MEI/CPF/empresa + bloqueio L3) | `tests/test_assistente_perguntar_contract.py` | parcial | alto |
 
 ---
 
@@ -364,15 +364,15 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
 | `provado` | **36** |
-| `parcial` | **41** |
-| `nao_provado` | **13** |
+| `parcial` | **40** |
+| `nao_provado` | **14** |
 | Risco L3 `alto` sem mitigação | **14** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — fechar os 13 `nao_provado` e elevar os 41 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — fechar os 14 `nao_provado` e elevar os 40 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
 ---
 
-*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29.*
+*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02.*
