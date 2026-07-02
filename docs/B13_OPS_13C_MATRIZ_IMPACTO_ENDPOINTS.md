@@ -132,7 +132,7 @@ A matriz responde: *o que o endpoint promete*, *de onde vem o tempo normativo*, 
 
 **Promessa implícita:** não inventar tributo — pedir ano quando MEI. Empresa/Simples usa dados persistidos ou preview limitado.
 
-**Simples Nacional via assistente:** bloqueia sem `ano_referencia` — devolve mensagem textual pedindo o ano (não usa relógio do servidor). Limitação: bloqueio é texto livre, não estruturado (`bloqueado`/`tipo_bloqueio`/`estado_l3`) como o fluxo MEI. Melhoria futura, não bloqueante.
+**Simples Nacional via assistente:** bloqueia sem `ano_referencia` — devolve bloqueio estruturado (`bloqueado`/`tipo_bloqueio`/`estado_l3`), igual ao fluxo MEI/CPF, desde `c1b89bf` (B13-OPS-13A2). Não usa relógio do servidor.
 
 ---
 
