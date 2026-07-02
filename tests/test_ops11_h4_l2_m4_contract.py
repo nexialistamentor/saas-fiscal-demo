@@ -6,7 +6,7 @@ import uuid
 
 from contextlib import contextmanager
 
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 
@@ -16,9 +16,12 @@ from app.database import get_db
 
 from app.models import (
     ContadorEmpresaVinculo,
+    DocumentoFiscal,
     DocumentoIngerido,
     Empresa,
+    ItemFiscal,
     PerfilContador,
+    TabelaMVA,
     User,
 )
 
@@ -129,6 +132,136 @@ def test_h4_analise_st_periodo_empresa_de_outro_usuario_bloqueia(client, _empres
         headers=outro_headers,
     )
     assert res.status_code in (403, 404)
+
+
+def test_h4_analise_st_periodo_valida_body_e_ignora_fora_do_periodo(client, _empresa_do_usuario):
+    headers, empresa_id = _empresa_do_usuario
+    ncm = "22021000"
+
+    with _db_session() as db:
+        doc_ids = [
+            row[0]
+            for row in db.query(DocumentoFiscal.id)
+            .filter(DocumentoFiscal.empresa_id == empresa_id)
+            .all()
+        ]
+        if doc_ids:
+            db.query(ItemFiscal).filter(ItemFiscal.documento_id.in_(doc_ids)).delete(
+                synchronize_session=False
+            )
+            db.query(DocumentoFiscal).filter(DocumentoFiscal.id.in_(doc_ids)).delete(
+                synchronize_session=False
+            )
+
+        db.query(TabelaMVA).filter(
+            TabelaMVA.estado == "PA",
+            TabelaMVA.ncm == ncm,
+        ).delete(synchronize_session=False)
+
+        db.add(
+            TabelaMVA(
+                estado="PA",
+                ncm=ncm,
+                mva=0.45,
+                aliquota_interna=0.19,
+                vigencia_inicio=date(2024, 1, 1),
+                vigencia_fim=None,
+                fonte_legal="Teste H4.1",
+                nivel_confianca_fonte="oficial",
+            )
+        )
+
+        entrada_dentro = DocumentoFiscal(
+            empresa_id=empresa_id,
+            tipo="entrada",
+            data_emissao=date(2024, 6, 1),
+            uf_dest="PA",
+        )
+        db.add(entrada_dentro)
+        db.flush()
+        db.add(
+            ItemFiscal(
+                documento_id=entrada_dentro.id,
+                ncm=ncm,
+                valor_produto=100.0,
+                valor_st=50.0,
+            )
+        )
+
+        entrada_fora = DocumentoFiscal(
+            empresa_id=empresa_id,
+            tipo="entrada",
+            data_emissao=date(2024, 7, 1),
+            uf_dest="PA",
+        )
+        db.add(entrada_fora)
+        db.flush()
+        db.add(
+            ItemFiscal(
+                documento_id=entrada_fora.id,
+                ncm=ncm,
+                valor_produto=100.0,
+                valor_st=999.0,
+            )
+        )
+
+        saida_dentro = DocumentoFiscal(
+            empresa_id=empresa_id,
+            tipo="saida",
+            data_emissao=date(2024, 6, 15),
+            uf_dest="PA",
+        )
+        db.add(saida_dentro)
+        db.flush()
+        db.add(
+            ItemFiscal(
+                documento_id=saida_dentro.id,
+                ncm=ncm,
+                valor_produto=80.0,
+                valor_st=0.0,
+            )
+        )
+
+        saida_fora = DocumentoFiscal(
+            empresa_id=empresa_id,
+            tipo="saida",
+            data_emissao=date(2024, 7, 15),
+            uf_dest="PA",
+        )
+        db.add(saida_fora)
+        db.flush()
+        db.add(
+            ItemFiscal(
+                documento_id=saida_fora.id,
+                ncm=ncm,
+                valor_produto=1000.0,
+                valor_st=0.0,
+            )
+        )
+
+        db.commit()
+
+    res = client.get(
+        f"/analise-st/periodo/{empresa_id}",
+        params={"data_inicio": "2024-06-01", "data_fim": "2024-06-30"},
+        headers=headers,
+    )
+
+    assert res.status_code == 200
+    body = res.json()
+
+    assert set(body.keys()) == {"st_pago", "st_devido", "restituicao"}
+
+    assert body["st_pago"] == 50.0
+
+    # Saída dentro do período:
+    # valor_produto = 80
+    # MVA = 45% → base ST = 116
+    # alíquota = 19%
+    # ICMS próprio = 80 * 19% = 15.20
+    # ICMS ST = 116 * 19% - 15.20 = 6.84
+    assert body["st_devido"] == 6.84
+    assert body["restituicao"] == 43.16
 
 
 # ---------------------------------------------------------------------------
