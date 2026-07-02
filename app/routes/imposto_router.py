@@ -97,7 +97,9 @@ def calcular_imposto(dados: DadosImposto):
             "tipo": "mei",
             "imposto_mensal": das,
             "imposto_anual": das * 12,
-            "alertas": resultado.get("alertas", [])
+            "alertas": resultado.get("alertas", []),
+            "_ano_referencia": resultado.get("_ano_referencia"),
+            "_estado_temporal": resultado.get("_estado_temporal"),
         }
 
     return {
@@ -146,7 +148,9 @@ def simular_ano(dados: SimulacaoAnual):
         "imposto_anual_estimado": imposto_anual,
         "percentual_limite_mei": percentual_limite_mei,
         "valor_restante_limite": valor_restante_limite,
-        "alertas": alertas
+        "alertas": alertas,
+        "_ano_referencia": mensal.get("_ano_referencia"),
+        "_estado_temporal": mensal.get("_estado_temporal"),
     }
 
 

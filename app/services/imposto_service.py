@@ -83,6 +83,8 @@ def calcular_imposto_simples(
         "faturamento": faturamento,
         "despesas": despesas,
         "tipo": tipo.upper(),
+        "_ano_referencia": ano_referencia if tipo.upper() == "MEI" else None,
+        "_estado_temporal": "resolvido" if tipo.upper() == "MEI" else None,
     }
 
 

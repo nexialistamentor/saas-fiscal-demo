@@ -64,6 +64,8 @@ def test_g1_calcular_mei_com_ano_retorna_200(client_auth):
     assert body["tipo"] == "mei"
     assert "imposto_mensal" in body
     assert body["imposto_anual"] == body["imposto_mensal"] * 12
+    assert body["_ano_referencia"] == 2026
+    assert body["_estado_temporal"] == "resolvido"
 
 
 def test_g1_calcular_mei_sem_ano_bloqueia_422(client_auth):
@@ -91,6 +93,8 @@ def test_g2_simular_ano_mei_com_ano_retorna_200(client_auth):
     assert "imposto_anual_estimado" in body
     assert "percentual_limite_mei" in body
     assert "valor_restante_limite" in body
+    assert body["_ano_referencia"] == 2026
+    assert body["_estado_temporal"] == "resolvido"
 
 
 def test_g2_simular_ano_mei_sem_ano_bloqueia_422(client_auth):
