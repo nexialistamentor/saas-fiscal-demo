@@ -117,6 +117,21 @@ async def test_faturamento_zero_p0_sem_llm():
     assert resultado.classificacao == "P0"
 
 
+@pytest.mark.asyncio
+async def test_sentinela_tempo_normativo_ausente_classifica_p0():
+    evento = EventoOperacional(
+        tipo="calculo_sem_tempo_normativo",
+        mensagem="TEMPO_NORMATIVO_AUSENTE: Simples Nacional sem ano_referencia",
+        origem="imposto_router",
+        endpoint="/imposto/simples-nacional",
+    )
+    with patch("app.services.llm_router.completar") as mock_llm:
+        resultado = await agent.run(evento, modo_llm="never")
+        mock_llm.assert_not_called()
+
+    assert resultado.classificacao == "P0"
+
+
 # --- testes modo_llm ---
 
 @pytest.mark.asyncio

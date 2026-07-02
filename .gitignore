@@ -76,7 +76,7 @@ patch_b13_ux_login.py
 actualizar_roadmap.py
 actualizar_roadmap_v2.py
 
-# Excepção: .env.example é documentação, não segredo
+# Excepï¿½ï¿½o: .env.example ï¿½ documentaï¿½ï¿½o, nï¿½o segredo
 !.env.example
 
 patch_b13_p0_06_termos.py

@@ -193,6 +193,40 @@ def _sentinela_faturamento_zero(evento: EventoOperacional) -> AgentOutputSchema 
     return None
 
 
+def _sentinela_tempo_normativo_ausente(evento: EventoOperacional) -> AgentOutputSchema | None:
+    """B13-OPS-13D — cálculo fiscal sem ano_referencia/data_referencia → P0."""
+    gatilhos = (
+        "tempo_normativo_ausente",
+        "TEMPO_NORMATIVO_AUSENTE",
+        "TempoNormativoAusenteError",
+    )
+    texto = f"{evento.tipo} {evento.mensagem}"
+    if any(g.lower() in texto.lower() for g in gatilhos):
+        return AgentOutputSchema(
+            classificacao="P0",
+            causa_provavel=(
+                "Cálculo fiscal executado sem ano_referencia/data_referencia explícito. "
+                "Viola INVARIANTE-REFORMA-01 (B13-OPS-13A)."
+            ),
+            evidencias=[evento.mensagem],
+            ficheiros_provaveis=[
+                "app/services/tax_engines/base_tax_engine.py",
+                "app/services/imposto_service.py",
+            ],
+            teste_recomendado=(
+                "Chamar endpoint de cálculo sem ano_referencia/data_referencia "
+                "deve retornar erro explícito antes de invocar o motor."
+            ),
+            patch_sugerido_texto=(
+                "Exigir ano_referencia ou data_referencia no request/context antes de "
+                "chamar o motor de cálculo. Não usar date.today()/datetime.now() como fallback."
+            ),
+            risco_patch="medio",
+            informacao_em_falta=[],
+        )
+    return None
+
+
 # Registo de sentinelas — ordem importa (mais específica primeiro)
 _SENTINELAS = [
     _sentinela_race_condition_termos,
@@ -201,6 +235,7 @@ _SENTINELAS = [
     _sentinela_cnae_saas_errado,
     _sentinela_mei_limite_excedido,
     _sentinela_faturamento_zero,
+    _sentinela_tempo_normativo_ausente,
 ]
 
 
