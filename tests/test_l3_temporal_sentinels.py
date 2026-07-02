@@ -9,6 +9,7 @@ Prova estática e comportamental que:
 5. analysis_orchestrator.py não engole TempoNormativoAusenteError no except Exception.
 6. Endpoints temporais expõem ano_referencia/data_referencia no schema ou tratamento equivalente.
 7. Fontes com pode_fundamentar_decisao=false não aparecem como cálculo definitivo.
+8. Parsers normativos não inventam vigência normativa com date.today().
 
 IMPORTANTE: estes testes não alteram comportamento.
 São invariantes de regressão L3 — detectam reintrodução de bypass temporal.
@@ -420,3 +421,36 @@ def test_sentinela_07_resposta_sem_calculo_autorizado_definitivo_com_fonte_bloqu
 def test_sentinela_07_resolver_ano_referencia_com_data():
     eng = BaseTaxEngine()
     assert eng.resolver_ano_referencia({"data_referencia": date(2026, 6, 15)}) == 2026
+
+
+# ---------------------------------------------------------------------------
+# 8. Parsers normativos — vigência não inventada por date.today()
+# ---------------------------------------------------------------------------
+
+def test_sentinela_08_parsers_nao_inventam_vigencia_com_data_de_hoje():
+    """
+    B13-OPS-13E.3: parsers normativos podem usar date.today() para data_consulta
+    (metadado operacional), mas nunca para preencher vigencia_inicio/vigencia_fim/
+    data_referencia normativa.
+    """
+    parsers = [
+        "app/services/parsers/sefaz_mg_parser.py",
+        "app/services/parsers/sefaz_mg_pdf_parser.py",
+        "app/services/parsers/sefaz_sp_parser.py",
+        "app/services/parsers/dou_dados_abertos_parser.py",
+        "app/services/parsers/dou_parser.py",
+    ]
+    padroes_proibidos = [
+        re.compile(r"vigencia_inicio\s*=\s*date\.today\(\)"),
+        re.compile(r"vigencia_fim\s*=\s*date\.today\(\)"),
+        re.compile(r"vigencia_inicio\s*or\s*date\.today\(\)"),
+        re.compile(r"vigencia_fim\s*or\s*date\.today\(\)"),
+        re.compile(r"data_referencia\s*=\s*date\.today\(\)"),
+    ]
+    for caminho in parsers:
+        src = Path(caminho).read_text(encoding="utf-8")
+        for padrao in padroes_proibidos:
+            assert not padrao.search(src), (
+                f"{caminho} contém padrão proibido: {padrao.pattern} "
+                f"— vigência normativa não pode ser inventada por date.today()"
+            )
