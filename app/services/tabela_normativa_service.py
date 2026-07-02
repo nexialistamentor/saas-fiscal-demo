@@ -116,18 +116,18 @@ def verificar_cobertura_normativa_st(
     uf: str,
     ncm: str,
     data_referencia: date,
-) -> str | None:
+) -> str:
     """
-    Detecta regra MVA/PMPF expirada em data_referencia sem substituto vigente.
-    Retorna 'expirada_sem_substituto' ou None (vigente ou lacuna).
+    Detecta cobertura normativa ST para UF/NCM na data_referencia.
+    Retorna: "vigente" | "sem_regra" | "expirada_sem_substituto"
     """
     uf_norm = (uf or "").strip().upper()[:2]
     ncm_norm = (ncm or "").strip()
     if not uf_norm or not ncm_norm:
-        return None
+        return "sem_regra"
 
     if buscar_mva(db, uf_norm, ncm_norm, data_referencia):
-        return None
+        return "vigente"
 
     pmpf_vigente = (
         db.query(TabelaPMPF)
@@ -143,7 +143,7 @@ def verificar_cobertura_normativa_st(
         .first()
     )
     if pmpf_vigente:
-        return None
+        return "vigente"
 
     mva_expirada = (
         db.query(TabelaMVA)
@@ -172,7 +172,8 @@ def verificar_cobertura_normativa_st(
     )
     if mva_expirada or pmpf_expirada:
         return "expirada_sem_substituto"
-    return None
+
+    return "sem_regra"
 
 
 def resolver_base_calculo_st(
