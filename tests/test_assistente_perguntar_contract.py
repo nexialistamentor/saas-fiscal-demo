@@ -37,6 +37,17 @@ def client_com_empresa():
     app.dependency_overrides.clear()
 
 
+def test_perguntar_sem_auth_retorna_401():
+    """Sem override de auth, /perguntar deve rejeitar com 401."""
+    app.dependency_overrides.clear()
+    with TestClient(app) as c:
+        res = c.post(
+            "/perguntar",
+            json={"pergunta": "quanto pago de MEI em 2026 com faturamento de 5000 por mes"},
+        )
+    assert res.status_code == 401
+
+
 def test_perguntar_mei_sem_ano_bloqueia_estruturado(client_sem_empresa):
     res = client_sem_empresa.post(
         "/perguntar",
@@ -47,6 +58,7 @@ def test_perguntar_mei_sem_ano_bloqueia_estruturado(client_sem_empresa):
     assert body["bloqueado"] is True
     assert body["tipo_bloqueio"] == "TEMPO_NORMATIVO_AUSENTE"
     assert body["estado_l3"] == "bloqueado"
+    assert body["requires_payment"] is False
 
 
 def test_perguntar_mei_com_ano_calcula(client_sem_empresa):
@@ -58,6 +70,8 @@ def test_perguntar_mei_com_ano_calcula(client_sem_empresa):
     body = res.json()
     assert body.get("bloqueado") is not True
     assert body["analysis_type"] == "mei_tax"
+    assert body["requires_payment"] is False
+    assert "DAS" in body["resposta"] or "MEI" in body["resposta"]
 
 
 def test_perguntar_empresa_sem_empresa_vinculada_pede_vinculo(client_sem_empresa):
@@ -79,6 +93,21 @@ def test_perguntar_empresa_simples_com_ano_calcula(client_com_empresa):
     body = res.json()
     assert body.get("bloqueado") is not True
     assert body["analysis_type"] == "simples_nacional"
+    assert body["requires_payment"] is False
+
+
+def test_perguntar_empresa_simples_sem_ano_bloqueia_estruturado(client_com_empresa):
+    res = client_com_empresa.post(
+        "/perguntar",
+        json={"pergunta": "quanto minha empresa paga no simples nacional, faturamos 50 mil por mes"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["bloqueado"] is True
+    assert body["tipo_bloqueio"] == "TEMPO_NORMATIVO_AUSENTE"
+    assert body["estado_l3"] == "bloqueado"
+    assert body["requires_payment"] is False
+    assert body["analysis_type"] == "simples_nacional"
 
 
 def test_perguntar_cpf_sem_ano_bloqueia_estruturado(client_sem_empresa):
@@ -91,3 +120,16 @@ def test_perguntar_cpf_sem_ano_bloqueia_estruturado(client_sem_empresa):
     assert body["bloqueado"] is True
     assert body["tipo_bloqueio"] == "TEMPO_NORMATIVO_AUSENTE"
     assert body["estado_l3"] == "bloqueado"
+    assert body["requires_payment"] is False
+
+
+def test_perguntar_cpf_com_ano_calcula(client_sem_empresa):
+    res = client_sem_empresa.post(
+        "/perguntar",
+        json={"pergunta": "quanto pago de imposto autonomo em 2026 com faturamento de 5000 por mes"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body.get("bloqueado") is not True
+    assert body["analysis_type"] == "cpf_tax"
+    assert body["requires_payment"] is False

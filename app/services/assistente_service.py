@@ -187,7 +187,7 @@ def _resposta_assistente_mei(pergunta: str) -> dict:
 
     return {
         "resposta": resposta,
-        "requires_payment": True,
+        "requires_payment": False,
         "analysis_type": "mei_tax",
     }
 
@@ -696,7 +696,7 @@ def responder_pergunta(
             return {
                 "resposta": cpf_resultado["resposta"],
                 "preview": cpf_resultado["payload"],
-                "requires_payment": True,
+                "requires_payment": False,
                 "analysis_type": "cpf_tax",
             }
         from app.services.registro_analise_service import (
@@ -719,7 +719,7 @@ def responder_pergunta(
         return {
             "resposta": cpf_resultado["resposta"],
             "preview": cpf_resultado["payload"],
-            "requires_payment": True,
+            "requires_payment": False,
             "analysis_type": "cpf_tax",
         }
 
