@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 37 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 40 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 39 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 38 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 13 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -340,7 +340,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
-| O1 | POST `/perguntar` | Orquestração assistente motor-first (MEI/CPF/empresa + bloqueio L3) | `tests/test_assistente_perguntar_contract.py` | parcial | alto |
+| O1 | POST `/perguntar` | Orquestração assistente motor-first (MEI/CPF/empresa + bloqueio L3) | `tests/test_assistente_perguntar_contract.py` | provado | baixo |
 
 ---
 
@@ -363,10 +363,10 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **38** |
-| `parcial` | **39** |
+| `provado` | **39** |
+| `parcial` | **38** |
 | `nao_provado` | **13** |
-| Risco L3 `alto` sem mitigação | **13** |
+| Risco L3 `alto` sem mitigação | **12** |
 | Domínios A–O | **15** |
 
 **Próximo passo:** B13-OPS-11 — fechar os 14 `nao_provado` e elevar os 40 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
