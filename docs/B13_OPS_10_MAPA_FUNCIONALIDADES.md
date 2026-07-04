@@ -60,9 +60,9 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 41 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `provado` | 42 | Teste verde cobrindo endpoint ou contrato HTTP |
 | `parcial` | 37 | Teste de serviço/isolamento ou cobertura < 80% |
-| `nao_provado` | 12 | Sem teste dedicado na suite |
+| `nao_provado` | 11 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
 
@@ -155,7 +155,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 |----|----------|----------|-------|--------|----------|
 | A1 | GET `/health` | Liveness simples para Railway | — (healthcheck externo) | provado | baixo |
 | A2 | GET `/health/ready` | Readiness BD + Redis advisory | `tests/test_ops11_a2_health_ready_contract.py` | provado | baixo |
-| A3 | GET `/` | API activa / heartbeat | — | nao_provado | baixo |
+| A3 | GET `/` | API activa / heartbeat | `tests/test_ops11_a3_root_contract.py` | provado | baixo |
 | A4 | GET `/system/metrics` | Métricas operacionais internas | — | nao_provado | medio |
 | A5 | GET `/docs` | OpenAPI UI disponível | — | provado | baixo |
 | A6 | GET `/redoc` | Documentação ReDoc disponível | — | provado | baixo |
@@ -363,13 +363,13 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **41** |
+| `provado` | **42** |
 | `parcial` | **37** |
-| `nao_provado` | **12** |
+| `nao_provado` | **11** |
 | Risco L3 `alto` sem mitigação | **11** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — fechar os 12 `nao_provado` e elevar os 37 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — fechar os 11 `nao_provado` e elevar os 37 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
