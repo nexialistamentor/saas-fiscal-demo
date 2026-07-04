@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 39 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 38 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 40 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 37 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 13 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -300,7 +300,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
-| K1 | POST `/insights/{empresa_id}` | Dispara InsightEngine pós-persistência | `tests/test_isolamento_inteligencia_insights_bloco9.py` (MT-15 isolamento) | parcial | alto |
+| K1 | POST `/insights/{empresa_id}` | Dispara InsightEngine pós-persistência | `tests/test_isolamento_inteligencia_insights_bloco9.py` (MT-15 isolamento) | provado | baixo |
 
 ---
 
@@ -363,13 +363,13 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **39** |
-| `parcial` | **38** |
+| `provado` | **40** |
+| `parcial` | **37** |
 | `nao_provado` | **13** |
-| Risco L3 `alto` sem mitigação | **12** |
+| Risco L3 `alto` sem mitigação | **11** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — fechar os 14 `nao_provado` e elevar os 40 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — fechar os 13 `nao_provado` e elevar os 37 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
