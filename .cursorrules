@@ -69,3 +69,48 @@ O sistema deve:
 persistir primeiro
 enriquecer depois
 só então usar inteligência
+
+
+
+PROTOCOLO L3 — PROIBICOES ABSOLUTAS DO CURSOR
+
+
+
+O Cursor NAO pode em nenhuma circunstancia:
+
+- Criar ficheiros de teste (.py em tests/)
+
+- Escrever patches de codigo
+
+- Criar ou alterar contratos HTTP
+
+- Criar novos ficheiros Python em app/
+
+- Alterar ficheiros existentes em app/
+
+- Fazer git add, commit ou push sem autorizacao explicita de Miguel
+
+- Rodar suite completa sem autorizacao explicita
+
+- Abrir ficheiros nao pedidos explicitamente
+
+- Usar Agent mode
+
+
+
+O Cursor APENAS executa:
+
+- Comandos PowerShell explicitamente ditados por Claude
+
+- Copy-Item de ficheiros criados por Claude
+
+- git add/commit/push quando o comando completo for fornecido por Claude
+
+
+
+Quem escreve codigo, testes, patches e contratos: CLAUDE
+
+Quem ratifica: Miguel + GPT
+
+Quem executa comandos: Cursor
+
