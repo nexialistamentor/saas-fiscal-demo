@@ -277,14 +277,15 @@ def _usuario_autenticado(client):
     return headers
 
 
-def test_l2_ingerir_documento_pdf_valido_retorna_200(client, _usuario_autenticado):
+def test_l2_ingerir_documento_pdf_rejeitado_por_classificador_retorna_422(client, _usuario_autenticado):
     conteudo_pdf = b"%PDF-1.4\n%mock pdf content for test\n%%EOF"
     res = client.post(
         "/ingestao/documentos",
         files={"file": ("teste.pdf", conteudo_pdf, "application/pdf")},
         headers=_usuario_autenticado,
     )
-    assert res.status_code in (200, 422)
+    assert res.status_code == 422
+    assert "detail" in res.json()
 
 
 def test_l2_ingerir_documento_mime_invalido_retorna_415(client, _usuario_autenticado):
