@@ -200,11 +200,22 @@ class TestIsolamentoInsights:
             f"/insights/{empresa_id}",
             headers=headers_b,
         )
-        # 200 = insights gerados; 422 = sem dados fiscais (empresa vazia)
-        # Qualquer um destes é aceitável — A já foi bloqueado
-        assert res_b.status_code in (200, 422), (
-            f"Código inesperado para B: {res_b.status_code} {res_b.text}"
+        assert res_b.status_code == 200, (
+            f"B não acedeu aos próprios insights: {res_b.status_code} {res_b.text}"
         )
+        body = res_b.json()
+        assert body["empresa_id"] == empresa_id
+        campos_obrigatorios = {
+            "empresa_id",
+            "oportunidades",
+            "creditos_detectados",
+            "risco_tributario",
+            "resultados_engines",
+            "comparativo_regime",
+            "context_flags",
+            "decomposicao_impacto",
+        }
+        assert campos_obrigatorios.issubset(body.keys())
 
     def test_mt15b_sem_token_insights_retorna_401(self, client):
         res = client.post("/insights/1")
