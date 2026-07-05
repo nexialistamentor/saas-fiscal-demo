@@ -60,9 +60,9 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 43 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `provado` | 44 | Teste verde cobrindo endpoint ou contrato HTTP |
 | `parcial` | 37 | Teste de serviço/isolamento ou cobertura < 80% |
-| `nao_provado` | 10 | Sem teste dedicado na suite |
+| `nao_provado` | 9 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
 
@@ -71,8 +71,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
 | alto | 14 | D, E, G, O, F (memorial) |
-| medio | 50 | I, J, H, L, M |
-| baixo | 26 | A, B, C (parcial) |
+| medio | 49 | I, J, H, L, M |
+| baixo | 27 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -288,7 +288,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | J5 | GET `/dashboard/risco/{id}` | Score risco heurístico | — | parcial | medio |
 | J6 | GET `/dashboard/resumo/{id}` | Resumo alertas empresa | `tests/test_isolamento_empresa_id_bloco9.py` | parcial | medio |
 | J7 | GET `/dashboard/alertas/{id}` | Lista alertas activos | — | parcial | medio |
-| J8 | GET `/dashboard/alertas/timeline/{id}` | Timeline alertas | — | nao_provado | medio |
+| J8 | GET `/dashboard/alertas/timeline/{id}` | Timeline alertas | `tests/test_ops11_j8_timeline_alertas_contract.py` | provado | baixo |
 | J9 | GET `/dashboard/alertas/agentes/{id}` | Alertas agrupados por agente | — | nao_provado | medio |
 | J10 | PATCH `/dashboard/alertas/silenciar/{id}` | Silenciar alerta | — | nao_provado | medio |
 | J11 | PATCH `/dashboard/alertas/restaurar/{id}` | Restaurar alerta | — | nao_provado | medio |
@@ -363,13 +363,13 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **43** |
+| `provado` | **44** |
 | `parcial` | **37** |
-| `nao_provado` | **10** |
+| `nao_provado` | **9** |
 | Risco L3 `alto` sem mitigação | **11** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — fechar os 10 `nao_provado` e elevar os 37 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — fechar os 9 `nao_provado` e elevar os 37 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
