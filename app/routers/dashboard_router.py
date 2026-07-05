@@ -296,7 +296,7 @@ def silenciar_alerta(
     alerta = db.query(AlertaFiscal).filter(AlertaFiscal.id == alerta_id).first()
 
     if not alerta:
-        return {"erro": "alerta não encontrado"}
+        raise HTTPException(status_code=404, detail="alerta não encontrado")
 
     verificar_empresa_do_usuario(alerta.empresa_id, usuario_atual, db)
     alerta.silenciado = True
@@ -317,7 +317,7 @@ def restaurar_alerta(
     alerta = db.query(AlertaFiscal).filter(AlertaFiscal.id == alerta_id).first()
 
     if not alerta:
-        return {"erro": "alerta não encontrado"}
+        raise HTTPException(status_code=404, detail="alerta não encontrado")
 
     verificar_empresa_do_usuario(alerta.empresa_id, usuario_atual, db)
     alerta.silenciado = False
