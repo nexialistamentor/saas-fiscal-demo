@@ -73,15 +73,20 @@ def _cpf_unico_valido() -> str:
 
 
 def _registar_user(client: TestClient) -> dict:
-    email = f"va01_{uuid.uuid4().hex[:8]}@example.com"
-    password = f"p{uuid.uuid4().hex}"
-    res = client.post(
-        "/auth/register",
-        json={"email": email, "password": password,
-              "tipo_usuario": "cpf", "documento": _cpf_unico_valido()},
-    )
-    assert res.status_code in (200, 201), f"Registo falhou: {res.text}"
-    return {"email": email, "password": password}
+    last_response = None
+    for _ in range(10):
+        email = f"va01_{uuid.uuid4().hex[:8]}@example.com"
+        password = f"p{uuid.uuid4().hex}"
+        documento = _cpf_unico_valido()
+        res = client.post(
+            "/auth/register",
+            json={"email": email, "password": password,
+                  "tipo_usuario": "cpf", "documento": documento},
+        )
+        if res.status_code in (200, 201):
+            return {"email": email, "password": password}
+        last_response = res
+    assert False, f"Registo falhou ap?s 10 tentativas: {last_response.text}"
 
 
 def _login_headers(client: TestClient, credentials: dict) -> dict:
