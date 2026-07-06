@@ -60,9 +60,9 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 51 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `provado` | 52 | Teste verde cobrindo endpoint ou contrato HTTP |
 | `parcial` | 37 | Teste de serviço/isolamento ou cobertura < 80% |
-| `nao_provado` | 2 | Sem teste dedicado na suite |
+| `nao_provado` | 1 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
 
@@ -71,8 +71,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
 | alto | 14 | D, E, G, O, F (memorial) |
-| medio | 42 | I, J, H, L, M |
-| baixo | 34 | A, B, C (parcial) |
+| medio | 41 | I, J, H, L, M |
+| baixo | 35 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -332,7 +332,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
 | N1 | POST `/estoque/auditar` | Dispara auditoria estoque (agent) | — | provado | medio |
-| N2 | GET `/estoque/divergencias` | Lista divergências fiscais vs ERP | — | nao_provado | medio |
+| N2 | GET `/estoque/divergencias` | Lista divergências fiscais vs ERP | `tests/test_ops11_n2_estoque_divergencias_contract.py` | provado | baixo |
 
 ---
 
@@ -363,13 +363,13 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **51** |
+| `provado` | **52** |
 | `parcial` | **37** |
-| `nao_provado` | **2** |
+| `nao_provado` | **1** |
 | Risco L3 `alto` sem mitigação | **11** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — fechar os 2 `nao_provado` e elevar os 37 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — fechar o 1 `nao_provado` e elevar os 37 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
