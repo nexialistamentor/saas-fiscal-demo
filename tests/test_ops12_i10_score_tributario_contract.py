@@ -1,0 +1,109 @@
+"""I10 — contrato HTTP para GET /inteligencia/score-tributario/{empresa_id}."""
+
+from unittest.mock import MagicMock
+
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+
+import app.routers.inteligencia_router as inteligencia_router
+from app.database import get_db
+from app.main import app
+from app.models import Empresa
+from app.security import tenant_empresa
+
+
+class _DBFake:
+    pass
+
+
+_db_state = None
+
+
+def _override_db():
+    global _db_state
+    _db_state = _DBFake()
+    yield _db_state
+
+
+def _mock_empresa():
+    e = MagicMock(spec=Empresa)
+    e.id = 1
+    return e
+
+
+def test_i10_score_tributario_retorna_200_com_contrato(monkeypatch):
+    global _db_state
+    _db_state = None
+    service_calls = []
+
+    def fake_calcular(db, empresa_id):
+        service_calls.append((db, empresa_id))
+        return [
+            {"ncm": "12345678", "score_tributario": 61.0},
+            {"ncm": "87654321", "score_tributario": 28.0},
+        ]
+
+    monkeypatch.setattr(inteligencia_router, "calcular_score_tributario", fake_calcular)
+    app.dependency_overrides[tenant_empresa] = _mock_empresa
+    app.dependency_overrides[get_db] = _override_db
+
+    try:
+        with TestClient(app) as c:
+            res = c.get("/inteligencia/score-tributario/1")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    assert res.json() == [
+        {"ncm": "12345678", "score_tributario": 61.0},
+        {"ncm": "87654321", "score_tributario": 28.0},
+    ]
+    assert len(service_calls) == 1
+    assert service_calls[0][0] is _db_state
+    assert service_calls[0][1] == 1
+
+
+def test_i10_score_tributario_lista_vazia(monkeypatch):
+    global _db_state
+    _db_state = None
+    service_calls = []
+
+    def fake_calcular(db, empresa_id):
+        service_calls.append((db, empresa_id))
+        return []
+
+    monkeypatch.setattr(inteligencia_router, "calcular_score_tributario", fake_calcular)
+    app.dependency_overrides[tenant_empresa] = _mock_empresa
+    app.dependency_overrides[get_db] = _override_db
+
+    try:
+        with TestClient(app) as c:
+            res = c.get("/inteligencia/score-tributario/1")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    assert res.json() == []
+    assert len(service_calls) == 1
+    assert service_calls[0][0] is _db_state
+    assert service_calls[0][1] == 1
+
+
+def test_i10_score_tributario_sem_auth_retorna_401():
+    app.dependency_overrides.clear()
+    with TestClient(app) as c:
+        res = c.get("/inteligencia/score-tributario/1")
+    assert res.status_code == 401
+
+
+def test_i10_score_tributario_empresa_alheia_retorna_403():
+    def _empresa_403():
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    app.dependency_overrides[tenant_empresa] = _empresa_403
+    try:
+        with TestClient(app) as c:
+            res = c.get("/inteligencia/score-tributario/99")
+    finally:
+        app.dependency_overrides.clear()
+    assert res.status_code == 403
+    assert res.json() == {"detail": "Acesso negado"}
