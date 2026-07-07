@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 61 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 29 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 62 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 28 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -71,8 +71,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
 | alto | 13 | D, E, G, O, F (memorial) |
-| medio | 33 | I, J, H, L, M |
-| baixo | 44 | A, B, C (parcial) |
+| medio | 32 | I, J, H, L, M |
+| baixo | 45 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -256,7 +256,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
-| I1 | GET `/inteligencia/oportunidades-recuperacao/{id}` | Ranking oportunidades recuperação | — | parcial | medio |
+| I1 | GET `/inteligencia/oportunidades-recuperacao/{id}` | Ranking oportunidades recuperação | `tests/test_ops12_i1_oportunidades_recuperacao_contract.py` | provado | baixo |
 | I2 | GET `/inteligencia/ranking-restituicao/{id}` | Ranking restituição | — | parcial | medio |
 | I3 | GET `/inteligencia/mapa-oportunidades/{id}` | Mapa oportunidades + flag pagamento | — | parcial | medio |
 | I4 | GET `/inteligencia/creditos/{id}` | Detecção créditos | — | parcial | medio |
@@ -363,13 +363,13 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **61** |
-| `parcial` | **29** |
+| `provado` | **62** |
+| `parcial` | **28** |
 | `nao_provado` | **0** |
 | Risco L3 `alto` sem mitigação | **10** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 29 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 28 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
