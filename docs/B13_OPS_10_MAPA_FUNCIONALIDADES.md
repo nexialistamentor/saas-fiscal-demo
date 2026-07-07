@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 60 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 30 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 61 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 29 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -71,8 +71,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
 | alto | 13 | D, E, G, O, F (memorial) |
-| medio | 34 | I, J, H, L, M |
-| baixo | 43 | A, B, C (parcial) |
+| medio | 33 | I, J, H, L, M |
+| baixo | 44 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -265,7 +265,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | I7 | GET `/inteligencia/ranking-estrategico/{id}` | Ranking estratégico | — | parcial | medio |
 | I8 | GET `/inteligencia/impacto-financeiro/{id}` | Impacto financeiro | — | parcial | medio |
 | I9 | GET `/inteligencia/indice-inteligencia/{id}` | Índice inteligência | — | parcial | medio |
-| I10 | GET `/inteligencia/score-tributario/{id}` | Score tributário | `tests/test_isolamento_inteligencia_insights_bloco9.py` | parcial | medio |
+| I10 | GET `/inteligencia/score-tributario/{id}` | Score tributário | `tests/test_ops12_i10_score_tributario_contract.py` | provado | baixo |
 | I11 | GET `/inteligencia/radar-tributario/{id}` | Radar tributário | — | parcial | medio |
 | I12 | GET `/inteligencia/benchmark-empresas` | Benchmark multi-empresa tenant | — | parcial | medio |
 | I13 | GET `/inteligencia/anomalias-tributarias/{id}` | Anomalias tributárias | — | parcial | medio |
@@ -363,13 +363,13 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **60** |
-| `parcial` | **30** |
+| `provado` | **61** |
+| `parcial` | **29** |
 | `nao_provado` | **0** |
 | Risco L3 `alto` sem mitigação | **10** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 30 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 29 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
