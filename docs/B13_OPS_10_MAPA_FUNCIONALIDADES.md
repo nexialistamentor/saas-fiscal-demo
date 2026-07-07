@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 65 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 25 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 66 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 24 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -71,8 +71,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
 | alto | 13 | D, E, G, O, F (memorial) |
-| medio | 29 | I, J, H, L, M |
-| baixo | 48 | A, B, C (parcial) |
+| medio | 28 | I, J, H, L, M |
+| baixo | 49 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -260,7 +260,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | I2 | GET `/inteligencia/ranking-restituicao/{id}` | Ranking restituição | `tests/test_ops12_i2_ranking_restituicao_contract.py` | provado | baixo |
 | I3 | GET `/inteligencia/mapa-oportunidades/{id}` | Mapa oportunidades + flag pagamento | `tests/test_ops12_i3_mapa_oportunidades_contract.py` | provado | baixo |
 | I4 | GET `/inteligencia/creditos/{id}` | Detecção créditos | `tests/test_ops12_i4_creditos_contract.py` | provado | baixo |
-| I5 | GET `/inteligencia/distorcoes/{id}` | Distorções tributárias | — | parcial | medio |
+| I5 | GET `/inteligencia/distorcoes/{id}` | Distorções tributárias | `tests/test_ops12_i5_distorcoes_contract.py` | provado | baixo |
 | I6 | GET `/inteligencia/oportunidades-preditivas/{id}` | Potencial recuperação preditivo | — | parcial | medio |
 | I7 | GET `/inteligencia/ranking-estrategico/{id}` | Ranking estratégico | — | parcial | medio |
 | I8 | GET `/inteligencia/impacto-financeiro/{id}` | Impacto financeiro | — | parcial | medio |
@@ -363,16 +363,16 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **65** |
-| `parcial` | **25** |
+| `provado` | **66** |
+| `parcial` | **24** |
 | `nao_provado` | **0** |
 | Risco L3 `alto` sem mitigação | **10** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 25 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 24 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
 ---
 
-*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07.*
+*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07.*
