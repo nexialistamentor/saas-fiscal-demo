@@ -165,9 +165,16 @@ def _contador_user_id(client):
     with _db_session() as db:
         user = db.query(User).filter(User.email == credentials["email"]).first()
         user.role = "contador"
+        crc = None
+        for _ in range(10):
+            candidato = f"CRC-VA02B-{uuid.uuid4().hex[:8].upper()}"
+            if not db.query(PerfilContador).filter(PerfilContador.crc == candidato).first():
+                crc = candidato
+                break
+        assert crc is not None, "Não foi possível gerar CRC único para o teste"
         perfil = PerfilContador(
             user_id=user.id,
-            crc=f"CRC-VA02B-{uuid.uuid4().hex[:5].upper()}",
+            crc=crc,
             uf_crc="PA",
             status="aprovado",
         )
