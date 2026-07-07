@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 56 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 34 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 57 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 33 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -71,8 +71,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
 | alto | 13 | D, E, G, O, F (memorial) |
-| medio | 38 | I, J, H, L, M |
-| baixo | 39 | A, B, C (parcial) |
+| medio | 37 | I, J, H, L, M |
+| baixo | 40 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -284,7 +284,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | J1 | GET `/dashboard/analises/{id}` | Histórico análises empresa | `tests/test_ops12_j1_dashboard_analises_contract.py` | provado | baixo |
 | J2 | GET `/dashboard/relatorio/{id}` | Detalhe relatório dashboard | `tests/test_ops12_j2_dashboard_relatorio_contract.py` | provado | baixo |
 | J3 | GET `/dashboard/relatorio/{id}/alertas` | Alertas por relatório | `tests/test_ops12_j3_dashboard_relatorio_alertas_contract.py` | provado | baixo |
-| J4 | GET `/dashboard/relatorio/{id}/oportunidades` | Oportunidades por relatório | — | parcial | medio |
+| J4 | GET `/dashboard/relatorio/{id}/oportunidades` | Oportunidades por relatório | `tests/test_ops12_j4_dashboard_relatorio_oportunidades_contract.py` | provado | baixo |
 | J5 | GET `/dashboard/risco/{id}` | Score risco heurístico | — | parcial | medio |
 | J6 | GET `/dashboard/resumo/{id}` | Resumo alertas empresa | `tests/test_isolamento_empresa_id_bloco9.py` | parcial | medio |
 | J7 | GET `/dashboard/alertas/{id}` | Lista alertas activos | — | parcial | medio |
