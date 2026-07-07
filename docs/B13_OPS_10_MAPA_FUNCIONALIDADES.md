@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 58 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 32 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 59 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 31 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -71,8 +71,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
 | alto | 13 | D, E, G, O, F (memorial) |
-| medio | 36 | I, J, H, L, M |
-| baixo | 41 | A, B, C (parcial) |
+| medio | 35 | I, J, H, L, M |
+| baixo | 42 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -286,7 +286,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | J3 | GET `/dashboard/relatorio/{id}/alertas` | Alertas por relatório | `tests/test_ops12_j3_dashboard_relatorio_alertas_contract.py` | provado | baixo |
 | J4 | GET `/dashboard/relatorio/{id}/oportunidades` | Oportunidades por relatório | `tests/test_ops12_j4_dashboard_relatorio_oportunidades_contract.py` | provado | baixo |
 | J5 | GET `/dashboard/risco/{id}` | Score risco heurístico | `tests/test_ops12_j5_dashboard_risco_contract.py` | provado | baixo |
-| J6 | GET `/dashboard/resumo/{id}` | Resumo alertas empresa | `tests/test_isolamento_empresa_id_bloco9.py` | parcial | medio |
+| J6 | GET `/dashboard/resumo/{id}` | Resumo alertas empresa | `tests/test_ops12_j6_dashboard_resumo_contract.py` | provado | baixo |
 | J7 | GET `/dashboard/alertas/{id}` | Lista alertas activos | — | parcial | medio |
 | J8 | GET `/dashboard/alertas/timeline/{id}` | Timeline alertas | `tests/test_ops11_j8_timeline_alertas_contract.py` | provado | baixo |
 | J9 | GET `/dashboard/alertas/agentes/{id}` | Alertas agrupados por agente | `tests/test_ops11_j9_alertas_por_agente_contract.py` | provado | baixo |
@@ -363,13 +363,13 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **58** |
-| `parcial` | **32** |
+| `provado` | **59** |
+| `parcial` | **31** |
 | `nao_provado` | **0** |
 | Risco L3 `alto` sem mitigação | **10** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 32 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 31 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
