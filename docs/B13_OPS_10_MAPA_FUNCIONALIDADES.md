@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 69 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 21 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 70 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 20 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -71,8 +71,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
 | alto | 13 | D, E, G, O, F (memorial) |
-| medio | 25 | I, J, H, L, M |
-| baixo | 52 | A, B, C (parcial) |
+| medio | 24 | I, J, H, L, M |
+| baixo | 53 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -264,7 +264,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | I6 | GET `/inteligencia/oportunidades-preditivas/{id}` | Potencial recuperação preditivo | `tests/test_ops12_i6_oportunidades_preditivas_contract.py` | provado | baixo |
 | I7 | GET `/inteligencia/ranking-estrategico/{id}` | Ranking estratégico | `tests/test_ops12_i7_ranking_estrategico_contract.py` | provado | baixo |
 | I8 | GET `/inteligencia/impacto-financeiro/{id}` | Impacto financeiro | `tests/test_ops12_i8_impacto_financeiro_contract.py` | provado | baixo |
-| I9 | GET `/inteligencia/indice-inteligencia/{id}` | Índice inteligência | — | parcial | medio |
+| I9 | GET `/inteligencia/indice-inteligencia/{id}` | Índice inteligência | `tests/test_ops12_i9_indice_inteligencia_contract.py` | provado | baixo |
 | I10 | GET `/inteligencia/score-tributario/{id}` | Score tributário | `tests/test_ops12_i10_score_tributario_contract.py` | provado | baixo |
 | I11 | GET `/inteligencia/radar-tributario/{id}` | Radar tributário | — | parcial | medio |
 | I12 | GET `/inteligencia/benchmark-empresas` | Benchmark multi-empresa tenant | — | parcial | medio |
@@ -363,16 +363,16 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **69** |
-| `parcial` | **21** |
+| `provado` | **70** |
+| `parcial` | **20** |
 | `nao_provado` | **0** |
 | Risco L3 `alto` sem mitigação | **10** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 21 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 20 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
 ---
 
-*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07. Actualizado I6 — 2026-07-07. Actualizado I7 — 2026-07-07.*
+*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07. Actualizado I6 — 2026-07-07. Actualizado I7 — 2026-07-07. Actualizado I9 — 2026-07-07.*
