@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 81 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 9 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 82 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 8 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -70,9 +70,9 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
-| alto | 13 | D, E, G, O, F (memorial) |
+| alto | 12 | D, E, G, O, F (memorial) |
 | medio | 15 | I, J, H, L, M |
-| baixo | 62 | A, B, C (parcial) |
+| baixo | 63 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -221,7 +221,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | F3 | POST `/relatorio/gerar` | Geração relatório alternativa | — | parcial | alto |
 | F4 | GET `/relatorio/relatorio-pdf/{perfil_id}` | PDF relatório por perfil | — | provado | medio |
 | F5 | POST `/relatorio/relatorio-pdf` | PDF relatório upload | — | provado | medio |
-| F6 | GET `/relatorio/memorial/{id}` | Memorial descritivo | — | parcial | alto |
+| F6 | GET `/relatorio/memorial/{id}` | Memorial descritivo | `tests/test_ops12_f6_memorial_contract.py` | provado | baixo |
 | F7 | GET `/relatorio/memorial/{id}/pdf` | Memorial PDF com gate pagamento | `tests/test_e2e_bloco2_memorial.py` | provado | alto |
 | F8 | GET `/relatorio/{relatorio_id}` | Detalhe relatório por ID | `tests/test_ops12_f8_relatorio_id_contract.py` | provado | baixo |
 | F9 | GET `/relatorio/{analysis_type}` | Relatório por tipo análise | — | provado | medio |
@@ -363,16 +363,16 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **81** |
-| `parcial` | **9** |
+| `provado` | **82** |
+| `parcial` | **8** |
 | `nao_provado` | **0** |
-| Risco L3 `alto` sem mitigação | **10** |
+| Risco L3 `alto` sem mitigação | **9** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 9 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-11 — 0 `nao_provado`; elevar os 8 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
 ---
 
-*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07. Actualizado I6 — 2026-07-07. Actualizado I7 — 2026-07-07. Actualizado I9 — 2026-07-07. Actualizado I11 — 2026-07-07. Actualizado I12 — 2026-07-08. Actualizado I13 — 2026-07-08. Actualizado I14 — 2026-07-08. Actualizado I15 — 2026-07-08. Actualizado I16 — 2026-07-08. Actualizado I17 — 2026-07-08. Actualizado I18 — 2026-07-08. Actualizado F8 — 2026-07-08.*
+*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07. Actualizado I6 — 2026-07-07. Actualizado I7 — 2026-07-07. Actualizado I9 — 2026-07-07. Actualizado I11 — 2026-07-07. Actualizado I12 — 2026-07-08. Actualizado I13 — 2026-07-08. Actualizado I14 — 2026-07-08. Actualizado I15 — 2026-07-08. Actualizado I16 — 2026-07-08. Actualizado I17 — 2026-07-08. Actualizado I18 — 2026-07-08. Actualizado F8 — 2026-07-08. Actualizado F6 — 2026-07-09.*
