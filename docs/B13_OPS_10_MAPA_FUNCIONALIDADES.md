@@ -366,10 +366,10 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | `provado` | **90** |
 | `parcial` | **0** |
 | `nao_provado` | **0** |
-| Risco L3 `alto` sem mitigação | **1** |
+| Risco L3 `alto` sem mitigação | **0** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-12 — 0 `nao_provado`; todos os endpoints provados (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-12 — 0 nao_provado; todos os endpoints provados; E1 mitigado por ADR-007; nenhum risco L3 alto sem ADR.
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
