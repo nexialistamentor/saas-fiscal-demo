@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 89 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 1 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 90 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 0 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -70,9 +70,9 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
-| alto | 5 | D, E, G, O, F (memorial) |
+| alto | 4 | D, E, G, O, F (memorial) |
 | medio | 15 | I, J, H, L, M |
-| baixo | 70 | A, B, C (parcial) |
+| baixo | 71 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -195,7 +195,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 |----|----------|----------|-------|--------|----------|
 | D1 | POST `/formalizacao/recomendar-cnae` | CNAE heurístico por actividade | `tests/test_b13_p0_formalizacao.py` · `tests/test_cnae_engine.py` + `tests/test_ops12_d1_recomendar_cnae_contract.py` | provado | baixo |
 | D2 | POST `/formalizacao/comparar-regimes` | Comparação regimes | `tests/test_regime_engine.py` + `tests/test_ops12_d2_comparar_regimes_contract.py` | provado | baixo |
-| D3 | POST `/formalizacao/simular-empresa` | Orquestração CNAE + regime | `tests/test_b13_p0_formalizacao.py` | parcial | alto |
+| D3 | POST `/formalizacao/simular-empresa` | Orquestração CNAE + regime | `tests/test_b13_p0_formalizacao.py` + `tests/test_ops12_d3_simular_empresa_contract.py` | provado | baixo |
 
 ---
 
@@ -363,16 +363,16 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **89** |
-| `parcial` | **1** |
+| `provado` | **90** |
+| `parcial` | **0** |
 | `nao_provado` | **0** |
-| Risco L3 `alto` sem mitigação | **2** |
+| Risco L3 `alto` sem mitigação | **1** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-12 — 0 `nao_provado`; elevar o 1 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-12 — 0 `nao_provado`; todos os endpoints provados (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
 ---
 
-*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07. Actualizado I6 — 2026-07-07. Actualizado I7 — 2026-07-07. Actualizado I9 — 2026-07-07. Actualizado I11 — 2026-07-07. Actualizado I12 — 2026-07-08. Actualizado I13 — 2026-07-08. Actualizado I14 — 2026-07-08. Actualizado I15 — 2026-07-08. Actualizado I16 — 2026-07-08. Actualizado I17 — 2026-07-08. Actualizado I18 — 2026-07-08. Actualizado F8 — 2026-07-08. Actualizado F6 — 2026-07-09. Actualizado F10 — 2026-07-09. Actualizado F3 — 2026-07-10. Actualizado F2 — 2026-07-10. Actualizado E2 — 2026-07-10. Actualizado L2 — 2026-07-10. Actualizado D1 — 2026-07-10. Actualizado D2 — 2026-07-10.*
+*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07. Actualizado I6 — 2026-07-07. Actualizado I7 — 2026-07-07. Actualizado I9 — 2026-07-07. Actualizado I11 — 2026-07-07. Actualizado I12 — 2026-07-08. Actualizado I13 — 2026-07-08. Actualizado I14 — 2026-07-08. Actualizado I15 — 2026-07-08. Actualizado I16 — 2026-07-08. Actualizado I17 — 2026-07-08. Actualizado I18 — 2026-07-08. Actualizado F8 — 2026-07-08. Actualizado F6 — 2026-07-09. Actualizado F10 — 2026-07-09. Actualizado F3 — 2026-07-10. Actualizado F2 — 2026-07-10. Actualizado E2 — 2026-07-10. Actualizado L2 — 2026-07-10. Actualizado D1 — 2026-07-10. Actualizado D2 — 2026-07-10. Actualizado D3 — 2026-07-10.*
