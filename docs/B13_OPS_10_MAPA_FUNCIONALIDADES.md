@@ -60,8 +60,8 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Estado | Qtd | Critério aplicado |
 |--------|-----|-------------------|
-| `provado` | 86 | Teste verde cobrindo endpoint ou contrato HTTP |
-| `parcial` | 4 | Teste de serviço/isolamento ou cobertura < 80% |
+| `provado` | 87 | Teste verde cobrindo endpoint ou contrato HTTP |
+| `parcial` | 3 | Teste de serviço/isolamento ou cobertura < 80% |
 | `nao_provado` | 0 | Sem teste dedicado na suite |
 | `bloqueado` | 0 | — |
 | `falso_positivo` | 0 | — |
@@ -70,9 +70,9 @@ Cada linha desta matriz deve ser validada em OPS-11 contra:
 
 | Risco | Qtd | Domínios principais |
 |-------|-----|---------------------|
-| alto | 8 | D, E, G, O, F (memorial) |
+| alto | 7 | D, E, G, O, F (memorial) |
 | medio | 15 | I, J, H, L, M |
-| baixo | 67 | A, B, C (parcial) |
+| baixo | 68 | A, B, C (parcial) |
 
 > **Nota:** 5 endpoints `/inteligencia/*` existem no código mas ficam fora desta matriz Piloto 0 (ver §18). Admin (`/admin/*`, `/criar-planos`) excluídos.
 
@@ -309,7 +309,7 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | ID | Endpoint | Promessa | Teste | Estado | Risco L3 |
 |----|----------|----------|-------|--------|----------|
 | L1 | GET `/documentos/` | Lista documentos fiscais tenant | — | provado | medio |
-| L2 | POST `/ingestao/documentos` | Pipeline ingestão PDF/imagem | `tests/test_ingestion_campos_estruturados.py` (pipeline serviço) | parcial | alto |
+| L2 | POST `/ingestao/documentos` | Pipeline ingestão PDF/imagem | `tests/test_ingestion_campos_estruturados.py` (pipeline serviço) + `tests/test_ops12_l2_ingestao_documentos_contract.py` | provado | baixo |
 | L3 | POST `/cpf/dashboard` | Resumo tributário CPF | — | provado | medio |
 | L4 | POST `/cpf/documentos/upload` | Upload rendimento CPF | — | provado | medio |
 | L5 | POST `/cpf/documentos/confirmar` | Persistência rendimento confirmado | — | provado | medio |
@@ -363,16 +363,16 @@ Montagem em `app/main.py` (L597–615): `include_router` com prefixos `/fiscal`,
 | Métrica | Valor |
 |---------|-------|
 | Funcionalidades mapeadas | **90** |
-| `provado` | **86** |
-| `parcial` | **4** |
+| `provado` | **87** |
+| `parcial` | **3** |
 | `nao_provado` | **0** |
-| Risco L3 `alto` sem mitigação | **5** |
+| Risco L3 `alto` sem mitigação | **4** |
 | Domínios A–O | **15** |
 
-**Próximo passo:** B13-OPS-12 — 0 `nao_provado`; elevar os 4 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
+**Próximo passo:** B13-OPS-12 — 0 `nao_provado`; elevar os 3 `parcial` a `provado` (suite verde, nenhum risco L3 alto sem ADR).
 
 **Invariante NR-01:** violações ST detectadas em `tests/test_l3_normative_resolution_invariants.py` — correcção via B13-OPS-09.
 
 ---
 
-*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07. Actualizado I6 — 2026-07-07. Actualizado I7 — 2026-07-07. Actualizado I9 — 2026-07-07. Actualizado I11 — 2026-07-07. Actualizado I12 — 2026-07-08. Actualizado I13 — 2026-07-08. Actualizado I14 — 2026-07-08. Actualizado I15 — 2026-07-08. Actualizado I16 — 2026-07-08. Actualizado I17 — 2026-07-08. Actualizado I18 — 2026-07-08. Actualizado F8 — 2026-07-08. Actualizado F6 — 2026-07-09. Actualizado F10 — 2026-07-09. Actualizado F3 — 2026-07-10. Actualizado F2 — 2026-07-10. Actualizado E2 — 2026-07-10.*
+*Gerado por inventário estático de `app/` + grep em `tests/` — 2026-06-29. Actualizado O1/H4/K1/M4/L2 — 2026-07-02. Actualizado I3 — 2026-07-07. Actualizado I4 — 2026-07-07. Actualizado I5 — 2026-07-07. Actualizado I6 — 2026-07-07. Actualizado I7 — 2026-07-07. Actualizado I9 — 2026-07-07. Actualizado I11 — 2026-07-07. Actualizado I12 — 2026-07-08. Actualizado I13 — 2026-07-08. Actualizado I14 — 2026-07-08. Actualizado I15 — 2026-07-08. Actualizado I16 — 2026-07-08. Actualizado I17 — 2026-07-08. Actualizado I18 — 2026-07-08. Actualizado F8 — 2026-07-08. Actualizado F6 — 2026-07-09. Actualizado F10 — 2026-07-09. Actualizado F3 — 2026-07-10. Actualizado F2 — 2026-07-10. Actualizado E2 — 2026-07-10. Actualizado L2 — 2026-07-10.*
