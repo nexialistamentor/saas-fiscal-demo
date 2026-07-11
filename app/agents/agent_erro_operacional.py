@@ -228,14 +228,116 @@ def _sentinela_tempo_normativo_ausente(evento: EventoOperacional) -> AgentOutput
 
 
 # Registo de sentinelas — ordem importa (mais específica primeiro)
+def _sentinela_upload_xml_500(evento: EventoOperacional) -> AgentOutputSchema | None:
+
+    """500 em /upload-xml durante smoke/Pilot 0 — falha operacional bloqueante."""
+
+    endpoint = evento.endpoint or ""
+
+
+
+    if evento.status_http == 500 and "upload-xml" in endpoint:
+
+        return AgentOutputSchema(
+
+            classificacao="P0",
+
+            causa_provavel=(
+
+                "POST /upload-xml devolveu 500 sem body. O handler em app/main.py "
+
+                "nao possui captura local de excepcao; uma falha em validacao, parsing, "
+
+                "execucao da analise XML ou persistencia pode subir directamente ao FastAPI."
+
+            ),
+
+            evidencias=[
+
+                "Smoke Pilot 0: auth/register, auth/login, auth/me e accept-terms passaram",
+
+                "POST /upload-xml devolveu 500 com body {}",
+
+                "Handler /upload-xml nao possui try/except local nem logger especifico",
+
+                "LLM_ALLOW_REAL_CALLS=false bloqueou fallback LLM; diagnostico deve ser local",
+
+            ],
+
+            ficheiros_provaveis=[
+
+                "app/main.py",
+
+                "app/services/registro_analise_service.py",
+
+                "servico que implementa executar_analise_xml",
+
+                "servico/parser que implementa ler_xml_unico",
+
+            ],
+
+            teste_recomendado=(
+
+                "Reproduzir localmente o fluxo /upload-xml com o XML smoke; "
+
+                "inspeccionar executar_analise_xml e ler_xml_unico; confirmar se a falha "
+
+                "vem de XML incompleto, constraint/duplicata ou excepcao nao tratada."
+
+            ),
+
+            patch_sugerido_texto=(
+
+                "Nao mascarar a falha. Primeiro identificar stack/camada exacta. "
+
+                "Depois: converter erro conhecido de XML invalido em 422 controlado "
+
+                "e adicionar logging especifico no handler /upload-xml."
+
+            ),
+
+            risco_patch="baixo",
+
+            informacao_em_falta=[
+
+                "stack trace Railway",
+
+                "corpo de executar_analise_xml",
+
+                "corpo de ler_xml_unico",
+
+                "XML completo usado no smoke",
+
+            ],
+
+        )
+
+
+
+    return None
+
+
+
+
+
 _SENTINELAS = [
+
     _sentinela_race_condition_termos,
+
     _sentinela_cta_login_contexto_perdido,
+
     _sentinela_vercel_env_vazia,
+
     _sentinela_cnae_saas_errado,
+
     _sentinela_mei_limite_excedido,
+
     _sentinela_faturamento_zero,
+
     _sentinela_tempo_normativo_ausente,
+
+    _sentinela_upload_xml_500,
+
 ]
 
 
