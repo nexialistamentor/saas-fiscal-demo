@@ -1,4 +1,4 @@
-"""0015_repair_relatorios_analise_fingerprint
+"""0015_add_fingerprint
 
 
 
@@ -28,7 +28,7 @@ Repair:
 
 
 
-Revision ID: 0015_repair_relatorios_analise_fingerprint
+Revision ID: 0015_add_fingerprint
 
 Revises: 0014_origem_cliente_vinculo
 
@@ -44,7 +44,7 @@ from alembic import op
 
 
 
-revision: str = "0015_repair_relatorios_analise_fingerprint"
+revision: str = "0015_add_fingerprint"
 
 down_revision: str = "0014_origem_cliente_vinculo"
 
