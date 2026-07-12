@@ -428,3 +428,235 @@ async def test_agente_nao_escreve_bd():
 
     assert not hasattr(modulo, "SessionLocal")
     assert not hasattr(modulo, "AlertaFiscal")
+
+
+
+
+# --- testes sentinela _sentinela_schema_drift_undefined_column (B13-PILOT0-002) ---
+
+
+
+EVENTO_SCHEMA_DRIFT_FINGERPRINT = EventoOperacional(
+
+    tipo="SCHEMA_DRIFT_PRODUCAO",
+
+    origem="railway_logs",
+
+    mensagem="psycopg2.errors.UndefinedColumn: column relatorios_analise.fingerprint does not exist",
+
+    endpoint="/upload-xml",
+
+    status_http=500,
+
+    ambiente="production",
+
+    commit_sha="8283fe1",
+
+)
+
+
+
+EVENTO_SCHEMA_DRIFT_UNDEFINEDCOLUMN = EventoOperacional(
+
+    tipo="SCHEMA_DRIFT_PRODUCAO",
+
+    origem="railway_logs",
+
+    mensagem="sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column foo does not exist",
+
+    endpoint="/outro-endpoint",
+
+    status_http=500,
+
+    ambiente="production",
+
+)
+
+
+
+EVENTO_UPLOAD_500_GENERICO = EventoOperacional(
+
+    tipo="HTTP_500_ENDPOINT",
+
+    origem="smoke_pilot0_flow",
+
+    mensagem="POST /upload-xml devolveu 500 com body vazio",
+
+    endpoint="/upload-xml",
+
+    status_http=500,
+
+    ambiente="production",
+
+)
+
+
+
+EVENTO_DOES_NOT_EXIST_SEM_COLUMN = EventoOperacional(
+
+    tipo="ERRO_GENERICO",
+
+    origem="servico_x",
+
+    mensagem="ficheiro does not exist no disco",
+
+    endpoint="/qualquer",
+
+    status_http=404,
+
+)
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_schema_drift_fingerprint_classifica_p0_sem_llm():
+
+    """B13-PILOT0-002: UndefinedColumn relatorios_analise.fingerprint → P0 sem LLM."""
+
+    with patch("app.services.llm_router.completar") as mock_llm:
+
+        resultado = await agent.run(EVENTO_SCHEMA_DRIFT_FINGERPRINT, modo_llm="fallback")
+
+        mock_llm.assert_not_called()
+
+    assert resultado.classificacao == "P0"
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_schema_drift_ficheiros_provaveis():
+
+    """Sentinela aponta para models.py, migrations/versions e railway.toml."""
+
+    resultado = await agent.run(EVENTO_SCHEMA_DRIFT_FINGERPRINT, modo_llm="never")
+
+    provaveis = " ".join(resultado.ficheiros_provaveis).lower()
+
+    assert "models.py" in provaveis
+
+    assert "migrations" in provaveis
+
+    assert "railway.toml" in provaveis
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_schema_drift_informacao_em_falta():
+
+    """Sentinela exige alembic_version e colunas reais como informacao_em_falta."""
+
+    resultado = await agent.run(EVENTO_SCHEMA_DRIFT_FINGERPRINT, modo_llm="never")
+
+    assert isinstance(resultado.informacao_em_falta, list)
+
+    textos = " ".join(resultado.informacao_em_falta).lower()
+
+    assert "alembic_version" in textos or "alembic" in textos
+
+    assert "coluna" in textos or "column" in textos or "relatorios_analise" in textos
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_schema_drift_vence_sentinela_upload_xml_500():
+
+    """Com UndefinedColumn + /upload-xml, schema_drift vence upload_xml_500."""
+
+    with patch("app.services.llm_router.completar") as mock_llm:
+
+        resultado = await agent.run(EVENTO_SCHEMA_DRIFT_FINGERPRINT, modo_llm="fallback")
+
+        mock_llm.assert_not_called()
+
+    assert resultado.classificacao == "P0"
+
+    assert "schema drift" in resultado.causa_provavel.lower() or "coluna" in resultado.causa_provavel.lower() or "fingerprint" in resultado.causa_provavel.lower()
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_upload_500_generico_sem_undefinedcolumn_cai_em_upload_sentinela():
+
+    """500 em /upload-xml sem UndefinedColumn continua na sentinela upload_xml_500."""
+
+    with patch("app.services.llm_router.completar") as mock_llm:
+
+        resultado = await agent.run(EVENTO_UPLOAD_500_GENERICO, modo_llm="never")
+
+        mock_llm.assert_not_called()
+
+    assert resultado.classificacao == "P0"
+
+    assert "schema drift" not in resultado.causa_provavel.lower()
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_undefinedcolumn_generico_activa_schema_drift():
+
+    """UndefinedColumn em endpoint diferente tambem activa schema_drift."""
+
+    with patch("app.services.llm_router.completar") as mock_llm:
+
+        resultado = await agent.run(EVENTO_SCHEMA_DRIFT_UNDEFINEDCOLUMN, modo_llm="fallback")
+
+        mock_llm.assert_not_called()
+
+    assert resultado.classificacao == "P0"
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_does_not_exist_sem_column_nao_activa_schema_drift():
+
+    """'does not exist' generico sem 'column' nao activa sentinela schema_drift."""
+
+    with patch("app.services.llm_router.completar") as mock_llm:
+
+        mock_llm.return_value = type("R", (), {
+
+            "erro": None,
+
+            "output": {
+
+                "classificacao": "P2",
+
+                "causa_provavel": "mock",
+
+                "evidencias": [],
+
+                "ficheiros_provaveis": [],
+
+                "informacao_em_falta": [],
+
+            }
+
+        })()
+
+        resultado = await agent.run(EVENTO_DOES_NOT_EXIST_SEM_COLUMN, modo_llm="fallback")
+
+    assert resultado.classificacao != "P0" or "schema" not in resultado.causa_provavel.lower()
+
+
+

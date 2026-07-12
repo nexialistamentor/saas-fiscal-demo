@@ -320,6 +320,134 @@ def _sentinela_upload_xml_500(evento: EventoOperacional) -> AgentOutputSchema | 
 
 
 
+
+
+def _sentinela_schema_drift_undefined_column(evento: EventoOperacional) -> AgentOutputSchema | None:
+
+    """Schema drift — ORM espera coluna ausente na BD de producao (UndefinedColumn)."""
+
+    msg = str(evento.mensagem or "").lower()
+
+    ctx = str(evento.contexto or "").lower()
+
+    texto = msg + " " + ctx
+
+
+
+    caso_especifico = "relatorios_analise.fingerprint" in texto
+
+
+
+    tem_undefined_column = any(p in texto for p in [
+
+        "undefinedcolumn",
+
+        "undefined_column",
+
+        "psycopg2.errors.undefinedcolumn",
+
+    ])
+
+
+
+    tem_coluna_ausente = (
+
+        "column " in texto
+
+        and "does not exist" in texto
+
+    )
+
+
+
+    if caso_especifico or tem_undefined_column or tem_coluna_ausente:
+
+        return AgentOutputSchema(
+
+            classificacao="P0",
+
+            causa_provavel=(
+
+                "Schema drift em producao: ORM espera coluna ausente na BD Railway. "
+
+                "A tabela relatorios_analise existe mas sem coluna fingerprint. "
+
+                "Possivel causa: BD criada por cadeia legacy sem aplicar baseline soberano, "
+
+                "ou alembic_version marcada como head sem aplicar migracao real."
+
+            ),
+
+            evidencias=[
+
+                evento.mensagem,
+
+                "preDeployCommand = alembic upgrade head configurado mas pode nao ter aplicado",
+
+                "fingerprint definido em 0000_baseline_soberana mas ausente na BD de producao",
+
+                "Cadeia activa 0000->0014 linear sem gaps no repo",
+
+            ],
+
+            ficheiros_provaveis=[
+
+                "app/models.py",
+
+                "migrations/versions/0000_baseline_soberana.py",
+
+                "migrations/versions/",
+
+                "railway.toml",
+
+            ],
+
+            teste_recomendado=(
+
+                "1. Consultar alembic_version em producao. "
+
+                "2. Consultar information_schema.columns WHERE table_name=relatorios_analise. "
+
+                "3. Comparar colunas ORM vs BD real. "
+
+                "4. Se alembic_version < 0000_baseline: aplicar upgrade head. "
+
+                "5. Se alembic_version = 0014 mas coluna ausente: migracao idempotente ADD COLUMN IF NOT EXISTS."
+
+            ),
+
+            patch_sugerido_texto=(
+
+                "NAO aplicar upgrade head as cegas. "
+
+                "Primeiro confirmar alembic_version e colunas reais. "
+
+                "Se migracao pendente: railway run alembic upgrade head. "
+
+                "Se Alembic acha que esta em head mas coluna falta: "
+
+                "criar migracao idempotente ADD COLUMN IF NOT EXISTS fingerprint VARCHAR(64)."
+
+            ),
+
+            risco_patch="medio",
+
+            informacao_em_falta=[
+
+                "valor actual de alembic_version em producao",
+
+                "colunas reais de relatorios_analise em producao",
+
+            ],
+
+        )
+
+
+
+    return None
+
+
+
 _SENTINELAS = [
 
     _sentinela_race_condition_termos,
@@ -335,6 +463,8 @@ _SENTINELAS = [
     _sentinela_faturamento_zero,
 
     _sentinela_tempo_normativo_ausente,
+
+    _sentinela_schema_drift_undefined_column,
 
     _sentinela_upload_xml_500,
 
