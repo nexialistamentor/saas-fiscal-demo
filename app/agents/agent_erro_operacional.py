@@ -324,13 +324,19 @@ def _sentinela_upload_xml_500(evento: EventoOperacional) -> AgentOutputSchema | 
 
 def _sentinela_schema_drift_undefined_column(evento: EventoOperacional) -> AgentOutputSchema | None:
 
-    """Schema drift — ORM espera coluna ausente na BD de producao (UndefinedColumn)."""
+    """Schema drift -- ORM espera coluna ausente na BD de producao (UndefinedColumn)."""
 
-    msg = str(evento.mensagem or "").lower()
+    import re as _re
 
-    ctx = str(evento.contexto or "").lower()
 
-    texto = msg + " " + ctx
+
+    msg = str(evento.mensagem or "")
+
+    ctx = str(evento.contexto or "")
+
+    texto = (msg + " " + ctx).lower()
+
+    texto_original = msg + " " + ctx
 
 
 
@@ -360,91 +366,116 @@ def _sentinela_schema_drift_undefined_column(evento: EventoOperacional) -> Agent
 
 
 
-    if caso_especifico or tem_undefined_column or tem_coluna_ausente:
+    if not (caso_especifico or tem_undefined_column or tem_coluna_ausente):
 
-        return AgentOutputSchema(
-
-            classificacao="P0",
-
-            causa_provavel=(
-
-                "Schema drift em producao: ORM espera coluna ausente na BD Railway. "
-
-                "A tabela relatorios_analise existe mas sem coluna fingerprint. "
-
-                "Possivel causa: BD criada por cadeia legacy sem aplicar baseline soberano, "
-
-                "ou alembic_version marcada como head sem aplicar migracao real."
-
-            ),
-
-            evidencias=[
-
-                evento.mensagem,
-
-                "preDeployCommand = alembic upgrade head configurado mas pode nao ter aplicado",
-
-                "fingerprint definido em 0000_baseline_soberana mas ausente na BD de producao",
-
-                "Cadeia activa 0000->0014 linear sem gaps no repo",
-
-            ],
-
-            ficheiros_provaveis=[
-
-                "app/models.py",
-
-                "migrations/versions/0000_baseline_soberana.py",
-
-                "migrations/versions/",
-
-                "railway.toml",
-
-            ],
-
-            teste_recomendado=(
-
-                "1. Consultar alembic_version em producao. "
-
-                "2. Consultar information_schema.columns WHERE table_name=relatorios_analise. "
-
-                "3. Comparar colunas ORM vs BD real. "
-
-                "4. Se alembic_version < 0000_baseline: aplicar upgrade head. "
-
-                "5. Se alembic_version = 0014 mas coluna ausente: migracao idempotente ADD COLUMN IF NOT EXISTS."
-
-            ),
-
-            patch_sugerido_texto=(
-
-                "NAO aplicar upgrade head as cegas. "
-
-                "Primeiro confirmar alembic_version e colunas reais. "
-
-                "Se migracao pendente: railway run alembic upgrade head. "
-
-                "Se Alembic acha que esta em head mas coluna falta: "
-
-                "criar migracao idempotente ADD COLUMN IF NOT EXISTS fingerprint VARCHAR(64)."
-
-            ),
-
-            risco_patch="medio",
-
-            informacao_em_falta=[
-
-                "valor actual de alembic_version em producao",
-
-                "colunas reais de relatorios_analise em producao",
-
-            ],
-
-        )
+        return None
 
 
 
-    return None
+    # Extrair tabela e coluna do texto completo (msg + contexto)
+
+    match_coluna = _re.search(
+
+        r"column\s+([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)\s+does not exist",
+
+        texto_original,
+
+        _re.IGNORECASE,
+
+    )
+
+    if match_coluna:
+
+        tabela_afectada = match_coluna.group(1)
+
+        coluna_afectada = match_coluna.group(2)
+
+        referencia_coluna = f"{tabela_afectada}.{coluna_afectada}"
+
+    else:
+
+        tabela_afectada = None
+
+        coluna_afectada = None
+
+        referencia_coluna = "coluna referenciada pelo ORM"
+
+
+
+    return AgentOutputSchema(
+
+        classificacao="P0",
+
+        causa_provavel=(
+
+            "Schema drift em producao: ORM espera coluna ausente na BD Railway. "
+
+            f"Coluna ausente detectada: {referencia_coluna}. "
+
+            "Possivel causa: BD criada por cadeia legacy ou alembic_version marcada "
+
+            "como head sem aplicar migracao real."
+
+        ),
+
+        evidencias=[
+
+            msg,
+
+            f"Coluna ausente: {referencia_coluna}",
+
+            "preDeployCommand = alembic upgrade head configurado mas coluna ausente na BD",
+
+            "Cadeia activa de migracoes no repo; coluna ausente em producao",
+
+        ],
+
+        ficheiros_provaveis=[
+
+            "app/models.py",
+
+            "migrations/versions/0000_baseline_soberana.py",
+
+            "migrations/versions/",
+
+            "railway.toml",
+
+        ],
+
+        teste_recomendado=(
+
+            f"1. Consultar information_schema.columns WHERE table_name='{tabela_afectada or 'tabela_afectada'}'. "
+
+            "2. Consultar alembic_version em producao. "
+
+            "3. Comparar colunas ORM vs BD real. "
+
+            f"4. Criar migracao idempotente: ADD COLUMN IF NOT EXISTS {coluna_afectada or 'coluna'} na tabela {tabela_afectada or 'afectada'}."
+
+        ),
+
+        patch_sugerido_texto=(
+
+            "NAO aplicar upgrade head as cegas. "
+
+            f"Criar migracao idempotente: ALTER TABLE {tabela_afectada or 'tabela'} "
+
+            f"ADD COLUMN IF NOT EXISTS {coluna_afectada or 'coluna'} <tipo>."
+
+        ),
+
+        risco_patch="medio",
+
+        informacao_em_falta=[
+
+            f"colunas reais de {tabela_afectada or 'tabela afectada'} em producao",
+
+            "valor actual de alembic_version em producao",
+
+        ],
+
+    )
+
 
 
 

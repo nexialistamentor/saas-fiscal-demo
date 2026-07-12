@@ -368,6 +368,62 @@ async def test_sentinela_tempo_normativo_ausente_classifica_p0():
     assert resultado.classificacao == "P0"
 
 
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_schema_drift_insights_superseded_classifica_p0_sem_llm():
+
+    """insights.superseded -> P0 schema drift sem LLM."""
+
+    with patch("app.services.llm_router.completar") as mock_llm:
+
+        resultado = await agent.run(EVENTO_SCHEMA_DRIFT_INSIGHTS_SUPERSEDED, modo_llm="fallback")
+
+        mock_llm.assert_not_called()
+
+    assert resultado.classificacao == "P0"
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_schema_drift_insights_superseded_causa_menciona_insights():
+
+    """insights.superseded: causa menciona insights.superseded, nao fingerprint."""
+
+    resultado = await agent.run(EVENTO_SCHEMA_DRIFT_INSIGHTS_SUPERSEDED, modo_llm="never")
+
+    causa = resultado.causa_provavel.lower()
+
+    assert "insights.superseded" in causa or "insights" in causa
+
+    assert "fingerprint" not in causa
+
+
+
+
+
+@pytest.mark.asyncio
+
+async def test_schema_drift_fingerprint_causa_menciona_fingerprint():
+
+    """relatorios_analise.fingerprint: causa menciona fingerprint, nao superseded."""
+
+    resultado = await agent.run(EVENTO_SCHEMA_DRIFT_FINGERPRINT, modo_llm="never")
+
+    causa = resultado.causa_provavel.lower()
+
+    assert "fingerprint" in causa or "relatorios_analise" in causa
+
+    assert "superseded" not in causa
+
+
+
 # --- testes modo_llm ---
 
 @pytest.mark.asyncio
@@ -451,6 +507,26 @@ EVENTO_SCHEMA_DRIFT_FINGERPRINT = EventoOperacional(
     ambiente="production",
 
     commit_sha="8283fe1",
+
+)
+
+
+
+EVENTO_SCHEMA_DRIFT_INSIGHTS_SUPERSEDED = EventoOperacional(
+
+    tipo="SCHEMA_DRIFT_PRODUCAO",
+
+    origem="railway_logs",
+
+    mensagem="psycopg2.errors.UndefinedColumn: column insights.superseded does not exist",
+
+    endpoint="/upload-xml",
+
+    status_http=500,
+
+    ambiente="production",
+
+    commit_sha="e21be12",
 
 )
 
@@ -560,9 +636,9 @@ async def test_schema_drift_informacao_em_falta():
 
     textos = " ".join(resultado.informacao_em_falta).lower()
 
-    assert "alembic_version" in textos or "alembic" in textos
+    assert "alembic" in textos or "alembic_version" in textos
 
-    assert "coluna" in textos or "column" in textos or "relatorios_analise" in textos
+    assert "coluna" in textos or "producao" in textos
 
 
 
