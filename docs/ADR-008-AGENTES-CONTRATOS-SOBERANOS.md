@@ -1,8 +1,10 @@
 # ADR-008 — Contratos Soberanos dos Agentes L3
 
-**Status:** RATIFICADO PELO GPT — aguarda ratificação final de Miguel  
+**Status:** RATIFICADO E IMPLEMENTADO — FUNDAÇÃO CONTRATUAL B14.0 + B14.1 CONCLUÍDA
+
 **Data:** 2026-07-13  
-**Versão:** 1.4  
+**Versão:** 1.5
+
 **Autores:** GPT — auditor e redactor arquitectural; Miguel — fundador e ratificador  
 **Bloco:** B14.0 + B14.1  
 **Repositório:** nexialistamentor/saas-fiscal-demo
@@ -1225,23 +1227,23 @@ Essas alterações pertencem aos blocos seguintes.
 
 ## 19. Critério de conclusão de B14.0 + B14.1
 
-- [ ] ADR-008 ratificado e commitado;
-- [ ] `canonical.py` criado;
-- [ ] `sanitization.py` criado;
-- [ ] `shared.py` criado;
-- [ ] `mission.py` criado;
-- [ ] `execution_result.py` criado;
-- [ ] `validation.py` criado;
-- [ ] `mission_factory.py` criado;
-- [ ] testes dos contratos partilhados verdes;
-- [ ] testes de sanitização verdes;
-- [ ] testes de missão e factory verdes;
-- [ ] testes de resultado verdes;
-- [ ] testes de validação cruzada verdes;
-- [ ] teste arquitectural verde;
-- [ ] suite global mantém pelo menos 870 testes aprovados;
-- [ ] nenhum agente existente modificado;
-- [ ] working tree limpa após commit.
+- [x] ADR-008 ratificado e commitado;
+- [x] `canonical.py` criado;
+- [x] `sanitization.py` criado;
+- [x] `shared.py` criado;
+- [x] `mission.py` criado;
+- [x] `execution_result.py` criado;
+- [x] `validation.py` criado;
+- [x] `mission_factory.py` criado;
+- [x] testes dos contratos partilhados verdes;
+- [x] testes de sanitização verdes;
+- [x] testes de missão e factory verdes;
+- [x] testes de resultado verdes;
+- [x] testes de validação cruzada verdes;
+- [x] teste arquitectural verde;
+- [x] suite global mantém pelo menos 870 testes aprovados;
+- [x] nenhum agente existente modificado;
+- [x] working tree limpa após commit.
 
 ---
 
@@ -1249,16 +1251,30 @@ Essas alterações pertencem aos blocos seguintes.
 
 | Papel | Nome | Estado |
 |-------|------|--------|
-| Fundador e Arquitecto | Miguel | ⏳ PENDENTE |
-| Auditor Arquitectural | GPT | ✅ RATIFICADO v1.4 |
+| Fundador e Arquitecto | Miguel | ✅ RATIFICADO |
+| Auditor Arquitectural | GPT | ✅ RATIFICADO v1.5 |
 | Redactor | GPT | ✅ CONCLUÍDO |
 
 ---
 
-Após ratificação de Miguel, o primeiro passo será exclusivamente:
+## 21. Evidência de fecho
 
-**Commit 1 — `docs: ratificar ADR-008 contratos soberanos L3`**
+- baseline operacional anterior: `30cbb0f` (Pilot 0 desbloqueado);
+- cadeia técnica ratificada: `e20f55c → f77684f → eed4bdf → e71047c → 2641729 → 7e7d764`;
+- Commit 1: `e20f55c` — ratificação documental da ADR-008;
+- Commit 2: `f77684f` — serialização canónica e sanitização;
+- Commit 3: `eed4bdf` — contratos partilhados;
+- Commit 4: `e71047c` — `AgentMission` e `MissionFactory`;
+- Commit 5: `2641729` — `AgentExecutionResult` e validação cruzada;
+- Commit 6: `7e7d764` — invariantes arquitecturais dos contratos L3;
+- teste arquitectural: 51 aprovados, 0 falhas;
+- suite global: 1346 aprovados, 8 ignorados, 0 falhas;
+- `HEAD` técnico pré-fecho documental e `origin/main` verificados em `7e7d764253e899c0de47ac5d50dc65388c05996c`;
+- SHA256 de `tests/test_agent_contract_architecture.py`: `C5D849661CBC9934DAE2FF14355F845131FFF6EE7F9340B397CDBB0472EB0BA7`;
+- working tree limpa após o Commit 6.
 
-Nenhum código será escrito antes desse commit documental.
+Este fecho comprova a fundação contratual B14.0 + B14.1. Não declara a migração operacional dos agentes existentes, nem activa agentes, scheduler ou LLM real.
+
+Qualquer activação, autoridade executiva, consumo LLM real, escrita automática ou integração no fluxo de produção exige bloco posterior explicitamente ratificado, com testes, budget guard, idempotência, auditoria e rollback.
 
 O conhecimento institucional não permanece na conversa. Permanece no repositório, nos contratos, nos testes e nas evidências.
