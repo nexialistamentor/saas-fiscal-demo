@@ -113,7 +113,7 @@ def test_evento_conhecido_nao_chama_budget_guard():
         status_http=403,
     )
     with mock_patch("app.agents.agent_erro_operacional.budget_verificar") as mock_bg:
-        resultado = asyncio.get_event_loop().run_until_complete(agent.run(evento))
+        resultado = asyncio.run(agent.run(evento))
         mock_bg.assert_not_called()
 
     assert resultado.classificacao == "P0"
@@ -138,7 +138,7 @@ def test_evento_desconhecido_fallback_passa_por_budget(monkeypatch):
         motivo="LLM_ALLOW_REAL_CALLS=false — travão absoluto activo",
     )
     with mock_patch("app.agents.agent_erro_operacional.budget_verificar", return_value=mock_resultado) as mock_bg:
-        resultado = asyncio.get_event_loop().run_until_complete(
+        resultado = asyncio.run(
             agent.run(evento, modo_llm="fallback")
         )
         mock_bg.assert_called_once()
