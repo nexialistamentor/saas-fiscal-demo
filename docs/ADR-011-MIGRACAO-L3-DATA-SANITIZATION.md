@@ -1,8 +1,8 @@
 ADR-011 — Migração L3 B14.3C: DataSanitizationAgent em Sombra
 
-Status: PROPOSTA GPT v1.1 — aguarda ratificação de Miguel
+Status: RATIFICADO PELO GPT v1.2 — aguarda ratificação de Miguel
 Data: 2026-07-17
-Versão: 1.1
+Versão: 1.2 — rectificação contratual anterior ao Commit 2
 Autores: GPT — redactor e auditor arquitectural; Miguel — fundador e ratificador
 Bloco: B14.3C
 Repositório: nexialistamentor/saas-fiscal-demo
@@ -770,3 +770,344 @@ A observação OBS-MOTOR-MEI-001 permanece aberta e adiada para o futuro bloco d
 Papel	Nome	Estado
 Fundador e Arquitecto Soberano	Miguel	⬜ PENDENTE
 Auditor e Redactor Arquitectural	GPT
+
+## 25. Rectificação canónica v1.2
+
+Esta secção substitui qualquer disposição incompatível das secções 5, 6, 7, 9, 11, 15 e 20 da versão 1.1.
+
+Nenhum ficheiro de implementação pode ser criado antes da ratificação de Miguel e do commit documental desta rectificação.
+
+### 25.1 Identificadores canónicos
+
+Os identificadores da missão serão:
+
+contract_version = "1.0"
+mission_type = "sanitizar_contexto_fiscal"
+target_agent = "data_sanitization_agent"
+context_schema = "data_sanitization.context"
+context_version = "1.0"
+output_schema = "data_sanitization.result"
+output_version = "1.0"
+agent_version = "1.0"
+
+DataSanitizationContext e DataSanitizationPayload são nomes de classes Pydantic. Não são os identificadores externos de schema da missão.
+
+### 25.2 Origem, autoridade e prioridade
+
+A missão exige:
+
+source_request_id presente e não vazio
+source_event_id ausente
+schedule_slot ausente
+requested_by ∈ {"user", "system"}
+authority_level = "leitura"
+budget_policy == BudgetPolicy()
+sources = []
+
+A prioridade não será restringida pelo adapter além dos valores já aceites por AgentMission.
+
+B14.3C não é disparado pelo scheduler.
+
+### 25.3 Escopo e entidade
+
+scope = "tenant"
+
+tenant_id:
+- inteiro positivo;
+- booleano proibido.
+
+actor_id:
+- inteiro positivo;
+- booleano proibido;
+- igual a tenant_id.
+
+entity_type = "empresa"
+
+entity_id:
+- inteiro positivo;
+- booleano proibido;
+- igual a context.empresa_id.
+
+A igualdade entre actor, tenant e entidade comprova apenas coerência interna da missão.
+
+B14.3C não consulta a BD e não prova propriedade da empresa. A missão só poderá ser integrada futuramente depois de uma fronteira soberana anterior comprovar a autorização.
+
+Acesso delegado de contador permanece fora deste canário.
+
+### 25.4 Temporalidade
+
+DataSanitizationAgent não executa regra temporal.
+
+Portanto:
+
+reference_at = opcional
+
+Quando presente, continua sujeito às regras gerais de AgentMission:
+timezone-aware
+UTC
+
+O adapter não exige reference_at e não cria precisão temporal artificial.
+
+São removidos do contrato específico:
+
+MISSION_REFERENCE_AT_REQUIRED
+MISSION_REFERENCE_AT_UNSUPPORTED
+
+Nenhum teste específico de B14.3C deve exigir reference_at.
+
+### 25.5 Contrato estrito do contexto
+
+O contexto será:
+
+class DataSanitizationContext(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        allow_inf_nan=False,
+    )
+
+empresa_id será StrictInt, positivo.
+
+Os valores fiscais aceitarão apenas primitivas JSON estritas:
+
+StrictInt
+StrictFloat
+StrictStr
+StrictBool
+None
+
+Não haverá coerção:
+
+"1000" não se torna 1000
+True não se torna 1
+False não se torna 0
+
+Os oito campos fiscais permanecem opcionais:
+
+faturamento
+custos
+lucro_contabil
+lucro
+base_calculo
+icms_pago
+icms_devido
+custo_fiscal_entradas
+
+### 25.6 Campo ausente versus null
+
+A presença real de um campo será determinada por:
+
+context.model_fields_set
+
+Regras:
+
+campo ausente:
+- não produz alerta.
+
+campo presente com null:
+- produz CAMPO_NAO_NUMERICO.
+
+nenhum dos oito campos presente:
+- produz CONTEXTO_SEM_CAMPOS_FISCAIS.
+
+Não se pode usar apenas o valor None para decidir se o campo estava ausente.
+
+### 25.7 Valores não finitos
+
+NaN, Infinity e -Infinity não pertenchem ao contexto soberano.
+
+Serão rejeitados na construção de DataSanitizationContext através de:
+
+allow_inf_nan=False
+
+O adapter converte essa falha para:
+
+AG_DATA_SANITIZATION_CONTEXT_INVALID
+
+Não será criado alerta nominal de motor para valores que não atravessaram validamente a fronteira contratual.
+
+### 25.8 Tipos canónicos
+
+Devem existir aliases fechados:
+
+DataSanitizationField = Literal[
+    "faturamento",
+    "custos",
+    "lucro_contabil",
+    "lucro",
+    "base_calculo",
+    "icms_pago",
+    "icms_devido",
+    "custo_fiscal_entradas",
+]
+
+DataSanitizationAlertCode = Literal[
+    "CAMPO_NAO_NUMERICO",
+    "CAMPO_NEGATIVO",
+    "FATURAMENTO_ACIMA_LIMITE",
+    "CONTEXTO_SEM_CAMPOS_FISCAIS",
+]
+
+DataSanitizationSeverity = Literal[
+    "critico",
+    "alto",
+]
+
+campo não pode ser str livre:
+
+campo: DataSanitizationField | None
+
+### 25.9 Tabelas imutáveis
+
+As tabelas canónicas serão protegidas por:
+
+MappingProxyType
+
+Nenhum módulo poderá alterar em runtime:
+
+severidade;
+mensagem;
+associação entre código e regra.
+
+### 25.10 Coerência código–campo
+
+As combinações válidas são:
+
+CAMPO_NAO_NUMERICO
+→ qualquer DataSanitizationField
+→ campo obrigatório
+
+CAMPO_NEGATIVO
+→ qualquer DataSanitizationField
+→ campo obrigatório
+
+FATURAMENTO_ACIMA_LIMITE
+→ apenas campo="faturamento"
+
+CONTEXTO_SEM_CAMPOS_FISCAIS
+→ campo=None
+
+Qualquer outra combinação deve falhar a validação do modelo.
+
+### 25.11 Payload canónico
+
+class DataSanitizationPayload(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+    )
+
+    analysis_type: Literal[
+        "sanitizacao_contexto_fiscal"
+    ]
+    schema_type: Literal[
+        "DataSanitizationPayload"
+    ]
+    versao: Literal["1.0"]
+    empresa_id: StrictInt
+    contexto_valido: bool
+    total_alertas: int
+    alertas: tuple[DataSanitizationAlert, ...]
+    publication_allowed: Literal[False]
+
+Invariantes:
+
+empresa_id > 0
+total_alertas >= 0
+total_alertas == len(alertas)
+contexto_valido is True
+↔ não existem alertas
+contexto_valido is False
+↔ existe pelo menos um alerta
+
+São proibidos:
+
+alertas duplicados com o mesmo código e campo;
+alertas fora da ordem canónica;
+campo não canónico;
+mensagem divergente;
+severidade divergente.
+
+### 25.12 Ordem canónica
+
+A ordem dos campos permanece:
+
+1. faturamento
+2. custos
+3. lucro_contabil
+4. lucro
+5. base_calculo
+6. icms_pago
+7. icms_devido
+8. custo_fiscal_entradas
+
+Dentro do mesmo campo:
+
+1. CAMPO_NAO_NUMERICO
+2. CAMPO_NEGATIVO
+3. FATURAMENTO_ACIMA_LIMITE
+
+CONTEXTO_SEM_CAMPOS_FISCAIS é sempre o único alerta quando nenhum campo foi fornecido.
+
+### 25.13 Erros pré-execução
+
+O contrato específico conterá:
+
+MISSION_TARGET_MISMATCH
+MISSION_TYPE_UNSUPPORTED
+CONTEXT_SCHEMA_UNSUPPORTED
+CONTEXT_VERSION_UNSUPPORTED
+OUTPUT_SCHEMA_UNSUPPORTED
+OUTPUT_VERSION_UNSUPPORTED
+MISSION_SCOPE_UNSUPPORTED
+MISSION_TENANT_REQUIRED
+MISSION_TENANT_UNSUPPORTED
+MISSION_ACTOR_UNSUPPORTED
+MISSION_ACTOR_TENANT_MISMATCH
+MISSION_ENTITY_UNSUPPORTED
+MISSION_AUTHORITY_UNSUPPORTED
+MISSION_ORIGIN_UNSUPPORTED
+MISSION_BUDGET_UNSUPPORTED
+MISSION_SOURCES_UNSUPPORTED
+AG_DATA_SANITIZATION_CONTEXT_INVALID
+
+MISSION_REFERENCE_AT_REQUIRED e MISSION_REFERENCE_AT_UNSUPPORTED não pertencem a B14.3C.
+
+### 25.14 Testes rectificados
+
+Os testes obrigatórios devem incluir:
+
+StrictInt não aceita booleano;
+strings numéricas não são convertidas;
+StrictBool chega ao motor e é classificado como não numérico;
+campo ausente não gera alerta;
+campo presente com null gera CAMPO_NAO_NUMERICO;
+model_fields_set distingue ausência de null;
+NaN e infinito falham a fronteira;
+tabela canónica não pode ser mutada;
+campo aceita apenas Literals canónicos;
+FATURAMENTO_ACIMA_LIMITE exige campo faturamento;
+alertas duplicados são rejeitados;
+ordem divergente é rejeitada;
+total_alertas negativo é rejeitado;
+requested_by user é aceite;
+requested_by system é aceite;
+reference_at ausente é aceite;
+source_request_id continua obrigatório;
+budget_policy deve ser exactamente BudgetPolicy();
+
+### 25.15 Preservação
+
+Permanece obrigatório:
+
+SHA256 legado:
+
+F6BADD4F3F65F159453320AAA13D5ED6B41BF26394E594C76FBE593FA0BEF8EE
+
+O legado, registry, executor e scheduler permanecem inalterados.
+
+### 25.16 Ratificação v1.2
+
+Papel	Nome	Estado
+Fundador e Arquitecto Soberano	Miguel	⬜ PENDENTE
+Auditor e Redactor Arquitectural	GPT	✅ RATIFICADO v1.2
