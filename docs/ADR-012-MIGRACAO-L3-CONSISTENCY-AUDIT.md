@@ -1,8 +1,8 @@
 # ADR-012 — Migração L3 B14.3D: ConsistencyAuditAgent em Sombra
 
-**Status:** RATIFICADA PELO GPT v1.2 — aguarda ratificação de Miguel
+**Status:** RATIFICADA v1.3 — Miguel e GPT
 **Data:** 2026-07-17
-**Versão:** 1.2 — consolidação contratual final anterior ao Commit 1
+**Versão:** 1.3 — rectificação soberana L3 anterior ao Commit 2
 **Autores:** Claude — redactor inicial; GPT — auditor e redactor final; Miguel — fundador e ratificador
 **Bloco:** B14.3D
 **Repositório:** `nexialistamentor/saas-fiscal-demo`
@@ -193,7 +193,7 @@ reference_at = opcional
 ```python
 tenant_id: inteiro positivo, não booleano
 actor_id: inteiro positivo, não booleano
-actor_id == tenant_id
+actor_id e tenant_id representam identidades distintas; a autorização pertence a fronteira própria
 ```
 
 ### 6.2 Entidade documental
@@ -229,6 +229,8 @@ B14.3D não consulta BD e não comprova:
 
 Qualquer prova de propriedade ou autorização exigirá reader e ADR
 próprios. Não faz parte deste canário.
+
+A agilidade criptográfica e a preparação pós-quântica serão governadas por ADR transversal própria. Esta ADR não fixa algoritmos criptográficos nem acopla o contrato fiscal a uma tecnologia de assinatura específica.
 
 ---
 
@@ -293,6 +295,8 @@ Para cada par:
 | ambos presentes com números estritos válidos | verificação aplicável |
 
 `None` explícito nunca equivale a omissão.
+
+O contexto exige pelo menos um par comparável completo. Se os três pares forem omitidos, o contexto é inválido e o adapter devolve `AG_CONSISTENCY_AUDIT_CONTEXT_INVALID`, impedindo sucesso sem auditoria efectiva.
 
 A falha do contrato será convertida pelo adapter em:
 
@@ -698,7 +702,6 @@ ConsistencyAuditPreExecutionErrorCode = Literal[
     "MISSION_TENANT_REQUIRED",
     "MISSION_TENANT_UNSUPPORTED",
     "MISSION_ACTOR_UNSUPPORTED",
-    "MISSION_ACTOR_TENANT_MISMATCH",
     "MISSION_ENTITY_UNSUPPORTED",
     "MISSION_REQUESTED_BY_UNSUPPORTED",
     "MISSION_AUTHORITY_UNSUPPORTED",
@@ -891,7 +894,7 @@ Cobrir:
 - NaN e infinitos;
 - inteiro `10**1000`;
 - campo extra;
-- nenhum par presente;
+- nenhum par presente rejeitado;
 - valores negativos finitos aceites;
 - frozen model;
 - distinção por `model_fields_set`.
@@ -925,7 +928,7 @@ Cobrir:
 - dois códigos;
 - três códigos;
 - ordem ICMS-ST → MVA → base ST;
-- proibição de duplicados;
+- duplicados rejeitados antes da validação de ordem;
 - pares omitidos não geram alertas.
 
 ### 18.5 Resposta protegida em fail-closed
@@ -1122,12 +1125,12 @@ OBS-MOTOR-MEI-001 — ABERTA / ADIADA
 
 | Papel | Nome | Estado |
 |---|---|---|
-| Fundador e Arquitecto Soberano | Miguel | ⬜ PENDENTE |
-| Auditor e Redactor Arquitectural | GPT | ✅ RATIFICADO v1.2 |
+| Fundador e Arquitecto Soberano | Miguel | ✅ RATIFICADO v1.3 |
+| Auditor e Redactor Arquitectural | GPT | ✅ RATIFICADO v1.3 |
 
-Nenhum contrato, motor, adapter ou teste B14.3D será criado antes:
+Nenhum ficheiro de implementação B14.3D poderá ser incorporado em commit antes:
 
-1. da ratificação explícita de Miguel;
+1. da ratificação explícita de Miguel, cumprida na v1.3;
 2. da gravação exacta desta ADR;
 3. da validação do ficheiro;
 4. do Commit 1 documental;
