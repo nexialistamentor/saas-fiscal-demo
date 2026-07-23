@@ -7,7 +7,7 @@ from app import models
 from app.models import RelatorioAnalise
 from app.database import get_db
 from app.routes.imposto_router import DadosImposto
-from app.security import get_usuario_atual, verificar_empresa_do_usuario
+from app.security import get_usuario_atual, verificar_acesso_relatorio, verificar_empresa_do_usuario
 from app.services.analysis_orchestrator import executar_analise_xml
 from app.services.registro_analise_service import executar_e_registrar_analise_xml
 from app.services.usage_service import LimiteAnalisesAtingidoError
@@ -24,7 +24,7 @@ from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
 from app.services.context_flags_service import default_context_flags
-from app.services.memorial_service import coletar_contexto_memorial, marcar_memorial_gerado
+from app.services.memorial_service import coletar_contexto_memorial, obter_preflight_memorial
 from app.xml_security import validar_upload_xml
 from app.services.analysis_types import (
     ANALYSIS_TYPE_TAX_PLANNING,
@@ -364,15 +364,20 @@ def obter_memorial(
     Retorna o contexto completo do Memorial de Cálculo para um relatório.
     Requer pagamento (relatorio.pago = True).
     """
+    preflight = obter_preflight_memorial(db, relatorio_id)
+    if preflight is None:
+        raise HTTPException(status_code=404, detail="Relatório não encontrado.")
+    try:
+        verificar_acesso_relatorio(preflight, usuario_atual, db)
+    except HTTPException as exc:
+        if exc.status_code == 403:
+            raise HTTPException(status_code=403, detail="Acesso negado.") from None
+        raise
+    if not preflight.pago:
+        raise HTTPException(status_code=402, detail="Pagamento necessário para aceder ao memorial.")
     contexto = coletar_contexto_memorial(db, relatorio_id)
     if contexto is None:
         raise HTTPException(status_code=404, detail="Relatório não encontrado.")
-    rel = contexto["relatorio"]
-    if rel["user_id"] != usuario_atual.id:
-        raise HTTPException(status_code=403, detail="Acesso negado.")
-    if not rel["pago"]:
-        raise HTTPException(status_code=402, detail="Pagamento necessário para aceder ao memorial.")
-    marcar_memorial_gerado(db, relatorio_id)
     return contexto
 
 
@@ -386,17 +391,22 @@ def baixar_memorial_pdf(
     Descarrega o Memorial de Cálculo em PDF.
     Requer pagamento (relatorio.pago = True).
     """
+    preflight = obter_preflight_memorial(db, relatorio_id)
+    if preflight is None:
+        raise HTTPException(status_code=404, detail="Relatório não encontrado.")
+    try:
+        verificar_acesso_relatorio(preflight, usuario_atual, db)
+    except HTTPException as exc:
+        if exc.status_code == 403:
+            raise HTTPException(status_code=403, detail="Acesso negado.") from None
+        raise
+    if not preflight.pago:
+        raise HTTPException(status_code=402, detail="Pagamento necessário para aceder ao memorial.")
+
     contexto = coletar_contexto_memorial(db, relatorio_id)
     if contexto is None:
         raise HTTPException(status_code=404, detail="Relatório não encontrado.")
-    rel = contexto["relatorio"]
-    if rel["user_id"] != usuario_atual.id:
-        raise HTTPException(status_code=403, detail="Acesso negado.")
-    if not rel["pago"]:
-        raise HTTPException(status_code=402, detail="Pagamento necessário para aceder ao memorial.")
-
     pdf = gerar_pdf_memorial(contexto)
-    marcar_memorial_gerado(db, relatorio_id)
 
     return StreamingResponse(
         iter([pdf.getvalue()]),

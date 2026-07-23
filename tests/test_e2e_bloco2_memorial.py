@@ -146,6 +146,12 @@ class TestE2EBloco2MemorialPDF:
             assert res_pdf.status_code == 402, (
                 f"Esperado 402 sem pagamento, obtido {res_pdf.status_code}: {res_pdf.text}"
             )
+            with _db_session() as db_check:
+                rel = db_check.query(RelatorioAnalise).filter(
+                    RelatorioAnalise.id == relatorio_id
+                ).first()
+                assert rel is not None
+                assert rel.memorial_gerado is False
 
     def test_e2e_b2_p3_memorial_com_pagamento_retorna_200(self, client):
         """GET /relatorio/memorial/{id}/pdf com pago=True → 200."""
@@ -174,6 +180,17 @@ class TestE2EBloco2MemorialPDF:
             assert res_pdf.status_code == 200, (
                 f"Esperado 200 com pago=True, obtido {res_pdf.status_code}: {res_pdf.text}"
             )
+            assert res_pdf.content.startswith(b"%PDF")
+            assert res_pdf.headers["content-type"].startswith("application/pdf")
+            assert res_pdf.headers["content-disposition"] == (
+                f"attachment; filename=memorial-{relatorio_id}.pdf"
+            )
+            with _db_session() as db_check:
+                rel = db_check.query(RelatorioAnalise).filter(
+                    RelatorioAnalise.id == relatorio_id
+                ).first()
+                assert rel is not None
+                assert rel.memorial_gerado is False
 
     def test_e2e_b2_p4_memorial_pdf_bytes_validos(self, client):
         """PDF gerado contém header %PDF válido."""
@@ -202,3 +219,54 @@ class TestE2EBloco2MemorialPDF:
             assert res_pdf.content[:4] == b"%PDF", (
                 f"Não é PDF válido: {res_pdf.content[:20]}"
             )
+            with _db_session() as db_check:
+                rel = db_check.query(RelatorioAnalise).filter(
+                    RelatorioAnalise.id == relatorio_id
+                ).first()
+                assert rel is not None
+                assert rel.memorial_gerado is False
+
+    def test_e2e_b2_n2_actor_alheio_nao_obtem_pdf(self, client):
+        """Um actor sem vínculo ao relatório nem à empresa recebe 403."""
+        with _pipeline_user_empresa(client) as (
+            user_id,
+            empresa_id,
+            email,
+            headers,
+        ):
+            with open(XML_FIXTURE, "rb") as f:
+                res = client.post(
+                    "/upload-xml",
+                    headers=headers,
+                    files={"file": ("nfe.xml", f, "application/xml")},
+                )
+            assert res.status_code == 200, res.text
+            relatorio_id = res.json()["relatorio_id"]
+
+            with _db_session() as db:
+                rel = db.query(RelatorioAnalise).filter(
+                    RelatorioAnalise.id == relatorio_id
+                ).first()
+                assert rel is not None
+                rel.pago = True
+                db.commit()
+
+            with _pipeline_user_empresa(client) as (
+                _other_user_id,
+                _other_empresa_id,
+                _other_email,
+                other_headers,
+            ):
+                res_pdf = client.get(
+                    f"/relatorio/memorial/{relatorio_id}/pdf",
+                    headers=other_headers,
+                )
+                assert res_pdf.status_code == 403
+                assert res_pdf.json() == {"detail": "Acesso negado."}
+
+                with _db_session() as db_check:
+                    rel = db_check.query(RelatorioAnalise).filter(
+                        RelatorioAnalise.id == relatorio_id
+                    ).first()
+                    assert rel is not None
+                    assert rel.memorial_gerado is False

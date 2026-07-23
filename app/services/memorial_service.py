@@ -8,7 +8,7 @@ a fonte de verdade; este serviço apenas agrega e prepara a narrativa exportáve
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NamedTuple
 
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,37 @@ from app.models import (
     ReferenciaLegal,
     RelatorioAnalise,
 )
+
+
+class MemorialPreflight(NamedTuple):
+    id: int
+    user_id: int
+    empresa_id: int | None
+    pago: bool
+
+
+def obter_preflight_memorial(
+    db: Session,
+    relatorio_id: int,
+) -> MemorialPreflight | None:
+    row = (
+        db.query(
+            RelatorioAnalise.id,
+            RelatorioAnalise.user_id,
+            RelatorioAnalise.empresa_id,
+            RelatorioAnalise.pago,
+        )
+        .filter(RelatorioAnalise.id == relatorio_id)
+        .first()
+    )
+    if row is None:
+        return None
+    return MemorialPreflight(
+        id=row.id,
+        user_id=row.user_id,
+        empresa_id=row.empresa_id,
+        pago=row.pago,
+    )
 
 
 def _serializar_referencia(r: ReferenciaLegal) -> dict[str, Any]:
