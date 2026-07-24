@@ -2,17 +2,19 @@
 
 ## 1. Identificação
 
-**ADR:** ADR-016  
-**Bloco:** B14-SVC-02  
-**Autoridade arquitectural:** GPT  
-**Autoridade de ratificação:** Miguel  
+**ADR:** ADR-016
+**Bloco:** B14-SVC-02
+**Autoridade arquitectural:** GPT
+**Autoridade de ratificação:** Miguel
 **Relação:** aditivo a `ADR-011-MIGRACAO-L3-DATA-SANITIZATION`
 
 ## 2. Estado
 
-**Estado: PROPOSTO — aguarda auditoria GPT e ratificação Miguel**
+**Estado: RATIFICADO POR GPT E MIGUEL — DECISÃO ARQUITECTURAL AUTÓNOMA E ADITIVA; SEM AUTORIZAÇÃO PRODUTIVA**
 
-Enquanto proposto, `ADR-011-PROVENIENCIA-001: ABERTO`. Não há autorização produtiva, implementação ratificada nem fechamento automático de gate.
+`ADR-011-PROVENIENCIA-001: RESOLVIDO POR ADR-016`. O gate de implementação produtiva permanece `PENDENTE E BLOQUEADO`. Não há autorização produtiva, implementação produtiva ratificada nem fechamento automático do gate produtivo.
+
+Registo histórico preservado: antes da auditoria GPT e da ratificação literal de Miguel, o ADR-016 encontrava-se `PROPOSTO`, com GPT `PENDENTE`, Miguel `PENDENTE` e o gate arquitectural `ADR-011-PROVENIENCIA-001` ainda `ABERTO`. Este registo descreve o estado anterior e não altera o estado normativo vigente.
 
 ## 3. Contexto
 
@@ -28,9 +30,7 @@ O ADR-016 é autónomo e aditivo. Não substitui, renumera, reescreve, rectifica
 
 ## 6. Gate histórico
 
-`ADR-011-PROVENIENCIA-001` é o gate histórico resolvido arquitecturalmente pelo ADR-016 somente após auditoria GPT e ratificação Miguel. Enquanto esta proposta não for ratificada, permanece `ABERTO` e a integração produtiva permanece bloqueada.
-
-Após ratificação, os estados serão explicitamente distintos:
+`ADR-011-PROVENIENCIA-001` é o gate histórico resolvido arquitecturalmente pelo ADR-016 após auditoria GPT aprovada e ratificação literal de Miguel. Os estados são explicitamente distintos:
 
 - gate de decisão arquitectural `ADR-011-PROVENIENCIA-001`: `RESOLVIDO POR ADR-016`;
 - gate de implementação produtiva: `PENDENTE E BLOQUEADO`.
@@ -143,7 +143,7 @@ A fronteira fica separada do agente, reproduzível e auditável, ao custo de com
 
 ## 30. Implementação futura
 
-Nomes finais são reservados ao bloco de implementação. Esse bloco deverá criar componentes dedicados, contratos de snapshot/manifestação, produtores ratificados e integração explícita, sem alterar esta proposta por implementação implícita.
+Nomes finais são reservados ao bloco de implementação. Esse bloco deverá criar componentes dedicados, contratos de snapshot/manifestação, produtores ratificados e integração explícita, sem alterar esta decisão por implementação implícita.
 
 ## 31. Testes futuros obrigatórios
 
@@ -170,11 +170,17 @@ BudgetGuard e fallback de modelos não participam da fronteira determinística. 
 | oito campos exactos | disponibilidade explícita por campo |
 | gate aberto | gates de decisão e implementação separados |
 
-## 35. Ratificação pendente
+## 35. Ratificação concluída
 
 | Papel | Autoridade | Estado |
 |---|---|---|
-| Auditor arquitectural | GPT | PENDENTE |
-| Ratificador de produto | Miguel | PENDENTE |
+| Auditor arquitectural | GPT | APROVADO |
+| Ratificador de produto | Miguel | RATIFICADO |
 
-Até ambas ocorrerem, `ADR-011-PROVENIENCIA-001` permanece `ABERTO` e integração produtiva `BLOQUEADA`.
+Evidência: REPORT-013 auditado e declaração literal de Miguel reproduzida no REPORT-014.
+
+A ratificação decide arquitectura; não implementa componentes, não autoriza produção e não fecha o gate de implementação produtiva. Também não escolhe regras fiscais, produtores, precisão, schema, endpoint, scheduler, registry, executor, LLM ou algoritmo criptográfico.
+
+`ADR-011-PROVENIENCIA-001: RESOLVIDO POR ADR-016`.
+
+Gate de implementação produtiva: `PENDENTE E BLOQUEADO`. A integração produtiva continua bloqueada e não autorizada.

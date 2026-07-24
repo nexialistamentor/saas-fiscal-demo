@@ -5,12 +5,12 @@
 | Campo | Valor |
 |---|---|
 | Nome | ROADMAP_OPS_AGENTES |
-| Versão | 2.0 |
-| Data | 2026-07-23 |
-| Estado | RATIFICADO — CANÓNICO DOCUMENTAL, SEM AUTORIZAÇÃO OPERACIONAL |
-| Baseline | `a7e16f0ffa5a90189166d4f968eb62b23c69da89` |
+| Versão | 2.1 |
+| Data | 2026-07-24 |
+| Estado | EM AUDITORIA — FECHO DOCUMENTAL PÓS-RATIFICAÇÃO, SEM AUTORIZAÇÃO OPERACIONAL |
+| Baseline | `c6ce08147c9c9254c7a59cc0dd60188412ca9ae2` |
 | Estado documental | Redacção controlada; não constitui autorização operacional |
-| Fonte principal de reconciliação | `REPORT-011` |
+| Fontes de reconciliação | `REPORT-013` e `REPORT-014` |
 
 Este documento separa estado comprovado, histórico, gates e futuro. A sua
 existência não activa componentes, não escolhe prioridade estratégica e não
@@ -70,15 +70,19 @@ a divergência é preservada até decisão da autoridade competente.
 
 | Marco | Estado | Evidência | Vigência e fronteira |
 |---|---|---|---|
-| B14.3A–F | CONCLUÍDO | ADR-009 a ADR-014, adapters, engines e testes | Migrações em sombra; estados textuais divergentes de ADR-009/011 permanecem registados |
+| B14.3A–F | CONCLUÍDO | ADR-009 a ADR-014, adapters, engines e testes | Migrações em sombra; a divergência textual do ADR-011 foi reconciliada por ratificação humana específica, sem alterar a divergência ainda aberta do ADR-009 |
 | B14.3G | CONCLUÍDO | ADR-015 e adapter/engine de pré-execução | Canário; `llm_used=false`; sem chamada real ao router/provider |
 | Sistema de Construção Soberana | CONCLUÍDO | `AGENTS.md`, MISSION-001/REPORT-001 e ciclo MISSION/REPORT | Governa execução; não activa produto |
-| ADR-016 | EM AUDITORIA | Documento define fronteira de proveniência; o próprio estado textual diz `PROPOSTO` | Implementação produtiva permanece bloqueada |
+| ADR-016 | CONCLUÍDO — DECISÃO ARQUITECTURAL RATIFICADA | Decisão autónoma e aditiva; REPORT-013/014 e ratificação literal de Miguel | Implementação produtiva permanece bloqueada e não autorizada |
 | ADR-017 | CONCLUÍDO | Estado textual ratificado por GPT e Miguel | Decisão arquitectural sem implementação produtiva |
 | ADR-018 | EM AUDITORIA | Estado textual ratificado, ainda declara aguardar commit/push documentais | Não autoriza projecção ou mutação além da fronteira decidida |
 | B14-SVC-06 | CONCLUÍDO | REPORT-010 e fronteira HTTP do memorial | Apenas leitura HTTP; não activa integração, projecção ou mutação L3 |
 
 Nenhum destes marcos constitui autorização produtiva geral.
+
+B14.3C continua concluído exclusivamente como migração em sombra/dry_run. A
+ratificação documental do ADR-011 v1.2 e a decisão arquitectural do ADR-016
+não provam activação, integração ou produção.
 
 ## 5. Inventário arquitectural
 
@@ -119,7 +123,7 @@ real; produção exige autorização e evidência próprias.
 | Gate | Estado | Evidência/fronteira | Responsável pela próxima decisão |
 |---|---|---|---|
 | Divergências de estado documental | BLOQUEADO | REPORT-011, secção 10 | Miguel, após auditoria GPT |
-| Proveniência produtiva de DataSanitization | BLOQUEADO | ADR-016 e REPORT-004/005/006 | Miguel, após auditoria GPT e missão própria |
+| Proveniência produtiva de DataSanitization | BLOQUEADO | Gate arquitectural resolvido pelo ADR-016; implementação, integração, reader, projector, persistência e activação permanecem PENDENTE E BLOQUEADO; REPORT-013/014 | Miguel, após missão, implementação, testes e auditoria próprios |
 | Granularidade/fronteira produtiva de ConsistencyAudit | BLOQUEADO | ADR-017 decide arquitectura, sem implementação | Miguel, por missão posterior |
 | Memorial além de HTTP read-only | BLOQUEADO | ADR-018, REPORT-009/010 | Miguel, por missão posterior |
 | Integração, executor, persistência e scheduler L3 produtivos | BLOQUEADO | REPORT-002/003 | Miguel, após proposta e auditoria |
@@ -158,6 +162,9 @@ autoridade, limites e política de substituição.
 byte a byte no momento da medição. Não prova autoria, proveniência, não
 repúdio, timestamp confiável ou resistência pós-quântica.
 
+O `REPORT-013` constitui evidência documental adicional deste limite: SHA-256
+prova apenas integridade byte a byte no momento da medição.
+
 **FUTURO NÃO AUTORIZADO.** Uma assinatura institucional exige ADR próprio.
 Qualquer desenho futuro deve preservar versionamento, substituibilidade,
 agilidade criptográfica e independência de algoritmo. Este roadmap não escolhe
@@ -169,7 +176,7 @@ Esta secção não ordena prioridade. Recomendação não equivale a autorizaç�
 
 ### ABERTO
 
-- Reconciliar estados documentais divergentes por decisão humana.
+- Reconciliar os estados documentais divergentes ainda abertos por decisão humana.
 - Manter inventário e manifestos versionados à medida que missões autorizadas
   produzam evidência.
 - Definir evidência mínima para cada fronteira produtiva, sem a implementar
@@ -226,8 +233,10 @@ O cumprimento de um critério não presume os seguintes.
 | Versão | Data | Estado | Evidência |
 |---|---|---|---|
 | 1.1 | 2026-06-28 | CONCLUÍDO — histórica e superada | SHA-256 `16B24C2CDD718AEB6E4AF1A59B74689E0EEB036FFFDEFFDA5C939EAC6FB8CE70` |
-| 2.0 | 2026-07-23 | RATIFICADO — CANÓNICO DOCUMENTAL, SEM AUTORIZAÇÃO OPERACIONAL | Baseline `a7e16f0ffa5a90189166d4f968eb62b23c69da89`; reconciliação `REPORT-011` |
+| 2.0 | 2026-07-23 | RATIFICADO — CANÓNICO DOCUMENTAL, SEM AUTORIZAÇÃO OPERACIONAL | SHA-256 `6EDC7FECBB04CC83790825BBC71775F3CD3D1963D97F3D479D4EFA831D585B7D`; baseline `a7e16f0ffa5a90189166d4f968eb62b23c69da89`; reconciliação `REPORT-011` |
+| 2.1 | 2026-07-24 | EM AUDITORIA — FECHO DOCUMENTAL PÓS-RATIFICAÇÃO, SEM AUTORIZAÇÃO OPERACIONAL | Baseline `c6ce08147c9c9254c7a59cc0dd60188412ca9ae2`; reconciliação `REPORT-013` e `REPORT-014` |
 
-A auditoria GPT e a ratificação de Miguel foram concluídas. A versão 2.0 é
-canónica documental, sem autorização para activar agentes, LLM real, scheduler,
-executor, persistência ou qualquer fronteira produtiva.
+A versão 2.0 preserva a auditoria GPT e a ratificação de Miguel concluídas e
+permanece canónica documental no seu histórico. A versão 2.1 está em auditoria
+e não está automaticamente ratificada. Nenhuma versão autoriza activar agentes,
+LLM real, scheduler, executor, persistência ou qualquer fronteira produtiva.

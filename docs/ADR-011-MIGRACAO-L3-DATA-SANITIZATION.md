@@ -1,6 +1,6 @@
 ADR-011 — Migração L3 B14.3C: DataSanitizationAgent em Sombra
 
-Status: RATIFICADO PELO GPT v1.2 — aguarda ratificação de Miguel
+Status: RATIFICADO POR GPT E MIGUEL v1.2 — CANÓNICO EXCLUSIVAMENTE PARA B14.3C EM SOMBRA/DRY_RUN; SEM AUTORIZAÇÃO PRODUTIVA
 Data: 2026-07-17
 Versão: 1.2 — rectificação contratual anterior ao Commit 2
 Autores: GPT — redactor e auditor arquitectural; Miguel — fundador e ratificador
@@ -766,9 +766,12 @@ remoção do agente legado do registry.
 
 A observação OBS-MOTOR-MEI-001 permanece aberta e adiada para o futuro bloco de motores empresariais.
 
-24. Ratificação
+24. Ratificação — registo histórico da v1.1
+
+Esta tabela pertence à versão 1.1, foi superada pela rectificação e ratificação específicas da v1.2 e não representa o estado vigente. A pendência histórica de Miguel na v1.1 não é apagada nem convertida em ratificação retroactiva.
+
 Papel	Nome	Estado
-Fundador e Arquitecto Soberano	Miguel	⬜ PENDENTE
+Fundador e Arquitecto Soberano	Miguel	⬜ PENDENTE NA v1.1 — situação superada pela ratificação específica da v1.2
 Auditor e Redactor Arquitectural	GPT
 
 ## 25. Rectificação canónica v1.2
@@ -776,6 +779,8 @@ Auditor e Redactor Arquitectural	GPT
 Esta secção substitui qualquer disposição incompatível das secções 5, 6, 7, 9, 11, 15 e 20 da versão 1.1.
 
 Nenhum ficheiro de implementação pode ser criado antes da ratificação de Miguel e do commit documental desta rectificação.
+
+Registo histórico de sequência: a implementação limitada de B14.3C em sombra ocorreu antes da ratificação humana de Miguel da v1.2. A ratificação posterior reconcilia a canonicidade documental exclusivamente no escopo sombra/dry_run; não sana retroactivamente a inversão de precedência documental, não autoriza produção e não altera o valor histórico desta regra.
 
 ### 25.1 Identificadores canónicos
 
@@ -1109,5 +1114,19 @@ O legado, registry, executor e scheduler permanecem inalterados.
 ### 25.16 Ratificação v1.2
 
 Papel	Nome	Estado
-Fundador e Arquitecto Soberano	Miguel	⬜ PENDENTE
+Fundador e Arquitecto Soberano	Miguel	✅ RATIFICADO v1.2 — ESCOPO LIMITADO A B14.3C EM SOMBRA/DRY_RUN
 Auditor e Redactor Arquitectural	GPT	✅ RATIFICADO v1.2
+
+Efeitos da ratificação vigente:
+
+- canonicidade documental limitada ao escopo B14.3C em sombra/dry_run;
+- nenhuma autorização para reader, projector, BD, persistência, scheduler, registry, executor, endpoint, escrita, LLM real, integração ou activação produtiva;
+- a implementação existente em sombra não prova produção;
+- o gate de implementação produtiva permanece PENDENTE E BLOQUEADO;
+- a ratificação não altera motores fiscais, autoridade normativa ou autoridade canónica do produto.
+
+`ADR-011-PROVENIENCIA-001: RESOLVIDO POR ADR-016 NO PLANO ARQUITECTURAL.`
+
+`GATE DE IMPLEMENTAÇÃO PRODUTIVA: PENDENTE E BLOQUEADO.`
+
+O ADR-016 continua autónomo e aditivo.
