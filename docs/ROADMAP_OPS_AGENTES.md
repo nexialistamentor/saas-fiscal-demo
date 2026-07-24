@@ -1,383 +1,233 @@
-# ROADMAP_OPS_AGENTES.md — Circuito Operacional e Agentes em Modo Aprendizagem
-
-**Versão:** 1.1  
-**Data:** 2026-06-28  
-**Contexto:** Fisco Soberano — B13 em estabilização operacional  
-**Princípio:** Agente aprende, classifica e sugere. Humano aprova. Sistema regista.
-
-> **Regra soberana:** Agente pode aprender, sugerir, alertar, classificar e propor patch.  
-> Agente NÃO pode: auto-commitar, auto-deployar, escrever directamente no banco, decidir fiscalmente, substituir gov.br/REDESIM/contador quando aplicável.
-
----
-
-## Kill Switches — variáveis obrigatórias antes de qualquer agente activo
-
-```env
-AGENTS_ENABLED=false
-AGENT_LEARNING_MODE=true
-AGENT_AUTO_PATCH=false
-AGENT_AUTO_COMMIT=false
-AGENT_AUTO_DEPLOY=false
-DEEPSEEK_DRY_RUN=true
-```
-
-**Regra:** Se `AGENTS_ENABLED=false`, nenhum agente chama LLM em produção.  
-**Regra:** Se `AGENT_LEARNING_MODE=true`, agente só diagnostica e sugere — nunca actua.
-
----
-
-## Estado Real (mapeado em 2026-06-28)
-
-### Agentes existentes mas desligados
-
-| Ficheiro | Função declarada | Estado |
-|---------|-----------------|--------|
-| `repair_agent.py` | Reparação autónoma | Existe, desligado |
-| `normative_watchdog_agent.py` | Vigilância normativa | Existe, desligado |
-| `normative_validation_agent.py` | Validação normativa | Existe, desligado |
-| `agent_scheduler.py` | Agendamento de jobs | Existe, não verificado |
-| `consistency_audit_agent.py` | Auditoria de consistência | Existe, desligado |
-| `performance_agent.py` | Monitorização de performance | Existe, desligado |
-| `security_audit_agent.py` | Auditoria de segurança | Existe, desligado |
-| `state_recovery_agent.py` | Recuperação de estado | Existe, desligado |
-
-### Serviços de actualização existentes mas não provados
-
-| Ficheiro | Função declarada |
-|---------|-----------------|
-| `atualizacao_normativa_service.py` | Actualização normativa |
-| `pipeline_normativo.py` | Pipeline de normas |
-| `tabela_normativa_service.py` | Tabelas normativas |
-| `normative_update_service.py` | Actualização normativa |
-| `jobs/analysis_job.py` | Job de análise |
-
-### Constantes hardcoded que precisam de prova de alinhamento
-
-| Constante | Valor | Fonte oficial | Diploma legal |
-|-----------|-------|--------------|--------------|
-| `MEI_LIMITE_ANUAL_FATURAMENTO` | 81_000 | gov.br/mei | LC 155/2016 art. 18-A |
-| `MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE` | 75_000 | Derivado | — |
-| `SALARIO_MINIMO_POR_ANO[2026]` | 1518.00 | gov.br | Decreto 12.302/2026 |
-| `PARCELA_FIXA_COMERCIO` | 1.00 | Res. CGSN 140/2018 | — |
-| `PARCELA_FIXA_SERVICOS` | 5.00 | Res. CGSN 140/2018 | — |
-
----
-
-## O que o Piloto 0 revelou (e um circuito operacional teria capturado)
-
-Evento que ocorreu manualmente e devia ser automático:
-
-```json
-{
-  "tipo": "race_condition_frontend",
-  "origem": "validarSessao — App.jsx",
-  "endpoint": "/empresas/",
-  "status_http": 403,
-  "mensagem": "Termos de Uso não aceites",
-  "classificacao": "P0",
-  "causa_provavel": "setUsuario() disparava hooks antes de has-accepted-terms resolver",
-  "ficheiros_provaveis": ["frontend-dashboard/src/App.jsx"],
-  "teste_recomendado": "login com termos=false não deve chamar /empresas/",
-  "patch_sugerido_texto": "mover has-accepted-terms para antes de setUsuario()",
-  "estado": "corrigido",
-  "commit_correcao": "d9f31b4"
-}
-```
-
----
-
-## FASE 0 — Fechar B13 (bloqueante)
-
-### B13-P0-06 — Gate de termos antes de setUsuario() ✔
-Commit `d9f31b4` — race condition eliminada.
-
-### B13-P0-07 — Registo/login no domínio customizado sem falha silenciosa
-
-**Critério de saída:**
-- [ ] Registo novo em `www.fiscosoberano.com.br` funciona sem erro silencioso
-- [ ] Email já cadastrado mostra CTA "Fazer login aqui"
-- [ ] Login válido entra no dashboard
-- [ ] Gate de termos aparece antes do dashboard
-- [ ] Nenhuma chamada crítica gera ecrã apagado
-- [ ] Console do browser sem erros CORS/403 após login
-
-### B13-Piloto — Teste manual T1-T8
-Executar em `www.fiscosoberano.com.br` em modo anónimo.
-
-### PILOTO_0_FEEDBACK.md
-Criar após teste com: HEAD testado, URL, cenários, P0 resolvidos/pendentes, decisão fechar/pendente.
-
----
-
-## FASE 1 — Prova de Fontes Tributárias (B13-OPS-01)
-
-**Objectivo:** provar que constantes tributárias têm fonte rastreável, versão e alinhamento com o motor.
-
-### 1.1 — Auditar mecanismos existentes (antes de criar novo)
-
-```powershell
-Get-Content app\agents\agent_scheduler.py | Select-Object -First 60
-Get-Content app\agents\normative_watchdog_agent.py | Select-Object -First 60
-Get-Content app\services\atualizacao_normativa_service.py | Select-Object -First 60
-Get-Content app\services\pipeline_normativo.py | Select-Object -First 60
-```
-
-Mapear: o que estes ficheiros fazem? Estão activos? Têm testes?
-
-### 1.2 — Criar docs/FONTES_TRIBUTARIAS.md (leitura humana)
-
-| Constante | Valor | Fonte | Diploma legal | Vigência | Última verificação |
-|-----------|-------|-------|--------------|----------|-------------------|
-| MEI_LIMITE_ANUAL_FATURAMENTO | 81_000 | gov.br/mei | LC 155/2016 art. 18-A | 2018→ | 2026-06-28 |
-| SALARIO_MINIMO_2026 | 1518.00 | gov.br | Decreto 12.302/2026 | Jan/2026→ | 2026-06-28 |
-| PARCELA_FIXA_COMERCIO | 1.00 | Res. CGSN 140/2018 | | 2018→ | 2026-06-28 |
-| PARCELA_FIXA_SERVICOS | 5.00 | Res. CGSN 140/2018 | | 2018→ | 2026-06-28 |
-
-### 1.3 — Criar data/fontes_tributarias_manifest.json (leitura por máquina)
-
-```json
-{
-  "versao": "1.0",
-  "ultima_atualizacao": "2026-06-28",
-  "fontes": {
-    "MEI_LIMITE_ANUAL_FATURAMENTO": {
-      "valor": 81000,
-      "fonte": "gov.br/mei",
-      "diploma": "LC 155/2016 art. 18-A",
-      "vigencia_inicio": "2018-01-01",
-      "ultima_verificacao": "2026-06-28",
-      "status": "verificado"
-    },
-    "SALARIO_MINIMO_2026": {
-      "valor": 1518.00,
-      "fonte": "gov.br",
-      "diploma": "Decreto 12.302/2026",
-      "vigencia_inicio": "2026-01-01",
-      "ultima_verificacao": "2026-06-28",
-      "status": "verificado"
-    }
-  }
-}
-```
-
-### 1.4 — Teste de alinhamento manifest ↔ motor
-
-```python
-# tests/test_fontes_tributarias_manifest.py
-def test_mei_limite_alinhado_com_manifest():
-    manifest = json.loads(Path("data/fontes_tributarias_manifest.json").read_text())
-    assert MEI_LIMITE_ANUAL_FATURAMENTO == manifest["fontes"]["MEI_LIMITE_ANUAL_FATURAMENTO"]["valor"]
-```
-
-### 1.5 — Sentinelas de prova (3 obrigatórias)
-
-| Sentinela | Teste | Estado |
-|-----------|-------|--------|
-| S1 — MEI limite | MEI + R$500k → inelegível com motivo | ✔ passa (B13-P0-02) |
-| S2 — CNAE software | "SaaS fiscal" → 62xx/63xx | ✔ passa (B13-P0-01) |
-| S3 — Fonte versionada | manifest.json existe e alinhado com motor | ⬜ criar em FASE 1 |
-
-**Critério de aprovação FASE 1:** S1 + S2 + S3 passam + manifest.json existe + FONTES_TRIBUTARIAS.md criado.
-
----
-
-## FASE 2 — LLMRouter DeepSeek (B13-OPS-02)
-
-**Objectivo:** provedor LLM para análise e diagnóstico. DeepSeek analisa — não decide.
-
-### Ficheiros a criar
-
-```
-app/services/llm_router.py
-app/services/llm_providers/__init__.py
-app/services/llm_providers/deepseek_provider.py
-app/services/llm_providers/mock_provider.py   ← obrigatório para testes
-app/schemas/llm_schema.py
-tests/test_llm_router_deepseek.py
-```
-
-### Variáveis de ambiente
-
-```env
-DEEPSEEK_API_KEY=           # nunca hardcodar
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-v4-flash    # NÃO usar deepseek-chat (depreciado 2026-07-24)
-DEEPSEEK_TIMEOUT_SECONDS=30
-DEEPSEEK_MAX_RETRIES=2
-DEEPSEEK_DRY_RUN=true
-LLM_PROVIDER=deepseek
-```
-
-> **Nota:** `deepseek-chat` e `deepseek-reasoner` estão em rota de depreciação para 2026-07-24.  
-> Usar `deepseek-v4-flash` (diagnóstico rápido) ou `deepseek-v4-pro` (auditoria pesada).
-
-### Schemas
-
-```python
-class LLMRequest(BaseModel):
-    tarefa: str          # "diagnostico_erro" | "sugestao_teste" | "analise_cnae"
-    contexto: dict       # dados sanitizados — NUNCA dados fiscais brutos
-    provider: str = "deepseek"
-    dry_run: bool = True
-
-class LLMResponse(BaseModel):
-    provider: str
-    modelo: str
-    output: dict         # sempre JSON estruturado
-    tokens_usados: int
-    latencia_ms: int
-    dry_run: bool
-    erro: str | None
-```
-
-### Testes — mock obrigatório
-
-```python
-# tests/test_llm_router_deepseek.py
-# Por defeito usa mock_provider — sem internet, sem saldo, sem key
-# Integração real só com: DEEPSEEK_INTEGRATION=1
-import pytest, os
-skip_sem_deepseek = pytest.mark.skipif(
-    os.environ.get("DEEPSEEK_INTEGRATION") != "1",
-    reason="DEEPSEEK_INTEGRATION=1 não definido"
-)
-```
-
-### Regras invariantes do LLMRouter
-
-- Nunca expor `DEEPSEEK_API_KEY` em logs ou respostas
-- Sanitização obrigatória antes de qualquer envio (ver FASE 3 — EventoOperacional)
-- Output sempre JSON estruturado
-- DeepSeek não escreve no banco
-- DeepSeek não faz commit/deploy
-- DeepSeek não decide CNAE/regime de forma canónica
-
----
-
-## FASE 3 — Agentes em Modo Aprendizagem (B13-OPS-03)
-
-### Contrato EventoOperacional
-
-```python
-class EventoOperacional(BaseModel):
-    id: str                      # UUID
-    timestamp: datetime
-    ambiente: str                # "producao" | "local"
-    commit_sha: str
-    origem: str                  # ficheiro/componente
-    tipo: str                    # "cors" | "race_condition" | "deploy" | "ux" | "fiscal"
-    endpoint: str | None
-    status_http: int | None
-    mensagem: str
-    payload_redigido: dict       # NUNCA dados fiscais brutos
-    usuario_id_hash: str | None  # hash do id, nunca email/CPF
-    classificacao: str | None    # P0/P1/P2 — preenchido pelo agente
-    estado: str                  # "aberto" | "em_analise" | "corrigido" | "regressao_criada"
-    teste_recomendado: str | None
-    ficheiros_provaveis: list[str]
-    patch_sugerido_texto: str | None
-    commit_correcao: str | None
-```
-
-### Regra de sanitização obrigatória
-
-**Antes de qualquer envio ao LLM:**
-
-```python
-CAMPOS_PROIBIDOS = ["cpf", "cnpj", "email", "token", "password", "xml", "documento"]
-
-def sanitizar_contexto(contexto: dict) -> dict:
-    """Remove dados sensíveis antes de enviar ao LLM."""
-    return {k: "[REDIGIDO]" if any(p in k.lower() for p in CAMPOS_PROIBIDOS) else v
-            for k, v in contexto.items()}
-```
-
-### Agentes prioritários
-
-| Prioridade | Agente | Aprende com | Saída |
-|-----------|--------|------------|-------|
-| 1 | **AgentErroOperacional** | CORS, 401/403, race condition, deploy errado, bundle antigo | P0/P1/P2 + causa + teste |
-| 2 | **AgentUX** | Ecrã branco, mensagem técnica, botão invisível, fluxo sem próximo passo | Melhoria texto + CTA + teste leigo |
-| 3 | **AgentQA** | Bug que escapou, teste fraco, falso positivo | Novo teste + assert + critério bloqueio |
-| 4 | **AgentFiscal/CNAE** | CNAE errado, MEI indevido, limite mal tratado | Ajuste regra + teste + alerta baixa confiança |
-| 5 | **AgentAberturaEmpresa** | Dúvidas CNPJ/MEI/ME, contador obrigatório | Dossiê + checklist + próximo passo |
-| 6 | **AgentDeploy/Infra** | Vercel env vazia, Railway antigo, CORS, DNS, health | Smoke test + checklist deploy + alerta |
-
-### Prompt base (aplicar a todos)
-
-```
-Tu és um agente de diagnóstico operacional soberano.
-NÃO alteras código directamente.
-NÃO decides fiscalmente.
-NÃO assumes causa sem evidência.
-NÃO inventas dados ausentes.
-NÃO recebes dados fiscais brutos — todo contexto chega sanitizado.
-
-Classificação obrigatória: P0 (bloqueia piloto) | P1 (antes abertura) | P2 (melhoria futura)
-
-Output JSON com campos obrigatórios:
-{
-  "classificacao": "P0|P1|P2",
-  "causa_provavel": "...",
-  "evidencias": [...],
-  "ficheiros_provaveis": [...],
-  "teste_recomendado": "...",
-  "patch_sugerido_texto": "...",
-  "risco_patch": "baixo|medio|alto",
-  "informacao_em_falta": "..."
-}
-
-Se faltarem dados, indica o menor comando de diagnóstico possível.
-```
-
----
-
-## FASE 4 — Circuito Fechado (B13-OPS-04)
-
-```
-Erro em produção / Piloto
-    ↓
-EventoOperacional criado (sanitizado)
-    ↓
-AgentErroOperacional analisa via LLMRouter
-    ↓
-Classificação P0/P1/P2 + causa + teste sugerido
-    ↓
-Miguel aprova
-    ↓
-Patch criado → suite green → commit → deploy
-    ↓
-Teste de regressão entra na suite
-    ↓
-EventoOperacional.estado = "regressao_criada"
-    ↓
-Memória operacional actualizada (FONTES_TRIBUTARIAS.md / manifest.json)
-```
-
-**Meta operacional:** erro real → diagnóstico → teste → patch sugerido → aprovação humana em < 30 min.
-
----
-
-## Critérios de aprovação por fase
-
-| Fase | Critério |
-|------|---------|
-| FASE 0 | B13-P0-06 ✔, B13-P0-07 passa, Piloto T1-T8 sem P0 aberto, PILOTO_0_FEEDBACK.md criado |
-| FASE 1 | manifest.json criado, S1+S2+S3 passam, teste alinhamento motor ↔ manifest verde |
-| FASE 2 | LLMRouter responde com JSON, mock provider nos testes, sem API key exposta, DEEPSEEK_INTEGRATION=1 opcional |
-| FASE 3 | AgentErroOperacional classifica race_condition como P0, sanitização activa, EventoOperacional gravado |
-| FASE 4 | Erro real → diagnóstico automático → teste de regressão criado < 30 min |
-
----
-
-## O que NÃO fazer em nenhuma fase
-
-- Auto-commit sem aprovação humana
-- Auto-deploy sem aprovação humana  
-- Escrita directa no banco sem trilha de auditoria
-- Decisão fiscal canónica por LLM
-- Envio de dados fiscais brutos ao DeepSeek
-- Substituir gov.br/REDESIM/Receita
-- Tornar contador obrigatório sem base legal
-- Activar todos os agentes simultaneamente sem contrato
-- Usar `deepseek-chat` (depreciado 2026-07-24)
+# ROADMAP_OPS_AGENTES — Circuito Operacional e Agentes L3
+
+## 1. Identidade e versão
+
+| Campo | Valor |
+|---|---|
+| Nome | ROADMAP_OPS_AGENTES |
+| Versão | 2.0 |
+| Data | 2026-07-23 |
+| Estado | RATIFICADO — CANÓNICO DOCUMENTAL, SEM AUTORIZAÇÃO OPERACIONAL |
+| Baseline | `a7e16f0ffa5a90189166d4f968eb62b23c69da89` |
+| Estado documental | Redacção controlada; não constitui autorização operacional |
+| Fonte principal de reconciliação | `REPORT-011` |
+
+Este documento separa estado comprovado, histórico, gates e futuro. A sua
+existência não activa componentes, não escolhe prioridade estratégica e não
+altera contratos, ADRs ou invariantes.
+
+## 2. Autoridade e fontes de verdade
+
+| Item | Estado | Evidência e fronteira | Responsável pela próxima decisão |
+|---|---|---|---|
+| Autoridade humana final | CONCLUÍDO | `AGENTS.md` identifica Miguel; nenhuma decisão deste roadmap o substitui | Miguel |
+| Auditoria e supervisão | CONCLUÍDO | GPT audita e formula missões dentro da hierarquia declarada | GPT |
+| Execução técnica limitada | CONCLUÍDO | Codex executa somente missão, escopo e comandos autorizados | Codex |
+| Conflito `AGENTS.md` versus CCS-001 | BLOQUEADO | As cadeias de autoridade divergem; CCS-001 está `EM CONSTRUÇÃO`; este roadmap não resolve precedência | Miguel, após auditoria GPT |
+| Commits | CONCLUÍDO | Evidência cronológica auxiliar; mensagens não substituem o estado interno dos documentos institucionais | Não aplicável |
+
+ADRs, contratos canónicos e invariantes ratificados são fontes de verdade no
+seu âmbito. Quando o estado textual de um documento diverge do histórico Git,
+a divergência é preservada até decisão da autoridade competente.
+
+## 3. Princípios vigentes
+
+- **CONCLUÍDO — Decisão fiscal não delegada a LLM.** Motores e fontes
+  autorizadas fundamentam cálculo; LLM pode, quando futuramente autorizado,
+  analisar ou enriquecer sem produzir decisão fiscal canónica.
+- **CONCLUÍDO — motor-first, LLM-last.** A camada determinística precede
+  qualquer fallback ou enriquecimento.
+- **CONCLUÍDO — missão explícita e tipada.** Um agente por missão, sem chamadas
+  directas entre agentes; missão declara fronteira, modo, tenant, autoridade e
+  orçamento, mas não cria autoridade por si.
+- **CONCLUÍDO — escritor único.** Leitura, análise e proposta não concedem
+  escrita; mutação depende de fronteira e autoridade próprias.
+- **CONCLUÍDO — ausência de efeitos nos caminhos L3 examinados.**
+  `actions_executed=[]`; existência deste campo não autoriza execução futura.
+- **CONCLUÍDO — sem `run_all()` produtivo L3.** O executor e o scheduler que
+  possuem essa superfície são legados e não integram a brigada L3.
+- **CONCLUÍDO — sem auto-commit, auto-push ou auto-deploy.** Cada efeito exige
+  autorização explícita e escopo próprio.
+- **CONCLUÍDO — prova limitada.** Existência, teste ou instanciação não provam
+  activação nem execução. Ausência de prova de activação não deve ser
+  convertida em afirmação de inactividade.
+
+## 4. Estado actual comprovado
+
+### 4.1 Fundação contratual
+
+| Marco | Estado | Evidência | Vigência e fronteira |
+|---|---|---|---|
+| B14.0+B14.1 — fundação contratual | CONCLUÍDO | ADR-008 e fecho documental B14.0+B14.1 | Contratos vigentes; não autoriza produção geral |
+| Serialização canónica | CONCLUÍDO | `contracts/canonical.py` e testes contratuais | Determinismo e integridade do contrato |
+| `ContextSanitizationGuard` | CONCLUÍDO | ADR-008, `contracts/sanitization.py` e testes | Varrimento profundo; não prova proveniência produtiva |
+| Contratos partilhados | CONCLUÍDO | `SourceRef`, `BudgetPolicy`, `AgentEvidence`, `AgentAlert`, `AgentAction` | Limitam e descrevem autoridade; não a ampliam |
+| `AgentMission` e `MissionFactory` | CONCLUÍDO | contratos, factory e testes | Missão explícita; disponibilidade não activa agente |
+| `AgentExecutionResult` | CONCLUÍDO | contrato e testes | Regista resultado; não executa acções |
+| Validação cruzada e invariantes arquitecturais | CONCLUÍDO | `contracts/validation.py` e testes B14 | Restringem combinações inválidas; testes não provam activação |
+
+### 4.2 Sombra, canário e fronteiras
+
+| Marco | Estado | Evidência | Vigência e fronteira |
+|---|---|---|---|
+| B14.3A–F | CONCLUÍDO | ADR-009 a ADR-014, adapters, engines e testes | Migrações em sombra; estados textuais divergentes de ADR-009/011 permanecem registados |
+| B14.3G | CONCLUÍDO | ADR-015 e adapter/engine de pré-execução | Canário; `llm_used=false`; sem chamada real ao router/provider |
+| Sistema de Construção Soberana | CONCLUÍDO | `AGENTS.md`, MISSION-001/REPORT-001 e ciclo MISSION/REPORT | Governa execução; não activa produto |
+| ADR-016 | EM AUDITORIA | Documento define fronteira de proveniência; o próprio estado textual diz `PROPOSTO` | Implementação produtiva permanece bloqueada |
+| ADR-017 | CONCLUÍDO | Estado textual ratificado por GPT e Miguel | Decisão arquitectural sem implementação produtiva |
+| ADR-018 | EM AUDITORIA | Estado textual ratificado, ainda declara aguardar commit/push documentais | Não autoriza projecção ou mutação além da fronteira decidida |
+| B14-SVC-06 | CONCLUÍDO | REPORT-010 e fronteira HTTP do memorial | Apenas leitura HTTP; não activa integração, projecção ou mutação L3 |
+
+Nenhum destes marcos constitui autorização produtiva geral.
+
+## 5. Inventário arquitectural
+
+O inventário exacto, ficheiro a ficheiro, permanece na secção 7 do
+`REPORT-011`. Esta visão por grupos não o substitui.
+
+| Grupo | Natureza | Estado | Escrita | Autoridade fiscal | LLM | Prova de activação |
+|---|---|---|---|---|---|---|
+| Agentes legados | Agentes anteriores aos contratos L3 | ABERTO | Alguns contêm leitura, efeitos ou acesso potencial; sem autorização L3 | Não provada ou não canónica | Possível em caminho legado específico | Não provada em produção |
+| Registry/scheduler/executor legados | Orquestração e persistência legadas | BLOQUEADO | Executor pode gravar e scheduler abre sessões | Nenhuma autoridade L3 | Indirecto/não provado | Instanciação em `app/main.py` não é execução; lifespan não inicia scheduler |
+| Adapters L3 | Fronteira `AgentMission` → `AgentExecutionResult` | CONCLUÍDO | Nenhuma nos caminhos examinados | Orientação/validação, nunca decisão canónica | Não; canário mantém `llm_used=false` | Sombra ou canário, não produção |
+| Engines L3 | Processamento determinístico | CONCLUÍDO | Nenhuma | Limitada pelo contrato de cada missão | Não chamam provider | Existência e teste não provam execução |
+| Reader L3 | Leitura para snapshot de encerramento | CONCLUÍDO | Leitura apenas; sem commit | Nenhuma | Não | Sombra; não prova publicação |
+| Contratos L3 | Tipos, guardas e validação | CONCLUÍDO | Descrevem/limitam; não executam | Autoridade tipada e limitada | Apenas metadados contratuais | Vigência contratual não equivale a activação |
+| Router/providers LLM | Stack substituível já existente | ABERTO | Sem autoridade de escrita L3 | Não pode decidir fiscalmente | Capacidade abstracta | Existência não prova uso; chamada real L3 não autorizada |
+| Fronteiras HTTP read-only | Exposição de leitura do memorial | CONCLUÍDO | Sem mutação no escopo B14-SVC-06 | Nenhuma decisão fiscal | Não | Prova apenas a rota read-only implementada |
+
+## 6. Fronteiras de activação
+
+- **CONCLUÍDO:** nenhuma flag global activa a brigada L3.
+- **CONCLUÍDO:** adapters exigem missão explícita, tipada e uma fronteira
+  própria; flags de configuração não concedem autoridade.
+- **CONCLUÍDO:** scheduler, registry e executor legados não constituem
+  integração nem autorização L3.
+- **CONCLUÍDO:** B14.3G não chama `LLMRouter` nem provider e mantém
+  `llm_used=false`.
+- **BLOQUEADO:** chamada real a LLM permanece não autorizada.
+- **FUTURO NÃO AUTORIZADO:** produção L3 depende de missão posterior,
+  evidência apropriada, auditoria GPT e decisão de Miguel.
+
+Legado, sombra, canário e produção são estados distintos. Código legado pode
+conter efeitos sem estar autorizado para L3; sombra executa apenas na
+fronteira explícita de validação; canário testa pré-condições sem chamada
+real; produção exige autorização e evidência próprias.
+
+## 7. Gates e blockers
+
+| Gate | Estado | Evidência/fronteira | Responsável pela próxima decisão |
+|---|---|---|---|
+| Divergências de estado documental | BLOQUEADO | REPORT-011, secção 10 | Miguel, após auditoria GPT |
+| Proveniência produtiva de DataSanitization | BLOQUEADO | ADR-016 e REPORT-004/005/006 | Miguel, após auditoria GPT e missão própria |
+| Granularidade/fronteira produtiva de ConsistencyAudit | BLOQUEADO | ADR-017 decide arquitectura, sem implementação | Miguel, por missão posterior |
+| Memorial além de HTTP read-only | BLOQUEADO | ADR-018, REPORT-009/010 | Miguel, por missão posterior |
+| Integração, executor, persistência e scheduler L3 produtivos | BLOQUEADO | REPORT-002/003 | Miguel, após proposta e auditoria |
+| Dependências normativas em revisão | BLOQUEADO | B13-OPS-12; fontes incapazes de fundamentar decisão enquanto assim marcadas | Autoridade normativa e Miguel |
+| Conflito `AGENTS.md` versus CCS-001 | BLOQUEADO | REPORT-011, secção 10 | Miguel, após auditoria GPT |
+
+Estes gates são preservados, não resolvidos por este roadmap.
+
+## 8. Dependências normativas
+
+**BLOQUEADO.** O roadmap não reproduz valores, diplomas ou vigências externas
+como verdade. Uma dependência normativa só pode ser apresentada no seu
+manifesto versionado, com pelo menos:
+
+- `fonte_id`;
+- fonte e data de verificação;
+- início e fim de vigência, quando provados;
+- estado da autoridade;
+- capacidade explícita de fundamentar decisão;
+- risco e comportamento quando estiver em revisão.
+
+O manifesto e B13-OPS-12 contêm dependências em revisão ou pendentes. Este
+documento não valida fontes externas nem ratifica qualquer valor alternativo.
+
+## 9. Factos externos e providers
+
+**ABERTO.** Modelos, preços, endpoints, disponibilidade e depreciação são
+factos temporais externos e não são declarados aqui. A arquitectura deve usar
+capacidades abstractas e provider substituível. Qualquer uso futuro exige
+manifesto próprio, versionado, com fonte, data de verificação, vigência,
+autoridade, limites e política de substituição.
+
+## 10. Fronteira criptográfica
+
+**CONCLUÍDO — limite da evidência actual.** SHA-256 prova somente integridade
+byte a byte no momento da medição. Não prova autoria, proveniência, não
+repúdio, timestamp confiável ou resistência pós-quântica.
+
+**FUTURO NÃO AUTORIZADO.** Uma assinatura institucional exige ADR próprio.
+Qualquer desenho futuro deve preservar versionamento, substituibilidade,
+agilidade criptográfica e independência de algoritmo. Este roadmap não escolhe
+algoritmo nem alega segurança pós-quântica.
+
+## 11. Sequência futura autorizável
+
+Esta secção não ordena prioridade. Recomendação não equivale a autorização.
+
+### ABERTO
+
+- Reconciliar estados documentais divergentes por decisão humana.
+- Manter inventário e manifestos versionados à medida que missões autorizadas
+  produzam evidência.
+- Definir evidência mínima para cada fronteira produtiva, sem a implementar
+  por este roadmap.
+
+### BLOQUEADO
+
+- Proveniência produtiva de DataSanitization.
+- Implementação produtiva da granularidade/fronteira de ConsistencyAudit.
+- Memorial além da leitura HTTP já implementada.
+- Integração, execução, persistência e scheduler soberanos L3.
+- Dependências normativas ainda em revisão.
+- Chamada real a LLM no caminho L3.
+
+### FUTURO NÃO AUTORIZADO
+
+- Activação produtiva de qualquer adapter ou brigada L3.
+- Projector, reader adicional, scheduler, executor ou persistência L3.
+- Mutação do memorial e efeitos transaccionais.
+- Integração real com provider LLM.
+- Assinatura institucional e evolução criptográfica.
+
+Miguel escolhe prioridade e emite autorização; GPT audita; Codex executa
+somente a missão delimitada.
+
+## 12. Critérios de saída
+
+Uma categoria futura só pode sair do seu estado quando possuir, conforme o
+risco e a missão:
+
+1. evidência documental rastreável;
+2. teste apropriado, sem confundir cobertura com activação;
+3. auditoria GPT;
+4. ratificação de Miguel;
+5. commit de escopo único;
+6. push confirmado;
+7. deploy apenas com autorização explícita.
+
+O cumprimento de um critério não presume os seguintes.
+
+## 13. Dívida histórica
+
+| Item histórico | Estado | Registo |
+|---|---|---|
+| B13 | CONCLUÍDO | Transição operacional para B14 comprovada; dependências normativas pendentes permanecem gates próprios |
+| Pilot 0 e correcção de race condition | CONCLUÍDO | Marco histórico anterior a B14 |
+| P0-07, T1–T8 e feedback do Pilot 0 | ABERTO | Fecho documental individual não provado; não são fase corrente |
+| Fases 0–4 da v1.1 | CONCLUÍDO | Sequência histórica superada pela arquitectura B14 e pelo ciclo MISSION/REPORT |
+| Propostas de criação de router, schemas, evento e testes | CONCLUÍDO | Artefactos passaram a existir; existência não prova activação |
+| Prompt universal e prioridades antigas | FUTURO NÃO AUTORIZADO | Removidos da arquitectura corrente; eventual artefacto exige missão e decisão próprias |
+
+## 14. Histórico de versões
+
+| Versão | Data | Estado | Evidência |
+|---|---|---|---|
+| 1.1 | 2026-06-28 | CONCLUÍDO — histórica e superada | SHA-256 `16B24C2CDD718AEB6E4AF1A59B74689E0EEB036FFFDEFFDA5C939EAC6FB8CE70` |
+| 2.0 | 2026-07-23 | RATIFICADO — CANÓNICO DOCUMENTAL, SEM AUTORIZAÇÃO OPERACIONAL | Baseline `a7e16f0ffa5a90189166d4f968eb62b23c69da89`; reconciliação `REPORT-011` |
+
+A auditoria GPT e a ratificação de Miguel foram concluídas. A versão 2.0 é
+canónica documental, sem autorização para activar agentes, LLM real, scheduler,
+executor, persistência ou qualquer fronteira produtiva.
