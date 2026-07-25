@@ -1,5 +1,8 @@
-"""F10 — contrato HTTP para POST /relatorio/mei_tax."""
+"""F10/F11 — contratos HTTP para POST e GET de /relatorio/mei_tax."""
 
+import copy
+from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -191,3 +194,306 @@ def test_f10_mei_tax_sem_auth_retorna_401(monkeypatch):
 
     assert res.status_code == 401
     assert res.json() == {"detail": "Não autenticado"}
+
+
+class _ReadOnlyQuery:
+    def __init__(self, db):
+        self._db = db
+        self._matches = list(db.registros)
+
+    def filter(self, *expressoes):
+        self._db.eventos.append("F")
+        self._db.expressoes.extend(expressoes)
+        criterios = _criterios_das_expressoes(expressoes)
+        self._db.avaliacoes += len(self._db.registros)
+        self._matches = [
+            rel
+            for rel in self._db.registros
+            if all(getattr(rel, coluna) == valor for coluna, valor in criterios.items())
+        ]
+        return self
+
+    def first(self):
+        self._db.eventos.append("R")
+        resultado = self._matches[0] if self._matches else None
+        self._db.first_results.append(resultado)
+        return resultado
+
+    def __getattr__(self, nome):
+        raise AssertionError(f"operação de query não autorizada: {nome}")
+
+
+class _ReadOnlyDB:
+    def __init__(self):
+        self.registros = [
+            SimpleNamespace(
+                id=101,
+                user_id=1,
+                analysis_type=relatorio_router.ANALYSIS_TYPE_MEI_TAX,
+                resultado_json={"registro": "A", "valor": 101},
+            ),
+            SimpleNamespace(
+                id=102,
+                user_id=2,
+                analysis_type=relatorio_router.ANALYSIS_TYPE_MEI_TAX,
+                resultado_json={"registro": "B", "valor": 102},
+            ),
+            SimpleNamespace(
+                id=103,
+                user_id=1,
+                analysis_type="tax_planning",
+                resultado_json={"registro": "C", "valor": 103},
+            ),
+        ]
+        self.eventos = []
+        self.expressoes = []
+        self.first_results = []
+        self.query_calls = 0
+        self.avaliacoes = 0
+
+    def query(self, modelo):
+        assert modelo is RelatorioAnalise
+        self.query_calls += 1
+        self.eventos.append("Q")
+        return _ReadOnlyQuery(self)
+
+    def __getattr__(self, nome):
+        raise AssertionError(f"operação de sessão não autorizada: {nome}")
+
+
+_readonly_db_state = None
+
+
+def _override_readonly_db():
+    global _readonly_db_state
+    if _readonly_db_state is None:
+        _readonly_db_state = _ReadOnlyDB()
+    yield _readonly_db_state
+
+
+def _criterios_das_expressoes(expressoes):
+    return {
+        expressao.left.key: expressao.right.value
+        for expressao in expressoes
+    }
+
+
+def _criterios_registrados(db):
+    criterios = _criterios_das_expressoes(db.expressoes)
+    assert len(db.expressoes) == 3
+    return criterios
+
+
+def _criterios_esperados(relatorio_id):
+    return {
+        "id": relatorio_id,
+        "user_id": 1,
+        "analysis_type": relatorio_router.ANALYSIS_TYPE_MEI_TAX,
+    }
+
+
+def _get_mei_tax(
+    relatorio_id,
+    monkeypatch,
+    *,
+    pago=True,
+    gerador=None,
+    raise_server_exceptions=True,
+    db=None,
+):
+    global _readonly_db_state
+    _readonly_db_state = db or _ReadOnlyDB()
+    if gerador is None:
+        gerador = lambda _resultado: BytesIO(b"%PDF-1.4\nfake")
+    monkeypatch.setattr(relatorio_router, "gerar_pdf_imposto", gerador)
+    app.dependency_overrides[get_usuario_atual] = lambda: _mock_user(
+        consulta_paga=pago
+    )
+    app.dependency_overrides[get_db] = _override_readonly_db
+    try:
+        with TestClient(
+            app, raise_server_exceptions=raise_server_exceptions
+        ) as cliente:
+            return cliente.get(f"/relatorio/mei_tax/{relatorio_id}")
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_f11_get_mei_tax_sem_auth_retorna_401_sem_consulta(monkeypatch):
+    global _readonly_db_state
+    _readonly_db_state = _ReadOnlyDB()
+    gerador_chamado = False
+
+    def fail_gerador(_resultado):
+        nonlocal gerador_chamado
+        gerador_chamado = True
+        raise AssertionError("gerador não devia ser chamado sem autenticação")
+
+    monkeypatch.setattr(relatorio_router, "gerar_pdf_imposto", fail_gerador)
+    app.dependency_overrides[get_db] = _override_readonly_db
+    try:
+        with TestClient(app) as cliente:
+            response = cliente.get("/relatorio/mei_tax/101")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 401
+    assert _readonly_db_state.query_calls == 0
+    assert gerador_chamado is False
+    assert _readonly_db_state.eventos == []
+
+
+def test_f11_get_mei_tax_sem_pagamento_retorna_402_sem_consulta(monkeypatch):
+    gerador_chamado = False
+
+    def fail_gerador(_resultado):
+        nonlocal gerador_chamado
+        gerador_chamado = True
+        raise AssertionError("gerador não devia ser chamado sem pagamento")
+
+    response = _get_mei_tax(101, monkeypatch, pago=False, gerador=fail_gerador)
+
+    assert response.status_code == 402
+    assert response.json() == {
+        "detail": "Libere a análise fiscal para acessar o relatório."
+    }
+    assert _readonly_db_state.query_calls == 0
+    assert gerador_chamado is False
+    assert _readonly_db_state.eventos == []
+
+
+def test_f11_post_get_tem_paridade_financeira(monkeypatch):
+    global _readonly_db_state
+    _readonly_db_state = _ReadOnlyDB()
+
+    def fail_motor(**_kwargs):
+        raise AssertionError("motor não devia ser chamado sem pagamento")
+
+    def fail_gerador(_resultado):
+        raise AssertionError("gerador não devia ser chamado sem pagamento")
+
+    monkeypatch.setattr(relatorio_router, "calcular_imposto_simples", fail_motor)
+    monkeypatch.setattr(relatorio_router, "gerar_pdf_imposto", fail_gerador)
+    app.dependency_overrides[get_usuario_atual] = lambda: _mock_user(
+        consulta_paga=False
+    )
+    app.dependency_overrides[get_db] = _override_readonly_db
+    try:
+        with TestClient(app) as cliente:
+            post_response = cliente.post("/relatorio/mei_tax", json=_payload_valido)
+            get_response = cliente.get("/relatorio/mei_tax/101")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert get_response.status_code == 402
+    assert post_response.status_code == 402
+    assert get_response.json()["detail"] == post_response.json()["detail"]
+    assert _readonly_db_state.query_calls == 0
+    assert _readonly_db_state.eventos == []
+
+
+def test_f11_get_mei_tax_inexistente_retorna_404(monkeypatch):
+    gerador_chamado = False
+
+    def fail_gerador(_resultado):
+        nonlocal gerador_chamado
+        gerador_chamado = True
+
+    response = _get_mei_tax(999, monkeypatch, gerador=fail_gerador)
+
+    assert response.status_code == 404
+    assert _criterios_registrados(_readonly_db_state) == _criterios_esperados(999)
+    assert _readonly_db_state.avaliacoes == 3
+    assert _readonly_db_state.first_results == [None]
+    assert gerador_chamado is False
+    assert _readonly_db_state.eventos == ["Q", "F", "R"]
+
+
+def test_f11_get_mei_tax_de_outro_utilizador_retorna_404(monkeypatch):
+    gerador_chamado = False
+
+    def fail_gerador(_resultado):
+        nonlocal gerador_chamado
+        gerador_chamado = True
+
+    response = _get_mei_tax(102, monkeypatch, gerador=fail_gerador)
+
+    assert response.status_code == 404
+    assert _criterios_registrados(_readonly_db_state) == _criterios_esperados(102)
+    assert _readonly_db_state.avaliacoes == 3
+    assert _readonly_db_state.first_results == [None]
+    assert gerador_chamado is False
+    assert _readonly_db_state.eventos == ["Q", "F", "R"]
+
+
+def test_f11_get_mei_tax_de_outro_tipo_retorna_404(monkeypatch):
+    gerador_chamado = False
+
+    def fail_gerador(_resultado):
+        nonlocal gerador_chamado
+        gerador_chamado = True
+
+    response = _get_mei_tax(103, monkeypatch, gerador=fail_gerador)
+
+    assert response.status_code == 404
+    assert _criterios_registrados(_readonly_db_state) == _criterios_esperados(103)
+    assert _readonly_db_state.avaliacoes == 3
+    assert _readonly_db_state.first_results == [None]
+    assert gerador_chamado is False
+    assert _readonly_db_state.eventos == ["Q", "F", "R"]
+
+
+def test_f11_get_mei_tax_autorizado_retorna_pdf_read_only(monkeypatch):
+    argumentos_gerador = []
+    global _readonly_db_state
+    _readonly_db_state = _ReadOnlyDB()
+    rel = _readonly_db_state.registros[0]
+    estado_antes = copy.deepcopy(vars(rel))
+
+    def fake_gerador(resultado):
+        _readonly_db_state.eventos.append("G")
+        argumentos_gerador.append(resultado)
+        return BytesIO(b"%PDF-1.4\nrelatorio")
+
+    response = _get_mei_tax(
+        101, monkeypatch, gerador=fake_gerador, db=_readonly_db_state
+    )
+
+    assert response.status_code == 200
+    assert response.content.startswith(b"%PDF")
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert response.headers["content-disposition"] == (
+        "attachment; filename=relatorio-mei.pdf"
+    )
+    assert len(argumentos_gerador) == 1
+    assert argumentos_gerador[0] is rel.resultado_json
+    assert vars(rel) == estado_antes
+    assert _criterios_registrados(_readonly_db_state) == _criterios_esperados(101)
+    assert _readonly_db_state.eventos == ["Q", "F", "R", "G"]
+    assert _readonly_db_state.query_calls == 1
+
+
+def test_f11_get_mei_tax_falha_do_gerador_retorna_500_sem_mutacao(monkeypatch):
+    global _readonly_db_state
+    _readonly_db_state = _ReadOnlyDB()
+    rel = _readonly_db_state.registros[0]
+    estado_antes = copy.deepcopy(vars(rel))
+
+    def gerador_com_falha(resultado):
+        _readonly_db_state.eventos.append("G_FAIL")
+        raise RuntimeError(f"falha controlada para {resultado['registro']}")
+
+    response = _get_mei_tax(
+        101,
+        monkeypatch,
+        gerador=gerador_com_falha,
+        raise_server_exceptions=False,
+        db=_readonly_db_state,
+    )
+    assert response.status_code == 500
+    assert not response.content.startswith(b"%PDF")
+    assert _readonly_db_state.eventos == ["Q", "F", "R", "G_FAIL"]
+    assert _readonly_db_state.query_calls == 1
+    assert _readonly_db_state.first_results == [rel]
+    assert vars(rel) == estado_antes
+    assert _criterios_registrados(_readonly_db_state) == _criterios_esperados(101)

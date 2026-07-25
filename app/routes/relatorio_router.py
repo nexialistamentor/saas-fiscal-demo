@@ -562,6 +562,11 @@ async def buscar_relatorio_mei_tax(
     db: Session = Depends(get_db),
 ):
     """Busca relatório MEI/CPF por ID (retorna PDF)."""
+    if not usuario_atual.consulta_paga:
+        raise HTTPException(
+            status_code=402,
+            detail="Libere a análise fiscal para acessar o relatório.",
+        )
     rel = db.query(models.RelatorioAnalise).filter(
         models.RelatorioAnalise.id == relatorio_id,
         models.RelatorioAnalise.user_id == usuario_atual.id,
