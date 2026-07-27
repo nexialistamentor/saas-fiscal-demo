@@ -426,24 +426,10 @@ def obter_relatorio(
     if not rel:
         raise HTTPException(status_code=404, detail="Relatório não encontrado")
 
-    if rel.user_id != usuario_atual.id:
-        raise HTTPException(status_code=403, detail="Acesso negado")
+    verificar_acesso_relatorio(rel, usuario_atual, db)
 
-    # Fallback para base atual: RelatorioAnalise não possui consulta_paga.
-    # Se no futuro existir coluna por relatório, ela terá prioridade.
-    consulta_paga_relatorio = getattr(rel, "consulta_paga", None)
-    pagamento_ok = (
-        bool(consulta_paga_relatorio)
-        if consulta_paga_relatorio is not None
-        else bool(usuario_atual.consulta_paga)
-    )
-
-    if not pagamento_ok:
-        return {
-            "status": "bloqueado",
-            "mensagem": "Pagamento necessário",
-            "relatorio_id": rel.id,
-        }
+    if not bool(rel.pago or usuario_atual.consulta_paga):
+        raise HTTPException(status_code=402, detail="Pagamento necessário")
 
     resultado = rel.resultado_json or {}
     payload = dict(resultado) if isinstance(resultado, dict) else {"resultado": resultado}
@@ -454,8 +440,8 @@ def obter_relatorio(
         "analysis_type": rel.analysis_type,
         "score_resultante": rel.score_resultante,
         "total_alertas": rel.total_alertas,
-        "pago": getattr(rel, "pago", False),
-        "criado_em": rel.criado_em.isoformat() if rel.criado_em else None,
+        "pago": rel.pago,
+        "criado_em": rel.created_at.isoformat() if rel.created_at else None,
     })
     return payload
 
