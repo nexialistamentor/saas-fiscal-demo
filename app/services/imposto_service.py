@@ -191,9 +191,10 @@ def calcular_imposto_simples_nacional(
             "calcular_imposto_simples_nacional() requer ano_referencia. "
             "Bloqueado por B13-OPS-13A."
         )
-    if anexo.upper() not in _ANEXOS:
-        anexo = "I"
-    nome_anexo, tabela = _ANEXOS[anexo.upper()]
+    anexo_normalizado = anexo.upper()
+    if anexo_normalizado not in _ANEXOS:
+        raise ValueError(f"Anexo do Simples Nacional invalido: {anexo!r}")
+    nome_anexo, tabela = _ANEXOS[anexo_normalizado]
     faixa_min, faixa_max, aliquota_nom, parcela = _obter_faixa_simples(rbt12, tabela)
 
     # Alíquota efetiva: (RBT12 × A − PD) ÷ RBT12

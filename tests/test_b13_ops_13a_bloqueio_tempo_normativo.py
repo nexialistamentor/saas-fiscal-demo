@@ -144,6 +144,17 @@ def test_calcular_imposto_simples_nacional_com_ano_retorna_metadados():
     assert resultado["_estado_temporal"] == "resolvido"
 
 
+def test_calcular_imposto_simples_nacional_anexo_invalido_bloqueia():
+    from app.services.imposto_service import calcular_imposto_simples_nacional
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError, match="Anexo do Simples Nacional invalido"):
+        calcular_imposto_simples_nacional(
+            rbt12=360000.0,
+            anexo="VI",
+            ano_referencia=2026,
+        )
+
 # ---------------------------------------------------------------------------
 # CPF — tempo normativo (B13-OPS-13D)
 # ---------------------------------------------------------------------------
