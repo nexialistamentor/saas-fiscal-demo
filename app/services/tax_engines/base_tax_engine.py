@@ -10,6 +10,10 @@ class TempoNormativoAusenteError(Exception):
     """Levantada quando nenhum dado temporal normativo está disponível no contexto."""
 
 
+class LimiteSimplesNacionalExcedidoError(ValueError):
+    """Bloqueia calculo fora do limite suportado pelo simulador do Simples Nacional."""
+
+
 class BaseTaxEngine:
     """
     Classe base para todas as engines tributárias.

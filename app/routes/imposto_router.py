@@ -5,7 +5,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import AliasChoices, BaseModel, Field
 from app.services.analysis_orchestrator import executar_analise
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
-from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
+from app.services.tax_engines.base_tax_engine import (
+    LimiteSimplesNacionalExcedidoError,
+    TempoNormativoAusenteError,
+)
 from app.services.tax_engines.mei_constants import MEI_LIMITE_ANUAL_FATURAMENTO
 
 router = APIRouter()
@@ -178,6 +181,16 @@ def calcular_simples_nacional(dados: SimplesNacionalRequest):
             receita_mes=dados.receita_mes,
             anexo=dados.anexo,
             ano_referencia=ano_referencia,
+        )
+    except LimiteSimplesNacionalExcedidoError:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "LIMITE_SIMPLES_NACIONAL_EXCEDIDO",
+                "estado_l3": "bloqueado",
+                "erro": 'O faturamento informado excede o limite suportado por esta simulação do Simples Nacional.',
+            },
         )
     except TempoNormativoAusenteError as e:
         raise HTTPException(

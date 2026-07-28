@@ -2,7 +2,10 @@
 Serviço de cálculo de impostos para CPF e MEI.
 """
 
-from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
+from app.services.tax_engines.base_tax_engine import (
+    LimiteSimplesNacionalExcedidoError,
+    TempoNormativoAusenteError,
+)
 from app.services.tax_engines.mei_constants import (
     MEI_ATIVIDADE_SERVICOS,
     MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE,
@@ -165,10 +168,6 @@ def _obter_faixa_simples(rbt12: float, tabela: list) -> tuple:
     for faixa_min, faixa_max, aliquota, parcela in tabela:
         if faixa_min <= rbt12 <= faixa_max:
             return faixa_min, faixa_max, aliquota, parcela
-    # Acima do teto (4,8 mi) - usar última faixa
-    if rbt12 > 4_800_000:
-        fmin, fmax, aliq, par = tabela[-1]
-        return fmin, fmax, aliq, par
     # Abaixo da primeira faixa
     fmin, fmax, aliq, par = tabela[0]
     return fmin, fmax, aliq, par
@@ -195,6 +194,11 @@ def calcular_imposto_simples_nacional(
     if anexo_normalizado not in _ANEXOS:
         raise ValueError(f"Anexo do Simples Nacional invalido: {anexo!r}")
     nome_anexo, tabela = _ANEXOS[anexo_normalizado]
+    limite_suportado = tabela[-1][1]
+    if rbt12 > limite_suportado:
+        raise LimiteSimplesNacionalExcedidoError(
+            'O faturamento informado excede o limite suportado por esta simulação do Simples Nacional.'
+        )
     faixa_min, faixa_max, aliquota_nom, parcela = _obter_faixa_simples(rbt12, tabela)
 
     # Alíquota efetiva: (RBT12 × A − PD) ÷ RBT12
@@ -212,8 +216,6 @@ def calcular_imposto_simples_nacional(
         "Valor estimado. A alíquota efetiva pode variar conforme o faturamento acumulado.",
         "Tabela Simples Nacional interna; validação normativa L3 pendente.",
     ]
-    if rbt12 > 4_800_000:
-        alertas.append("Faturamento acima do teto do Simples Nacional (R$ 4,8 milhões)")
 
     return {
         "das_mensal": das_mensal,

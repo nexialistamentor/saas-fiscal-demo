@@ -127,6 +127,25 @@ def test_simples_nacional_com_ano_referencia_calcula(client_auth):
     assert res.json()["_ano_referencia"] == 2026
 
 
+def test_simples_nacional_acima_limite_bloqueia_http(client_auth):
+    res = client_auth.post(
+        "/imposto/simples-nacional",
+        json={
+            "rbt12": 4_800_001.0,
+            "receita_mes": 400_000.0,
+            "anexo": "I",
+            "ano_referencia": 2026,
+        },
+    )
+
+    assert res.status_code == 422
+    detail = res.json()["detail"]
+    assert detail.get("bloqueado") is True
+    assert detail.get("tipo_bloqueio") == "LIMITE_SIMPLES_NACIONAL_EXCEDIDO"
+    assert detail.get("estado_l3") == "bloqueado"
+    assert "das_mensal" not in detail
+
+
 def test_calcular_imposto_simples_nacional_sem_ano_bloqueia():
     from app.services.imposto_service import calcular_imposto_simples_nacional
     from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
@@ -154,6 +173,59 @@ def test_calcular_imposto_simples_nacional_anexo_invalido_bloqueia():
             anexo="VI",
             ano_referencia=2026,
         )
+
+def test_responder_empresa_acima_limite_bloqueia():
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from app.services.assistente_service import responder_empresa
+
+    resultado = responder_empresa(
+        "simples nacional com faturamento de 500 mil por mes em 2026",
+        SimpleNamespace(empresas=[]),
+        MagicMock(),
+    )
+
+    assert resultado.get("bloqueado") is True
+    assert resultado.get("tipo_bloqueio") == "LIMITE_SIMPLES_NACIONAL_EXCEDIDO"
+    assert resultado.get("estado_l3") == "bloqueado"
+    assert resultado.get("requires_payment") is False
+    assert resultado.get("analysis_type") == "simples_nacional"
+
+
+def test_calcular_imposto_simples_nacional_no_limite_calcula():
+    from app.services.imposto_service import calcular_imposto_simples_nacional
+
+    resultado = calcular_imposto_simples_nacional(
+        rbt12=4_800_000.0,
+        receita_mes=400_000.0,
+        anexo="I",
+        ano_referencia=2026,
+    )
+
+    assert resultado["rbt12"] == 4_800_000.0
+    assert resultado["faixa_simples_max"] == 4_800_000
+    assert "das_mensal" in resultado
+
+
+def test_calcular_imposto_simples_nacional_acima_limite_bloqueia():
+    from app.services.imposto_service import calcular_imposto_simples_nacional
+    from app.services.tax_engines.base_tax_engine import (
+        LimiteSimplesNacionalExcedidoError,
+    )
+    import pytest as _pytest
+
+    with _pytest.raises(
+        LimiteSimplesNacionalExcedidoError,
+        match=r"O faturamento informado excede o limite suportado por esta simulação do Simples Nacional\.",
+    ):
+        calcular_imposto_simples_nacional(
+            rbt12=4_800_001.0,
+            receita_mes=400_000.0,
+            anexo="I",
+            ano_referencia=2026,
+        )
+
 
 # ---------------------------------------------------------------------------
 # CPF — tempo normativo (B13-OPS-13D)

@@ -12,7 +12,10 @@ from app.constants import PALAVRAS_ABERTURA, PALAVRAS_ENCERRAMENTO
 from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.insights_engine import InsightEngine
 from app.services.analysis_orchestrator import executar_analise
-from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
+from app.services.tax_engines.base_tax_engine import (
+    LimiteSimplesNacionalExcedidoError,
+    TempoNormativoAusenteError,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -309,6 +312,18 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> dict:
                     anexo=anexo,
                     ano_referencia=ano,
                 )
+            except LimiteSimplesNacionalExcedidoError:
+                return {
+                    "resposta": (
+                        "O faturamento informado excede o limite suportado por esta "
+                        "simulação do Simples Nacional."
+                    ),
+                    "requires_payment": False,
+                    "analysis_type": "simples_nacional",
+                    "bloqueado": True,
+                    "tipo_bloqueio": "LIMITE_SIMPLES_NACIONAL_EXCEDIDO",
+                    "estado_l3": "bloqueado",
+                }
             except TempoNormativoAusenteError:
                 return {
                     "resposta": (
