@@ -124,13 +124,49 @@ def extrair_ano_referencia(pergunta: str) -> int | None:
     return int(anos[-1])
 
 
-def extrair_faturamento(pergunta: str):
-    numeros = re.findall(r"\d+[.,]?\d*", pergunta)
-    if numeros:
-        valor = _parse_valor_br(numeros[0])
-        if "mil" in pergunta.lower() and valor < 1000:
+def extrair_faturamento(pergunta: str) -> float | None:
+    """Extrai somente valores ligados a um contexto financeiro."""
+    numero_pattern = (
+        r"(?<!\d)\d+(?:[.,]\d{3})*(?:[.,]\d{1,2})?(?!\d)"
+    )
+
+    padroes = (
+        (
+            rf"\b(?:faturamento|faturamos|fatura|receita)\b"
+            rf"(?:\s+(?:mensal|anual|brut[oa]))*"
+            rf"(?:\s+em\s+20\d{{2}})?"
+            rf"\s*(?:(?:de|do|da|no\s+valor\s+de|igual\s+a|"
+            rf"foi|\u00e9)\s*)?"
+            rf"[:=]?\s*(?:r\$\s*)?"
+            rf"(?P<valor>{numero_pattern})"
+            rf"(?P<milhar>\s*mil\b)?"
+        ),
+        (
+            rf"(?:"
+            rf"\b(?:com|de|ganho|recebo)\b\s+(?:r\$\s*)?"
+            rf"|\br\$\s*"
+            rf")"
+            rf"(?P<valor>{numero_pattern})"
+            rf"(?P<milhar>\s*mil\b)?"
+            rf"\s*(?:por|ao)\s+m(?:e|\u00ea)s\b"
+        ),
+    )
+
+    for padrao in padroes:
+        match = re.search(
+            padrao,
+            pergunta,
+            flags=re.IGNORECASE,
+        )
+        if match is None:
+            continue
+
+        valor = _parse_valor_br(match.group("valor"))
+        if match.group("milhar") and valor < 1000:
             valor *= 1000
+
         return valor
+
     return None
 
 
