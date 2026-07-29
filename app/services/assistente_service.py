@@ -13,6 +13,7 @@ from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.insights_engine import InsightEngine
 from app.services.analysis_orchestrator import executar_analise
 from app.services.tax_engines.base_tax_engine import (
+    AnexoSimplesNaoDeterminadoError,
     LimiteSimplesNacionalExcedidoError,
     TempoNormativoAusenteError,
 )
@@ -228,6 +229,16 @@ def formatar_resposta_insights(resultado: dict) -> str:
     return "\n".join(partes)
 
 
+def _extrair_anexo_simples_explicito(pergunta: str) -> str | None:
+    """Extrai somente Anexo I a V declarado explicitamente pelo utilizador."""
+    match = re.search(
+        r"\banexo\s+(III|II|IV|V|I)\b",
+        pergunta,
+        flags=re.IGNORECASE,
+    )
+    return match.group(1).upper() if match else None
+
+
 def _inferir_anexo_simples(pergunta: str) -> str:
     """Inferir anexo do Simples Nacional por palavras-chave. Default: I (comércio)."""
     p = pergunta.lower()
@@ -303,7 +314,7 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> dict:
             rbt12 = _obter_rbt12_empresa(db, empresa_id)
 
         if rbt12 and rbt12 > 0:
-            anexo = _inferir_anexo_simples(pergunta)
+            anexo = _extrair_anexo_simples_explicito(pergunta)
             ano = extrair_ano_referencia(pergunta)
             try:
                 resultado = calcular_imposto_simples_nacional(
@@ -312,6 +323,18 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> dict:
                     anexo=anexo,
                     ano_referencia=ano,
                 )
+            except AnexoSimplesNaoDeterminadoError:
+                return {
+                    "resposta": (
+                        "Para calcular o Simples Nacional, informe explicitamente "
+                        "o anexo aplicável: I, II, III, IV ou V."
+                    ),
+                    "requires_payment": False,
+                    "analysis_type": "simples_nacional",
+                    "bloqueado": True,
+                    "tipo_bloqueio": "ANEXO_SIMPLES_NAO_DETERMINADO",
+                    "estado_l3": "bloqueado",
+                }
             except LimiteSimplesNacionalExcedidoError:
                 return {
                     "resposta": (

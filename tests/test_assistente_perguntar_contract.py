@@ -84,16 +84,54 @@ def test_perguntar_empresa_sem_empresa_vinculada_pede_vinculo(client_sem_empresa
     assert "empresa" in body["resposta"].lower() or "login" in body["resposta"].lower()
 
 
-def test_perguntar_empresa_simples_com_ano_calcula(client_com_empresa):
+def test_perguntar_empresa_simples_com_ano_sem_anexo_bloqueia(client_com_empresa):
     res = client_com_empresa.post(
         "/perguntar",
         json={"pergunta": "quanto minha empresa paga no simples nacional em 2026, faturamos 50 mil por mes"},
     )
     assert res.status_code == 200
     body = res.json()
+    assert body.get("bloqueado") is True
+    assert body["tipo_bloqueio"] == "ANEXO_SIMPLES_NAO_DETERMINADO"
+    assert body["estado_l3"] == "bloqueado"
+    assert body["analysis_type"] == "simples_nacional"
+    assert body["requires_payment"] is False
+
+
+def test_perguntar_empresa_simples_nao_infere_anexo_por_atividade(client_com_empresa):
+    res = client_com_empresa.post(
+        "/perguntar",
+        json={
+            "pergunta": (
+                "faturamos 50 mil por mes; quanto uma empresa de servico de "
+                "consultoria paga no simples nacional no ano de referencia 2026"
+            )
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body.get("bloqueado") is True
+    assert body["tipo_bloqueio"] == "ANEXO_SIMPLES_NAO_DETERMINADO"
+    assert body["estado_l3"] == "bloqueado"
+    assert body["analysis_type"] == "simples_nacional"
+    assert body["requires_payment"] is False
+
+def test_perguntar_empresa_simples_com_anexo_explicito_calcula(client_com_empresa):
+    res = client_com_empresa.post(
+        "/perguntar",
+        json={
+            "pergunta": (
+                "quanto minha empresa paga no simples nacional, faturamos 50 mil por mes, "
+                "Anexo III, ano de referencia 2026"
+            )
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
     assert body.get("bloqueado") is not True
     assert body["analysis_type"] == "simples_nacional"
     assert body["requires_payment"] is False
+    assert "Anexo III" in body["resposta"]
 
 
 def test_perguntar_empresa_simples_sem_ano_bloqueia_estruturado(client_com_empresa):

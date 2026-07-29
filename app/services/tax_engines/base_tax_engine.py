@@ -14,6 +14,10 @@ class LimiteSimplesNacionalExcedidoError(ValueError):
     """Bloqueia calculo fora do limite suportado pelo simulador do Simples Nacional."""
 
 
+class AnexoSimplesNaoDeterminadoError(ValueError):
+    """Bloqueia cálculo sem Anexo do Simples explicitamente determinado."""
+
+
 class BaseTaxEngine:
     """
     Classe base para todas as engines tributárias.

@@ -126,6 +126,20 @@ def test_simples_nacional_com_ano_referencia_calcula(client_auth):
     assert res.status_code == 200
     assert res.json()["_ano_referencia"] == 2026
 
+def test_simples_nacional_com_ano_sem_anexo_bloqueia_na_borda(client_auth):
+    res = client_auth.post(
+        "/imposto/simples-nacional",
+        json={"rbt12": 360000.0, "ano_referencia": 2026},
+    )
+
+    assert res.status_code == 422
+    erros = res.json().get("detail", [])
+    assert any(
+        erro.get("loc") == ["body", "anexo"]
+        and erro.get("type") == "missing"
+        for erro in erros
+    )
+
 
 def test_simples_nacional_acima_limite_bloqueia_http(client_auth):
     res = client_auth.post(
@@ -162,6 +176,33 @@ def test_calcular_imposto_simples_nacional_com_ano_retorna_metadados():
     assert resultado["_ano_referencia"] == 2026
     assert resultado["_estado_temporal"] == "resolvido"
 
+def test_calcular_imposto_simples_nacional_com_ano_sem_anexo_bloqueia():
+    from app.services.imposto_service import calcular_imposto_simples_nacional
+    from app.services.tax_engines.base_tax_engine import (
+        AnexoSimplesNaoDeterminadoError,
+    )
+    import pytest as _pytest
+
+    with _pytest.raises(AnexoSimplesNaoDeterminadoError):
+        calcular_imposto_simples_nacional(
+            rbt12=360000.0,
+            ano_referencia=2026,
+        )
+
+
+def test_calcular_imposto_simples_nacional_anexo_vazio_bloqueia():
+    from app.services.imposto_service import calcular_imposto_simples_nacional
+    from app.services.tax_engines.base_tax_engine import (
+        AnexoSimplesNaoDeterminadoError,
+    )
+    import pytest as _pytest
+
+    with _pytest.raises(AnexoSimplesNaoDeterminadoError):
+        calcular_imposto_simples_nacional(
+            rbt12=360000.0,
+            anexo="   ",
+            ano_referencia=2026,
+        )
 
 def test_calcular_imposto_simples_nacional_anexo_invalido_bloqueia():
     from app.services.imposto_service import calcular_imposto_simples_nacional
@@ -181,7 +222,7 @@ def test_responder_empresa_acima_limite_bloqueia():
     from app.services.assistente_service import responder_empresa
 
     resultado = responder_empresa(
-        "simples nacional com faturamento de 500 mil por mes em 2026",
+        "simples nacional Anexo I com faturamento de 500 mil por mes em 2026",
         SimpleNamespace(empresas=[]),
         MagicMock(),
     )

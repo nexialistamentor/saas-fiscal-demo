@@ -161,7 +161,7 @@ class SimplesNacionalRequest(BaseModel):
     """Simulação DAS para empresa no Simples Nacional."""
     rbt12: float  # Receita bruta últimos 12 meses (R$)
     receita_mes: float | None = None  # Receita do mês (opcional, default: rbt12/12)
-    anexo: Literal["I", "II", "III", "IV", "V"] = "I"
+    anexo: Literal["I", "II", "III", "IV", "V"]
     ano_referencia: int | None = Field(default=None, ge=2000, le=2100)
     data_referencia: date | None = None
 

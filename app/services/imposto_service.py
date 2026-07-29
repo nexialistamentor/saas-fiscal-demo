@@ -3,6 +3,7 @@ Serviço de cálculo de impostos para CPF e MEI.
 """
 
 from app.services.tax_engines.base_tax_engine import (
+    AnexoSimplesNaoDeterminadoError,
     LimiteSimplesNacionalExcedidoError,
     TempoNormativoAusenteError,
 )
@@ -176,7 +177,7 @@ def _obter_faixa_simples(rbt12: float, tabela: list) -> tuple:
 def calcular_imposto_simples_nacional(
     rbt12: float,
     receita_mes: float = None,
-    anexo: str = "I",
+    anexo: str | None = None,
     ano_referencia: int | None = None,
 ) -> dict:
     """
@@ -190,7 +191,17 @@ def calcular_imposto_simples_nacional(
             "calcular_imposto_simples_nacional() requer ano_referencia. "
             "Bloqueado por B13-OPS-13A."
         )
-    anexo_normalizado = anexo.upper()
+    if anexo is None or (
+        isinstance(anexo, str) and not anexo.strip()
+    ):
+        raise AnexoSimplesNaoDeterminadoError(
+            "O Anexo do Simples Nacional deve ser informado explicitamente."
+        )
+
+    if not isinstance(anexo, str):
+        raise ValueError(f"Anexo do Simples Nacional invalido: {anexo!r}")
+
+    anexo_normalizado = anexo.strip().upper()
     if anexo_normalizado not in _ANEXOS:
         raise ValueError(f"Anexo do Simples Nacional invalido: {anexo!r}")
     nome_anexo, tabela = _ANEXOS[anexo_normalizado]
