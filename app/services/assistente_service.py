@@ -186,7 +186,20 @@ def _fmt_br(valor: float, decimais: int = 2) -> str:
 
 def _resposta_assistente_mei(pergunta: str) -> dict:
     """MEI via MEITaxEngine (mesmo fluxo do orquestrador L2)."""
-    faturamento = extrair_faturamento(pergunta) or 5000
+    faturamento = extrair_faturamento(pergunta)
+    if faturamento is None:
+        return {
+            "resposta": (
+                "Para calcular o imposto do MEI, informe o faturamento "
+                "mensal para continuar."
+            ),
+            "requires_payment": False,
+            "analysis_type": "mei_tax",
+            "bloqueado": True,
+            "tipo_bloqueio": "FATURAMENTO_AUSENTE",
+            "estado_l3": "bloqueado",
+        }
+
     dados: dict = {"faturamento": faturamento}
     ano = extrair_ano_referencia(pergunta)
     if ano is not None:
