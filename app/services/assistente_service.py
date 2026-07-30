@@ -118,10 +118,45 @@ def _parse_valor_br(s: str) -> float:
 
 
 def extrair_ano_referencia(pergunta: str) -> int | None:
-    anos = re.findall(r"\b(20\d{2})\b", pergunta)
-    if not anos:
+    """Extrai o ano normativo sem confundir valores financeiros 20xx."""
+    padroes_temporais = (
+        r"\bano(?:\s+de\s+refer[e\xea]ncia)?\s*(?:[:=]\s*)?(20\d{2})\b",
+        r"\b(?:em|para)\s+(20\d{2})\b",
+    )
+
+    anos_temporais = {
+        int(ano)
+        for padrao in padroes_temporais
+        for ano in re.findall(
+            padrao,
+            pergunta,
+            flags=re.IGNORECASE,
+        )
+    }
+
+    if len(anos_temporais) == 1:
+        return next(iter(anos_temporais))
+    if len(anos_temporais) > 1:
         return None
-    return int(anos[-1])
+
+    candidatos = [int(ano) for ano in re.findall(r"\b(20\d{2})\b", pergunta)]
+    if not candidatos:
+        return None
+
+    faturamento = extrair_faturamento(pergunta)
+    if faturamento is not None and 2000 <= faturamento < 2100:
+        ano_financeiro = int(faturamento)
+        candidatos = [
+            ano
+            for ano in candidatos
+            if ano != ano_financeiro
+        ]
+
+    anos_restantes = set(candidatos)
+    if len(anos_restantes) == 1:
+        return next(iter(anos_restantes))
+
+    return None
 
 
 def extrair_faturamento(pergunta: str) -> float | None:
