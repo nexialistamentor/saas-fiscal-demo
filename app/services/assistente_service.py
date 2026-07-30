@@ -856,9 +856,6 @@ def responder_pergunta(
             "analysis_type": "cpf_tax",
         }
 
-    # Assumir MEI quando há faturamento mas tipo não especificado (caso mais comum)
-    if contribuinte == "desconhecido" and extrair_faturamento(pergunta):
-        return _resposta_assistente_mei(pergunta)
 
     return {
         "resposta": (
