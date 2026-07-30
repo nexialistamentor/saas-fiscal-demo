@@ -60,33 +60,22 @@ def _db_session():
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _cpf_unico_valido() -> str:
-    base = f"{uuid.uuid4().int % 10**9:09d}"
-    s = sum(int(d) * (10 - i) for i, d in enumerate(base))
-    r = s % 11
-    d1 = 0 if r < 2 else 11 - r
-    s2 = sum(int(base[i]) * (11 - i) for i in range(9)) + d1 * 2
-    r2 = s2 % 11
-    d2 = 0 if r2 < 2 else 11 - r2
-    return base + f"{d1}{d2}"
-
-
 def _registar_user(client: TestClient) -> dict:
     limiter.reset()
-    last_response = None
-    for _ in range(10):
-        email = f"va02_{uuid.uuid4().hex[:8]}@example.com"
-        password = f"p{uuid.uuid4().hex}"
-        documento = _cpf_unico_valido()
-        res = client.post(
-            "/auth/register",
-            json={"email": email, "password": password,
-                  "tipo_usuario": "cpf", "documento": documento},
-        )
-        if res.status_code in (200, 201):
-            return {"email": email, "password": password}
-        last_response = res
-    assert False, f"Registo falhou ap?s 10 tentativas: {last_response.text}"
+    email = f"va02_{uuid.uuid4().hex}@example.com"
+    password = f"p{uuid.uuid4().hex}"
+    res = client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": password,
+            "tipo_usuario": "cpf",
+        },
+    )
+    assert res.status_code in (200, 201), (
+        f"Registo falhou: {res.status_code}: {res.text}"
+    )
+    return {"email": email, "password": password}
 
 
 def _login_headers(client: TestClient, credentials: dict) -> dict:
