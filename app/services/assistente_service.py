@@ -542,7 +542,18 @@ def responder_empresa(pergunta: str, usuario, db: "Session") -> dict:
 
 def responder_cpf(pergunta: str) -> dict:
     """CPF/autônomo: assistente → executar_analise('cpf_tax', dados)."""
-    faturamento = extrair_faturamento(pergunta) or 5000
+    faturamento = extrair_faturamento(pergunta)
+    if faturamento is None:
+        return {
+            "resposta": (
+                "Para calcular o imposto de autônomo (CPF), "
+                "informe o faturamento mensal para continuar."
+            ),
+            "payload": None,
+            "bloqueado": True,
+            "tipo_bloqueio": "FATURAMENTO_AUSENTE",
+            "estado_l3": "bloqueado",
+        }
     dados: dict = {"faturamento": faturamento, "despesas": 0}
     ano = extrair_ano_referencia(pergunta)
     if ano is not None:
