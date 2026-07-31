@@ -7,11 +7,14 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
     UniqueConstraint,
+    event,
 )
 from sqlalchemy.types import JSON
 from sqlalchemy.sql import func
@@ -798,3 +801,795 @@ class RequestLog(Base):
     )
     ip = Column(String(45), nullable=False)
     user_agent = Column(String(500), nullable=True)
+
+# =========================
+# ADR-020 V0.3 R2 - ACQUISITION FOUNDATION (IMPLEMENTATION R3)
+# =========================
+import hashlib
+import re
+
+
+_ADR020_HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+_ADR020_CAS_LOCATION_PATTERN = re.compile(
+    r"^cas\+sha256://([0-9a-f]{64})/([1-9][0-9]*)$"
+)
+
+_ARTIFACT_REFERENCE_EVENTS = (
+    "identificada",
+    "agendada",
+    "resolvida",
+    "nao_resolvida",
+)
+
+_ACQUISITION_EVENT_STATE = {
+    "criacao": "planeada",
+    "inicio": "em_execucao",
+    "conclusao": "concluida",
+    "conclusao_parcial": "concluida_parcial",
+    "indisponibilidade": "indisponivel",
+    "falha": "falhada",
+    "interrupcao": "interrompida",
+    "cancelamento": "cancelada",
+}
+
+_ACQUISITION_TERMINAL_STATES = {
+    "concluida",
+    "concluida_parcial",
+    "indisponivel",
+    "falhada",
+    "interrompida",
+    "cancelada",
+}
+
+_VERIFICATION_TYPES = (
+    "authenticity",
+    "integrity",
+    "preservation",
+)
+
+_VERIFICATION_OUTCOMES = (
+    "conclusivo_favoravel",
+    "conclusivo_desfavoravel",
+    "inconclusivo",
+)
+
+
+def _adr020_require_sha256(value: str, field_name: str) -> None:
+    if not isinstance(value, str) or not _ADR020_HASH_PATTERN.fullmatch(value):
+        raise ValueError(
+            f"ADR-020 {field_name} must be a lowercase SHA-256 hexadecimal digest"
+        )
+
+
+def _adr020_require_canonical_cas_location(
+    value: str,
+    artifact_hash: str,
+    byte_size: int,
+) -> None:
+    if not isinstance(value, str):
+        raise ValueError(
+            "ADR-020 immutable_location must use canonical "
+            "cas+sha256://<hash>/<byte_size> form"
+        )
+    match = _ADR020_CAS_LOCATION_PATTERN.fullmatch(value)
+    if match is None:
+        raise ValueError(
+            "ADR-020 immutable_location must use canonical "
+            "cas+sha256://<hash>/<byte_size> form"
+        )
+    location_hash, location_size = match.groups()
+    if location_hash != artifact_hash or int(location_size) != byte_size:
+        raise ValueError(
+            "ADR-020 immutable_location identity must match artifact_hash and byte_size"
+        )
+
+
+class ArtifactReference(Base):
+    """One immutable event in an ArtifactReference projection chain."""
+
+    __tablename__ = "artifact_references"
+    __table_args__ = (
+        UniqueConstraint(
+            "artifact_reference_id",
+            "event_sequence",
+            name="uq_artifact_references_identity_sequence",
+        ),
+        UniqueConstraint(
+            "artifact_reference_record_id",
+            "artifact_reference_id",
+            name="uq_artifact_references_record_identity",
+        ),
+        ForeignKeyConstraint(
+            [
+                "previous_artifact_reference_record_id",
+                "artifact_reference_id",
+            ],
+            [
+                "artifact_references.artifact_reference_record_id",
+                "artifact_references.artifact_reference_id",
+            ],
+            name="fk_artifact_references_previous_same_identity",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_artifact_references_record_hash",
+        ),
+        CheckConstraint(
+            "reference_event IN "
+            "('identificada', 'agendada', 'resolvida', 'nao_resolvida')",
+            name="ck_artifact_references_event_valid",
+        ),
+        CheckConstraint(
+            "event_sequence > 0",
+            name="ck_artifact_references_sequence_positive",
+        ),
+        CheckConstraint(
+            "(event_sequence = 1 "
+            "AND reference_event = 'identificada' "
+            "AND previous_artifact_reference_record_id IS NULL) "
+            "OR (event_sequence > 1 "
+            "AND previous_artifact_reference_record_id IS NOT NULL)",
+            name="ck_artifact_references_initial_or_predecessor",
+        ),
+        CheckConstraint(
+            "previous_artifact_reference_record_id IS NULL "
+            "OR previous_artifact_reference_record_id "
+            "<> artifact_reference_record_id",
+            name="ck_artifact_references_no_self_reference",
+        ),
+        CheckConstraint(
+            "length(trim(source_id)) > 0",
+            name="ck_artifact_references_source_id_not_empty",
+        ),
+        CheckConstraint(
+            "length(trim(exact_locator)) > 0",
+            name="ck_artifact_references_locator_not_empty",
+        ),
+        CheckConstraint(
+            "length(record_hash) = 64",
+            name="ck_artifact_references_record_hash_len",
+        ),
+    )
+
+    artifact_reference_record_id = Column(String(64), primary_key=True)
+    artifact_reference_id = Column(String(64), nullable=False, index=True)
+    reference_event = Column(String(32), nullable=False, index=True)
+    event_sequence = Column(Integer, nullable=False)
+    previous_artifact_reference_record_id = Column(String(64), nullable=True)
+    source_id = Column(String(255), nullable=False, index=True)
+    exact_locator = Column(Text, nullable=False)
+    official_identifier = Column(String(255), nullable=True, index=True)
+    expected_media_type = Column(String(255), nullable=True)
+    discovered_at = Column(DateTime(timezone=True), nullable=False)
+    occurred_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    evidence = Column(JSON, nullable=False)
+    record_hash = Column(String(64), nullable=False)
+
+
+class AcquisitionExecution(Base):
+    """One immutable event in one exact technical acquisition attempt."""
+
+    __tablename__ = "acquisition_executions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["artifact_reference_record_id", "artifact_reference_id"],
+            [
+                "artifact_references.artifact_reference_record_id",
+                "artifact_references.artifact_reference_id",
+            ],
+            name="fk_acquisition_executions_exact_reference",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "acquisition_execution_id",
+            "event_sequence",
+            name="uq_acquisition_executions_identity_sequence",
+        ),
+        UniqueConstraint(
+            "artifact_reference_id",
+            "attempt_number",
+            "event_sequence",
+            name="uq_acquisition_executions_reference_attempt_sequence",
+        ),
+        UniqueConstraint(
+            "acquisition_execution_record_id",
+            "acquisition_execution_id",
+            "artifact_reference_id",
+            "attempt_number",
+            name="uq_acquisition_executions_record_attempt",
+        ),
+        UniqueConstraint(
+            "acquisition_execution_record_id",
+            "acquisition_execution_id",
+            "artifact_reference_id",
+            "attempt_number",
+            "execution_event",
+            "projected_state",
+            name="uq_acquisition_executions_exact_projection",
+        ),
+        ForeignKeyConstraint(
+            [
+                "previous_acquisition_execution_record_id",
+                "acquisition_execution_id",
+                "artifact_reference_id",
+                "attempt_number",
+            ],
+            [
+                "acquisition_executions.acquisition_execution_record_id",
+                "acquisition_executions.acquisition_execution_id",
+                "acquisition_executions.artifact_reference_id",
+                "acquisition_executions.attempt_number",
+            ],
+            name="fk_acquisition_executions_previous_same_attempt",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_acquisition_executions_record_hash",
+        ),
+        CheckConstraint(
+            "execution_event IN "
+            "('criacao', 'inicio', 'conclusao', 'conclusao_parcial', "
+            "'indisponibilidade', 'falha', 'interrupcao', 'cancelamento')",
+            name="ck_acquisition_executions_event_valid",
+        ),
+        CheckConstraint(
+            "projected_state IN "
+            "('planeada', 'em_execucao', 'concluida', 'concluida_parcial', "
+            "'indisponivel', 'falhada', 'interrompida', 'cancelada')",
+            name="ck_acquisition_executions_state_valid",
+        ),
+        CheckConstraint(
+            "(execution_event = 'criacao' AND projected_state = 'planeada') "
+            "OR (execution_event = 'inicio' AND projected_state = 'em_execucao') "
+            "OR (execution_event = 'conclusao' AND projected_state = 'concluida') "
+            "OR (execution_event = 'conclusao_parcial' "
+            "AND projected_state = 'concluida_parcial') "
+            "OR (execution_event = 'indisponibilidade' "
+            "AND projected_state = 'indisponivel') "
+            "OR (execution_event = 'falha' AND projected_state = 'falhada') "
+            "OR (execution_event = 'interrupcao' "
+            "AND projected_state = 'interrompida') "
+            "OR (execution_event = 'cancelamento' "
+            "AND projected_state = 'cancelada')",
+            name="ck_acquisition_executions_event_state_pair",
+        ),
+        CheckConstraint(
+            "attempt_number > 0",
+            name="ck_acquisition_executions_attempt_positive",
+        ),
+        CheckConstraint(
+            "event_sequence > 0",
+            name="ck_acquisition_executions_sequence_positive",
+        ),
+        CheckConstraint(
+            "(event_sequence = 1 "
+            "AND execution_event = 'criacao' "
+            "AND projected_state = 'planeada' "
+            "AND previous_acquisition_execution_record_id IS NULL) "
+            "OR (event_sequence > 1 "
+            "AND previous_acquisition_execution_record_id IS NOT NULL)",
+            name="ck_acquisition_executions_initial_or_predecessor",
+        ),
+        CheckConstraint(
+            "previous_acquisition_execution_record_id IS NULL "
+            "OR previous_acquisition_execution_record_id "
+            "<> acquisition_execution_record_id",
+            name="ck_acquisition_executions_no_self_reference",
+        ),
+        CheckConstraint(
+            "length(trim(actor_or_worker)) > 0",
+            name="ck_acquisition_executions_actor_not_empty",
+        ),
+        CheckConstraint(
+            "length(trim(adapter_version)) > 0",
+            name="ck_acquisition_executions_adapter_not_empty",
+        ),
+        CheckConstraint(
+            "finished_at IS NULL OR started_at IS NULL "
+            "OR finished_at >= started_at",
+            name="ck_acquisition_executions_time_order",
+        ),
+        CheckConstraint(
+            "length(record_hash) = 64",
+            name="ck_acquisition_executions_record_hash_len",
+        ),
+    )
+
+    acquisition_execution_record_id = Column(String(64), primary_key=True)
+    acquisition_execution_id = Column(String(64), nullable=False, index=True)
+    artifact_reference_record_id = Column(String(64), nullable=False)
+    artifact_reference_id = Column(String(64), nullable=False, index=True)
+    attempt_number = Column(Integer, nullable=False)
+    execution_event = Column(String(32), nullable=False, index=True)
+    projected_state = Column(String(32), nullable=False, index=True)
+    event_sequence = Column(Integer, nullable=False)
+    previous_acquisition_execution_record_id = Column(String(64), nullable=True)
+    actor_or_worker = Column(String(255), nullable=False)
+    adapter_version = Column(String(128), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    occurred_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    structured_result = Column(JSON, nullable=True)
+    structured_error = Column(JSON, nullable=True)
+    evidence = Column(JSON, nullable=False)
+    provenance = Column(JSON, nullable=False)
+    record_hash = Column(String(64), nullable=False)
+
+
+class NormativeArtifact(Base):
+    """Immutable normative bytes or a content-addressed immutable location."""
+
+    __tablename__ = "normative_artifacts"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            [
+                "acquisition_execution_record_id",
+                "acquisition_execution_id",
+                "artifact_reference_id",
+                "acquisition_attempt_number",
+                "acquisition_event",
+                "acquisition_state",
+            ],
+            [
+                "acquisition_executions.acquisition_execution_record_id",
+                "acquisition_executions.acquisition_execution_id",
+                "acquisition_executions.artifact_reference_id",
+                "acquisition_executions.attempt_number",
+                "acquisition_executions.execution_event",
+                "acquisition_executions.projected_state",
+            ],
+            name="fk_normative_artifacts_completed_execution",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "normative_artifact_id",
+            "artifact_hash",
+            name="uq_normative_artifacts_identity_hash",
+        ),
+        UniqueConstraint(
+            "acquisition_execution_record_id",
+            name="uq_normative_artifacts_single_per_acquisition_completion",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_normative_artifacts_record_hash",
+        ),
+        CheckConstraint(
+            "acquisition_event = 'conclusao' "
+            "AND acquisition_state = 'concluida'",
+            name="ck_normative_artifacts_completed_acquisition",
+        ),
+        CheckConstraint(
+            "(immutable_bytes IS NOT NULL AND immutable_location IS NULL) "
+            "OR (immutable_bytes IS NULL AND immutable_location IS NOT NULL)",
+            name="ck_normative_artifacts_exactly_one_storage",
+        ),
+        CheckConstraint(
+            "immutable_location IS NULL "
+            "OR length(trim(immutable_location)) > 0",
+            name="ck_normative_artifacts_location_not_empty",
+        ),
+        CheckConstraint(
+            "byte_size > 0",
+            name="ck_normative_artifacts_byte_size_positive",
+        ),
+        CheckConstraint(
+            "length(trim(media_type)) > 0",
+            name="ck_normative_artifacts_media_type_not_empty",
+        ),
+        CheckConstraint(
+            "length(artifact_hash) = 64",
+            name="ck_normative_artifacts_artifact_hash_len",
+        ),
+        CheckConstraint(
+            "length(record_hash) = 64",
+            name="ck_normative_artifacts_record_hash_len",
+        ),
+    )
+
+    normative_artifact_id = Column(String(64), primary_key=True)
+    acquisition_execution_record_id = Column(String(64), nullable=False)
+    acquisition_execution_id = Column(String(64), nullable=False, index=True)
+    artifact_reference_id = Column(String(64), nullable=False, index=True)
+    acquisition_attempt_number = Column(Integer, nullable=False)
+    acquisition_event = Column(
+        String(32),
+        nullable=False,
+        default="conclusao",
+        server_default="conclusao",
+    )
+    acquisition_state = Column(
+        String(32),
+        nullable=False,
+        default="concluida",
+        server_default="concluida",
+    )
+    immutable_bytes = Column(LargeBinary, nullable=True)
+    immutable_location = Column(Text, nullable=True)
+    byte_size = Column(Integer, nullable=False)
+    artifact_hash = Column(String(64), nullable=False, index=True)
+    acquired_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    media_type = Column(String(255), nullable=False)
+    provenance = Column(JSON, nullable=False)
+    record_hash = Column(String(64), nullable=False)
+
+
+class ArtifactVerificationRecord(Base):
+    """Immutable verification record bound to exact bytes and predecessor gates."""
+
+    __tablename__ = "artifact_verification_records"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["normative_artifact_id", "verified_artifact_hash"],
+            [
+                "normative_artifacts.normative_artifact_id",
+                "normative_artifacts.artifact_hash",
+            ],
+            name="fk_artifact_verifications_artifact_hash",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "artifact_verification_record_id",
+            "normative_artifact_id",
+            "verified_artifact_hash",
+            name="uq_artifact_verifications_identity_artifact",
+        ),
+        UniqueConstraint(
+            "artifact_verification_record_id",
+            "normative_artifact_id",
+            "verified_artifact_hash",
+            "verification_type",
+            "outcome",
+            name="uq_artifact_verifications_exact_result",
+        ),
+        ForeignKeyConstraint(
+            [
+                "previous_verification_record_id",
+                "normative_artifact_id",
+                "verified_artifact_hash",
+            ],
+            [
+                "artifact_verification_records.artifact_verification_record_id",
+                "artifact_verification_records.normative_artifact_id",
+                "artifact_verification_records.verified_artifact_hash",
+            ],
+            name="fk_artifact_verifications_previous_same_artifact",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            [
+                "authenticity_verification_record_id",
+                "normative_artifact_id",
+                "verified_artifact_hash",
+                "authenticity_predecessor_type",
+                "authenticity_predecessor_outcome",
+            ],
+            [
+                "artifact_verification_records.artifact_verification_record_id",
+                "artifact_verification_records.normative_artifact_id",
+                "artifact_verification_records.verified_artifact_hash",
+                "artifact_verification_records.verification_type",
+                "artifact_verification_records.outcome",
+            ],
+            name="fk_artifact_verifications_authenticity_favorable",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            [
+                "integrity_verification_record_id",
+                "normative_artifact_id",
+                "verified_artifact_hash",
+                "integrity_predecessor_type",
+                "integrity_predecessor_outcome",
+            ],
+            [
+                "artifact_verification_records.artifact_verification_record_id",
+                "artifact_verification_records.normative_artifact_id",
+                "artifact_verification_records.verified_artifact_hash",
+                "artifact_verification_records.verification_type",
+                "artifact_verification_records.outcome",
+            ],
+            name="fk_artifact_verifications_integrity_favorable",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_artifact_verifications_record_hash",
+        ),
+        CheckConstraint(
+            "verification_type IN ('authenticity', 'integrity', 'preservation')",
+            name="ck_artifact_verifications_type_valid",
+        ),
+        CheckConstraint(
+            "outcome IN "
+            "('conclusivo_favoravel', 'conclusivo_desfavoravel', 'inconclusivo')",
+            name="ck_artifact_verifications_outcome_valid",
+        ),
+        CheckConstraint(
+            "(verification_type = 'authenticity' "
+            "AND authenticity_verification_record_id IS NULL "
+            "AND integrity_verification_record_id IS NULL) "
+            "OR (verification_type = 'integrity' "
+            "AND authenticity_verification_record_id IS NOT NULL "
+            "AND integrity_verification_record_id IS NULL "
+            "AND previous_verification_record_id "
+            "= authenticity_verification_record_id) "
+            "OR (verification_type = 'preservation' "
+            "AND authenticity_verification_record_id IS NOT NULL "
+            "AND integrity_verification_record_id IS NOT NULL "
+            "AND previous_verification_record_id "
+            "= integrity_verification_record_id)",
+            name="ck_artifact_verifications_cumulative_predecessors",
+        ),
+        CheckConstraint(
+            "(authenticity_verification_record_id IS NULL "
+            "AND authenticity_predecessor_type IS NULL "
+            "AND authenticity_predecessor_outcome IS NULL) "
+            "OR (authenticity_verification_record_id IS NOT NULL "
+            "AND authenticity_predecessor_type = 'authenticity' "
+            "AND authenticity_predecessor_outcome = 'conclusivo_favoravel')",
+            name="ck_artifact_verifications_authenticity_constants",
+        ),
+        CheckConstraint(
+            "(integrity_verification_record_id IS NULL "
+            "AND integrity_predecessor_type IS NULL "
+            "AND integrity_predecessor_outcome IS NULL) "
+            "OR (integrity_verification_record_id IS NOT NULL "
+            "AND integrity_predecessor_type = 'integrity' "
+            "AND integrity_predecessor_outcome = 'conclusivo_favoravel')",
+            name="ck_artifact_verifications_integrity_constants",
+        ),
+        CheckConstraint(
+            "previous_verification_record_id IS NULL "
+            "OR previous_verification_record_id "
+            "<> artifact_verification_record_id",
+            name="ck_artifact_verifications_no_self_reference",
+        ),
+        CheckConstraint(
+            "length(trim(verifier)) > 0",
+            name="ck_artifact_verifications_verifier_not_empty",
+        ),
+        CheckConstraint(
+            "length(trim(verifier_version)) > 0",
+            name="ck_artifact_verifications_verifier_version_not_empty",
+        ),
+        CheckConstraint(
+            "length(verified_artifact_hash) = 64",
+            name="ck_artifact_verifications_artifact_hash_len",
+        ),
+        CheckConstraint(
+            "length(record_hash) = 64",
+            name="ck_artifact_verifications_record_hash_len",
+        ),
+    )
+
+    artifact_verification_record_id = Column(String(64), primary_key=True)
+    normative_artifact_id = Column(String(64), nullable=False, index=True)
+    verified_artifact_hash = Column(String(64), nullable=False)
+    verification_type = Column(String(32), nullable=False, index=True)
+    outcome = Column(String(32), nullable=False, index=True)
+    verifier = Column(String(255), nullable=False)
+    verifier_version = Column(String(128), nullable=False)
+    evidence = Column(JSON, nullable=False)
+    incident_id = Column(String(64), nullable=True)
+    previous_verification_record_id = Column(String(64), nullable=True)
+    authenticity_verification_record_id = Column(String(64), nullable=True)
+    authenticity_predecessor_type = Column(String(32), nullable=True)
+    authenticity_predecessor_outcome = Column(String(32), nullable=True)
+    integrity_verification_record_id = Column(String(64), nullable=True)
+    integrity_predecessor_type = Column(String(32), nullable=True)
+    integrity_predecessor_outcome = Column(String(32), nullable=True)
+    timestamp = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    record_hash = Column(String(64), nullable=False)
+
+
+def _adr020_validate_artifact_reference_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.reference_event not in _ARTIFACT_REFERENCE_EVENTS:
+        raise ValueError("ADR-020 invalid ArtifactReference event")
+    if target.event_sequence <= 0:
+        raise ValueError("ADR-020 ArtifactReference event_sequence must be positive")
+    if target.event_sequence == 1:
+        if target.reference_event != "identificada":
+            raise ValueError("ADR-020 first ArtifactReference event must be identificada")
+        if target.previous_artifact_reference_record_id is not None:
+            raise ValueError("ADR-020 first ArtifactReference event has no predecessor")
+    elif target.previous_artifact_reference_record_id is None:
+        raise ValueError("ADR-020 later ArtifactReference event requires predecessor")
+
+
+def _adr020_validate_acquisition_execution_insert(
+    mapper,
+    connection,
+    target,
+) -> None:
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    expected_state = _ACQUISITION_EVENT_STATE.get(target.execution_event)
+    if expected_state is None or expected_state != target.projected_state:
+        raise ValueError("ADR-020 acquisition event/state pair is invalid")
+    if target.attempt_number <= 0 or target.event_sequence <= 0:
+        raise ValueError("ADR-020 acquisition attempt and sequence must be positive")
+    if target.event_sequence == 1:
+        if target.execution_event != "criacao" or target.projected_state != "planeada":
+            raise ValueError("ADR-020 first acquisition event must create planeada")
+        if target.previous_acquisition_execution_record_id is not None:
+            raise ValueError("ADR-020 first acquisition event has no predecessor")
+    elif target.previous_acquisition_execution_record_id is None:
+        raise ValueError("ADR-020 later acquisition event requires predecessor")
+
+    if target.projected_state == "planeada":
+        if target.started_at is not None or target.finished_at is not None:
+            raise ValueError("ADR-020 planeada cannot contain execution timestamps")
+    elif target.projected_state == "em_execucao":
+        if target.started_at is None or target.finished_at is not None:
+            raise ValueError("ADR-020 em_execucao requires started_at and no finished_at")
+    elif target.projected_state == "concluida":
+        if target.started_at is None or target.finished_at is None:
+            raise ValueError("ADR-020 concluida requires started_at and finished_at")
+        if target.finished_at < target.started_at:
+            raise ValueError("ADR-020 acquisition finished_at cannot precede started_at")
+        if not isinstance(target.structured_result, dict):
+            raise ValueError("ADR-020 concluida requires structured_result")
+        if target.structured_result.get("bytes_received") is not True:
+            raise ValueError("ADR-020 concluida requires bytes_received=true")
+        byte_size = target.structured_result.get("byte_size")
+        artifact_hash = target.structured_result.get("artifact_hash")
+        if not isinstance(byte_size, int) or byte_size <= 0:
+            raise ValueError("ADR-020 concluida requires positive byte_size")
+        _adr020_require_sha256(artifact_hash, "structured_result.artifact_hash")
+    elif target.projected_state in _ACQUISITION_TERMINAL_STATES:
+        if target.finished_at is None:
+            raise ValueError("ADR-020 terminal acquisition event requires finished_at")
+        if target.started_at is not None and target.finished_at < target.started_at:
+            raise ValueError("ADR-020 acquisition finished_at cannot precede started_at")
+
+
+def _adr020_validate_normative_artifact_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.artifact_hash, "artifact_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+
+    has_bytes = target.immutable_bytes is not None
+    has_location = target.immutable_location is not None
+    if has_bytes == has_location:
+        raise ValueError(
+            "ADR-020 NormativeArtifact requires exactly one immutable storage form"
+        )
+    if target.byte_size <= 0:
+        raise ValueError("ADR-020 NormativeArtifact byte_size must be positive")
+
+    if has_bytes:
+        actual_size = len(target.immutable_bytes)
+        actual_hash = hashlib.sha256(target.immutable_bytes).hexdigest()
+        if actual_size != target.byte_size:
+            raise ValueError("ADR-020 byte_size does not match immutable_bytes")
+        if actual_hash != target.artifact_hash:
+            raise ValueError("ADR-020 artifact_hash does not match immutable_bytes")
+    else:
+        _adr020_require_canonical_cas_location(
+            target.immutable_location,
+            target.artifact_hash,
+            target.byte_size,
+        )
+
+    if target.acquisition_event != "conclusao" or target.acquisition_state != "concluida":
+        raise ValueError("ADR-020 artifact requires exact concluded acquisition event")
+
+
+def _adr020_validate_verification_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.verified_artifact_hash, "verified_artifact_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.verification_type not in _VERIFICATION_TYPES:
+        raise ValueError("ADR-020 invalid verification_type")
+    if target.outcome not in _VERIFICATION_OUTCOMES:
+        raise ValueError("ADR-020 invalid verification outcome")
+
+    if target.verification_type == "authenticity":
+        if (
+            target.authenticity_verification_record_id is not None
+            or target.authenticity_predecessor_type is not None
+            or target.authenticity_predecessor_outcome is not None
+            or target.integrity_verification_record_id is not None
+            or target.integrity_predecessor_type is not None
+            or target.integrity_predecessor_outcome is not None
+        ):
+            raise ValueError("ADR-020 authenticity cannot depend on later gates")
+    elif target.verification_type == "integrity":
+        if target.authenticity_verification_record_id is None:
+            raise ValueError("ADR-020 integrity requires favorable authenticity")
+        if (
+            target.authenticity_predecessor_type != "authenticity"
+            or target.authenticity_predecessor_outcome
+            != "conclusivo_favoravel"
+        ):
+            raise ValueError("ADR-020 integrity requires exact favorable authenticity")
+        if (
+            target.integrity_verification_record_id is not None
+            or target.integrity_predecessor_type is not None
+            or target.integrity_predecessor_outcome is not None
+        ):
+            raise ValueError("ADR-020 integrity cannot depend on integrity predecessor")
+        if (
+            target.previous_verification_record_id
+            != target.authenticity_verification_record_id
+        ):
+            raise ValueError("ADR-020 integrity predecessor must be authenticity")
+    else:
+        if (
+            target.authenticity_verification_record_id is None
+            or target.integrity_verification_record_id is None
+        ):
+            raise ValueError(
+                "ADR-020 preservation requires favorable authenticity and integrity"
+            )
+        if (
+            target.authenticity_predecessor_type != "authenticity"
+            or target.authenticity_predecessor_outcome
+            != "conclusivo_favoravel"
+            or target.integrity_predecessor_type != "integrity"
+            or target.integrity_predecessor_outcome
+            != "conclusivo_favoravel"
+        ):
+            raise ValueError("ADR-020 preservation requires exact favorable gates")
+        if (
+            target.previous_verification_record_id
+            != target.integrity_verification_record_id
+        ):
+            raise ValueError("ADR-020 preservation predecessor must be integrity")
+
+
+def _adr020_reject_append_only_mutation(mapper, connection, target) -> None:
+    raise RuntimeError(
+        "ADR-020 append-only violation: update/delete is forbidden for "
+        f"{target.__class__.__name__}"
+    )
+
+
+_ADR020_INSERT_VALIDATORS = {
+    ArtifactReference: _adr020_validate_artifact_reference_insert,
+    AcquisitionExecution: _adr020_validate_acquisition_execution_insert,
+    NormativeArtifact: _adr020_validate_normative_artifact_insert,
+    ArtifactVerificationRecord: _adr020_validate_verification_insert,
+}
+
+for _adr020_append_only_model, _adr020_insert_validator in (
+    _ADR020_INSERT_VALIDATORS.items()
+):
+    event.listen(
+        _adr020_append_only_model,
+        "before_insert",
+        _adr020_insert_validator,
+    )
+    event.listen(
+        _adr020_append_only_model,
+        "before_update",
+        _adr020_reject_append_only_mutation,
+    )
+    event.listen(
+        _adr020_append_only_model,
+        "before_delete",
+        _adr020_reject_append_only_mutation,
+    )
+
+del _adr020_append_only_model
+del _adr020_insert_validator
