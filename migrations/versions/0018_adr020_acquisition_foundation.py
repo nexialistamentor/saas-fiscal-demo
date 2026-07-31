@@ -1,6 +1,6 @@
 """ADR-020 v0.3 R2: acquisition foundation, implementation correction R3.
 
-Revision ID: 0018_adr020_acquisition_foundation
+Revision ID: 0018_adr020_acq_foundation
 Revises: 0017_alertas_resolucao
 Create Date: 2026-07-31
 
@@ -20,7 +20,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision: str = "0018_adr020_acquisition_foundation"
+revision: str = "0018_adr020_acq_foundation"
 down_revision: str = "0017_alertas_resolucao"
 branch_labels = None
 depends_on = None
@@ -38,7 +38,7 @@ def _require_postgresql() -> None:
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         raise RuntimeError(
-            "Migration 0018_adr020_acquisition_foundation is PostgreSQL-only "
+            "Migration 0018_adr020_acq_foundation is PostgreSQL-only "
             "by ratified ADR-020 v0.3 R2. "
             f"Detected dialect: {bind.dialect.name}"
         )

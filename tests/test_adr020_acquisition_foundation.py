@@ -555,7 +555,7 @@ def test_migration_identity_lineage_and_exact_four_tables():
     tree = ast.parse(source)
     assert (
         _literal_assignment(tree, "revision")
-        == "0018_adr020_acquisition_foundation"
+        == "0018_adr020_acq_foundation"
     )
     assert _literal_assignment(tree, "down_revision") == "0017_alertas_resolucao"
 
