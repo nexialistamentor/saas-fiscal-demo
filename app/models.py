@@ -873,6 +873,24 @@ _EXTRACTION_OUTCOMES = (
     "rejeitado",
 )
 
+_RULE_REVIEW_EVENT_OUTCOMES = {
+    "extracao_registada": {"pendente"},
+    "quarentena_registada": {"pendente", "bloqueada"},
+    "validacao_iniciada": {"pendente"},
+    "revisao_reservada_iniciada": {"pendente"},
+    "revisao_concluida": {"validada", "rejeitada", "bloqueada"},
+    "retirada_registada": {"retirada"},
+}
+
+_RULE_REVIEW_EVENTS = tuple(_RULE_REVIEW_EVENT_OUTCOMES)
+_RULE_REVIEW_OUTCOMES = (
+    "pendente",
+    "validada",
+    "rejeitada",
+    "bloqueada",
+    "retirada",
+)
+
 
 def _adr020_require_sha256(value: str, field_name: str) -> None:
     if not isinstance(value, str) or not _ADR020_HASH_PATTERN.fullmatch(value):
@@ -1800,6 +1818,193 @@ class ExtractionResult(Base):
     )
     record_hash = Column(String(64), nullable=False)
 
+class RuleVersion(Base):
+    """Immutable structured normative rule produced from an exact result."""
+
+    __tablename__ = "rule_versions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            [
+                "extraction_result_id",
+                "extraction_result_record_hash",
+            ],
+            [
+                "extraction_results.extraction_result_id",
+                "extraction_results.record_hash",
+            ],
+            name="fk_rule_versions_exact_extraction_result",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "rule_id",
+            "rule_version",
+            name="uq_rule_versions_identity",
+        ),
+        UniqueConstraint(
+            "rule_id",
+            "rule_version",
+            "rule_hash",
+            name="uq_rule_versions_exact_subject",
+        ),
+        UniqueConstraint(
+            "rule_hash",
+            name="uq_rule_versions_rule_hash",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_rule_versions_record_hash",
+        ),
+        CheckConstraint(
+            "rule_version > 0",
+            name="ck_rule_versions_version_positive",
+        ),
+        CheckConstraint(
+            "length(rule_hash) = 64",
+            name="ck_rule_versions_rule_hash_len",
+        ),
+        CheckConstraint(
+            "length(extraction_result_record_hash) = 64",
+            name="ck_rule_versions_result_hash_len",
+        ),
+        CheckConstraint(
+            "length(record_hash) = 64",
+            name="ck_rule_versions_record_hash_len",
+        ),
+    )
+
+    rule_version_record_id = Column(String(64), primary_key=True)
+    rule_id = Column(String(64), nullable=False, index=True)
+    rule_version = Column(Integer, nullable=False)
+    rule_hash = Column(String(64), nullable=False, index=True)
+    extraction_result_id = Column(String(64), nullable=False, index=True)
+    extraction_result_record_hash = Column(String(64), nullable=False)
+    structured_content = Column(JSON, nullable=False)
+    declared_material_validity = Column(JSON, nullable=False)
+    normative_references = Column(JSON, nullable=False)
+    exact_precedence_policy_reference = Column(JSON, nullable=False)
+    evidence = Column(JSON, nullable=False)
+    provenance = Column(JSON, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    record_hash = Column(String(64), nullable=False)
+
+
+class RuleReviewRecord(Base):
+    """Immutable review event for one exact RuleVersion."""
+
+    __tablename__ = "rule_review_records"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            [
+                "subject_id",
+                "subject_version",
+                "subject_hash",
+            ],
+            [
+                "rule_versions.rule_id",
+                "rule_versions.rule_version",
+                "rule_versions.rule_hash",
+            ],
+            name="fk_rule_review_records_exact_rule_version",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_rule_review_records_record_hash",
+        ),
+        CheckConstraint(
+            "subject_version > 0",
+            name="ck_rule_review_records_subject_version_positive",
+        ),
+        CheckConstraint(
+            """
+            review_event IN (
+                'extracao_registada',
+                'quarentena_registada',
+                'validacao_iniciada',
+                'revisao_reservada_iniciada',
+                'revisao_concluida',
+                'retirada_registada'
+            )
+            """,
+            name="ck_rule_review_records_event_valid",
+        ),
+        CheckConstraint(
+            """
+            outcome IN (
+                'pendente',
+                'validada',
+                'rejeitada',
+                'bloqueada',
+                'retirada'
+            )
+            """,
+            name="ck_rule_review_records_outcome_valid",
+        ),
+        CheckConstraint(
+            """
+            (
+                review_event = 'extracao_registada'
+                AND outcome = 'pendente'
+            )
+            OR (
+                review_event = 'quarentena_registada'
+                AND outcome IN ('pendente', 'bloqueada')
+            )
+            OR (
+                review_event = 'validacao_iniciada'
+                AND outcome = 'pendente'
+            )
+            OR (
+                review_event = 'revisao_reservada_iniciada'
+                AND outcome = 'pendente'
+            )
+            OR (
+                review_event = 'revisao_concluida'
+                AND outcome IN ('validada', 'rejeitada', 'bloqueada')
+            )
+            OR (
+                review_event = 'retirada_registada'
+                AND outcome = 'retirada'
+            )
+            """,
+            name="ck_rule_review_records_event_outcome_pair",
+        ),
+        CheckConstraint(
+            "length(trim(reviewer)) > 0",
+            name="ck_rule_review_records_reviewer_not_empty",
+        ),
+        CheckConstraint(
+            "length(subject_hash) = 64",
+            name="ck_rule_review_records_subject_hash_len",
+        ),
+        CheckConstraint(
+            "length(record_hash) = 64",
+            name="ck_rule_review_records_record_hash_len",
+        ),
+    )
+
+    rule_review_record_id = Column(String(64), primary_key=True)
+    subject_id = Column(String(64), nullable=False, index=True)
+    subject_version = Column(Integer, nullable=False)
+    subject_hash = Column(String(64), nullable=False, index=True)
+    reviewer = Column(String(255), nullable=False)
+    review_event = Column(String(64), nullable=False, index=True)
+    outcome = Column(String(32), nullable=False, index=True)
+    evidence = Column(JSON, nullable=False)
+    timestamp = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    record_hash = Column(String(64), nullable=False)
+
+
 def _adr020_validate_artifact_reference_insert(mapper, connection, target) -> None:
     _adr020_require_sha256(target.record_hash, "record_hash")
     if target.reference_event not in _ARTIFACT_REFERENCE_EVENTS:
@@ -2118,6 +2323,80 @@ def _adr020_validate_extraction_result_insert(
             "ADR-020 ExtractionResult requires effective structured_content"
         )
 
+def _adr020_validate_rule_version_insert(
+    mapper,
+    connection,
+    target,
+) -> None:
+    _adr020_require_sha256(target.rule_hash, "rule_hash")
+    _adr020_require_sha256(
+        target.extraction_result_record_hash,
+        "extraction_result_record_hash",
+    )
+    _adr020_require_sha256(target.record_hash, "record_hash")
+
+    if target.rule_version is None or target.rule_version <= 0:
+        raise ValueError("ADR-020 RuleVersion version must be positive")
+
+    if not str(target.rule_id or "").strip():
+        raise ValueError("ADR-020 RuleVersion rule_id cannot be empty")
+
+    if not target.structured_content:
+        raise ValueError(
+            "ADR-020 RuleVersion requires structured_content"
+        )
+
+    if target.declared_material_validity is None:
+        raise ValueError(
+            "ADR-020 RuleVersion requires declared material validity"
+        )
+
+    if target.exact_precedence_policy_reference is None:
+        raise ValueError(
+            "ADR-020 RuleVersion requires exact precedence policy reference"
+        )
+
+
+def _adr020_validate_rule_review_insert(
+    mapper,
+    connection,
+    target,
+) -> None:
+    _adr020_require_sha256(target.subject_hash, "subject_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+
+    if target.subject_version is None or target.subject_version <= 0:
+        raise ValueError(
+            "ADR-020 RuleReviewRecord subject_version must be positive"
+        )
+
+    if not str(target.subject_id or "").strip():
+        raise ValueError(
+            "ADR-020 RuleReviewRecord subject_id cannot be empty"
+        )
+
+    if not str(target.reviewer or "").strip():
+        raise ValueError(
+            "ADR-020 RuleReviewRecord reviewer cannot be empty"
+        )
+
+    permitted_outcomes = _RULE_REVIEW_EVENT_OUTCOMES.get(
+        target.review_event
+    )
+    if (
+        permitted_outcomes is None
+        or target.outcome not in permitted_outcomes
+    ):
+        raise ValueError(
+            "ADR-020 RuleReviewRecord event/outcome pair is invalid"
+        )
+
+    if target.evidence is None:
+        raise ValueError(
+            "ADR-020 RuleReviewRecord requires evidence"
+        )
+
+
 def _adr020_reject_append_only_mutation(mapper, connection, target) -> None:
     raise RuntimeError(
         "ADR-020 append-only violation: update/delete is forbidden for "
@@ -2132,6 +2411,8 @@ _ADR020_INSERT_VALIDATORS = {
     ArtifactVerificationRecord: _adr020_validate_verification_insert,
     ExtractionRun: _adr020_validate_extraction_run_insert,
     ExtractionResult: _adr020_validate_extraction_result_insert,
+    RuleVersion: _adr020_validate_rule_version_insert,
+    RuleReviewRecord: _adr020_validate_rule_review_insert,
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (
