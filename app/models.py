@@ -2751,6 +2751,42 @@ class ActivationGeneration(Base):
     activation_generation_id = Column(String(64), primary_key=True); previous_activation_generation_id = Column(String(64), nullable=True); previous_activation_generation_record_hash = Column(String(64), nullable=True); activation_execution_id = Column(String(64), nullable=False, unique=True); activation_decision_id = Column(String(64), nullable=False); activation_decision_record_hash = Column(String(64), nullable=False); target_manifest_hash = Column(String(64), nullable=False); scope_descriptor = Column(JSON, nullable=False); scope_hash = Column(String(64), nullable=False); composition_manifest = Column(JSON, nullable=False); composition_hash = Column(String(64), nullable=False); policy_bindings = Column(JSON, nullable=False); coverage_binding = Column(JSON, nullable=False); continuity_binding = Column(JSON, nullable=False); precedence_binding = Column(JSON, nullable=False); gates_evidence = Column(JSON, nullable=False); is_complete = Column(Boolean, nullable=False); created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now()); effective_from = Column(DateTime(timezone=True), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
 
 
+class CredentialBindingVersion(Base):
+    __tablename__ = "credential_binding_versions"
+    __table_args__ = (UniqueConstraint("credential_binding_id", "credential_binding_version", name="uq_credential_binding_versions_identity"), UniqueConstraint("credential_binding_id", "credential_binding_version", "credential_binding_hash", name="uq_credential_binding_versions_exact"), UniqueConstraint("record_hash"), CheckConstraint("credential_binding_version > 0"), CheckConstraint("valid_until IS NULL OR valid_until > valid_from"))
+    credential_binding_id = Column(String(64), primary_key=True); credential_binding_version = Column(Integer, primary_key=True); credential_binding_hash = Column(String(64), nullable=False); credential_type = Column(String(64), nullable=False); secret_provider_binding = Column(JSON, nullable=False); opaque_secret_reference_id = Column(String(255), nullable=False); opaque_secret_version_reference_id = Column(String(255), nullable=False); permitted_purpose = Column(String(64), nullable=False); permitted_operation = Column(String(64), nullable=False); permitted_source_scope = Column(JSON, nullable=False); permitted_tenant_scope = Column(JSON, nullable=True); acquisition_contract_binding = Column(JSON, nullable=False); secret_access_policy_binding = Column(JSON, nullable=False); security_policy_binding = Column(JSON, nullable=False); sanitization_policy_binding = Column(JSON, nullable=False); valid_from = Column(DateTime(timezone=True), nullable=False); valid_until = Column(DateTime(timezone=True), nullable=True); created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now()); creator = Column(String(255), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class CredentialLifecycleEventRecord(Base):
+    __tablename__ = "credential_lifecycle_event_records"
+    __table_args__ = (ForeignKeyConstraint(["credential_binding_id", "credential_binding_version", "credential_binding_hash"], ["credential_binding_versions.credential_binding_id", "credential_binding_versions.credential_binding_version", "credential_binding_versions.credential_binding_hash"], ondelete="RESTRICT"), ForeignKeyConstraint(["previous_lifecycle_event_record_id", "previous_lifecycle_event_record_hash"], ["credential_lifecycle_event_records.credential_lifecycle_event_record_id", "credential_lifecycle_event_records.record_hash"], ondelete="RESTRICT"), UniqueConstraint("previous_lifecycle_event_record_id"), UniqueConstraint("credential_lifecycle_event_record_id", "record_hash"), CheckConstraint("lifecycle_event IN ('activated','suspended','resumed','revoked','expired','rotated')"))
+    credential_lifecycle_event_record_id = Column(String(64), primary_key=True); credential_binding_id = Column(String(64), nullable=False); credential_binding_version = Column(Integer, nullable=False); credential_binding_hash = Column(String(64), nullable=False); lifecycle_event = Column(String(16), nullable=False); previous_lifecycle_event_record_id = Column(String(64), nullable=True); previous_lifecycle_event_record_hash = Column(String(64), nullable=True); replacement_credential_binding_id = Column(String(64), nullable=True); replacement_credential_binding_version = Column(Integer, nullable=True); replacement_credential_binding_hash = Column(String(64), nullable=True); effective_at = Column(DateTime(timezone=True), nullable=False); actor = Column(String(255), nullable=False); institutional_role = Column(String(64), nullable=False); reason_code = Column(String(64), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class SecretAccessExecutionRecord(Base):
+    __tablename__ = "secret_access_execution_records"
+    __table_args__ = (ForeignKeyConstraint(["credential_binding_id", "credential_binding_version", "credential_binding_hash"], ["credential_binding_versions.credential_binding_id", "credential_binding_versions.credential_binding_version", "credential_binding_versions.credential_binding_hash"], ondelete="RESTRICT"), ForeignKeyConstraint(["credential_lifecycle_event_record_id", "credential_lifecycle_event_record_hash"], ["credential_lifecycle_event_records.credential_lifecycle_event_record_id", "credential_lifecycle_event_records.record_hash"], ondelete="RESTRICT"), UniqueConstraint("secret_access_execution_record_id", "record_hash"), CheckConstraint("access_state IN ('pending','validating','authorized','accessed','rejected_inactive','rejected_scope','rejected_policy','rejected_divergent','failed','cancelled')"), CheckConstraint("attempt_number > 0 AND fencing_token > 0"))
+    secret_access_execution_record_id = Column(String(64), primary_key=True); acquisition_execution_id = Column(String(64), nullable=False); acquisition_execution_record_hash = Column(String(64), nullable=False); credential_binding_id = Column(String(64), nullable=False); credential_binding_version = Column(Integer, nullable=False); credential_binding_hash = Column(String(64), nullable=False); credential_lifecycle_event_record_id = Column(String(64), nullable=False); credential_lifecycle_event_record_hash = Column(String(64), nullable=False); secret_provider_id = Column(String(64), nullable=False); secret_provider_version = Column(Integer, nullable=False); secret_provider_artifact_hash = Column(String(64), nullable=False); opaque_secret_reference_id = Column(String(255), nullable=False); opaque_secret_version_reference_id = Column(String(255), nullable=False); requested_purpose = Column(String(64), nullable=False); requested_operation = Column(String(64), nullable=False); requested_source_scope = Column(JSON, nullable=False); requested_tenant_scope = Column(JSON, nullable=True); attempt_number = Column(Integer, nullable=False); actor_or_worker = Column(String(255), nullable=False); lease_id = Column(String(64), nullable=False); lease_record_hash = Column(String(64), nullable=False); fencing_token = Column(Integer, nullable=False); access_state = Column(String(32), nullable=False); started_at = Column(DateTime(timezone=True), nullable=False); finished_at = Column(DateTime(timezone=True), nullable=True); structured_result = Column(JSON, nullable=True); structured_error = Column(JSON, nullable=True); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class CredentialUseRecord(Base):
+    __tablename__ = "credential_use_records"
+    __table_args__ = (ForeignKeyConstraint(["previous_credential_use_record_id", "previous_credential_use_record_hash"], ["credential_use_records.credential_use_record_id", "credential_use_records.record_hash"], ondelete="RESTRICT"), ForeignKeyConstraint(["secret_access_execution_record_id", "secret_access_execution_record_hash"], ["secret_access_execution_records.secret_access_execution_record_id", "secret_access_execution_records.record_hash"], ondelete="RESTRICT"), UniqueConstraint("previous_credential_use_record_id"), UniqueConstraint("credential_use_record_id", "record_hash"), CheckConstraint("use_outcome IN ('dispatched','succeeded','rejected_by_source','transport_failed','cancelled_before_dispatch','indeterminate_after_dispatch')"))
+    credential_use_record_id = Column(String(64), primary_key=True); credential_use_chain_id = Column(String(64), nullable=False); previous_credential_use_record_id = Column(String(64), nullable=True); previous_credential_use_record_hash = Column(String(64), nullable=True); acquisition_execution_id = Column(String(64), nullable=False); acquisition_execution_record_hash = Column(String(64), nullable=False); secret_access_execution_record_id = Column(String(64), nullable=False); secret_access_execution_record_hash = Column(String(64), nullable=False); credential_binding_id = Column(String(64), nullable=False); credential_binding_version = Column(Integer, nullable=False); credential_binding_hash = Column(String(64), nullable=False); credential_lifecycle_event_record_id = Column(String(64), nullable=False); credential_lifecycle_event_record_hash = Column(String(64), nullable=False); request_contract_id = Column(String(64), nullable=False); request_contract_version = Column(Integer, nullable=False); request_contract_hash = Column(String(64), nullable=False); sanitized_request_fingerprint = Column(String(64), nullable=False); sanitized_request_fingerprint_schema_version = Column(Integer, nullable=False); sanitized_request_canonicalization_contract_id = Column(String(64), nullable=False); sanitized_request_canonicalization_contract_version = Column(Integer, nullable=False); sanitized_request_canonicalization_contract_hash = Column(String(64), nullable=False); source_scope = Column(JSON, nullable=False); tenant_scope = Column(JSON, nullable=True); dispatch_attempt_number = Column(Integer, nullable=False); dispatched_at = Column(DateTime(timezone=True), nullable=True); finished_at = Column(DateTime(timezone=True), nullable=False); use_outcome = Column(String(32), nullable=False); source_response_observed = Column(Boolean, nullable=False); structured_result = Column(JSON, nullable=True); structured_error = Column(JSON, nullable=True); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class SanitizedAcquisitionReceipt(Base):
+    __tablename__ = "sanitized_acquisition_receipts"
+    __table_args__ = (ForeignKeyConstraint(["credential_use_record_id", "credential_use_record_hash"], ["credential_use_records.credential_use_record_id", "credential_use_records.record_hash"], ondelete="RESTRICT"), UniqueConstraint("sanitized_acquisition_receipt_id", "sanitized_acquisition_receipt_hash"), CheckConstraint("acquisition_outcome IN ('acquired','source_rejected','no_content_valid','transport_failed','indeterminate','cancelled_before_dispatch')"))
+    sanitized_acquisition_receipt_id = Column(String(64), primary_key=True); sanitized_acquisition_receipt_schema_version = Column(Integer, nullable=False); sanitized_acquisition_receipt_hash = Column(String(64), nullable=False); acquisition_execution_id = Column(String(64), nullable=False); acquisition_execution_record_hash = Column(String(64), nullable=False); credential_use_record_id = Column(String(64), nullable=False); credential_use_record_hash = Column(String(64), nullable=False); credential_binding_id = Column(String(64), nullable=False); credential_binding_version = Column(Integer, nullable=False); credential_binding_hash = Column(String(64), nullable=False); source_identity_binding = Column(JSON, nullable=False); source_scope = Column(JSON, nullable=False); tenant_scope = Column(JSON, nullable=True); request_contract_id = Column(String(64), nullable=False); request_contract_version = Column(Integer, nullable=False); request_contract_hash = Column(String(64), nullable=False); sanitized_request_manifest = Column(JSON, nullable=False); sanitized_request_fingerprint = Column(String(64), nullable=False); sanitized_request_fingerprint_schema_version = Column(Integer, nullable=False); sanitized_request_canonicalization_contract_id = Column(String(64), nullable=False); sanitized_request_canonicalization_contract_version = Column(Integer, nullable=False); sanitized_request_canonicalization_contract_hash = Column(String(64), nullable=False); response_status_class = Column(String(32), nullable=True); sanitized_response_metadata = Column(JSON, nullable=False); acquired_content_reference = Column(JSON, nullable=True); acquired_content_hash = Column(String(64), nullable=True); transport_evidence_manifest = Column(JSON, nullable=False); redaction_manifest = Column(JSON, nullable=False); sanitization_policy_binding = Column(JSON, nullable=False); acquisition_started_at = Column(DateTime(timezone=True), nullable=False); dispatch_observed_at = Column(DateTime(timezone=True), nullable=True); response_observed_at = Column(DateTime(timezone=True), nullable=True); receipt_created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now()); acquisition_outcome = Column(String(32), nullable=False); creator = Column(String(255), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class SanitizationVerificationRecord(Base):
+    __tablename__ = "sanitization_verification_records"
+    __table_args__ = (ForeignKeyConstraint(["sanitized_acquisition_receipt_id", "sanitized_acquisition_receipt_hash"], ["sanitized_acquisition_receipts.sanitized_acquisition_receipt_id", "sanitized_acquisition_receipts.sanitized_acquisition_receipt_hash"], ondelete="RESTRICT"), UniqueConstraint("record_hash"), CheckConstraint("verification_outcome IN ('verified_sanitized','verified_violation','inconclusive')"))
+    sanitization_verification_record_id = Column(String(64), primary_key=True); sanitized_acquisition_receipt_id = Column(String(64), nullable=False); sanitized_acquisition_receipt_hash = Column(String(64), nullable=False); sanitization_policy_id = Column(String(64), nullable=False); sanitization_policy_version = Column(Integer, nullable=False); sanitization_policy_hash = Column(String(64), nullable=False); sanitization_policy_activation_id = Column(String(64), nullable=False); sanitization_policy_activation_record_hash = Column(String(64), nullable=False); verification_engine_id = Column(String(64), nullable=False); verification_engine_version = Column(Integer, nullable=False); verification_engine_hash = Column(String(64), nullable=False); inspected_component_manifest = Column(JSON, nullable=False); violation_manifest = Column(JSON, nullable=False); verification_outcome = Column(String(32), nullable=False); verified_at = Column(DateTime(timezone=True), nullable=False); verifier = Column(String(255), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
 class OutboxEventRecord(Base):
     __tablename__ = "outbox_event_records"
     __table_args__ = (
@@ -3539,7 +3575,6 @@ def _adr020_validate_policy_activation_insert(mapper, connection, target) -> Non
 def _adr020_validate_activation_decision_insert(mapper, connection, target) -> None:
     for name in ("scope_hash", "target_manifest_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
     if target.decision_outcome not in {"approved", "rejected", "cancelled"}: raise ValueError("ADR-020 invalid activation decision outcome")
-    _adr020_require_exact_bindings(target)
     if target.decision_action == "activate":
         if not target.target_manifest or any(item.get("review_outcome") != "validada" for item in target.target_manifest): raise ValueError("ADR-020 activation requires favorable exact review")
 
@@ -3572,6 +3607,71 @@ def _adr020_validate_outbox_event_insert(mapper, connection, target) -> None:
     if target.event_type not in {"activation_completed", "activation_invalidated"}: raise ValueError("ADR-020 invalid outbox event type")
 
 
+_ADR020_SENSITIVE_TERMS = ("authorization", "proxy-authorization", "cookie", "set-cookie", "api_key", "apikey", "token", "password", "client_secret", "private_key", "secret_hash", "secret_value")
+
+
+def _adr020_reject_sensitive_material(value, field_name) -> None:
+    text = str(value or "").lower()
+    if any(term in text for term in _ADR020_SENSITIVE_TERMS):
+        raise ValueError(f"ADR-020 sensitive material is forbidden in {field_name}")
+
+
+def _adr020_validate_binding_insert(mapper, connection, target) -> None:
+    for name in ("credential_binding_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.credential_binding_version <= 0 or (target.valid_until is not None and target.valid_until <= target.valid_from): raise ValueError("ADR-020 invalid credential binding version or validity")
+    provider = target.secret_provider_binding
+    required = {"secret_provider_id", "secret_provider_version", "secret_provider_artifact_hash", "provider_interface_contract_id", "provider_interface_contract_version", "provider_interface_contract_hash"}
+    if not isinstance(provider, dict) or not required.issubset(provider): raise ValueError("ADR-020 exact provider binding is required")
+    for binding_name in ("secret_access_policy_binding", "security_policy_binding", "sanitization_policy_binding"):
+        binding = getattr(target, binding_name)
+        if not isinstance(binding, dict) or not {"policy_type", "policy_id", "policy_version", "policy_hash", "policy_activation_id", "policy_activation_record_hash"}.issubset(binding): raise ValueError("ADR-020 exact active policy binding is required")
+    for name in ("secret_provider_binding", "opaque_secret_reference_id", "opaque_secret_version_reference_id", "provenance"): _adr020_reject_sensitive_material(getattr(target, name), name)
+    _adr020_require_exact_bindings(target)
+
+
+def _adr020_validate_lifecycle_insert(mapper, connection, target) -> None:
+    for name in ("credential_binding_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    first = target.previous_lifecycle_event_record_id is None
+    if first != (target.lifecycle_event == "activated"): raise ValueError("ADR-020 lifecycle must begin with activated and remain contiguous")
+    if first != (target.previous_lifecycle_event_record_hash is None): raise ValueError("ADR-020 lifecycle predecessor ID/hash must be exact")
+    previous = getattr(target, "previous_lifecycle_event", None)
+    if previous in {"revoked", "expired", "rotated"}: raise ValueError("ADR-020 terminal lifecycle event cannot be reopened")
+    if target.lifecycle_event == "resumed" and previous not in (None, "suspended"): raise ValueError("ADR-020 only suspended binding may resume")
+    replacement = (target.replacement_credential_binding_id, target.replacement_credential_binding_version, target.replacement_credential_binding_hash)
+    if (target.lifecycle_event == "rotated") != all(item is not None for item in replacement): raise ValueError("ADR-020 rotation requires an exact replacement binding")
+
+
+def _adr020_validate_secret_access_insert(mapper, connection, target) -> None:
+    for name in ("acquisition_execution_record_hash", "credential_binding_hash", "credential_lifecycle_event_record_hash", "secret_provider_artifact_hash", "lease_record_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.attempt_number <= 0 or target.fencing_token <= 0 or not target.lease_id: raise ValueError("ADR-020 access requires new attempt, lease and fence")
+    if target.access_state in {"authorized", "accessed"} and getattr(target, "binding_lifecycle_state", "activated") != "activated": raise ValueError("ADR-020 inactive binding cannot authorize access")
+    for name in ("structured_result", "structured_error", "provenance"): _adr020_reject_sensitive_material(getattr(target, name), name)
+
+
+def _adr020_validate_credential_use_insert(mapper, connection, target) -> None:
+    for name in ("acquisition_execution_record_hash", "secret_access_execution_record_hash", "credential_binding_hash", "credential_lifecycle_event_record_hash", "request_contract_hash", "sanitized_request_fingerprint", "sanitized_request_canonicalization_contract_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if getattr(target, "secret_access_state", "accessed") not in {"authorized", "accessed"}: raise ValueError("ADR-020 credential use requires favorable terminal access")
+    if target.previous_credential_use_record_id is None != (target.previous_credential_use_record_hash is None): raise ValueError("ADR-020 use predecessor ID/hash must be exact")
+    for name in ("structured_result", "structured_error", "provenance"): _adr020_reject_sensitive_material(getattr(target, name), name)
+
+
+def _adr020_validate_receipt_insert(mapper, connection, target) -> None:
+    for name in ("sanitized_acquisition_receipt_hash", "acquisition_execution_record_hash", "credential_use_record_hash", "credential_binding_hash", "request_contract_hash", "sanitized_request_fingerprint", "sanitized_request_canonicalization_contract_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.acquired_content_hash is not None: _adr020_require_sha256(target.acquired_content_hash, "acquired_content_hash")
+    allowed_request = {"method", "source_identity", "path", "parameter_names", "parameter_types", "sanitized_payload_hash", "request_contract_version"}
+    if not isinstance(target.sanitized_request_manifest, dict) or not set(target.sanitized_request_manifest).issubset(allowed_request): raise ValueError("ADR-020 request manifest contains a non-allowlisted field")
+    allowed_redaction = {"component_type", "canonical_location", "sensitivity_category", "sanitization_action", "policy_rule_id", "policy_rule_version", "policy_rule_hash", "verification_outcome"}
+    if not isinstance(target.redaction_manifest, list) or any(not isinstance(item, dict) or set(item) != allowed_redaction for item in target.redaction_manifest): raise ValueError("ADR-020 redaction manifest must be exact")
+    for name in ("sanitized_request_manifest", "sanitized_response_metadata", "transport_evidence_manifest", "redaction_manifest", "provenance"): _adr020_reject_sensitive_material(getattr(target, name), name)
+
+
+def _adr020_validate_sanitization_verification_insert(mapper, connection, target) -> None:
+    for name in ("sanitized_acquisition_receipt_hash", "sanitization_policy_hash", "sanitization_policy_activation_record_hash", "verification_engine_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.verification_outcome == "verified_sanitized":
+        if not isinstance(target.inspected_component_manifest, dict) or target.inspected_component_manifest.get("complete") is not True or target.violation_manifest not in ([], {}): raise ValueError("ADR-020 partial or violated verification cannot be approved")
+    _adr020_reject_sensitive_material(target.violation_manifest, "violation_manifest")
+
+
 _ADR020_INSERT_VALIDATORS = {
     ArtifactReference: _adr020_validate_artifact_reference_insert,
     AcquisitionExecution: _adr020_validate_acquisition_execution_insert,
@@ -3600,6 +3700,12 @@ _ADR020_INSERT_VALIDATORS = {
     NormativeActivation: _adr020_validate_normative_activation_insert,
     ActivationGeneration: _adr020_validate_activation_generation_insert,
     OutboxEventRecord: _adr020_validate_outbox_event_insert,
+    CredentialBindingVersion: _adr020_validate_binding_insert,
+    CredentialLifecycleEventRecord: _adr020_validate_lifecycle_insert,
+    SecretAccessExecutionRecord: _adr020_validate_secret_access_insert,
+    CredentialUseRecord: _adr020_validate_credential_use_insert,
+    SanitizedAcquisitionReceipt: _adr020_validate_receipt_insert,
+    SanitizationVerificationRecord: _adr020_validate_sanitization_verification_insert,
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (
