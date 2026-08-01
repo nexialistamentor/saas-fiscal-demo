@@ -2379,6 +2379,117 @@ class RelationReviewRecord(Base):
     )
 
 
+class PolicyVersion(Base):
+    """Immutable content of one exact institutional policy version."""
+
+    __tablename__ = "policy_versions"
+    __table_args__ = (
+        UniqueConstraint("policy_id", "policy_version", name="uq_policy_versions_identity"),
+        UniqueConstraint("policy_id", "policy_version", "policy_hash", name="uq_policy_versions_exact_subject"),
+        UniqueConstraint("policy_hash", name="uq_policy_versions_policy_hash"),
+        UniqueConstraint("record_hash", name="uq_policy_versions_record_hash"),
+        CheckConstraint("policy_version > 0", name="ck_policy_versions_version_positive"),
+        CheckConstraint("policy_type IN ('activation_authority', 'automation_envelope', 'normative_precedence', 'normative_continuity', 'coverage_contract')", name="ck_policy_versions_policy_type_valid"),
+        CheckConstraint("length(policy_hash) = 64", name="ck_policy_versions_policy_hash_len"),
+        CheckConstraint("length(record_hash) = 64", name="ck_policy_versions_record_hash_len"),
+    )
+
+    policy_version_record_id = Column(String(64), primary_key=True)
+    policy_type = Column(String(32), nullable=False, index=True)
+    policy_id = Column(String(64), nullable=False, index=True)
+    policy_version = Column(Integer, nullable=False)
+    policy_hash = Column(String(64), nullable=False, index=True)
+    domain = Column(String(255), nullable=False)
+    scope = Column(JSON, nullable=False)
+    declared_material_applicability = Column(JSON, nullable=False)
+    modalities = Column(JSON, nullable=False)
+    permitted_authorization_classes = Column(JSON, nullable=False)
+    permitted_execution_modes = Column(JSON, nullable=False)
+    gates = Column(JSON, nullable=False)
+    roles = Column(JSON, nullable=False)
+    segregation_of_duties = Column(JSON, nullable=False)
+    limits = Column(JSON, nullable=False)
+    rules = Column(JSON, nullable=False)
+    exact_references = Column(JSON, nullable=False)
+    origin_evidence = Column(JSON, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+    record_hash = Column(String(64), nullable=False)
+
+
+class PolicyDecision(Base):
+    """Immutable institutional event over one exact PolicyVersion."""
+
+    __tablename__ = "policy_decisions"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_decisions_exact_policy_version", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["previous_decision_id"], ["policy_decisions.decision_id"], name="fk_policy_decisions_previous_decision", ondelete="RESTRICT"),
+        UniqueConstraint("idempotency_key", name="uq_policy_decisions_idempotency_key"),
+        UniqueConstraint("record_hash", name="uq_policy_decisions_record_hash"),
+        CheckConstraint("policy_version > 0", name="ck_policy_decisions_version_positive"),
+        CheckConstraint("policy_type IN ('activation_authority', 'automation_envelope', 'normative_precedence', 'normative_continuity', 'coverage_contract')", name="ck_policy_decisions_policy_type_valid"),
+        CheckConstraint("decision_event IN ('submetida', 'auditoria_iniciada', 'auditada_favoravelmente', 'auditada_desfavoravelmente', 'ratificada', 'rejeitada', 'cancelada')", name="ck_policy_decisions_event_valid"),
+        CheckConstraint("institutional_role IN ('proponente_institucional', 'auditor_independente', 'autoridade_constitucional_final', 'autoridade_institucional_competente')", name="ck_policy_decisions_role_valid"),
+        CheckConstraint("length(policy_hash) = 64", name="ck_policy_decisions_policy_hash_len"),
+        CheckConstraint("length(record_hash) = 64", name="ck_policy_decisions_record_hash_len"),
+    )
+
+    decision_id = Column(String(64), primary_key=True)
+    decision_event = Column(String(32), nullable=False, index=True)
+    policy_type = Column(String(32), nullable=False, index=True)
+    policy_id = Column(String(64), nullable=False, index=True)
+    policy_version = Column(Integer, nullable=False)
+    policy_hash = Column(String(64), nullable=False, index=True)
+    actor = Column(String(255), nullable=False)
+    institutional_role = Column(String(64), nullable=False)
+    evidence = Column(JSON, nullable=False)
+    rationale = Column(Text, nullable=False)
+    previous_decision_id = Column(String(64), nullable=True)
+    timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+    idempotency_key = Column(String(255), nullable=False)
+    record_hash = Column(String(64), nullable=False)
+
+
+class BootstrapAuthorityRecord(Base):
+    """Manual constitutional authority for the first exact policy chain."""
+
+    __tablename__ = "bootstrap_authority_records"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_bootstrap_authority_records_exact_policy_version", ondelete="RESTRICT"),
+        UniqueConstraint("record_hash", name="uq_bootstrap_authority_records_record_hash"),
+        CheckConstraint("policy_type = 'activation_authority'", name="ck_bootstrap_authority_records_policy_type"),
+        CheckConstraint("policy_version > 0", name="ck_bootstrap_authority_records_version_positive"),
+        CheckConstraint("independent_audit_result = 'favoravel'", name="ck_bootstrap_authority_records_audit_favorable"),
+        CheckConstraint("validity = 'valida'", name="ck_bootstrap_authority_records_validity"),
+        CheckConstraint("submission_mode = 'manual' AND audit_mode = 'manual' AND ratification_mode = 'manual' AND activation_mode = 'manual'", name="ck_bootstrap_authority_records_manual_only"),
+        CheckConstraint("actor_proponente <> actor_auditor AND actor_proponente <> actor_ratificador AND actor_auditor <> actor_ratificador", name="ck_bootstrap_authority_records_actor_segregation"),
+        CheckConstraint("length(policy_hash) = 64", name="ck_bootstrap_authority_records_policy_hash_len"),
+        CheckConstraint("length(record_hash) = 64", name="ck_bootstrap_authority_records_record_hash_len"),
+    )
+
+    bootstrap_authority_record_id = Column(String(64), primary_key=True)
+    policy_type = Column(String(32), nullable=False)
+    policy_id = Column(String(64), nullable=False, index=True)
+    policy_version = Column(Integer, nullable=False)
+    policy_hash = Column(String(64), nullable=False)
+    domain = Column(String(255), nullable=False)
+    scope = Column(JSON, nullable=False)
+    actor_proponente = Column(String(255), nullable=False)
+    actor_auditor = Column(String(255), nullable=False)
+    independent_audit_result = Column(String(32), nullable=False)
+    constitutional_authority_declaration = Column(Text, nullable=False)
+    actor_ratificador = Column(String(255), nullable=False)
+    segregation_evidence = Column(JSON, nullable=False)
+    evidence = Column(JSON, nullable=False)
+    validity = Column(String(32), nullable=False)
+    submission_mode = Column(String(16), nullable=False)
+    audit_mode = Column(String(16), nullable=False)
+    ratification_mode = Column(String(16), nullable=False)
+    activation_mode = Column(String(16), nullable=False)
+    timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+    provenance = Column(JSON, nullable=False)
+    record_hash = Column(String(64), nullable=False)
+
+
 def _adr020_validate_artifact_reference_insert(mapper, connection, target) -> None:
     _adr020_require_sha256(target.record_hash, "record_hash")
     if target.reference_event not in _ARTIFACT_REFERENCE_EVENTS:
@@ -2927,6 +3038,107 @@ def _adr020_validate_relation_review_insert(
         )
 
 
+_POLICY_TYPES = {
+    "activation_authority",
+    "automation_envelope",
+    "normative_precedence",
+    "normative_continuity",
+    "coverage_contract",
+}
+_POLICY_DECISION_ROLES = {
+    "submetida": "proponente_institucional",
+    "auditoria_iniciada": "auditor_independente",
+    "auditada_favoravelmente": "auditor_independente",
+    "auditada_desfavoravelmente": "auditor_independente",
+    "ratificada": "autoridade_constitucional_final",
+    "rejeitada": "autoridade_institucional_competente",
+    "cancelada": "autoridade_institucional_competente",
+}
+_POLICY_TERMINAL_DECISIONS = {
+    "auditada_desfavoravelmente",
+    "ratificada",
+    "rejeitada",
+    "cancelada",
+}
+
+
+def _adr020_validate_policy_version_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.policy_hash, "policy_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.policy_type not in _POLICY_TYPES:
+        raise ValueError("ADR-020 invalid policy_type")
+    if target.policy_version is None or target.policy_version <= 0:
+        raise ValueError("ADR-020 PolicyVersion version must be positive")
+    for field_name in ("policy_id", "domain"):
+        if not str(getattr(target, field_name, "") or "").strip():
+            raise ValueError(f"ADR-020 PolicyVersion {field_name} cannot be empty")
+    for field_name in (
+        "scope", "declared_material_applicability", "modalities",
+        "permitted_authorization_classes", "permitted_execution_modes",
+        "gates", "roles", "segregation_of_duties", "limits", "rules",
+        "exact_references", "origin_evidence",
+    ):
+        if getattr(target, field_name, None) is None:
+            raise ValueError(f"ADR-020 PolicyVersion requires {field_name}")
+
+
+def _adr020_validate_policy_decision_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.policy_hash, "policy_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.policy_type not in _POLICY_TYPES:
+        raise ValueError("ADR-020 invalid policy_type")
+    expected_role = _POLICY_DECISION_ROLES.get(target.decision_event)
+    if expected_role is None or target.institutional_role != expected_role:
+        raise ValueError("ADR-020 invalid decision event/institutional role")
+    if target.policy_version is None or target.policy_version <= 0:
+        raise ValueError("ADR-020 PolicyDecision version must be positive")
+    for field_name in ("decision_id", "policy_id", "actor", "rationale", "idempotency_key"):
+        if not str(getattr(target, field_name, "") or "").strip():
+            raise ValueError(f"ADR-020 PolicyDecision {field_name} cannot be empty")
+    if target.evidence is None:
+        raise ValueError("ADR-020 PolicyDecision requires evidence")
+    if target.decision_event == "submetida":
+        if target.previous_decision_id is not None:
+            raise ValueError("ADR-020 submission cannot have a predecessor")
+    elif target.previous_decision_id is None:
+        raise ValueError("ADR-020 institutional decision requires predecessor audit chain")
+    previous_event = getattr(target, "previous_decision_event", None)
+    if previous_event in _POLICY_TERMINAL_DECISIONS:
+        raise ValueError("ADR-020 terminal PolicyDecision cannot be reopened")
+    if target.decision_event == "ratificada" and previous_event not in (
+        None,
+        "auditada_favoravelmente",
+    ):
+        raise ValueError("ADR-020 ratification requires favorable independent audit")
+
+
+def _adr020_validate_bootstrap_authority_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.policy_hash, "policy_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.policy_type != "activation_authority":
+        raise ValueError("ADR-020 bootstrap is exclusively activation_authority")
+    if target.independent_audit_result != "favoravel":
+        raise ValueError("ADR-020 bootstrap requires favorable independent audit")
+    if target.validity != "valida":
+        raise ValueError("ADR-020 bootstrap authority must be valid")
+    modes = (
+        target.submission_mode,
+        target.audit_mode,
+        target.ratification_mode,
+        target.activation_mode,
+    )
+    if any(mode != "manual" for mode in modes):
+        raise ValueError("ADR-020 bootstrap is exclusively constitutional and manual")
+    actors = (target.actor_proponente, target.actor_auditor, target.actor_ratificador)
+    if any(not str(actor or "").strip() for actor in actors) or len(set(actors)) != 3:
+        raise ValueError("ADR-020 bootstrap requires institutional segregation")
+    if not str(target.constitutional_authority_declaration or "").strip():
+        raise ValueError("ADR-020 bootstrap requires express constitutional declaration")
+    for field_name in ("scope", "segregation_evidence", "evidence", "provenance"):
+        if getattr(target, field_name, None) is None:
+            raise ValueError(f"ADR-020 bootstrap requires {field_name}")
+
+
 def _adr020_reject_append_only_mutation(mapper, connection, target) -> None:
     raise RuntimeError(
         "ADR-020 append-only violation: update/delete is forbidden for "
@@ -2949,6 +3161,9 @@ _ADR020_INSERT_VALIDATORS = {
     RelationReviewRecord: (
         _adr020_validate_relation_review_insert
     ),
+    PolicyVersion: _adr020_validate_policy_version_insert,
+    PolicyDecision: _adr020_validate_policy_decision_insert,
+    BootstrapAuthorityRecord: _adr020_validate_bootstrap_authority_insert,
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (
