@@ -2490,6 +2490,139 @@ class BootstrapAuthorityRecord(Base):
     record_hash = Column(String(64), nullable=False)
 
 
+class CoverageContract(Base):
+    """Immutable definition of expected source coverage; grants no authority."""
+
+    __tablename__ = "coverage_contracts"
+    __table_args__ = (
+        UniqueConstraint("coverage_contract_id", "contract_version", name="uq_coverage_contracts_identity"),
+        UniqueConstraint("coverage_contract_id", "contract_version", "contract_hash", name="uq_coverage_contracts_exact_subject"),
+        UniqueConstraint("contract_hash", name="uq_coverage_contracts_contract_hash"),
+        UniqueConstraint("record_hash", name="uq_coverage_contracts_record_hash"),
+        CheckConstraint("contract_version > 0", name="ck_coverage_contracts_version_positive"),
+        CheckConstraint("contract_state IN ('proposta', 'auditada', 'ratificada', 'revogada')", name="ck_coverage_contracts_state_valid"),
+        CheckConstraint("length(contract_hash) = 64", name="ck_coverage_contracts_contract_hash_len"),
+        CheckConstraint("length(record_hash) = 64", name="ck_coverage_contracts_record_hash_len"),
+        CheckConstraint("effective_to IS NULL OR effective_to > effective_from", name="ck_coverage_contracts_validity_order"),
+    )
+
+    coverage_contract_record_id = Column(String(64), primary_key=True)
+    coverage_contract_id = Column(String(64), nullable=False, index=True)
+    source_id = Column(String(64), nullable=False, index=True)
+    contract_version = Column(Integer, nullable=False)
+    contract_hash = Column(String(64), nullable=False, index=True)
+    contract_state = Column(String(16), nullable=False)
+    effective_from = Column(DateTime(timezone=True), nullable=False)
+    effective_to = Column(DateTime(timezone=True), nullable=True)
+    timezone = Column(String(64), nullable=False)
+    expected_calendar = Column(JSON, nullable=False)
+    publication_schedule = Column(JSON, nullable=False)
+    delay_windows = Column(JSON, nullable=False)
+    mandatory_sections = Column(JSON, nullable=False)
+    expected_files_partitions = Column(JSON, nullable=False)
+    pagination = Column(JSON, nullable=False)
+    cursors = Column(JSON, nullable=False)
+    empty_response_semantics = Column(JSON, nullable=False)
+    proven_absence_rules = Column(JSON, nullable=False)
+    authorized_redirects = Column(JSON, nullable=False)
+    media_types = Column(JSON, nullable=False)
+    adapter_id = Column(String(64), nullable=False)
+    compatible_adapter_versions = Column(JSON, nullable=False)
+    technical_limits = Column(JSON, nullable=False)
+    retry_policy = Column(JSON, nullable=False)
+    continuity_policy_reference = Column(JSON, nullable=False)
+    evidence = Column(JSON, nullable=False)
+    audit = Column(JSON, nullable=False)
+    ratification = Column(JSON, nullable=False)
+    revocation = Column(JSON, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    record_hash = Column(String(64), nullable=False)
+
+
+class CoverageLedgerEntry(Base):
+    """One immutable observation/processing result for one expected unit."""
+
+    __tablename__ = "coverage_ledger_entries"
+    __table_args__ = (
+        ForeignKeyConstraint(["coverage_contract_id", "contract_version", "contract_hash"], ["coverage_contracts.coverage_contract_id", "coverage_contracts.contract_version", "coverage_contracts.contract_hash"], name="fk_coverage_ledger_entries_exact_contract", ondelete="RESTRICT"),
+        UniqueConstraint("coverage_contract_id", "contract_version", "contract_hash", "window_start", "window_end", "unit_order", name="uq_coverage_ledger_entries_unit_order"),
+        UniqueConstraint("coverage_ledger_entry_id", "coverage_contract_id", "contract_version", "contract_hash", "window_start", "window_end", name="uq_coverage_ledger_entries_exact_checkpoint_target"),
+        UniqueConstraint("record_hash", name="uq_coverage_ledger_entries_record_hash"),
+        CheckConstraint("contract_version > 0 AND unit_order > 0 AND fencing_token > 0", name="ck_coverage_ledger_entries_positive_order_fence"),
+        CheckConstraint("window_end > window_start", name="ck_coverage_ledger_entries_window_order"),
+        CheckConstraint("unit_type IN ('publication', 'section', 'page', 'file', 'partition', 'period')", name="ck_coverage_ledger_entries_unit_type_valid"),
+        CheckConstraint("observation_outcome IN ('observed', 'not_observed', 'source_unavailable')", name="ck_coverage_ledger_entries_observation_valid"),
+        CheckConstraint("processing_outcome IN ('pending', 'succeeded', 'failed', 'proven_absence')", name="ck_coverage_ledger_entries_processing_valid"),
+        CheckConstraint("coverage_outcome IN ('covered', 'gap', 'not_covered')", name="ck_coverage_ledger_entries_coverage_valid"),
+        CheckConstraint("response_kind IN ('non_empty', 'empty', 'not_applicable')", name="ck_coverage_ledger_entries_response_kind_valid"),
+        CheckConstraint("coverage_outcome <> 'covered' OR processing_outcome IN ('succeeded', 'proven_absence')", name="ck_coverage_ledger_entries_failure_not_covered"),
+        CheckConstraint("response_kind <> 'empty' OR coverage_outcome <> 'covered' OR cycle_fully_evaluated", name="ck_coverage_ledger_entries_empty_requires_full_cycle"),
+        CheckConstraint("length(contract_hash) = 64 AND length(record_hash) = 64", name="ck_coverage_ledger_entries_hashes_len"),
+    )
+
+    coverage_ledger_entry_id = Column(String(64), primary_key=True)
+    coverage_contract_id = Column(String(64), nullable=False)
+    contract_version = Column(Integer, nullable=False)
+    contract_hash = Column(String(64), nullable=False)
+    window_start = Column(DateTime(timezone=True), nullable=False)
+    window_end = Column(DateTime(timezone=True), nullable=False)
+    unit_type = Column(String(16), nullable=False)
+    unit_id = Column(String(255), nullable=False)
+    unit_order = Column(Integer, nullable=False)
+    observation_outcome = Column(String(32), nullable=False)
+    processing_outcome = Column(String(32), nullable=False)
+    coverage_outcome = Column(String(16), nullable=False)
+    response_kind = Column(String(16), nullable=False)
+    cycle_fully_evaluated = Column(Boolean, nullable=False, default=False)
+    fencing_token = Column(Integer, nullable=False)
+    evidence = Column(JSON, nullable=False)
+    provenance = Column(JSON, nullable=False)
+    occurred_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    record_hash = Column(String(64), nullable=False)
+
+
+class CoverageCheckpointRecord(Base):
+    """Immutable snapshot of independent contiguous coverage frontiers."""
+
+    __tablename__ = "coverage_checkpoint_records"
+    __table_args__ = (
+        ForeignKeyConstraint(["coverage_contract_id", "contract_version", "contract_hash"], ["coverage_contracts.coverage_contract_id", "coverage_contracts.contract_version", "coverage_contracts.contract_hash"], name="fk_coverage_checkpoint_records_exact_contract", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["last_ledger_entry_id", "coverage_contract_id", "contract_version", "contract_hash", "window_start", "window_end"], ["coverage_ledger_entries.coverage_ledger_entry_id", "coverage_ledger_entries.coverage_contract_id", "coverage_ledger_entries.contract_version", "coverage_ledger_entries.contract_hash", "coverage_ledger_entries.window_start", "coverage_ledger_entries.window_end"], name="fk_coverage_checkpoint_records_exact_last_entry", ondelete="RESTRICT"),
+        UniqueConstraint("coverage_contract_id", "contract_version", "contract_hash", "window_start", "window_end", "checkpoint_sequence", name="uq_coverage_checkpoint_records_sequence"),
+        UniqueConstraint("record_hash", name="uq_coverage_checkpoint_records_record_hash"),
+        CheckConstraint("contract_version > 0 AND checkpoint_sequence > 0 AND fencing_token > 0", name="ck_coverage_checkpoint_records_positive_sequence_fence"),
+        CheckConstraint("window_end > window_start", name="ck_coverage_checkpoint_records_window_order"),
+        CheckConstraint("observed_through IS NULL OR observed_through > 0", name="ck_coverage_checkpoint_records_observed_positive"),
+        CheckConstraint("completed_through IS NULL OR completed_through > 0", name="ck_coverage_checkpoint_records_completed_positive"),
+        CheckConstraint("covered_through IS NULL OR covered_through > 0", name="ck_coverage_checkpoint_records_covered_positive"),
+        CheckConstraint("pending_gap_from IS NULL OR pending_gap_from > 0", name="ck_coverage_checkpoint_records_gap_positive"),
+        CheckConstraint("completed_through IS NULL OR observed_through IS NOT NULL AND completed_through <= observed_through", name="ck_coverage_checkpoint_records_completed_within_observed"),
+        CheckConstraint("covered_through IS NULL OR completed_through IS NOT NULL AND covered_through <= completed_through", name="ck_coverage_checkpoint_records_covered_within_completed"),
+        CheckConstraint("pending_gap_from IS NULL OR pending_gap_from = COALESCE(covered_through, 0) + 1", name="ck_coverage_checkpoint_records_first_gap"),
+        CheckConstraint("pending_gap_from IS NOT NULL OR cycle_fully_evaluated", name="ck_coverage_checkpoint_records_no_gap_requires_full_cycle"),
+        CheckConstraint("length(contract_hash) = 64 AND length(record_hash) = 64", name="ck_coverage_checkpoint_records_hashes_len"),
+    )
+
+    coverage_checkpoint_record_id = Column(String(64), primary_key=True)
+    coverage_contract_id = Column(String(64), nullable=False)
+    contract_version = Column(Integer, nullable=False)
+    contract_hash = Column(String(64), nullable=False)
+    window_start = Column(DateTime(timezone=True), nullable=False)
+    window_end = Column(DateTime(timezone=True), nullable=False)
+    checkpoint_sequence = Column(Integer, nullable=False)
+    observed_through = Column(Integer, nullable=True)
+    completed_through = Column(Integer, nullable=True)
+    covered_through = Column(Integer, nullable=True)
+    pending_gap_from = Column(Integer, nullable=True)
+    cycle_fully_evaluated = Column(Boolean, nullable=False, default=False)
+    last_ledger_entry_id = Column(String(64), nullable=False)
+    fencing_token = Column(Integer, nullable=False)
+    evidence = Column(JSON, nullable=False)
+    provenance = Column(JSON, nullable=False)
+    recorded_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    record_hash = Column(String(64), nullable=False)
+
+
 def _adr020_validate_artifact_reference_insert(mapper, connection, target) -> None:
     _adr020_require_sha256(target.record_hash, "record_hash")
     if target.reference_event not in _ARTIFACT_REFERENCE_EVENTS:
@@ -3139,6 +3272,92 @@ def _adr020_validate_bootstrap_authority_insert(mapper, connection, target) -> N
             raise ValueError(f"ADR-020 bootstrap requires {field_name}")
 
 
+def _adr020_validate_coverage_contract_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.contract_hash, "contract_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.contract_version is None or target.contract_version <= 0:
+        raise ValueError("ADR-020 CoverageContract version must be positive")
+    if target.contract_state not in {"proposta", "auditada", "ratificada", "revogada"}:
+        raise ValueError("ADR-020 invalid CoverageContract state")
+    for field_name in ("coverage_contract_id", "source_id", "timezone", "adapter_id"):
+        if not str(getattr(target, field_name, "") or "").strip():
+            raise ValueError(f"ADR-020 CoverageContract {field_name} cannot be empty")
+    if target.effective_to is not None and target.effective_to <= target.effective_from:
+        raise ValueError("ADR-020 CoverageContract validity is not ordered")
+    for field_name in (
+        "expected_calendar", "publication_schedule", "delay_windows",
+        "mandatory_sections", "expected_files_partitions", "pagination",
+        "cursors", "empty_response_semantics", "proven_absence_rules",
+        "authorized_redirects", "media_types", "compatible_adapter_versions",
+        "technical_limits", "retry_policy", "continuity_policy_reference",
+        "evidence", "audit", "ratification", "revocation",
+    ):
+        if getattr(target, field_name, None) is None:
+            raise ValueError(f"ADR-020 CoverageContract requires {field_name}")
+
+
+def _adr020_validate_coverage_ledger_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.contract_hash, "contract_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.contract_version is None or target.contract_version <= 0:
+        raise ValueError("ADR-020 ledger contract version must be positive")
+    if target.unit_order is None or target.unit_order <= 0:
+        raise ValueError("ADR-020 ledger unit order must be positive")
+    if target.fencing_token is None or target.fencing_token <= 0:
+        raise ValueError("ADR-020 ledger fencing token must be positive")
+    if target.window_end <= target.window_start:
+        raise ValueError("ADR-020 ledger window is not ordered")
+    if target.unit_type not in {"publication", "section", "page", "file", "partition", "period"}:
+        raise ValueError("ADR-020 invalid ledger unit type")
+    if target.observation_outcome not in {"observed", "not_observed", "source_unavailable"}:
+        raise ValueError("ADR-020 invalid ledger observation outcome")
+    if target.processing_outcome not in {"pending", "succeeded", "failed", "proven_absence"}:
+        raise ValueError("ADR-020 invalid ledger processing outcome")
+    if target.coverage_outcome not in {"covered", "gap", "not_covered"}:
+        raise ValueError("ADR-020 invalid ledger coverage outcome")
+    if target.response_kind not in {"non_empty", "empty", "not_applicable"}:
+        raise ValueError("ADR-020 invalid ledger response kind")
+    if target.coverage_outcome == "covered" and target.processing_outcome not in {"succeeded", "proven_absence"}:
+        raise ValueError("ADR-020 failure or pending result cannot be promoted to coverage")
+    if target.response_kind == "empty" and target.coverage_outcome == "covered" and not target.cycle_fully_evaluated:
+        raise ValueError("ADR-020 empty response requires an integral completed cycle")
+    for field_name in ("coverage_ledger_entry_id", "coverage_contract_id", "unit_id"):
+        if not str(getattr(target, field_name, "") or "").strip():
+            raise ValueError(f"ADR-020 ledger {field_name} cannot be empty")
+    if target.evidence is None or target.provenance is None:
+        raise ValueError("ADR-020 ledger requires evidence and provenance")
+
+
+def _adr020_validate_coverage_checkpoint_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.contract_hash, "contract_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.contract_version is None or target.contract_version <= 0:
+        raise ValueError("ADR-020 checkpoint contract version must be positive")
+    if target.checkpoint_sequence is None or target.checkpoint_sequence <= 0:
+        raise ValueError("ADR-020 checkpoint sequence must be positive")
+    if target.fencing_token is None or target.fencing_token <= 0:
+        raise ValueError("ADR-020 checkpoint fencing token must be positive")
+    if target.window_end <= target.window_start:
+        raise ValueError("ADR-020 checkpoint window is not ordered")
+    markers = (target.observed_through, target.completed_through, target.covered_through, target.pending_gap_from)
+    if any(value is not None and value <= 0 for value in markers):
+        raise ValueError("ADR-020 checkpoint markers must be positive")
+    if target.completed_through is not None and (target.observed_through is None or target.completed_through > target.observed_through):
+        raise ValueError("ADR-020 completed frontier exceeds observed frontier")
+    if target.covered_through is not None and (target.completed_through is None or target.covered_through > target.completed_through):
+        raise ValueError("ADR-020 covered frontier exceeds completed frontier")
+    expected_gap = (target.covered_through or 0) + 1
+    if target.pending_gap_from is not None and target.pending_gap_from != expected_gap:
+        raise ValueError("ADR-020 checkpoint must preserve the first contiguous gap")
+    if target.pending_gap_from is None and not target.cycle_fully_evaluated:
+        raise ValueError("ADR-020 no pending gap requires an integral evaluated cycle")
+    for field_name in ("coverage_checkpoint_record_id", "coverage_contract_id", "last_ledger_entry_id"):
+        if not str(getattr(target, field_name, "") or "").strip():
+            raise ValueError(f"ADR-020 checkpoint {field_name} cannot be empty")
+    if target.evidence is None or target.provenance is None:
+        raise ValueError("ADR-020 checkpoint requires evidence and provenance")
+
+
 def _adr020_reject_append_only_mutation(mapper, connection, target) -> None:
     raise RuntimeError(
         "ADR-020 append-only violation: update/delete is forbidden for "
@@ -3164,6 +3383,9 @@ _ADR020_INSERT_VALIDATORS = {
     PolicyVersion: _adr020_validate_policy_version_insert,
     PolicyDecision: _adr020_validate_policy_decision_insert,
     BootstrapAuthorityRecord: _adr020_validate_bootstrap_authority_insert,
+    CoverageContract: _adr020_validate_coverage_contract_insert,
+    CoverageLedgerEntry: _adr020_validate_coverage_ledger_insert,
+    CoverageCheckpointRecord: _adr020_validate_coverage_checkpoint_insert,
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (
