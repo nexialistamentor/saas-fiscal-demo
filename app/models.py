@@ -891,6 +891,17 @@ _RULE_REVIEW_OUTCOMES = (
     "retirada",
 )
 
+_NORMATIVE_RELATION_TYPES = (
+    "rectifica",
+    "republica",
+    "altera",
+    "substitui",
+    "revoga",
+    "complementa",
+    "referencia",
+    "sucede",
+)
+
 
 def _adr020_require_sha256(value: str, field_name: str) -> None:
     if not isinstance(value, str) or not _ADR020_HASH_PATTERN.fullmatch(value):
@@ -2005,6 +2016,369 @@ class RuleReviewRecord(Base):
     record_hash = Column(String(64), nullable=False)
 
 
+
+class NormativeRelationVersion(Base):
+    """Immutable content of one exact normative relation."""
+
+    __tablename__ = "normative_relation_versions"
+    __table_args__ = (
+        UniqueConstraint(
+            "normative_relation_id",
+            "normative_relation_version",
+            name="uq_normative_relation_versions_identity",
+        ),
+        UniqueConstraint(
+            "normative_relation_id",
+            "normative_relation_version",
+            "normative_relation_hash",
+            name="uq_normative_relation_versions_exact_subject",
+        ),
+        UniqueConstraint(
+            "normative_relation_hash",
+            name="uq_normative_relation_versions_relation_hash",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_normative_relation_versions_record_hash",
+        ),
+        CheckConstraint(
+            "normative_relation_version > 0",
+            name=(
+                "ck_normative_relation_versions_"
+                "version_positive"
+            ),
+        ),
+        CheckConstraint(
+            "source_subject_version > 0",
+            name=(
+                "ck_normative_relation_versions_"
+                "source_version_positive"
+            ),
+        ),
+        CheckConstraint(
+            "target_subject_version > 0",
+            name=(
+                "ck_normative_relation_versions_"
+                "target_version_positive"
+            ),
+        ),
+        CheckConstraint(
+            "normative_relation_hash "
+            "GLOB '[0-9a-f]*' "
+            "AND length(normative_relation_hash) = 64",
+            name=(
+                "ck_normative_relation_versions_"
+                "relation_hash_sha256"
+            ),
+        ),
+        CheckConstraint(
+            "source_subject_hash "
+            "GLOB '[0-9a-f]*' "
+            "AND length(source_subject_hash) = 64",
+            name=(
+                "ck_normative_relation_versions_"
+                "source_hash_sha256"
+            ),
+        ),
+        CheckConstraint(
+            "target_subject_hash "
+            "GLOB '[0-9a-f]*' "
+            "AND length(target_subject_hash) = 64",
+            name=(
+                "ck_normative_relation_versions_"
+                "target_hash_sha256"
+            ),
+        ),
+        CheckConstraint(
+            "record_hash "
+            "GLOB '[0-9a-f]*' "
+            "AND length(record_hash) = 64",
+            name=(
+                "ck_normative_relation_versions_"
+                "record_hash_sha256"
+            ),
+        ),
+        CheckConstraint(
+            """
+            relation_type IN (
+                'rectifica',
+                'republica',
+                'altera',
+                'substitui',
+                'revoga',
+                'complementa',
+                'referencia',
+                'sucede'
+            )
+            """,
+            name=(
+                "ck_normative_relation_versions_"
+                "relation_type_valid"
+            ),
+        ),
+    )
+
+    normative_relation_version_record_id = Column(
+        String(64),
+        primary_key=True,
+    )
+    normative_relation_id = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    normative_relation_version = Column(
+        Integer,
+        nullable=False,
+    )
+    normative_relation_hash = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+
+    source_subject_type = Column(
+        String(64),
+        nullable=False,
+    )
+    source_subject_id = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    source_subject_version = Column(
+        Integer,
+        nullable=False,
+    )
+    source_subject_hash = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+
+    target_subject_type = Column(
+        String(64),
+        nullable=False,
+    )
+    target_subject_id = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    target_subject_version = Column(
+        Integer,
+        nullable=False,
+    )
+    target_subject_hash = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+
+    relation_type = Column(
+        String(32),
+        nullable=False,
+        index=True,
+    )
+    declared_material_validity = Column(
+        JSON,
+        nullable=False,
+    )
+    structured_content = Column(
+        JSON,
+        nullable=False,
+    )
+    evidence = Column(
+        JSON,
+        nullable=False,
+    )
+    normative_references = Column(
+        JSON,
+        nullable=False,
+    )
+    exact_precedence_policy_reference = Column(
+        JSON,
+        nullable=False,
+    )
+    provenance = Column(
+        JSON,
+        nullable=False,
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    record_hash = Column(
+        String(64),
+        nullable=False,
+    )
+
+
+class RelationReviewRecord(Base):
+    """Immutable review event for one exact relation version."""
+
+    __tablename__ = "relation_review_records"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            [
+                "subject_id",
+                "subject_version",
+                "subject_hash",
+            ],
+            [
+                (
+                    "normative_relation_versions."
+                    "normative_relation_id"
+                ),
+                (
+                    "normative_relation_versions."
+                    "normative_relation_version"
+                ),
+                (
+                    "normative_relation_versions."
+                    "normative_relation_hash"
+                ),
+            ],
+            name=(
+                "fk_relation_review_records_"
+                "exact_relation"
+            ),
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name=(
+                "uq_relation_review_records_"
+                "record_hash"
+            ),
+        ),
+        CheckConstraint(
+            "subject_version > 0",
+            name=(
+                "ck_relation_review_records_"
+                "subject_version_positive"
+            ),
+        ),
+        CheckConstraint(
+            """
+            review_event IN (
+                'extracao_registada',
+                'quarentena_registada',
+                'validacao_iniciada',
+                'revisao_reservada_iniciada',
+                'revisao_concluida',
+                'retirada_registada'
+            )
+            """,
+            name=(
+                "ck_relation_review_records_"
+                "event_valid"
+            ),
+        ),
+        CheckConstraint(
+            """
+            outcome IN (
+                'pendente',
+                'validada',
+                'rejeitada',
+                'bloqueada',
+                'retirada'
+            )
+            """,
+            name=(
+                "ck_relation_review_records_"
+                "outcome_valid"
+            ),
+        ),
+        CheckConstraint(
+            """
+            (
+                review_event = 'extracao_registada'
+                AND outcome = 'pendente'
+            )
+            OR (
+                review_event = 'quarentena_registada'
+                AND outcome IN ('pendente', 'bloqueada')
+            )
+            OR (
+                review_event = 'validacao_iniciada'
+                AND outcome = 'pendente'
+            )
+            OR (
+                review_event =
+                    'revisao_reservada_iniciada'
+                AND outcome = 'pendente'
+            )
+            OR (
+                review_event = 'revisao_concluida'
+                AND outcome IN (
+                    'validada',
+                    'rejeitada',
+                    'bloqueada'
+                )
+            )
+            OR (
+                review_event = 'retirada_registada'
+                AND outcome = 'retirada'
+            )
+            """,
+            name=(
+                "ck_relation_review_records_"
+                "event_outcome_pair"
+            ),
+        ),
+    )
+
+    relation_review_record_id = Column(
+        String(64),
+        primary_key=True,
+    )
+    subject_id = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    subject_version = Column(
+        Integer,
+        nullable=False,
+    )
+    subject_hash = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    reviewer = Column(
+        String(255),
+        nullable=False,
+    )
+    review_event = Column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    outcome = Column(
+        String(32),
+        nullable=False,
+        index=True,
+    )
+    evidence = Column(
+        JSON,
+        nullable=False,
+    )
+    timestamp = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    record_hash = Column(
+        String(64),
+        nullable=False,
+    )
+
+
 def _adr020_validate_artifact_reference_insert(mapper, connection, target) -> None:
     _adr020_require_sha256(target.record_hash, "record_hash")
     if target.reference_event not in _ARTIFACT_REFERENCE_EVENTS:
@@ -2397,6 +2771,162 @@ def _adr020_validate_rule_review_insert(
         )
 
 
+
+def _adr020_validate_normative_relation_version_insert(
+    mapper,
+    connection,
+    target,
+) -> None:
+    _adr020_require_sha256(
+        target.normative_relation_hash,
+        "normative_relation_hash",
+    )
+    _adr020_require_sha256(
+        target.source_subject_hash,
+        "source_subject_hash",
+    )
+    _adr020_require_sha256(
+        target.target_subject_hash,
+        "target_subject_hash",
+    )
+    _adr020_require_sha256(
+        target.record_hash,
+        "record_hash",
+    )
+
+    if (
+        target.normative_relation_version is None
+        or target.normative_relation_version <= 0
+    ):
+        raise ValueError(
+            "ADR-020 NormativeRelationVersion "
+            "version must be positive"
+        )
+
+    for field_name in (
+        "normative_relation_id",
+        "source_subject_type",
+        "source_subject_id",
+        "target_subject_type",
+        "target_subject_id",
+    ):
+        if not str(getattr(target, field_name, "") or "").strip():
+            raise ValueError(
+                "ADR-020 NormativeRelationVersion "
+                f"{field_name} cannot be empty"
+            )
+
+    if (
+        target.source_subject_version is None
+        or target.source_subject_version <= 0
+    ):
+        raise ValueError(
+            "ADR-020 source_subject_version must be positive"
+        )
+
+    if (
+        target.target_subject_version is None
+        or target.target_subject_version <= 0
+    ):
+        raise ValueError(
+            "ADR-020 target_subject_version must be positive"
+        )
+
+    if target.relation_type not in _NORMATIVE_RELATION_TYPES:
+        raise ValueError(
+            "ADR-020 invalid normative relation type"
+        )
+
+    if not target.structured_content:
+        raise ValueError(
+            "ADR-020 NormativeRelationVersion requires "
+            "structured_content"
+        )
+
+    if target.declared_material_validity is None:
+        raise ValueError(
+            "ADR-020 NormativeRelationVersion requires "
+            "declared material validity"
+        )
+
+    if target.exact_precedence_policy_reference is None:
+        raise ValueError(
+            "ADR-020 NormativeRelationVersion requires "
+            "exact precedence policy reference"
+        )
+
+    if target.evidence is None:
+        raise ValueError(
+            "ADR-020 NormativeRelationVersion requires evidence"
+        )
+
+    if target.normative_references is None:
+        raise ValueError(
+            "ADR-020 NormativeRelationVersion requires "
+            "normative references"
+        )
+
+    if target.provenance is None:
+        raise ValueError(
+            "ADR-020 NormativeRelationVersion requires provenance"
+        )
+
+
+def _adr020_validate_relation_review_insert(
+    mapper,
+    connection,
+    target,
+) -> None:
+    _adr020_require_sha256(
+        target.subject_hash,
+        "subject_hash",
+    )
+    _adr020_require_sha256(
+        target.record_hash,
+        "record_hash",
+    )
+
+    if (
+        target.subject_version is None
+        or target.subject_version <= 0
+    ):
+        raise ValueError(
+            "ADR-020 RelationReviewRecord "
+            "subject_version must be positive"
+        )
+
+    if not str(target.subject_id or "").strip():
+        raise ValueError(
+            "ADR-020 RelationReviewRecord "
+            "subject_id cannot be empty"
+        )
+
+    if not str(target.reviewer or "").strip():
+        raise ValueError(
+            "ADR-020 RelationReviewRecord "
+            "reviewer cannot be empty"
+        )
+
+    permitted_outcomes = (
+        _RULE_REVIEW_EVENT_OUTCOMES.get(
+            target.review_event
+        )
+    )
+    if (
+        permitted_outcomes is None
+        or target.outcome not in permitted_outcomes
+    ):
+        raise ValueError(
+            "ADR-020 RelationReviewRecord "
+            "event/outcome pair is invalid"
+        )
+
+    if target.evidence is None:
+        raise ValueError(
+            "ADR-020 RelationReviewRecord requires evidence"
+        )
+
+
 def _adr020_reject_append_only_mutation(mapper, connection, target) -> None:
     raise RuntimeError(
         "ADR-020 append-only violation: update/delete is forbidden for "
@@ -2413,6 +2943,12 @@ _ADR020_INSERT_VALIDATORS = {
     ExtractionResult: _adr020_validate_extraction_result_insert,
     RuleVersion: _adr020_validate_rule_version_insert,
     RuleReviewRecord: _adr020_validate_rule_review_insert,
+    NormativeRelationVersion: (
+        _adr020_validate_normative_relation_version_insert
+    ),
+    RelationReviewRecord: (
+        _adr020_validate_relation_review_insert
+    ),
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (
