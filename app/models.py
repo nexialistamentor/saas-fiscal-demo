@@ -853,6 +853,26 @@ _VERIFICATION_OUTCOMES = (
     "inconclusivo",
 )
 
+_EXTRACTION_EVENT_STATE = {
+    "criacao": "pendente",
+    "inicio": "em_processamento",
+    "conclusao": "concluida",
+    "falha": "falhada",
+    "cancelamento": "cancelada",
+}
+
+_EXTRACTION_TERMINAL_STATES = {
+    "concluida",
+    "falhada",
+    "cancelada",
+}
+
+_EXTRACTION_OUTCOMES = (
+    "conclusivo",
+    "inconclusivo",
+    "rejeitado",
+)
+
 
 def _adr020_require_sha256(value: str, field_name: str) -> None:
     if not isinstance(value, str) or not _ADR020_HASH_PATTERN.fullmatch(value):
@@ -1404,6 +1424,382 @@ class ArtifactVerificationRecord(Base):
     record_hash = Column(String(64), nullable=False)
 
 
+class ExtractionRun(Base):
+    """One immutable event in one exact technical extraction attempt."""
+
+    __tablename__ = "extraction_runs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["normative_artifact_id", "artifact_hash"],
+            [
+                "normative_artifacts.normative_artifact_id",
+                "normative_artifacts.artifact_hash",
+            ],
+            name="fk_extraction_runs_exact_artifact",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "extraction_run_id",
+            "event_sequence",
+            name="uq_extraction_runs_identity_sequence",
+        ),
+        UniqueConstraint(
+            "normative_artifact_id",
+            "artifact_hash",
+            "extractor_id",
+            "extractor_version",
+            "parameters_hash",
+            "attempt_number",
+            "event_sequence",
+            name="uq_extraction_runs_exact_attempt_sequence",
+        ),
+        UniqueConstraint(
+            "extraction_run_record_id",
+            "extraction_run_id",
+            "normative_artifact_id",
+            "artifact_hash",
+            "attempt_number",
+            name="uq_extraction_runs_record_attempt",
+        ),
+        UniqueConstraint(
+            "extraction_run_record_id",
+            "extraction_run_id",
+            "normative_artifact_id",
+            "artifact_hash",
+            "extractor_id",
+            "extractor_version",
+            "parameters_hash",
+            "attempt_number",
+            "run_event",
+            "projected_state",
+            name="uq_extraction_runs_exact_projection",
+        ),
+        ForeignKeyConstraint(
+            [
+                "previous_extraction_run_record_id",
+                "extraction_run_id",
+                "normative_artifact_id",
+                "artifact_hash",
+                "attempt_number",
+            ],
+            [
+                "extraction_runs.extraction_run_record_id",
+                "extraction_runs.extraction_run_id",
+                "extraction_runs.normative_artifact_id",
+                "extraction_runs.artifact_hash",
+                "extraction_runs.attempt_number",
+            ],
+            name="fk_extraction_runs_previous_same_attempt",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            [
+                "authenticity_verification_record_id",
+                "normative_artifact_id",
+                "artifact_hash",
+                "authenticity_predecessor_type",
+                "authenticity_predecessor_outcome",
+            ],
+            [
+                "artifact_verification_records.artifact_verification_record_id",
+                "artifact_verification_records.normative_artifact_id",
+                "artifact_verification_records.verified_artifact_hash",
+                "artifact_verification_records.verification_type",
+                "artifact_verification_records.outcome",
+            ],
+            name="fk_extraction_runs_authenticity_favorable",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            [
+                "integrity_verification_record_id",
+                "normative_artifact_id",
+                "artifact_hash",
+                "integrity_predecessor_type",
+                "integrity_predecessor_outcome",
+            ],
+            [
+                "artifact_verification_records.artifact_verification_record_id",
+                "artifact_verification_records.normative_artifact_id",
+                "artifact_verification_records.verified_artifact_hash",
+                "artifact_verification_records.verification_type",
+                "artifact_verification_records.outcome",
+            ],
+            name="fk_extraction_runs_integrity_favorable",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            [
+                "preservation_verification_record_id",
+                "normative_artifact_id",
+                "artifact_hash",
+                "preservation_predecessor_type",
+                "preservation_predecessor_outcome",
+            ],
+            [
+                "artifact_verification_records.artifact_verification_record_id",
+                "artifact_verification_records.normative_artifact_id",
+                "artifact_verification_records.verified_artifact_hash",
+                "artifact_verification_records.verification_type",
+                "artifact_verification_records.outcome",
+            ],
+            name="fk_extraction_runs_preservation_favorable",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_extraction_runs_record_hash",
+        ),
+        CheckConstraint(
+            "run_event IN "
+            "('criacao', 'inicio', 'conclusao', 'falha', 'cancelamento')",
+            name="ck_extraction_runs_event_valid",
+        ),
+        CheckConstraint(
+            "projected_state IN "
+            "('pendente', 'em_processamento', 'concluida', "
+            "'falhada', 'cancelada')",
+            name="ck_extraction_runs_state_valid",
+        ),
+        CheckConstraint(
+            "(run_event = 'criacao' AND projected_state = 'pendente') "
+            "OR (run_event = 'inicio' "
+            "AND projected_state = 'em_processamento') "
+            "OR (run_event = 'conclusao' "
+            "AND projected_state = 'concluida') "
+            "OR (run_event = 'falha' AND projected_state = 'falhada') "
+            "OR (run_event = 'cancelamento' "
+            "AND projected_state = 'cancelada')",
+            name="ck_extraction_runs_event_state_pair",
+        ),
+        CheckConstraint(
+            "attempt_number > 0",
+            name="ck_extraction_runs_attempt_positive",
+        ),
+        CheckConstraint(
+            "event_sequence > 0",
+            name="ck_extraction_runs_sequence_positive",
+        ),
+        CheckConstraint(
+            "(event_sequence = 1 "
+            "AND run_event = 'criacao' "
+            "AND projected_state = 'pendente' "
+            "AND previous_extraction_run_record_id IS NULL) "
+            "OR (event_sequence > 1 "
+            "AND previous_extraction_run_record_id IS NOT NULL)",
+            name="ck_extraction_runs_initial_or_predecessor",
+        ),
+        CheckConstraint(
+            "previous_extraction_run_record_id IS NULL "
+            "OR previous_extraction_run_record_id "
+            "<> extraction_run_record_id",
+            name="ck_extraction_runs_no_self_reference",
+        ),
+        CheckConstraint(
+            "("
+            "authenticity_verification_record_id IS NULL "
+            "AND authenticity_predecessor_type IS NULL "
+            "AND authenticity_predecessor_outcome IS NULL "
+            "AND integrity_verification_record_id IS NULL "
+            "AND integrity_predecessor_type IS NULL "
+            "AND integrity_predecessor_outcome IS NULL "
+            "AND preservation_verification_record_id IS NULL "
+            "AND preservation_predecessor_type IS NULL "
+            "AND preservation_predecessor_outcome IS NULL"
+            ") OR ("
+            "authenticity_verification_record_id IS NOT NULL "
+            "AND authenticity_predecessor_type = 'authenticity' "
+            "AND authenticity_predecessor_outcome "
+            "= 'conclusivo_favoravel' "
+            "AND integrity_verification_record_id IS NOT NULL "
+            "AND integrity_predecessor_type = 'integrity' "
+            "AND integrity_predecessor_outcome "
+            "= 'conclusivo_favoravel' "
+            "AND preservation_verification_record_id IS NOT NULL "
+            "AND preservation_predecessor_type = 'preservation' "
+            "AND preservation_predecessor_outcome "
+            "= 'conclusivo_favoravel'"
+            ")",
+            name="ck_extraction_runs_favorable_verification_gates",
+        ),
+        CheckConstraint(
+            "length(trim(extractor_id)) > 0",
+            name="ck_extraction_runs_extractor_not_empty",
+        ),
+        CheckConstraint(
+            "length(trim(extractor_version)) > 0",
+            name="ck_extraction_runs_version_not_empty",
+        ),
+        CheckConstraint(
+            "finished_at IS NULL OR started_at IS NULL "
+            "OR finished_at >= started_at",
+            name="ck_extraction_runs_time_order",
+        ),
+        CheckConstraint(
+            "length(artifact_hash) = 64",
+            name="ck_extraction_runs_artifact_hash_len",
+        ),
+        CheckConstraint(
+            "length(parameters_hash) = 64",
+            name="ck_extraction_runs_parameters_hash_len",
+        ),
+        CheckConstraint(
+            "length(record_hash) = 64",
+            name="ck_extraction_runs_record_hash_len",
+        ),
+    )
+
+    extraction_run_record_id = Column(String(64), primary_key=True)
+    extraction_run_id = Column(String(64), nullable=False, index=True)
+    normative_artifact_id = Column(String(64), nullable=False, index=True)
+    artifact_hash = Column(String(64), nullable=False, index=True)
+    extractor_id = Column(String(255), nullable=False, index=True)
+    extractor_version = Column(String(128), nullable=False)
+    parameters_hash = Column(String(64), nullable=False, index=True)
+    attempt_number = Column(Integer, nullable=False)
+    run_event = Column(String(32), nullable=False, index=True)
+    projected_state = Column(String(32), nullable=False, index=True)
+    event_sequence = Column(Integer, nullable=False)
+    previous_extraction_run_record_id = Column(String(64), nullable=True)
+
+    authenticity_verification_record_id = Column(String(64), nullable=True)
+    authenticity_predecessor_type = Column(String(32), nullable=True)
+    authenticity_predecessor_outcome = Column(String(32), nullable=True)
+
+    integrity_verification_record_id = Column(String(64), nullable=True)
+    integrity_predecessor_type = Column(String(32), nullable=True)
+    integrity_predecessor_outcome = Column(String(32), nullable=True)
+
+    preservation_verification_record_id = Column(String(64), nullable=True)
+    preservation_predecessor_type = Column(String(32), nullable=True)
+    preservation_predecessor_outcome = Column(String(32), nullable=True)
+
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    occurred_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    structured_error = Column(JSON, nullable=True)
+    evidence = Column(JSON, nullable=False)
+    provenance = Column(JSON, nullable=False)
+    record_hash = Column(String(64), nullable=False)
+
+
+class ExtractionResult(Base):
+    """Immutable structured result produced by one concluded extraction run."""
+
+    __tablename__ = "extraction_results"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            [
+                "extraction_run_record_id",
+                "extraction_run_id",
+                "normative_artifact_id",
+                "artifact_hash",
+                "extractor_id",
+                "extractor_version",
+                "parameters_hash",
+                "attempt_number",
+                "run_event",
+                "run_state",
+            ],
+            [
+                "extraction_runs.extraction_run_record_id",
+                "extraction_runs.extraction_run_id",
+                "extraction_runs.normative_artifact_id",
+                "extraction_runs.artifact_hash",
+                "extraction_runs.extractor_id",
+                "extraction_runs.extractor_version",
+                "extraction_runs.parameters_hash",
+                "extraction_runs.attempt_number",
+                "extraction_runs.run_event",
+                "extraction_runs.projected_state",
+            ],
+            name="fk_extraction_results_concluded_run",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "extraction_result_id",
+            "record_hash",
+            name="uq_extraction_results_identity_hash",
+        ),
+        UniqueConstraint(
+            "extraction_run_record_id",
+            name="uq_extraction_results_single_per_run_completion",
+        ),
+        UniqueConstraint(
+            "record_hash",
+            name="uq_extraction_results_record_hash",
+        ),
+        CheckConstraint(
+            "run_event = 'conclusao' AND run_state = 'concluida'",
+            name="ck_extraction_results_concluded_run",
+        ),
+        CheckConstraint(
+            "outcome IN ('conclusivo', 'inconclusivo', 'rejeitado')",
+            name="ck_extraction_results_outcome_valid",
+        ),
+        CheckConstraint(
+            "attempt_number > 0",
+            name="ck_extraction_results_attempt_positive",
+        ),
+        CheckConstraint(
+            "length(trim(extractor_id)) > 0",
+            name="ck_extraction_results_extractor_not_empty",
+        ),
+        CheckConstraint(
+            "length(trim(extractor_version)) > 0",
+            name="ck_extraction_results_version_not_empty",
+        ),
+        CheckConstraint(
+            "length(artifact_hash) = 64",
+            name="ck_extraction_results_artifact_hash_len",
+        ),
+        CheckConstraint(
+            "length(parameters_hash) = 64",
+            name="ck_extraction_results_parameters_hash_len",
+        ),
+        CheckConstraint(
+            "length(record_hash) = 64",
+            name="ck_extraction_results_record_hash_len",
+        ),
+    )
+
+    extraction_result_id = Column(String(64), primary_key=True)
+    extraction_run_record_id = Column(String(64), nullable=False)
+    extraction_run_id = Column(String(64), nullable=False, index=True)
+    normative_artifact_id = Column(String(64), nullable=False, index=True)
+    artifact_hash = Column(String(64), nullable=False, index=True)
+    extractor_id = Column(String(255), nullable=False, index=True)
+    extractor_version = Column(String(128), nullable=False)
+    parameters_hash = Column(String(64), nullable=False, index=True)
+    attempt_number = Column(Integer, nullable=False)
+    run_event = Column(
+        String(32),
+        nullable=False,
+        default="conclusao",
+        server_default="conclusao",
+    )
+    run_state = Column(
+        String(32),
+        nullable=False,
+        default="concluida",
+        server_default="concluida",
+    )
+    outcome = Column(String(32), nullable=False, index=True)
+    structured_content = Column(JSON, nullable=False)
+    evidence = Column(JSON, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+    record_hash = Column(String(64), nullable=False)
+
 def _adr020_validate_artifact_reference_insert(mapper, connection, target) -> None:
     _adr020_require_sha256(target.record_hash, "record_hash")
     if target.reference_event not in _ARTIFACT_REFERENCE_EVENTS:
@@ -1558,6 +1954,170 @@ def _adr020_validate_verification_insert(mapper, connection, target) -> None:
             raise ValueError("ADR-020 preservation predecessor must be integrity")
 
 
+def _adr020_validate_extraction_run_insert(
+    mapper,
+    connection,
+    target,
+) -> None:
+    expected_state = _EXTRACTION_EVENT_STATE.get(target.run_event)
+    if expected_state is None or target.projected_state != expected_state:
+        raise ValueError("ADR-020 invalid ExtractionRun event/state pair")
+
+    _adr020_require_sha256(target.artifact_hash, "artifact_hash")
+    _adr020_require_sha256(target.parameters_hash, "parameters_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+
+    if not str(target.extractor_id or "").strip():
+        raise ValueError("ADR-020 extractor_id cannot be empty")
+    if not str(target.extractor_version or "").strip():
+        raise ValueError("ADR-020 extractor_version cannot be empty")
+    if target.attempt_number is None or target.attempt_number <= 0:
+        raise ValueError("ADR-020 attempt_number must be positive")
+    if target.event_sequence is None or target.event_sequence <= 0:
+        raise ValueError("ADR-020 event_sequence must be positive")
+
+    if target.event_sequence == 1:
+        if (
+            target.run_event != "criacao"
+            or target.projected_state != "pendente"
+            or target.previous_extraction_run_record_id is not None
+            or target.started_at is not None
+            or target.finished_at is not None
+        ):
+            raise ValueError("ADR-020 invalid initial ExtractionRun event")
+    elif target.previous_extraction_run_record_id is None:
+        raise ValueError("ADR-020 ExtractionRun predecessor is required")
+
+    gates = (
+        (
+            target.authenticity_verification_record_id,
+            target.authenticity_predecessor_type,
+            target.authenticity_predecessor_outcome,
+            "authenticity",
+        ),
+        (
+            target.integrity_verification_record_id,
+            target.integrity_predecessor_type,
+            target.integrity_predecessor_outcome,
+            "integrity",
+        ),
+        (
+            target.preservation_verification_record_id,
+            target.preservation_predecessor_type,
+            target.preservation_predecessor_outcome,
+            "preservation",
+        ),
+    )
+
+    has_any_gate = any(
+        value is not None
+        for record_id, gate_type, outcome, expected_type in gates
+        for value in (record_id, gate_type, outcome)
+    )
+
+    has_all_favorable_gates = all(
+        record_id is not None
+        and gate_type == expected_type
+        and outcome == "conclusivo_favoravel"
+        for record_id, gate_type, outcome, expected_type in gates
+    )
+
+    if has_any_gate and not has_all_favorable_gates:
+        raise ValueError(
+            "ADR-020 ExtractionRun requires exact favorable verification gates"
+        )
+
+    if (
+        target.projected_state
+        in {"em_processamento", "concluida", "falhada"}
+        and not has_all_favorable_gates
+    ):
+        raise ValueError(
+            "ADR-020 ExtractionRun requires favorable verification gates"
+        )
+
+    if target.projected_state == "pendente":
+        if (
+            target.started_at is not None
+            or target.finished_at is not None
+            or target.structured_error is not None
+        ):
+            raise ValueError(
+                "ADR-020 pending ExtractionRun cannot contain execution data"
+            )
+
+    if target.projected_state == "em_processamento":
+        if target.started_at is None or target.finished_at is not None:
+            raise ValueError(
+                "ADR-020 processing ExtractionRun requires started_at only"
+            )
+
+    if target.projected_state in _EXTRACTION_TERMINAL_STATES:
+        if target.finished_at is None:
+            raise ValueError(
+                "ADR-020 terminal ExtractionRun requires finished_at"
+            )
+
+    if target.projected_state == "falhada" and not target.structured_error:
+        raise ValueError(
+            "ADR-020 failed ExtractionRun requires structured_error"
+        )
+
+    if (
+        target.started_at is not None
+        and target.occurred_at is not None
+        and target.started_at > target.occurred_at
+    ):
+        raise ValueError(
+            "ADR-020 ExtractionRun started_at cannot follow occurred_at"
+        )
+
+    if target.finished_at is not None:
+        if (
+            target.started_at is not None
+            and target.finished_at < target.started_at
+        ):
+            raise ValueError(
+                "ADR-020 ExtractionRun finished_at precedes started_at"
+            )
+        if (
+            target.occurred_at is not None
+            and target.finished_at > target.occurred_at
+        ):
+            raise ValueError(
+                "ADR-020 ExtractionRun finished_at cannot follow occurred_at"
+            )
+
+
+def _adr020_validate_extraction_result_insert(
+    mapper,
+    connection,
+    target,
+) -> None:
+    if target.run_event != "conclusao" or target.run_state != "concluida":
+        raise ValueError(
+            "ADR-020 ExtractionResult requires exact concluded extraction run"
+        )
+
+    if target.outcome not in _EXTRACTION_OUTCOMES:
+        raise ValueError("ADR-020 invalid ExtractionResult outcome")
+
+    _adr020_require_sha256(target.artifact_hash, "artifact_hash")
+    _adr020_require_sha256(target.parameters_hash, "parameters_hash")
+    _adr020_require_sha256(target.record_hash, "record_hash")
+
+    if not str(target.extractor_id or "").strip():
+        raise ValueError("ADR-020 extractor_id cannot be empty")
+    if not str(target.extractor_version or "").strip():
+        raise ValueError("ADR-020 extractor_version cannot be empty")
+    if target.attempt_number is None or target.attempt_number <= 0:
+        raise ValueError("ADR-020 attempt_number must be positive")
+
+    if not target.structured_content:
+        raise ValueError(
+            "ADR-020 ExtractionResult requires effective structured_content"
+        )
+
 def _adr020_reject_append_only_mutation(mapper, connection, target) -> None:
     raise RuntimeError(
         "ADR-020 append-only violation: update/delete is forbidden for "
@@ -1570,6 +2130,8 @@ _ADR020_INSERT_VALIDATORS = {
     AcquisitionExecution: _adr020_validate_acquisition_execution_insert,
     NormativeArtifact: _adr020_validate_normative_artifact_insert,
     ArtifactVerificationRecord: _adr020_validate_verification_insert,
+    ExtractionRun: _adr020_validate_extraction_run_insert,
+    ExtractionResult: _adr020_validate_extraction_result_insert,
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (
