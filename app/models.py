@@ -2623,6 +2623,143 @@ class CoverageCheckpointRecord(Base):
     record_hash = Column(String(64), nullable=False)
 
 
+class PolicyActivationExecution(Base):
+    """Immutable technical attempt to activate one exact policy version."""
+
+    __tablename__ = "policy_activation_executions"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activation_executions_exact_policy", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["policy_decision_id"], ["policy_decisions.decision_id"], name="fk_policy_activation_executions_exact_decision", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["bootstrap_authority_record_id"], ["bootstrap_authority_records.bootstrap_authority_record_id"], name="fk_policy_activation_executions_exact_bootstrap", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["activation_authority_policy_id", "activation_authority_policy_version", "activation_authority_policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activation_executions_exact_authority_policy", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["activation_authority_policy_activation_id"], ["policy_activations.policy_activation_id"], name="fk_policy_activation_executions_exact_authority_activation", ondelete="RESTRICT", use_alter=True),
+        ForeignKeyConstraint(["automation_envelope_id", "automation_envelope_version", "automation_envelope_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activation_executions_exact_envelope", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["automation_envelope_activation_id"], ["policy_activations.policy_activation_id"], name="fk_policy_activation_executions_exact_envelope_activation", ondelete="RESTRICT", use_alter=True),
+        UniqueConstraint("idempotency_key", name="uq_policy_activation_executions_idempotency"),
+        UniqueConstraint("record_hash", name="uq_policy_activation_executions_record_hash"),
+        CheckConstraint("state IN ('pendente','em_execucao','concluida','falhada','cancelada')", name="ck_policy_activation_executions_state"),
+        CheckConstraint("authorization_basis_type IN ('bootstrap_authority_record','active_policy_chain')", name="ck_policy_activation_executions_basis"),
+        CheckConstraint("authorization_class IN ('constitucional_reservada','humana_delegada','automatica_delegada')", name="ck_policy_activation_executions_class"),
+        CheckConstraint("execution_mode IN ('manual','automatico')", name="ck_policy_activation_executions_mode"),
+        CheckConstraint("attempt_number > 0 AND fencing_token > 0", name="ck_policy_activation_executions_positive"),
+        CheckConstraint("length(policy_hash)=64 AND length(record_hash)=64", name="ck_policy_activation_executions_hashes"),
+    )
+    policy_activation_execution_id = Column(String(64), primary_key=True)
+    policy_decision_id = Column(String(64), nullable=False)
+    policy_type = Column(String(32), nullable=False)
+    policy_id = Column(String(64), nullable=False)
+    policy_version = Column(Integer, nullable=False)
+    policy_hash = Column(String(64), nullable=False)
+    authorization_basis_type = Column(String(32), nullable=False)
+    authorization_class = Column(String(32), nullable=False)
+    execution_mode = Column(String(16), nullable=False)
+    bootstrap_authority_record_id = Column(String(64), nullable=True)
+    bootstrap_authority_record_hash = Column(String(64), nullable=True)
+    activation_authority_policy_id = Column(String(64), nullable=True)
+    activation_authority_policy_version = Column(Integer, nullable=True)
+    activation_authority_policy_hash = Column(String(64), nullable=True)
+    activation_authority_policy_activation_id = Column(String(64), nullable=True)
+    automation_envelope_id = Column(String(64), nullable=True)
+    automation_envelope_version = Column(Integer, nullable=True)
+    automation_envelope_hash = Column(String(64), nullable=True)
+    automation_envelope_activation_id = Column(String(64), nullable=True)
+    attempt_number = Column(Integer, nullable=False)
+    actor_or_worker = Column(String(255), nullable=False)
+    lease_id = Column(String(64), nullable=False)
+    fencing_token = Column(Integer, nullable=False)
+    idempotency_key = Column(String(255), nullable=False)
+    state = Column(String(16), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    structured_result = Column(JSON, nullable=True)
+    structured_error = Column(JSON, nullable=True)
+    provenance = Column(JSON, nullable=False)
+    record_hash = Column(String(64), nullable=False)
+
+
+class PolicyActivation(Base):
+    __tablename__ = "policy_activations"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_activation_execution_id"], ["policy_activation_executions.policy_activation_execution_id"], name="fk_policy_activations_execution", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["policy_decision_id"], ["policy_decisions.decision_id"], name="fk_policy_activations_decision", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activations_exact_policy", ondelete="RESTRICT"),
+        UniqueConstraint("record_hash", name="uq_policy_activations_record_hash"),
+        CheckConstraint("state IN ('activa','suspensa','desactivada','expirada','revogada')", name="ck_policy_activations_state"),
+        CheckConstraint("length(policy_hash)=64 AND length(record_hash)=64", name="ck_policy_activations_hashes"),
+    )
+    policy_activation_id = Column(String(64), primary_key=True)
+    policy_activation_execution_id = Column(String(64), nullable=False, unique=True)
+    policy_decision_id = Column(String(64), nullable=False)
+    policy_type = Column(String(32), nullable=False)
+    policy_id = Column(String(64), nullable=False)
+    policy_version = Column(Integer, nullable=False)
+    policy_hash = Column(String(64), nullable=False)
+    domain = Column(String(255), nullable=False)
+    modality = Column(String(64), nullable=False)
+    operational_interval = Column(JSON, nullable=False)
+    activation_generation_id = Column(String(64), nullable=False)
+    activated_at = Column(DateTime(timezone=True), nullable=False)
+    state = Column(String(16), nullable=False)
+    technical_actor = Column(String(255), nullable=False)
+    provenance = Column(JSON, nullable=False)
+    record_hash = Column(String(64), nullable=False)
+
+
+class ActivationDecision(Base):
+    __tablename__ = "activation_decisions"
+    __table_args__ = (
+        ForeignKeyConstraint(["previous_activation_decision_id"], ["activation_decisions.activation_decision_id"], name="fk_activation_decisions_previous", ondelete="RESTRICT"),
+        UniqueConstraint("idempotency_key", name="uq_activation_decisions_idempotency"), UniqueConstraint("record_hash", name="uq_activation_decisions_record_hash"),
+        CheckConstraint("decision_action IN ('activate','suspend','deactivate','expire','revoke')", name="ck_activation_decisions_action"),
+        CheckConstraint("decision_outcome IN ('approved','rejected','cancelled')", name="ck_activation_decisions_outcome"),
+        CheckConstraint("authorization_class IN ('constitucional_reservada','humana_delegada','automatica_delegada')", name="ck_activation_decisions_class"),
+        CheckConstraint("length(scope_hash)=64 AND length(target_manifest_hash)=64 AND length(record_hash)=64", name="ck_activation_decisions_hashes"),
+    )
+    activation_decision_id = Column(String(64), primary_key=True); decision_action = Column(String(16), nullable=False); decision_outcome = Column(String(16), nullable=False); authorization_class = Column(String(32), nullable=False)
+    actor = Column(String(255), nullable=False); institutional_role = Column(String(64), nullable=False); target_scope = Column(JSON, nullable=False); scope_hash = Column(String(64), nullable=False); target_manifest = Column(JSON, nullable=False); target_manifest_hash = Column(String(64), nullable=False)
+    authority_bindings = Column(JSON, nullable=False); policy_bindings = Column(JSON, nullable=False); coverage_binding = Column(JSON, nullable=False); continuity_binding = Column(JSON, nullable=False); precedence_binding = Column(JSON, nullable=False); gates_evidence = Column(JSON, nullable=False)
+    rationale = Column(Text, nullable=False); evidence = Column(JSON, nullable=False); previous_activation_decision_id = Column(String(64), nullable=True); timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now()); idempotency_key = Column(String(255), nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class ActivationExecution(Base):
+    __tablename__ = "activation_executions"
+    __table_args__ = (
+        ForeignKeyConstraint(["activation_decision_id", "activation_decision_record_hash"], ["activation_decisions.activation_decision_id", "activation_decisions.record_hash"], name="fk_activation_executions_exact_decision", ondelete="RESTRICT"),
+        UniqueConstraint("idempotency_key", name="uq_activation_executions_idempotency"), UniqueConstraint("record_hash", name="uq_activation_executions_record_hash"),
+        CheckConstraint("state IN ('pending','running','completed','failed','cancelled')", name="ck_activation_executions_state"), CheckConstraint("decision_outcome = 'approved'", name="ck_activation_executions_approved"),
+        CheckConstraint("decision_action IN ('activate','suspend','deactivate','expire','revoke')", name="ck_activation_executions_action"), CheckConstraint("authorization_class IN ('constitucional_reservada','humana_delegada','automatica_delegada')", name="ck_activation_executions_class"), CheckConstraint("execution_mode IN ('manual','automatico')", name="ck_activation_executions_mode"), CheckConstraint("authorization_class <> 'constitucional_reservada' OR execution_mode = 'manual'", name="ck_activation_executions_reserved_manual"), CheckConstraint("execution_mode <> 'automatico' OR authorization_class = 'automatica_delegada'", name="ck_activation_executions_automatic_class"), CheckConstraint("attempt_number > 0 AND fencing_token > 0", name="ck_activation_executions_positive"), CheckConstraint("length(activation_decision_record_hash)=64 AND length(scope_hash)=64 AND length(target_manifest_hash)=64 AND length(record_hash)=64", name="ck_activation_executions_hashes"),
+    )
+    activation_execution_id = Column(String(64), primary_key=True); activation_decision_id = Column(String(64), nullable=False); activation_decision_record_hash = Column(String(64), nullable=False); decision_outcome = Column(String(16), nullable=False); decision_action = Column(String(16), nullable=False); authorization_class = Column(String(32), nullable=False); execution_mode = Column(String(16), nullable=False); state = Column(String(16), nullable=False); scope_hash = Column(String(64), nullable=False); target_manifest_hash = Column(String(64), nullable=False); attempt_number = Column(Integer, nullable=False); actor_or_worker = Column(String(255), nullable=False); lease_id = Column(String(64), nullable=False); fencing_token = Column(Integer, nullable=False); idempotency_key = Column(String(255), nullable=False)
+    authority_bindings = Column(JSON, nullable=False); policy_bindings = Column(JSON, nullable=False); coverage_binding = Column(JSON, nullable=False); continuity_binding = Column(JSON, nullable=False); precedence_binding = Column(JSON, nullable=False); gates_evidence = Column(JSON, nullable=False); started_at = Column(DateTime(timezone=True), nullable=True); finished_at = Column(DateTime(timezone=True), nullable=True); structured_result = Column(JSON, nullable=True); structured_error = Column(JSON, nullable=True); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class NormativeActivation(Base):
+    __tablename__ = "normative_activations"
+    __table_args__ = (
+        ForeignKeyConstraint(["activation_decision_id", "activation_decision_record_hash"], ["activation_decisions.activation_decision_id", "activation_decisions.record_hash"], name="fk_normative_activations_exact_decision", ondelete="RESTRICT"), ForeignKeyConstraint(["activation_execution_id"], ["activation_executions.activation_execution_id"], name="fk_normative_activations_execution", ondelete="RESTRICT"),
+        UniqueConstraint("record_hash", name="uq_normative_activations_record_hash"), CheckConstraint("subject_type IN ('rule_version','normative_relation_version')", name="ck_normative_activations_subject_type"), CheckConstraint("state IN ('active','suspended','deactivated','expired','revoked')", name="ck_normative_activations_state"), CheckConstraint("length(activation_decision_record_hash)=64 AND length(subject_hash)=64 AND length(review_record_hash)=64 AND length(scope_hash)=64 AND length(record_hash)=64", name="ck_normative_activations_hashes"),
+    )
+    normative_activation_id = Column(String(64), primary_key=True); activation_decision_id = Column(String(64), nullable=False); activation_decision_record_hash = Column(String(64), nullable=False); activation_execution_id = Column(String(64), nullable=False); subject_type = Column(String(32), nullable=False); subject_id = Column(String(64), nullable=False); subject_version = Column(Integer, nullable=False); subject_hash = Column(String(64), nullable=False); review_record_id = Column(String(64), nullable=False); review_record_hash = Column(String(64), nullable=False); domain = Column(String(255), nullable=False); modality = Column(String(64), nullable=False); resolver_scope = Column(JSON, nullable=False); operational_interval = Column(JSON, nullable=False); scope_hash = Column(String(64), nullable=False); activation_generation_id = Column(String(64), nullable=False); activated_at = Column(DateTime(timezone=True), nullable=False); state = Column(String(16), nullable=False); technical_actor = Column(String(255), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class ActivationGeneration(Base):
+    __tablename__ = "activation_generations"
+    __table_args__ = (
+        ForeignKeyConstraint(["previous_activation_generation_id", "previous_activation_generation_record_hash"], ["activation_generations.activation_generation_id", "activation_generations.record_hash"], name="fk_activation_generations_previous", ondelete="RESTRICT"), ForeignKeyConstraint(["activation_execution_id"], ["activation_executions.activation_execution_id"], name="fk_activation_generations_execution", ondelete="RESTRICT"), ForeignKeyConstraint(["activation_decision_id", "activation_decision_record_hash"], ["activation_decisions.activation_decision_id", "activation_decisions.record_hash"], name="fk_activation_generations_exact_decision", ondelete="RESTRICT"),
+        UniqueConstraint("record_hash", name="uq_activation_generations_record_hash"), UniqueConstraint("scope_hash", "composition_hash", name="uq_activation_generations_content"), CheckConstraint("length(scope_hash)=64 AND length(composition_hash)=64 AND length(target_manifest_hash)=64 AND length(record_hash)=64", name="ck_activation_generations_hashes"),
+    )
+    activation_generation_id = Column(String(64), primary_key=True); previous_activation_generation_id = Column(String(64), nullable=True); previous_activation_generation_record_hash = Column(String(64), nullable=True); activation_execution_id = Column(String(64), nullable=False, unique=True); activation_decision_id = Column(String(64), nullable=False); activation_decision_record_hash = Column(String(64), nullable=False); target_manifest_hash = Column(String(64), nullable=False); scope_descriptor = Column(JSON, nullable=False); scope_hash = Column(String(64), nullable=False); composition_manifest = Column(JSON, nullable=False); composition_hash = Column(String(64), nullable=False); policy_bindings = Column(JSON, nullable=False); coverage_binding = Column(JSON, nullable=False); continuity_binding = Column(JSON, nullable=False); precedence_binding = Column(JSON, nullable=False); gates_evidence = Column(JSON, nullable=False); is_complete = Column(Boolean, nullable=False); created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now()); effective_from = Column(DateTime(timezone=True), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class OutboxEventRecord(Base):
+    __tablename__ = "outbox_event_records"
+    __table_args__ = (
+        ForeignKeyConstraint(["activation_execution_id"], ["activation_executions.activation_execution_id"], name="fk_outbox_event_records_execution", ondelete="RESTRICT"), ForeignKeyConstraint(["activation_generation_id"], ["activation_generations.activation_generation_id"], name="fk_outbox_event_records_generation", ondelete="RESTRICT"), ForeignKeyConstraint(["activation_decision_id"], ["activation_decisions.activation_decision_id"], name="fk_outbox_event_records_decision", ondelete="RESTRICT"),
+        UniqueConstraint("record_hash", name="uq_outbox_event_records_record_hash"), CheckConstraint("event_type IN ('activation_completed','activation_invalidated')", name="ck_outbox_event_records_type"), CheckConstraint("length(scope_hash)=64 AND length(composition_hash)=64 AND length(payload_hash)=64 AND length(record_hash)=64", name="ck_outbox_event_records_hashes"),
+    )
+    outbox_event_id = Column(String(64), primary_key=True); event_type = Column(String(32), nullable=False); activation_execution_id = Column(String(64), nullable=False); activation_generation_id = Column(String(64), nullable=False); activation_decision_id = Column(String(64), nullable=False); scope_hash = Column(String(64), nullable=False); composition_hash = Column(String(64), nullable=False); payload = Column(JSON, nullable=False); payload_hash = Column(String(64), nullable=False); provenance = Column(JSON, nullable=False); created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now()); record_hash = Column(String(64), nullable=False)
+
+
 def _adr020_validate_artifact_reference_insert(mapper, connection, target) -> None:
     _adr020_require_sha256(target.record_hash, "record_hash")
     if target.reference_event not in _ARTIFACT_REFERENCE_EVENTS:
@@ -3365,6 +3502,76 @@ def _adr020_reject_append_only_mutation(mapper, connection, target) -> None:
     )
 
 
+def _adr020_require_exact_bindings(target) -> None:
+    for field_name in ("authority_bindings", "policy_bindings", "coverage_binding", "continuity_binding", "precedence_binding", "gates_evidence"):
+        value = getattr(target, field_name, None)
+        if value is None:
+            raise ValueError(f"ADR-020 requires exact {field_name}")
+        if any(word in str(value).lower() for word in ("current", "latest", "newest", "corrente", "mais_recente")):
+            raise ValueError("ADR-020 floating reference is forbidden")
+
+
+def _adr020_validate_policy_activation_execution_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.policy_hash, "policy_hash"); _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.state not in {"pendente", "em_execucao", "concluida", "falhada", "cancelada"}: raise ValueError("ADR-020 invalid policy activation execution state")
+    if target.attempt_number <= 0 or target.fencing_token <= 0: raise ValueError("ADR-020 retry requires a new positive attempt")
+    if target.authorization_basis_type == "bootstrap_authority_record":
+        if not target.bootstrap_authority_record_id or not target.bootstrap_authority_record_hash: raise ValueError("ADR-020 exact bootstrap authority required")
+        _adr020_require_sha256(target.bootstrap_authority_record_hash, "bootstrap_authority_record_hash")
+    elif target.authorization_basis_type == "active_policy_chain":
+        for name in ("activation_authority_policy_id", "activation_authority_policy_version", "activation_authority_policy_hash", "activation_authority_policy_activation_id"):
+            if getattr(target, name, None) in (None, ""): raise ValueError("ADR-020 delegated activation requires exact active superior PolicyActivation")
+        _adr020_require_sha256(target.activation_authority_policy_hash, "activation_authority_policy_hash")
+    else: raise ValueError("ADR-020 invalid authorization basis")
+    if target.execution_mode == "automatico":
+        for name in ("automation_envelope_id", "automation_envelope_version", "automation_envelope_hash", "automation_envelope_activation_id"):
+            if getattr(target, name, None) in (None, ""): raise ValueError("ADR-020 automatic activation requires exact active automation_envelope")
+        _adr020_require_sha256(target.automation_envelope_hash, "automation_envelope_hash")
+    if target.state in {"concluida", "falhada", "cancelada"} and target.finished_at is None: raise ValueError("ADR-020 terminal execution requires finished_at")
+    if target.state == "concluida" and target.structured_result is None: raise ValueError("ADR-020 completed execution requires atomic result")
+
+
+def _adr020_validate_policy_activation_insert(mapper, connection, target) -> None:
+    _adr020_require_sha256(target.policy_hash, "policy_hash"); _adr020_require_sha256(target.record_hash, "record_hash")
+    if target.state not in {"activa", "suspensa", "desactivada", "expirada", "revogada"}: raise ValueError("ADR-020 invalid PolicyActivation state")
+
+
+def _adr020_validate_activation_decision_insert(mapper, connection, target) -> None:
+    for name in ("scope_hash", "target_manifest_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.decision_outcome not in {"approved", "rejected", "cancelled"}: raise ValueError("ADR-020 invalid activation decision outcome")
+    _adr020_require_exact_bindings(target)
+    if target.decision_action == "activate":
+        if not target.target_manifest or any(item.get("review_outcome") != "validada" for item in target.target_manifest): raise ValueError("ADR-020 activation requires favorable exact review")
+
+
+def _adr020_validate_activation_execution_insert(mapper, connection, target) -> None:
+    for name in ("activation_decision_record_hash", "scope_hash", "target_manifest_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.decision_outcome != "approved": raise ValueError("ADR-020 rejected or cancelled decision cannot be executed")
+    if target.authorization_class == "constitucional_reservada" and target.execution_mode != "manual": raise ValueError("ADR-020 reserved activation is manual")
+    if target.execution_mode == "automatico" and target.authorization_class != "automatica_delegada": raise ValueError("ADR-020 automatic execution requires delegated automation")
+    if target.attempt_number <= 0 or target.fencing_token <= 0: raise ValueError("ADR-020 retry requires new execution attempt")
+    _adr020_require_exact_bindings(target)
+    if target.state in {"completed", "failed", "cancelled"} and target.finished_at is None: raise ValueError("ADR-020 terminal execution requires finished_at")
+    if target.state == "completed" and target.structured_result is None: raise ValueError("ADR-020 completed execution requires atomic result")
+
+
+def _adr020_validate_normative_activation_insert(mapper, connection, target) -> None:
+    for name in ("activation_decision_record_hash", "subject_hash", "review_record_hash", "scope_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.state not in {"active", "suspended", "deactivated", "expired", "revoked"}: raise ValueError("ADR-020 invalid NormativeActivation state")
+
+
+def _adr020_validate_activation_generation_insert(mapper, connection, target) -> None:
+    for name in ("activation_decision_record_hash", "target_manifest_hash", "scope_hash", "composition_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if not target.is_complete or not isinstance(target.composition_manifest, list): raise ValueError("ADR-020 partial generation is forbidden")
+    if target.previous_activation_generation_id is None != (target.previous_activation_generation_record_hash is None): raise ValueError("ADR-020 previous generation identity and hash must be exact")
+    _adr020_require_exact_bindings(target)
+
+
+def _adr020_validate_outbox_event_insert(mapper, connection, target) -> None:
+    for name in ("scope_hash", "composition_hash", "payload_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.event_type not in {"activation_completed", "activation_invalidated"}: raise ValueError("ADR-020 invalid outbox event type")
+
+
 _ADR020_INSERT_VALIDATORS = {
     ArtifactReference: _adr020_validate_artifact_reference_insert,
     AcquisitionExecution: _adr020_validate_acquisition_execution_insert,
@@ -3386,6 +3593,13 @@ _ADR020_INSERT_VALIDATORS = {
     CoverageContract: _adr020_validate_coverage_contract_insert,
     CoverageLedgerEntry: _adr020_validate_coverage_ledger_insert,
     CoverageCheckpointRecord: _adr020_validate_coverage_checkpoint_insert,
+    PolicyActivationExecution: _adr020_validate_policy_activation_execution_insert,
+    PolicyActivation: _adr020_validate_policy_activation_insert,
+    ActivationDecision: _adr020_validate_activation_decision_insert,
+    ActivationExecution: _adr020_validate_activation_execution_insert,
+    NormativeActivation: _adr020_validate_normative_activation_insert,
+    ActivationGeneration: _adr020_validate_activation_generation_insert,
+    OutboxEventRecord: _adr020_validate_outbox_event_insert,
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (
