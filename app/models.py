@@ -2751,6 +2751,48 @@ class ActivationGeneration(Base):
     activation_generation_id = Column(String(64), primary_key=True); previous_activation_generation_id = Column(String(64), nullable=True); previous_activation_generation_record_hash = Column(String(64), nullable=True); activation_execution_id = Column(String(64), nullable=False, unique=True); activation_decision_id = Column(String(64), nullable=False); activation_decision_record_hash = Column(String(64), nullable=False); target_manifest_hash = Column(String(64), nullable=False); scope_descriptor = Column(JSON, nullable=False); scope_hash = Column(String(64), nullable=False); composition_manifest = Column(JSON, nullable=False); composition_hash = Column(String(64), nullable=False); policy_bindings = Column(JSON, nullable=False); coverage_binding = Column(JSON, nullable=False); continuity_binding = Column(JSON, nullable=False); precedence_binding = Column(JSON, nullable=False); gates_evidence = Column(JSON, nullable=False); is_complete = Column(Boolean, nullable=False); created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now()); effective_from = Column(DateTime(timezone=True), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
 
 
+class GenerationFenceRecord(Base):
+    __tablename__ = "generation_fence_records"
+    __table_args__ = (
+        ForeignKeyConstraint(["activation_generation_id", "activation_generation_record_hash"], ["activation_generations.activation_generation_id", "activation_generations.record_hash"], name="fk_generation_fences_exact_generation", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["activation_execution_id", "activation_execution_record_hash"], ["activation_executions.activation_execution_id", "activation_executions.record_hash"], name="fk_generation_fences_exact_execution", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["previous_generation_fence_record_id", "previous_generation_fence_record_hash"], ["generation_fence_records.generation_fence_record_id", "generation_fence_records.record_hash"], name="fk_generation_fences_exact_previous", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["source_event_id", "source_event_record_hash"], ["outbox_event_records.outbox_event_id", "outbox_event_records.record_hash"], name="fk_generation_fences_exact_source_event", ondelete="RESTRICT"),
+        UniqueConstraint("generation_fence_record_id", "record_hash", name="uq_generation_fences_exact"), UniqueConstraint("scope_hash", "generation_sequence", name="uq_generation_fences_scope_sequence"), UniqueConstraint("previous_generation_fence_record_id", name="uq_generation_fences_successor"), UniqueConstraint("scope_hash", "fencing_token", name="uq_generation_fences_scope_token"),
+        CheckConstraint("generation_sequence > 0 AND fencing_token > 0", name="ck_generation_fences_positive"), CheckConstraint("length(scope_hash)=64 AND length(activation_generation_record_hash)=64 AND length(activation_execution_record_hash)=64 AND length(publisher_lease_record_hash)=64 AND length(composition_hash)=64 AND length(source_event_record_hash)=64 AND length(record_hash)=64", name="ck_generation_fences_hashes"),
+    )
+    generation_fence_record_id = Column(String(64), primary_key=True); scope_hash = Column(String(64), nullable=False); generation_sequence = Column(Integer, nullable=False); fencing_token = Column(Integer, nullable=False); activation_generation_id = Column(String(64), nullable=False); activation_generation_record_hash = Column(String(64), nullable=False); activation_execution_id = Column(String(64), nullable=False); activation_execution_record_hash = Column(String(64), nullable=False); publisher_lease_id = Column(String(64), nullable=False); publisher_lease_record_hash = Column(String(64), nullable=False); composition_hash = Column(String(64), nullable=False); previous_generation_fence_record_id = Column(String(64), nullable=True); previous_generation_fence_record_hash = Column(String(64), nullable=True); source_event_id = Column(String(64), nullable=False); source_event_record_hash = Column(String(64), nullable=False); published_at = Column(DateTime(timezone=True), nullable=False); publisher = Column(String(255), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class ConsumerContractVersion(Base):
+    __tablename__ = "consumer_contract_versions"
+    __table_args__ = (
+        UniqueConstraint("consumer_id", "consumer_contract_version", "consumer_contract_hash", name="uq_consumer_contracts_exact"), UniqueConstraint("record_hash", name="uq_consumer_contracts_record_hash"),
+        CheckConstraint("consumer_contract_version > 0 AND supported_protocol_version > 0 AND supported_generation_schema_version > 0", name="ck_consumer_contracts_versions_positive"), CheckConstraint("consumer_type IN ('service','replica','batch','interactive')", name="ck_consumer_contracts_type"), CheckConstraint("length(consumer_contract_hash)=64 AND length(allowed_scope_hash)=64 AND length(record_hash)=64", name="ck_consumer_contracts_hashes"),
+    )
+    consumer_id = Column(String(64), primary_key=True); consumer_contract_version = Column(Integer, primary_key=True); consumer_contract_hash = Column(String(64), nullable=False); consumer_type = Column(String(16), nullable=False); supported_protocol_version = Column(Integer, nullable=False); supported_generation_schema_version = Column(Integer, nullable=False); allowed_scope_descriptor = Column(JSON, nullable=False); allowed_scope_hash = Column(String(64), nullable=False); compatibility_rules = Column(JSON, nullable=False); freshness_policy_binding = Column(JSON, nullable=False); security_policy_binding = Column(JSON, nullable=False); created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now()); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class ConsumerApplicationRecord(Base):
+    __tablename__ = "consumer_application_records"
+    __table_args__ = (
+        ForeignKeyConstraint(["consumer_id", "consumer_contract_version", "consumer_contract_hash"], ["consumer_contract_versions.consumer_id", "consumer_contract_versions.consumer_contract_version", "consumer_contract_versions.consumer_contract_hash"], name="fk_consumer_applications_exact_contract", ondelete="RESTRICT"), ForeignKeyConstraint(["generation_fence_record_id", "generation_fence_record_hash"], ["generation_fence_records.generation_fence_record_id", "generation_fence_records.record_hash"], name="fk_consumer_applications_exact_fence", ondelete="RESTRICT"), ForeignKeyConstraint(["activation_generation_id", "activation_generation_record_hash"], ["activation_generations.activation_generation_id", "activation_generations.record_hash"], name="fk_consumer_applications_exact_generation", ondelete="RESTRICT"), ForeignKeyConstraint(["previous_replica_checkpoint_record_id", "previous_replica_checkpoint_record_hash"], ["replica_checkpoint_records.replica_checkpoint_record_id", "replica_checkpoint_records.record_hash"], name="fk_consumer_applications_exact_previous_checkpoint", ondelete="RESTRICT", use_alter=True), ForeignKeyConstraint(["duplicate_of_consumer_application_record_id", "duplicate_of_consumer_application_record_hash"], ["consumer_application_records.consumer_application_record_id", "consumer_application_records.record_hash"], name="fk_consumer_applications_exact_duplicate", ondelete="RESTRICT"), ForeignKeyConstraint(["duplicate_of_replica_checkpoint_record_id", "duplicate_of_replica_checkpoint_record_hash"], ["replica_checkpoint_records.replica_checkpoint_record_id", "replica_checkpoint_records.record_hash"], name="fk_consumer_applications_exact_duplicate_checkpoint", ondelete="RESTRICT", use_alter=True),
+        UniqueConstraint("consumer_application_record_id", "record_hash", name="uq_consumer_applications_exact"), UniqueConstraint("consumer_id", "replica_id", "replica_instance_id", "attempt_number", name="uq_consumer_applications_attempt"),
+        CheckConstraint("attempt_number > 0 AND generation_sequence > 0 AND fencing_token > 0", name="ck_consumer_applications_positive"), CheckConstraint("application_result IN ('pending','validating','applied','duplicate_exact','rejected_stale','rejected_gap','rejected_divergent','rejected_incompatible','failed','cancelled')", name="ck_consumer_applications_result"), CheckConstraint("length(consumer_contract_hash)=64 AND length(scope_hash)=64 AND length(generation_fence_record_hash)=64 AND length(activation_generation_record_hash)=64 AND length(composition_hash)=64 AND length(record_hash)=64", name="ck_consumer_applications_hashes"),
+    )
+    consumer_application_record_id = Column(String(64), primary_key=True); consumer_id = Column(String(64), nullable=False); replica_id = Column(String(64), nullable=False); replica_instance_id = Column(String(64), nullable=False); consumer_contract_version = Column(Integer, nullable=False); consumer_contract_hash = Column(String(64), nullable=False); scope_hash = Column(String(64), nullable=False); generation_fence_record_id = Column(String(64), nullable=False); generation_fence_record_hash = Column(String(64), nullable=False); generation_sequence = Column(Integer, nullable=False); fencing_token = Column(Integer, nullable=False); activation_generation_id = Column(String(64), nullable=False); activation_generation_record_hash = Column(String(64), nullable=False); composition_hash = Column(String(64), nullable=False); previous_replica_checkpoint_record_id = Column(String(64), nullable=True); previous_replica_checkpoint_record_hash = Column(String(64), nullable=True); duplicate_of_consumer_application_record_id = Column(String(64), nullable=True); duplicate_of_consumer_application_record_hash = Column(String(64), nullable=True); duplicate_of_replica_checkpoint_record_id = Column(String(64), nullable=True); duplicate_of_replica_checkpoint_record_hash = Column(String(64), nullable=True); attempt_number = Column(Integer, nullable=False); application_result = Column(String(32), nullable=False); started_at = Column(DateTime(timezone=True), nullable=False); finished_at = Column(DateTime(timezone=True), nullable=True); structured_result = Column(JSON, nullable=True); structured_error = Column(JSON, nullable=True); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class ReplicaCheckpointRecord(Base):
+    __tablename__ = "replica_checkpoint_records"
+    __table_args__ = (
+        ForeignKeyConstraint(["consumer_application_record_id", "consumer_application_record_hash"], ["consumer_application_records.consumer_application_record_id", "consumer_application_records.record_hash"], name="fk_replica_checkpoints_exact_application", ondelete="RESTRICT"), ForeignKeyConstraint(["consumer_id", "consumer_contract_version", "consumer_contract_hash"], ["consumer_contract_versions.consumer_id", "consumer_contract_versions.consumer_contract_version", "consumer_contract_versions.consumer_contract_hash"], name="fk_replica_checkpoints_exact_contract", ondelete="RESTRICT"), ForeignKeyConstraint(["generation_fence_record_id", "generation_fence_record_hash"], ["generation_fence_records.generation_fence_record_id", "generation_fence_records.record_hash"], name="fk_replica_checkpoints_exact_fence", ondelete="RESTRICT"), ForeignKeyConstraint(["activation_generation_id", "activation_generation_record_hash"], ["activation_generations.activation_generation_id", "activation_generations.record_hash"], name="fk_replica_checkpoints_exact_generation", ondelete="RESTRICT"), ForeignKeyConstraint(["previous_replica_checkpoint_record_id", "previous_replica_checkpoint_record_hash"], ["replica_checkpoint_records.replica_checkpoint_record_id", "replica_checkpoint_records.record_hash"], name="fk_replica_checkpoints_exact_previous", ondelete="RESTRICT"),
+        UniqueConstraint("replica_checkpoint_record_id", "record_hash", name="uq_replica_checkpoints_exact"), UniqueConstraint("consumer_application_record_id", name="uq_replica_checkpoints_application"), UniqueConstraint("previous_replica_checkpoint_record_id", name="uq_replica_checkpoints_successor"), UniqueConstraint("consumer_id", "replica_id", "replica_instance_id", "scope_hash", "generation_sequence", name="uq_replica_checkpoints_sequence"),
+        CheckConstraint("generation_sequence > 0 AND fencing_token > 0", name="ck_replica_checkpoints_positive"), CheckConstraint("length(consumer_contract_hash)=64 AND length(scope_hash)=64 AND length(generation_fence_record_hash)=64 AND length(activation_generation_record_hash)=64 AND length(composition_hash)=64 AND length(record_hash)=64", name="ck_replica_checkpoints_hashes"),
+    )
+    replica_checkpoint_record_id = Column(String(64), primary_key=True); consumer_application_record_id = Column(String(64), nullable=False); consumer_application_record_hash = Column(String(64), nullable=False); consumer_id = Column(String(64), nullable=False); replica_id = Column(String(64), nullable=False); replica_instance_id = Column(String(64), nullable=False); consumer_contract_version = Column(Integer, nullable=False); consumer_contract_hash = Column(String(64), nullable=False); scope_hash = Column(String(64), nullable=False); generation_fence_record_id = Column(String(64), nullable=False); generation_fence_record_hash = Column(String(64), nullable=False); generation_sequence = Column(Integer, nullable=False); fencing_token = Column(Integer, nullable=False); activation_generation_id = Column(String(64), nullable=False); activation_generation_record_hash = Column(String(64), nullable=False); composition_hash = Column(String(64), nullable=False); previous_replica_checkpoint_record_id = Column(String(64), nullable=True); previous_replica_checkpoint_record_hash = Column(String(64), nullable=True); applied_at = Column(DateTime(timezone=True), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
 class CredentialBindingVersion(Base):
     __tablename__ = "credential_binding_versions"
     __table_args__ = (UniqueConstraint("credential_binding_id", "credential_binding_version", name="uq_credential_binding_versions_identity"), UniqueConstraint("credential_binding_id", "credential_binding_version", "credential_binding_hash", name="uq_credential_binding_versions_exact"), UniqueConstraint("record_hash"), CheckConstraint("credential_binding_version > 0"), CheckConstraint("valid_until IS NULL OR valid_until > valid_from"))
@@ -3672,6 +3714,101 @@ def _adr020_validate_sanitization_verification_insert(mapper, connection, target
     _adr020_reject_sensitive_material(target.violation_manifest, "violation_manifest")
 
 
+def _adr020_exact_pair(target, identity_name, hash_name, label) -> None:
+    identity = getattr(target, identity_name, None)
+    digest = getattr(target, hash_name, None)
+    if (identity is None) != (digest is None):
+        raise ValueError(f"ADR-020 {label} ID/hash must be exact")
+    if digest is not None:
+        _adr020_require_sha256(digest, hash_name)
+
+
+def _adr020_validate_generation_fence_insert(mapper, connection, target) -> None:
+    for name in ("scope_hash", "activation_generation_record_hash", "activation_execution_record_hash", "publisher_lease_record_hash", "composition_hash", "source_event_record_hash", "record_hash"):
+        _adr020_require_sha256(getattr(target, name), name)
+    _adr020_exact_pair(target, "previous_generation_fence_record_id", "previous_generation_fence_record_hash", "fence predecessor")
+    if target.generation_sequence <= 0 or target.fencing_token <= 0:
+        raise ValueError("ADR-020 fence sequence and fencing token must be positive")
+    previous_sequence = getattr(target, "previous_generation_sequence", None)
+    previous_token = getattr(target, "previous_fencing_token", None)
+    first = target.previous_generation_fence_record_id is None
+    if first and target.generation_sequence != 1:
+        raise ValueError("ADR-020 first fence sequence must be exactly 1")
+    if not first and previous_sequence is not None and target.generation_sequence != previous_sequence + 1:
+        raise ValueError("ADR-020 fence sequence must be contiguous")
+    if not first and previous_token is not None and target.fencing_token <= previous_token:
+        raise ValueError("ADR-020 stale or divergent fencing token")
+    if getattr(target, "activation_generation_is_complete", True) is not True:
+        raise ValueError("ADR-020 incomplete generation cannot be fenced")
+    if getattr(target, "activation_execution_state", "completed") != "completed":
+        raise ValueError("ADR-020 fence requires completed activation execution")
+    for own, exact in (("scope_hash", "activation_generation_scope_hash"), ("composition_hash", "activation_generation_composition_hash"), ("activation_execution_id", "activation_generation_execution_id")):
+        expected = getattr(target, exact, getattr(target, own))
+        if getattr(target, own) != expected:
+            raise ValueError("ADR-020 fence and generation binding diverge")
+
+
+def _adr020_validate_consumer_contract_insert(mapper, connection, target) -> None:
+    for name in ("consumer_contract_hash", "allowed_scope_hash", "record_hash"):
+        _adr020_require_sha256(getattr(target, name), name)
+    if target.consumer_contract_version <= 0 or target.supported_protocol_version <= 0 or target.supported_generation_schema_version <= 0:
+        raise ValueError("ADR-020 consumer contract versions must be positive")
+    if target.consumer_type not in {"service", "replica", "batch", "interactive"}:
+        raise ValueError("ADR-020 invalid consumer type")
+    for name in ("allowed_scope_descriptor", "compatibility_rules", "freshness_policy_binding", "security_policy_binding", "provenance"):
+        value = getattr(target, name, None)
+        if value is None:
+            raise ValueError(f"ADR-020 consumer contract requires {name}")
+        if any(word in str(value).lower() for word in ("current", "latest", "newest", "corrente", "mais_recente")):
+            raise ValueError("ADR-020 floating consumer contract reference is forbidden")
+    required_policy = {"policy_type", "policy_id", "policy_version", "policy_hash", "policy_activation_id", "policy_activation_record_hash"}
+    for name in ("freshness_policy_binding", "security_policy_binding"):
+        if not isinstance(getattr(target, name), dict) or not required_policy.issubset(getattr(target, name)):
+            raise ValueError("ADR-020 exact active consumer policy binding is required")
+
+
+def _adr020_validate_consumer_application_insert(mapper, connection, target) -> None:
+    for name in ("consumer_contract_hash", "scope_hash", "generation_fence_record_hash", "activation_generation_record_hash", "composition_hash", "record_hash"):
+        _adr020_require_sha256(getattr(target, name), name)
+    for identity, digest, label in (("previous_replica_checkpoint_record_id", "previous_replica_checkpoint_record_hash", "checkpoint predecessor"), ("duplicate_of_consumer_application_record_id", "duplicate_of_consumer_application_record_hash", "duplicate application"), ("duplicate_of_replica_checkpoint_record_id", "duplicate_of_replica_checkpoint_record_hash", "duplicate checkpoint")):
+        _adr020_exact_pair(target, identity, digest, label)
+    if target.attempt_number <= 0 or target.generation_sequence <= 0 or target.fencing_token <= 0:
+        raise ValueError("ADR-020 application attempt, sequence and fence must be positive")
+    terminal = {"applied", "duplicate_exact", "rejected_stale", "rejected_gap", "rejected_divergent", "rejected_incompatible", "failed", "cancelled"}
+    if target.application_result in terminal and target.finished_at is None:
+        raise ValueError("ADR-020 terminal application requires finished_at")
+    duplicate_fields = (target.duplicate_of_consumer_application_record_id, target.duplicate_of_replica_checkpoint_record_id)
+    if (target.application_result == "duplicate_exact") != all(value is not None for value in duplicate_fields):
+        raise ValueError("ADR-020 duplicate_exact requires exact prior application and checkpoint")
+    if target.application_result == "applied":
+        if not isinstance(target.structured_result, dict) or target.structured_result.get("application_complete") is not True:
+            raise ValueError("ADR-020 partial application is forbidden")
+    for own, exact in (("scope_hash", "contract_allowed_scope_hash"), ("scope_hash", "fence_scope_hash"), ("generation_sequence", "fence_generation_sequence"), ("fencing_token", "fence_fencing_token"), ("activation_generation_id", "fence_activation_generation_id"), ("activation_generation_record_hash", "fence_activation_generation_record_hash"), ("composition_hash", "fence_composition_hash")):
+        expected = getattr(target, exact, getattr(target, own))
+        if getattr(target, own) != expected:
+            raise ValueError("ADR-020 incompatible contract, fence or generation")
+
+
+def _adr020_validate_replica_checkpoint_insert(mapper, connection, target) -> None:
+    for name in ("consumer_application_record_hash", "consumer_contract_hash", "scope_hash", "generation_fence_record_hash", "activation_generation_record_hash", "composition_hash", "record_hash"):
+        _adr020_require_sha256(getattr(target, name), name)
+    _adr020_exact_pair(target, "previous_replica_checkpoint_record_id", "previous_replica_checkpoint_record_hash", "replica checkpoint predecessor")
+    if target.generation_sequence <= 0 or target.fencing_token <= 0:
+        raise ValueError("ADR-020 replica checkpoint sequence and fence must be positive")
+    if getattr(target, "consumer_application_result", "applied") != "applied" or getattr(target, "consumer_application_complete", True) is not True:
+        raise ValueError("ADR-020 checkpoint requires an exact integral applied application")
+    previous_sequence = getattr(target, "previous_generation_sequence", None)
+    first = target.previous_replica_checkpoint_record_id is None
+    if first and target.generation_sequence != 1:
+        raise ValueError("ADR-020 first replica checkpoint must be explicitly sequence 1")
+    if not first and previous_sequence is not None and target.generation_sequence != previous_sequence + 1:
+        raise ValueError("ADR-020 replica checkpoint sequence must be contiguous")
+    for own, exact in (("consumer_id", "application_consumer_id"), ("replica_id", "application_replica_id"), ("replica_instance_id", "application_replica_instance_id"), ("consumer_contract_version", "application_consumer_contract_version"), ("consumer_contract_hash", "application_consumer_contract_hash"), ("scope_hash", "application_scope_hash"), ("generation_fence_record_id", "application_generation_fence_record_id"), ("generation_fence_record_hash", "application_generation_fence_record_hash"), ("generation_sequence", "application_generation_sequence"), ("fencing_token", "application_fencing_token"), ("activation_generation_id", "application_activation_generation_id"), ("activation_generation_record_hash", "application_activation_generation_record_hash"), ("composition_hash", "application_composition_hash")):
+        expected = getattr(target, exact, getattr(target, own))
+        if getattr(target, own) != expected:
+            raise ValueError("ADR-020 divergent replica checkpoint is forbidden")
+
+
 _ADR020_INSERT_VALIDATORS = {
     ArtifactReference: _adr020_validate_artifact_reference_insert,
     AcquisitionExecution: _adr020_validate_acquisition_execution_insert,
@@ -3706,6 +3843,10 @@ _ADR020_INSERT_VALIDATORS = {
     CredentialUseRecord: _adr020_validate_credential_use_insert,
     SanitizedAcquisitionReceipt: _adr020_validate_receipt_insert,
     SanitizationVerificationRecord: _adr020_validate_sanitization_verification_insert,
+    GenerationFenceRecord: _adr020_validate_generation_fence_insert,
+    ConsumerContractVersion: _adr020_validate_consumer_contract_insert,
+    ConsumerApplicationRecord: _adr020_validate_consumer_application_insert,
+    ReplicaCheckpointRecord: _adr020_validate_replica_checkpoint_insert,
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (

@@ -113,10 +113,6 @@ def test_no_implicit_authority_or_later_commit_entities():
     assert "current_policy" not in source
     assert "latest_policy" not in source
     for entity in (
-        "GenerationFenceRecord",
-        "ConsumerContractVersion",
-        "ConsumerApplicationRecord",
-        "ReplicaCheckpointRecord",
         "CalculationBundle",
         "CalculationExecutionRecord",
         "CalculationResultRecord",
@@ -126,8 +122,6 @@ def test_no_implicit_authority_or_later_commit_entities():
         assert not hasattr(models, entity)
     assert not re.search(
         r"class\s+("
-        r"GenerationFenceRecord|ConsumerContractVersion|"
-        r"ConsumerApplicationRecord|ReplicaCheckpointRecord|"
         r"CalculationBundle|CalculationExecutionRecord|"
         r"CalculationResultRecord|ReplayExecutionRecord|"
         r"ReplayVerificationRecord"

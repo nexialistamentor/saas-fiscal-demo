@@ -22,7 +22,7 @@ TABLES = (
 
 def test_six_exact_models_and_tables():
     assert tuple(getattr(models, name).__tablename__ for name in ENTITIES) == TABLES
-    assert not any(hasattr(models, name) for name in ("GenerationFenceRecord", "ConsumerContractVersion", "ConsumerApplicationRecord", "ReplicaCheckpointRecord", "CalculationBundle"))
+    assert not hasattr(models, "CalculationBundle")
 
 
 def test_migration_lineage_postgresql_jsonb_and_irreversibility():
@@ -79,5 +79,5 @@ def test_no_operational_or_floating_resolution_implementation():
     source = (MIGRATION.read_text(encoding="utf-8") + Path(models.__file__).read_text(encoding="utf-8")).lower()
     for forbidden in ("boto3", "aws secrets", "azure key vault", "hashicorp vault", "requests.get", "httpx", "scheduler", "worker endpoint"):
         assert forbidden not in source
-    for entity in ("GenerationFenceRecord", "ConsumerContractVersion", "ConsumerApplicationRecord", "ReplicaCheckpointRecord", "CalculationBundle"):
+    for entity in ("CalculationBundle",):
         assert f"class {entity.lower()}" not in source
