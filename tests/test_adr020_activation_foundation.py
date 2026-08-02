@@ -58,6 +58,18 @@ def test_generation_is_integral_content_addressed_and_normative_activation_insuf
     assert "is_complete" not in cols(models.NormativeActivation)
     g=SimpleNamespace(activation_decision_record_hash="a"*64,target_manifest_hash="b"*64,scope_hash="c"*64,composition_hash="d"*64,record_hash="e"*64,is_complete=False,composition_manifest=[],previous_activation_generation_id=None,previous_activation_generation_record_hash=None,authority_bindings={},policy_bindings=[],coverage_binding={},continuity_binding={},precedence_binding={},gates_evidence=[])
     with pytest.raises(ValueError,match="partial generation"): models._adr020_validate_activation_generation_insert(None,None,g)
+    g.is_complete=True
+    g.composition_manifest=[{"subject_hash":"f"*64}]
+    models._adr020_validate_activation_generation_insert(None,None,g)
+
+    g.previous_activation_generation_id="generation-0"
+    with pytest.raises(ValueError,match="identity and hash"):
+        models._adr020_validate_activation_generation_insert(None,None,g)
+
+    g.previous_activation_generation_id=None
+    g.previous_activation_generation_record_hash="f"*64
+    with pytest.raises(ValueError,match="identity and hash"):
+        models._adr020_validate_activation_generation_insert(None,None,g)
 
 def test_outbox_exact_immutable_contract_has_no_delivery_state():
     required={"outbox_event_id","event_type","activation_execution_id","activation_generation_id","activation_decision_id","scope_hash","composition_hash","payload","payload_hash","provenance","created_at","record_hash"}

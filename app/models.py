@@ -3678,7 +3678,7 @@ def _adr020_validate_normative_activation_insert(mapper, connection, target) -> 
 def _adr020_validate_activation_generation_insert(mapper, connection, target) -> None:
     for name in ("activation_decision_record_hash", "target_manifest_hash", "scope_hash", "composition_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
     if not target.is_complete or not isinstance(target.composition_manifest, list): raise ValueError("ADR-020 partial generation is forbidden")
-    if target.previous_activation_generation_id is None != (target.previous_activation_generation_record_hash is None): raise ValueError("ADR-020 previous generation identity and hash must be exact")
+    if (target.previous_activation_generation_id is None) != (target.previous_activation_generation_record_hash is None): raise ValueError("ADR-020 previous generation identity and hash must be exact")
     _adr020_require_exact_bindings(target)
 
 
