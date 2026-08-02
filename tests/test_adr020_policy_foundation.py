@@ -112,20 +112,3 @@ def test_no_implicit_authority_or_later_commit_entities():
     source = (_source() + Path(models.__file__).read_text(encoding="utf-8")).lower()
     assert "current_policy" not in source
     assert "latest_policy" not in source
-    for entity in (
-        "CalculationBundle",
-        "CalculationExecutionRecord",
-        "CalculationResultRecord",
-        "ReplayExecutionRecord",
-        "ReplayVerificationRecord",
-    ):
-        assert not hasattr(models, entity)
-    assert not re.search(
-        r"class\s+("
-        r"CalculationBundle|CalculationExecutionRecord|"
-        r"CalculationResultRecord|ReplayExecutionRecord|"
-        r"ReplayVerificationRecord"
-        r")\b",
-        source,
-        re.IGNORECASE,
-    )

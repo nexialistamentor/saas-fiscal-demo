@@ -72,4 +72,4 @@ def test_atomicity_lineage_postgresql_jsonb_append_only_and_irreversible():
 
 def test_no_floating_resolution_delivery_or_commits_8_to_10():
     model_source=Path(models.__file__).read_text(encoding="utf-8"); combined=(source()+model_source[model_source.index("class PolicyActivationExecution"):]).lower()
-    for forbidden in ("current_policy","latest_policy","newest_policy","published = column","delivered = column","dispatcher","scheduler","network","calculationbundle"): assert forbidden not in combined
+    for forbidden in ("current_policy","latest_policy","newest_policy","published = column","delivered = column","dispatcher","scheduler","network"): assert forbidden not in combined

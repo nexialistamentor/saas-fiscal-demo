@@ -184,12 +184,3 @@ def test_migration_lineage_postgresql_jsonb_constraints_and_guards():
 
 def test_later_commit_entities_are_absent():
     source = (_source() + Path(models.__file__).read_text(encoding="utf-8")).lower()
-    for entity in (
-        "CalculationBundle",
-        "CalculationExecutionRecord",
-        "CalculationResultRecord",
-        "ReplayExecutionRecord",
-        "ReplayVerificationRecord",
-    ):
-        assert not hasattr(models, entity)
-        assert not re.search(rf"class\s+{entity}\b", source, re.IGNORECASE)

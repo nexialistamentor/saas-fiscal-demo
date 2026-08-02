@@ -2793,6 +2793,44 @@ class ReplicaCheckpointRecord(Base):
     replica_checkpoint_record_id = Column(String(64), primary_key=True); consumer_application_record_id = Column(String(64), nullable=False); consumer_application_record_hash = Column(String(64), nullable=False); consumer_id = Column(String(64), nullable=False); replica_id = Column(String(64), nullable=False); replica_instance_id = Column(String(64), nullable=False); consumer_contract_version = Column(Integer, nullable=False); consumer_contract_hash = Column(String(64), nullable=False); scope_hash = Column(String(64), nullable=False); generation_fence_record_id = Column(String(64), nullable=False); generation_fence_record_hash = Column(String(64), nullable=False); generation_sequence = Column(Integer, nullable=False); fencing_token = Column(Integer, nullable=False); activation_generation_id = Column(String(64), nullable=False); activation_generation_record_hash = Column(String(64), nullable=False); composition_hash = Column(String(64), nullable=False); previous_replica_checkpoint_record_id = Column(String(64), nullable=True); previous_replica_checkpoint_record_hash = Column(String(64), nullable=True); applied_at = Column(DateTime(timezone=True), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
 
 
+class CalculationBundle(Base):
+    __tablename__ = "calculation_bundles"
+    __table_args__ = (
+        ForeignKeyConstraint(["generation_fence_record_id", "generation_fence_record_hash"], ["generation_fence_records.generation_fence_record_id", "generation_fence_records.record_hash"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["activation_generation_id", "activation_generation_record_hash"], ["activation_generations.activation_generation_id", "activation_generations.record_hash"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["consumer_id", "consumer_contract_version", "consumer_contract_hash"], ["consumer_contract_versions.consumer_id", "consumer_contract_versions.consumer_contract_version", "consumer_contract_versions.consumer_contract_hash"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["consumer_application_record_id", "consumer_application_record_hash"], ["consumer_application_records.consumer_application_record_id", "consumer_application_records.record_hash"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["replica_checkpoint_record_id", "replica_checkpoint_record_hash"], ["replica_checkpoint_records.replica_checkpoint_record_id", "replica_checkpoint_records.record_hash"], ondelete="RESTRICT"),
+        UniqueConstraint("calculation_bundle_id", "calculation_bundle_hash"), UniqueConstraint("record_hash"),
+        CheckConstraint("calculation_bundle_schema_version > 0 AND generation_sequence > 0 AND fencing_token > 0"),
+    )
+    calculation_bundle_id = Column(String(64), primary_key=True); calculation_bundle_schema_version = Column(Integer, nullable=False); calculation_bundle_hash = Column(String(64), nullable=False); scope_hash = Column(String(64), nullable=False); generation_fence_record_id = Column(String(64), nullable=False); generation_fence_record_hash = Column(String(64), nullable=False); generation_sequence = Column(Integer, nullable=False); fencing_token = Column(Integer, nullable=False); activation_generation_id = Column(String(64), nullable=False); activation_generation_record_hash = Column(String(64), nullable=False); composition_hash = Column(String(64), nullable=False); consumer_id = Column(String(64), nullable=False); consumer_contract_version = Column(Integer, nullable=False); consumer_contract_hash = Column(String(64), nullable=False); replica_id = Column(String(64), nullable=False); replica_instance_id = Column(String(64), nullable=False); consumer_application_record_id = Column(String(64), nullable=False); consumer_application_record_hash = Column(String(64), nullable=False); replica_checkpoint_record_id = Column(String(64), nullable=False); replica_checkpoint_record_hash = Column(String(64), nullable=False); calculation_subject_reference = Column(JSON, nullable=False); input_snapshot_manifest = Column(JSON, nullable=False); normative_member_manifest = Column(JSON, nullable=False); policy_binding_manifest = Column(JSON, nullable=False); coverage_binding = Column(JSON, nullable=False); continuity_binding = Column(JSON, nullable=False); precedence_binding = Column(JSON, nullable=False); gates_evidence = Column(JSON, nullable=False); engine_binding = Column(JSON, nullable=False); runtime_binding = Column(JSON, nullable=False); canonical_serialization_binding = Column(JSON, nullable=False); evaluation_instant = Column(DateTime(timezone=True), nullable=False); deterministic_seed_binding = Column(JSON, nullable=False); created_at = Column(DateTime(timezone=True), nullable=False); creator = Column(String(255), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class CalculationExecutionRecord(Base):
+    __tablename__ = "calculation_execution_records"
+    __table_args__ = (ForeignKeyConstraint(["calculation_bundle_id", "calculation_bundle_hash"], ["calculation_bundles.calculation_bundle_id", "calculation_bundles.calculation_bundle_hash"], ondelete="RESTRICT"), UniqueConstraint("calculation_execution_record_id", "record_hash"), UniqueConstraint("calculation_bundle_id", "attempt_number"), CheckConstraint("attempt_number > 0 AND fencing_token > 0"), CheckConstraint("state IN ('pending','validating','running','completed','rejected_incomplete','rejected_divergent','rejected_incompatible','failed','cancelled')"))
+    calculation_execution_record_id = Column(String(64), primary_key=True); calculation_bundle_id = Column(String(64), nullable=False); calculation_bundle_hash = Column(String(64), nullable=False); attempt_number = Column(Integer, nullable=False); fencing_token = Column(Integer, nullable=False); state = Column(String(32), nullable=False); executor = Column(String(255), nullable=False); engine_artifact_id = Column(String(64), nullable=False); engine_artifact_hash = Column(String(64), nullable=False); runtime_artifact_id = Column(String(64), nullable=False); runtime_artifact_hash = Column(String(64), nullable=False); started_at = Column(DateTime(timezone=True), nullable=False); finished_at = Column(DateTime(timezone=True), nullable=True); structured_result = Column(JSON, nullable=True); structured_error = Column(JSON, nullable=True); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class CalculationResultRecord(Base):
+    __tablename__ = "calculation_result_records"
+    __table_args__ = (ForeignKeyConstraint(["calculation_execution_record_id", "calculation_execution_record_hash"], ["calculation_execution_records.calculation_execution_record_id", "calculation_execution_records.record_hash"], ondelete="RESTRICT"), ForeignKeyConstraint(["calculation_bundle_id", "calculation_bundle_hash"], ["calculation_bundles.calculation_bundle_id", "calculation_bundles.calculation_bundle_hash"], ondelete="RESTRICT"), UniqueConstraint("calculation_result_record_id", "record_hash"), UniqueConstraint("calculation_execution_record_id"), CheckConstraint("result_schema_version > 0"))
+    calculation_result_record_id = Column(String(64), primary_key=True); calculation_execution_record_id = Column(String(64), nullable=False); calculation_execution_record_hash = Column(String(64), nullable=False); calculation_bundle_id = Column(String(64), nullable=False); calculation_bundle_hash = Column(String(64), nullable=False); result_schema_version = Column(Integer, nullable=False); result_payload_reference = Column(JSON, nullable=False); result_payload_hash = Column(String(64), nullable=False); calculation_trace_reference = Column(JSON, nullable=False); calculation_trace_hash = Column(String(64), nullable=False); decision_trace_reference = Column(JSON, nullable=False); decision_trace_hash = Column(String(64), nullable=False); canonical_result_hash = Column(String(64), nullable=False); completed_at = Column(DateTime(timezone=True), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class ReplayExecutionRecord(Base):
+    __tablename__ = "replay_execution_records"
+    __table_args__ = (ForeignKeyConstraint(["calculation_bundle_id", "calculation_bundle_hash"], ["calculation_bundles.calculation_bundle_id", "calculation_bundles.calculation_bundle_hash"], ondelete="RESTRICT"), ForeignKeyConstraint(["original_calculation_execution_record_id", "original_calculation_execution_record_hash"], ["calculation_execution_records.calculation_execution_record_id", "calculation_execution_records.record_hash"], ondelete="RESTRICT"), ForeignKeyConstraint(["original_calculation_result_record_id", "original_calculation_result_record_hash"], ["calculation_result_records.calculation_result_record_id", "calculation_result_records.record_hash"], ondelete="RESTRICT"), UniqueConstraint("replay_execution_record_id", "record_hash"), UniqueConstraint("original_calculation_result_record_id", "attempt_number"), CheckConstraint("attempt_number > 0"), CheckConstraint("state IN ('pending','validating','running','completed','rejected_incomplete','rejected_divergent','rejected_incompatible','failed','cancelled')"))
+    replay_execution_record_id = Column(String(64), primary_key=True); calculation_bundle_id = Column(String(64), nullable=False); calculation_bundle_hash = Column(String(64), nullable=False); original_calculation_execution_record_id = Column(String(64), nullable=False); original_calculation_execution_record_hash = Column(String(64), nullable=False); original_calculation_result_record_id = Column(String(64), nullable=False); original_calculation_result_record_hash = Column(String(64), nullable=False); original_canonical_result_hash = Column(String(64), nullable=False); replay_engine_artifact_id = Column(String(64), nullable=False); replay_engine_artifact_hash = Column(String(64), nullable=False); replay_runtime_artifact_id = Column(String(64), nullable=False); replay_runtime_artifact_hash = Column(String(64), nullable=False); replay_dependency_manifest_hash = Column(String(64), nullable=False); replay_platform_contract_hash = Column(String(64), nullable=False); replay_canonical_serialization_contract_hash = Column(String(64), nullable=False); replay_result_schema_version = Column(Integer, nullable=False); replay_evaluation_instant = Column(DateTime(timezone=True), nullable=False); replay_deterministic_seed_binding_hash = Column(String(64), nullable=False); attempt_number = Column(Integer, nullable=False); state = Column(String(32), nullable=False); started_at = Column(DateTime(timezone=True), nullable=False); finished_at = Column(DateTime(timezone=True), nullable=True); replay_result_payload_hash = Column(String(64), nullable=True); replay_calculation_trace_hash = Column(String(64), nullable=True); replay_decision_trace_hash = Column(String(64), nullable=True); replay_canonical_result_hash = Column(String(64), nullable=True); structured_result = Column(JSON, nullable=True); structured_error = Column(JSON, nullable=True); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
+class ReplayVerificationRecord(Base):
+    __tablename__ = "replay_verification_records"
+    __table_args__ = (ForeignKeyConstraint(["replay_execution_record_id", "replay_execution_record_hash"], ["replay_execution_records.replay_execution_record_id", "replay_execution_records.record_hash"], ondelete="RESTRICT"), ForeignKeyConstraint(["calculation_bundle_id", "calculation_bundle_hash"], ["calculation_bundles.calculation_bundle_id", "calculation_bundles.calculation_bundle_hash"], ondelete="RESTRICT"), ForeignKeyConstraint(["original_calculation_result_record_id", "original_calculation_result_record_hash"], ["calculation_result_records.calculation_result_record_id", "calculation_result_records.record_hash"], ondelete="RESTRICT"), UniqueConstraint("replay_execution_record_id"), UniqueConstraint("record_hash"), CheckConstraint("verification_outcome IN ('match','mismatch','inconclusive')"))
+    replay_verification_record_id = Column(String(64), primary_key=True); replay_execution_record_id = Column(String(64), nullable=False); replay_execution_record_hash = Column(String(64), nullable=False); calculation_bundle_id = Column(String(64), nullable=False); calculation_bundle_hash = Column(String(64), nullable=False); original_calculation_result_record_id = Column(String(64), nullable=False); original_calculation_result_record_hash = Column(String(64), nullable=False); original_canonical_result_hash = Column(String(64), nullable=False); replay_canonical_result_hash = Column(String(64), nullable=True); result_payload_match = Column(Boolean, nullable=False); calculation_trace_match = Column(Boolean, nullable=False); decision_trace_match = Column(Boolean, nullable=False); verification_outcome = Column(String(16), nullable=False); mismatch_manifest = Column(JSON, nullable=False); verified_at = Column(DateTime(timezone=True), nullable=False); verifier = Column(String(255), nullable=False); provenance = Column(JSON, nullable=False); record_hash = Column(String(64), nullable=False)
+
+
 class CredentialBindingVersion(Base):
     __tablename__ = "credential_binding_versions"
     __table_args__ = (UniqueConstraint("credential_binding_id", "credential_binding_version", name="uq_credential_binding_versions_identity"), UniqueConstraint("credential_binding_id", "credential_binding_version", "credential_binding_hash", name="uq_credential_binding_versions_exact"), UniqueConstraint("record_hash"), CheckConstraint("credential_binding_version > 0"), CheckConstraint("valid_until IS NULL OR valid_until > valid_from"))
@@ -3809,6 +3847,83 @@ def _adr020_validate_replica_checkpoint_insert(mapper, connection, target) -> No
             raise ValueError("ADR-020 divergent replica checkpoint is forbidden")
 
 
+_ADR020_FLOATING_TERMS = ("current", "latest", "newest", "actual", "corrente", "mais_recente", "mais recente")
+_ADR020_EXTERNAL_IO_TERMS = ("http" + "://", "https" + "://", "net" + "work", "rede", "socket", "requests" + ".", "htt" + "px")
+_ADR020_CLOCK_TERMS = ("now()", "current_timestamp", "datetime.now", "utcnow", "relógio corrente", "relogio corrente")
+
+
+def _adr020_reject_nondeterministic_material(target, fields) -> None:
+    for field_name in fields:
+        value = getattr(target, field_name, None)
+        text = str(value or "").lower()
+        _adr020_reject_sensitive_material(value, field_name)
+        if any(term in text for term in _ADR020_FLOATING_TERMS):
+            raise ValueError("ADR-020 floating or current state reference is forbidden")
+        if any(term in text for term in _ADR020_EXTERNAL_IO_TERMS):
+            raise ValueError("ADR-020 external transport use is forbidden")
+        if any(term in text for term in _ADR020_CLOCK_TERMS):
+            raise ValueError("ADR-020 implicit current clock is forbidden")
+
+
+def _adr020_validate_calculation_bundle_insert(mapper, connection, target) -> None:
+    hash_fields = ("calculation_bundle_hash", "scope_hash", "generation_fence_record_hash", "activation_generation_record_hash", "composition_hash", "consumer_contract_hash", "consumer_application_record_hash", "replica_checkpoint_record_hash", "record_hash")
+    for name in hash_fields: _adr020_require_sha256(getattr(target, name), name)
+    if target.calculation_bundle_schema_version <= 0 or target.generation_sequence <= 0 or target.fencing_token <= 0: raise ValueError("ADR-020 bundle versions and fences must be positive")
+    required = ("calculation_subject_reference", "input_snapshot_manifest", "normative_member_manifest", "policy_binding_manifest", "coverage_binding", "continuity_binding", "precedence_binding", "gates_evidence", "engine_binding", "runtime_binding", "canonical_serialization_binding", "deterministic_seed_binding", "evaluation_instant", "provenance")
+    if any(getattr(target, name, None) is None for name in required): raise ValueError("ADR-020 incomplete CalculationBundle is forbidden")
+    if not isinstance(target.input_snapshot_manifest, list) or not target.input_snapshot_manifest: raise ValueError("ADR-020 bundle requires integral exact inputs")
+    input_keys = {"input_type", "input_id", "input_record_hash", "input_payload_hash", "canonicalization_contract_id", "canonicalization_contract_version", "canonicalization_contract_hash", "immutable_content_reference", "immutable_content_hash"}
+    if any(not isinstance(item, dict) or not input_keys.issubset(item) for item in target.input_snapshot_manifest): raise ValueError("ADR-020 incomplete input snapshot is forbidden")
+    runtime = target.runtime_binding
+    if not isinstance(runtime, dict) or not {"runtime_artifact_id", "runtime_artifact_version", "runtime_artifact_hash", "dependency_manifest", "dependency_manifest_hash", "platform_contract_id", "platform_contract_version", "platform_contract_hash"}.issubset(runtime): raise ValueError("ADR-020 exact runtime and dependencies are required")
+    dependencies = runtime.get("dependency_manifest")
+    if not isinstance(dependencies, list) or any(not {"dependency_id", "dependency_version", "dependency_hash"}.issubset(item) for item in dependencies): raise ValueError("ADR-020 floating dependency is forbidden")
+    _adr020_reject_nondeterministic_material(target, required)
+    exact = (("scope_hash", "fence_scope_hash"), ("generation_sequence", "fence_generation_sequence"), ("fencing_token", "fence_fencing_token"), ("activation_generation_id", "fence_activation_generation_id"), ("activation_generation_record_hash", "fence_activation_generation_record_hash"), ("composition_hash", "fence_composition_hash"), ("consumer_contract_hash", "application_consumer_contract_hash"), ("consumer_application_record_id", "checkpoint_consumer_application_record_id"), ("replica_checkpoint_record_id", "exact_replica_checkpoint_record_id"))
+    for own, reference in exact:
+        if getattr(target, reference, getattr(target, own)) != getattr(target, own): raise ValueError("ADR-020 divergent generation, fence, consumer, application or checkpoint")
+    if getattr(target, "activation_generation_is_complete", True) is not True or getattr(target, "consumer_application_result", "applied") != "applied" or getattr(target, "consumer_application_complete", True) is not True: raise ValueError("ADR-020 integral generation and terminal application required")
+
+
+def _adr020_validate_calculation_execution_insert(mapper, connection, target) -> None:
+    for name in ("calculation_bundle_hash", "engine_artifact_hash", "runtime_artifact_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.attempt_number <= 0 or target.fencing_token <= 0: raise ValueError("ADR-020 retry requires a new positive execution and fence")
+    if target.state in {"completed", "rejected_incomplete", "rejected_divergent", "rejected_incompatible", "failed", "cancelled"} and target.finished_at is None: raise ValueError("ADR-020 terminal calculation execution requires finished_at")
+    if target.state == "completed" and (not isinstance(target.structured_result, dict) or target.structured_result.get("calculation_complete") is not True): raise ValueError("ADR-020 partial calculation cannot complete")
+    if getattr(target, "exact_bundle_hash", target.calculation_bundle_hash) != target.calculation_bundle_hash: raise ValueError("ADR-020 execution requires exact bundle")
+    _adr020_reject_nondeterministic_material(target, ("structured_result", "structured_error", "provenance"))
+
+
+def _adr020_validate_calculation_result_insert(mapper, connection, target) -> None:
+    for name in ("calculation_execution_record_hash", "calculation_bundle_hash", "result_payload_hash", "calculation_trace_hash", "decision_trace_hash", "canonical_result_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.result_schema_version <= 0 or getattr(target, "calculation_execution_state", "completed") != "completed": raise ValueError("ADR-020 result requires completed execution")
+    if getattr(target, "calculation_execution_bundle_id", target.calculation_bundle_id) != target.calculation_bundle_id or getattr(target, "calculation_execution_bundle_hash", target.calculation_bundle_hash) != target.calculation_bundle_hash: raise ValueError("ADR-020 result requires exact execution and bundle")
+    if getattr(target, "calculation_complete", True) is not True or any(getattr(target, name, None) is None for name in ("result_payload_reference", "calculation_trace_reference", "decision_trace_reference", "provenance")): raise ValueError("ADR-020 partial result is forbidden")
+    _adr020_reject_nondeterministic_material(target, ("result_payload_reference", "calculation_trace_reference", "decision_trace_reference", "provenance"))
+
+
+def _adr020_validate_replay_execution_insert(mapper, connection, target) -> None:
+    hashes = ("calculation_bundle_hash", "original_calculation_execution_record_hash", "original_calculation_result_record_hash", "original_canonical_result_hash", "replay_engine_artifact_hash", "replay_runtime_artifact_hash", "replay_dependency_manifest_hash", "replay_platform_contract_hash", "replay_canonical_serialization_contract_hash", "replay_deterministic_seed_binding_hash", "record_hash")
+    for name in hashes: _adr020_require_sha256(getattr(target, name), name)
+    if target.attempt_number <= 0: raise ValueError("ADR-020 replay retry requires a new execution")
+    if target.state in {"completed", "rejected_incomplete", "rejected_divergent", "rejected_incompatible", "failed", "cancelled"} and target.finished_at is None: raise ValueError("ADR-020 terminal replay requires finished_at")
+    if target.state == "completed":
+        for name in ("replay_result_payload_hash", "replay_calculation_trace_hash", "replay_decision_trace_hash", "replay_canonical_result_hash"): _adr020_require_sha256(getattr(target, name), name)
+    for own, original in (("calculation_bundle_hash", "original_bundle_hash"), ("replay_engine_artifact_hash", "original_engine_artifact_hash"), ("replay_runtime_artifact_hash", "original_runtime_artifact_hash"), ("replay_evaluation_instant", "original_evaluation_instant")):
+        if getattr(target, original, getattr(target, own)) != getattr(target, own): raise ValueError("ADR-020 replay must use exact original bundle and state")
+    _adr020_reject_nondeterministic_material(target, ("structured_result", "structured_error", "provenance"))
+
+
+def _adr020_validate_replay_verification_insert(mapper, connection, target) -> None:
+    for name in ("replay_execution_record_hash", "calculation_bundle_hash", "original_calculation_result_record_hash", "original_canonical_result_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
+    if target.replay_canonical_result_hash is not None: _adr020_require_sha256(target.replay_canonical_result_hash, "replay_canonical_result_hash")
+    complete_match = target.replay_canonical_result_hash == target.original_canonical_result_hash and target.result_payload_match and target.calculation_trace_match and target.decision_trace_match and target.mismatch_manifest in ([], {})
+    if target.verification_outcome == "match" and (getattr(target, "replay_execution_state", "completed") != "completed" or not complete_match): raise ValueError("ADR-020 partial verification cannot be match")
+    if target.verification_outcome == "mismatch" and not target.mismatch_manifest: raise ValueError("ADR-020 mismatch must preserve evidence")
+    if target.verification_outcome == "inconclusive" and getattr(target, "verification_evidence", target.mismatch_manifest) is None: raise ValueError("ADR-020 inconclusive must preserve evidence")
+    _adr020_reject_nondeterministic_material(target, ("mismatch_manifest", "provenance"))
+
+
 _ADR020_INSERT_VALIDATORS = {
     ArtifactReference: _adr020_validate_artifact_reference_insert,
     AcquisitionExecution: _adr020_validate_acquisition_execution_insert,
@@ -3847,6 +3962,11 @@ _ADR020_INSERT_VALIDATORS = {
     ConsumerContractVersion: _adr020_validate_consumer_contract_insert,
     ConsumerApplicationRecord: _adr020_validate_consumer_application_insert,
     ReplicaCheckpointRecord: _adr020_validate_replica_checkpoint_insert,
+    CalculationBundle: _adr020_validate_calculation_bundle_insert,
+    CalculationExecutionRecord: _adr020_validate_calculation_execution_insert,
+    CalculationResultRecord: _adr020_validate_calculation_result_insert,
+    ReplayExecutionRecord: _adr020_validate_replay_execution_insert,
+    ReplayVerificationRecord: _adr020_validate_replay_verification_insert,
 }
 
 for _adr020_append_only_model, _adr020_insert_validator in (

@@ -13,9 +13,8 @@ TABLES = ("generation_fence_records", "consumer_contract_versions", "consumer_ap
 H = "a" * 64
 
 
-def test_four_exact_models_tables_and_commit_10_absent():
+def test_four_exact_models_tables():
     assert tuple(getattr(models, name).__tablename__ for name in ENTITIES) == TABLES
-    assert not any(hasattr(models, name) for name in ("CalculationBundle", "CalculationExecutionRecord", "CalculationResultRecord", "ReplayExecutionRecord", "ReplayVerificationRecord"))
 
 
 def test_migration_lineage_postgresql_jsonb_guards_and_irreversibility():
