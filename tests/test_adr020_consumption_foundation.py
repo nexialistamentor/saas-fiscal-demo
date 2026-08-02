@@ -94,3 +94,46 @@ def test_append_only_and_no_mutable_or_operational_resolution():
     source = (MIGRATION.read_text(encoding="utf-8") + Path(models.__file__).read_text(encoding="utf-8")).lower()
     for forbidden in ("current_generation", "latest_generation", "newest_generation", "requests.get", "httpx", "scheduler", "worker endpoint"):
         assert forbidden not in source
+
+
+def test_exact_source_candidate_keys_precede_generation_fence_creation():
+    def unique_columns(model):
+        return {
+            tuple(constraint.columns.keys())
+            for constraint in model.__table__.constraints
+            if constraint.__class__.__name__ == "UniqueConstraint"
+        }
+
+    assert (
+        "activation_execution_id",
+        "record_hash",
+    ) in unique_columns(models.ActivationExecution)
+
+    assert (
+        "outbox_event_id",
+        "record_hash",
+    ) in unique_columns(models.OutboxEventRecord)
+
+    with open(
+        "migrations/versions/0026_adr020_consumption_foundation.py",
+        encoding="utf-8",
+    ) as handle:
+        migration = handle.read()
+
+    fence_position = migration.index(
+        'op.create_table("generation_fence_records"'
+    )
+
+    for constraint_name, columns in (
+        (
+            "uq_activation_executions_exact",
+            '["activation_execution_id", "record_hash"]',
+        ),
+        (
+            "uq_outbox_event_records_exact",
+            '["outbox_event_id", "record_hash"]',
+        ),
+    ):
+        constraint_position = migration.index(constraint_name)
+        assert constraint_position < fence_position
+        assert columns in migration[:fence_position]
