@@ -49,6 +49,44 @@ Resultados exactos da validação do Commit 11:
 - suite global executada após o Commit 11: `2539 passed, 15 skipped, 5 warnings in 106.63s`;
 - worktree permaneceu limpo após a suite global.
 
+## Correcção posterior ao Commit 11
+
+O primeiro deploy da cadeia integral revelou uma divergência física na migration `0026_adr020_consumption`: as foreign keys compostas de `generation_fence_records` exigiam chaves candidatas exactas em `activation_executions (activation_execution_id, record_hash)` e `outbox_event_records (outbox_event_id, record_hash)`, mas essas restrições compostas ainda não existiam.
+
+A correcção preservou as foreign keys soberanas de identidade mais hash, acrescentou as duas chaves `UNIQUE` antes da criação de `generation_fence_records`, alinhou o metadata ORM e adicionou teste de regressão.
+
+Commit correctivo:
+
+- `c7c682bfb9ed8d5a2d52f94025d35eb1716fba85` — `fix(adr-020): add exact candidate keys for consumption fences`.
+
+Validações locais posteriores:
+
+- teste isolado de consumo: `8 passed in 0.30s`;
+- cadeia ADR-020 completa: `135 passed, 7 skipped in 1.39s`;
+- suite global: `2540 passed, 15 skipped, 5 warnings in 97.88s`;
+- `git diff --check`: verde;
+- integridade UTF-8, sem BOM, LF, sem CR e sem caracteres zero-width;
+- worktree limpa após o commit.
+
+## Validação em produção
+
+O branch remoto `origin/main` foi confirmado no commit:
+
+`c7c682bfb9ed8d5a2d52f94025d35eb1716fba85`
+
+A Railway executou com PostgreSQL e DDL transacional a cadeia:
+
+- `0021_adr020_relation_foundation -> 0022_adr020_policy`;
+- `0022_adr020_policy -> 0023_adr020_coverage`;
+- `0023_adr020_coverage -> 0024_adr020_activation`;
+- `0024_adr020_activation -> 0025_adr020_credentials`;
+- `0025_adr020_credentials -> 0026_adr020_consumption`;
+- `0026_adr020_consumption -> 0027_adr020_calc_replay`.
+
+A aplicação concluiu o startup, o Uvicorn ficou activo na porta `8080` e `GET /health` respondeu `200 OK`.
+
 ## Limitações e estado
 
-Estado local e não operacional. Sem endpoints, workers, scheduler, rede, publicação real, push, deploy ou produção. Não constitui validação de produção. A suite global local está verde: `2539 passed, 15 skipped, 5 warnings`.
+A estrutura integral da ADR-020 está implementada, testada localmente e validada fisicamente em produção até ao Alembic head `0027_adr020_calc_replay`.
+
+O motor permanece não operacional: sem endpoints operacionais, workers, scheduler, dispatcher, publicação real ou activação normativa autorizada. A validação de produção comprova migrations, startup e saúde da aplicação; não concede autoridade para activação ou consumo operacional.
