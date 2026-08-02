@@ -15,7 +15,7 @@ Baseline inicial: `9eb3b72cacd573d566d1a295e78c1927fd9f021b`.
 - Commit 9: `f620f82b8ec4bf20a28f1811b476237d953cb8cc`.
 - Commit 10: `9eb3b72cacd573d566d1a295e78c1927fd9f021b`.
 - Commit correctivo entre os Commits 10 e 11: `28d604c` — correcção da validação exacta do predecessor de `ActivationGeneration`.
-- Commit 11: ainda sem hash durante a criação do próprio relatório.
+- Commit 11: `dd1bf973269613047bb9800c9fbaa8d823bb0dca`.
 
 ## Entidades e migrations implementadas
 
@@ -46,8 +46,9 @@ Resultados exactos da validação do Commit 11:
 - cadeia ADR-020 completa: `134 passed, 7 skipped in 1.76s`;
 - Alembic head: `0027_adr020_calc_replay (baseline) (head)`;
 - `git diff --check`: verde;
-- suite global não executada nesta missão.
+- suite global executada após o Commit 11: `2539 passed, 15 skipped, 5 warnings in 106.63s`;
+- worktree permaneceu limpo após a suite global.
 
 ## Limitações e estado
 
-Estado local e não operacional. Sem endpoints, workers, scheduler, rede, publicação real, push, deploy ou produção. Não constitui validação de produção nem declaração de suite global verde.
+Estado local e não operacional. Sem endpoints, workers, scheduler, rede, publicação real, push, deploy ou produção. Não constitui validação de produção. A suite global local está verde: `2539 passed, 15 skipped, 5 warnings`.
