@@ -21,6 +21,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from app import models
+from app.schemas.adr020_bindings import ADR020BindingsContract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -142,18 +143,24 @@ def _free_port():
         return sock.getsockname()[1]
 
 
+def _is_postgresql_unavailable(error):
+    sqlstate = error.sqlstate
+    return sqlstate is None or sqlstate == "57P03" or sqlstate.startswith("08")
+
+
 @pytest.fixture(scope="session")
 def postgresql_0029():
-    name = f"mission-009a-int10b-{uuid.uuid4().hex[:12]}"
+    name = f"mission-009a-int3a-{uuid.uuid4().hex[:12]}"
     database = f"adr020_{uuid.uuid4().hex[:12]}"
     password = uuid.uuid4().hex
     port = _free_port()
     container_id = None
     engine = None
+    readiness_confirmed = False
     try:
         result = _run([
-            "docker", "run", "--detach", "--rm", "--name", name,
-            "--label", "mission=MISSION-009A-INTENCAO-10B",
+            "docker", "run", "--detach", "--name", name,
+            "--label", "mission=MISSION-009A-INTENCAO-3A",
             "-e", "POSTGRES_USER=adr020", "-e", f"POSTGRES_PASSWORD={password}",
             "-e", f"POSTGRES_DB={database}", "-p", f"127.0.0.1:{port}:5432",
             "postgres:16-alpine",
@@ -162,17 +169,49 @@ def postgresql_0029():
         url = f"postgresql+psycopg://adr020:{password}@127.0.0.1:{port}/{database}"
         plain_url = f"postgresql://adr020:{password}@127.0.0.1:{port}/{database}"
         deadline = time.monotonic() + 60
+        consecutive_connections = 0
+        last_unavailable = None
         while time.monotonic() < deadline:
-            ready = subprocess.run(
-                ["docker", "exec", name, "pg_isready", "-U", "adr020", "-d", database],
-                text=True, capture_output=True,
-            )
-            if ready.returncode == 0:
-                break
+            try:
+                with psycopg.connect(plain_url, connect_timeout=2) as connection:
+                    assert connection.execute("SELECT 1").fetchone() == (1,)
+                consecutive_connections += 1
+                if consecutive_connections >= 2:
+                    readiness_confirmed = True
+                    break
+            except psycopg.OperationalError as exc:
+                if not _is_postgresql_unavailable(exc):
+                    raise
+                consecutive_connections = 0
+                last_unavailable = exc
             time.sleep(0.25)
         else:
-            raise AssertionError("isolated PostgreSQL did not become ready")
+            inspect = subprocess.run(
+                ["docker", "inspect", name], text=True, capture_output=True,
+                check=False,
+            )
+            logs = subprocess.run(
+                ["docker", "logs", name], text=True, capture_output=True,
+                check=False,
+            )
+            state = subprocess.run(
+                [
+                    "docker", "inspect", "--format",
+                    "status={{.State.Status}} OOMKilled={{.State.OOMKilled}} "
+                    "ExitCode={{.State.ExitCode}}",
+                    name,
+                ],
+                text=True, capture_output=True, check=False,
+            )
+            raise AssertionError(
+                "isolated PostgreSQL did not become SQL-ready before deadline\n"
+                f"last availability error: {last_unavailable!r}\n"
+                f"state: {state.stdout}{state.stderr}\n"
+                f"inspect:\n{inspect.stdout}{inspect.stderr}\n"
+                f"logs:\n{logs.stdout}{logs.stderr}"
+            )
 
+        assert readiness_confirmed
         engine = create_engine(url)
         with engine.begin() as connection:
             _bootstrap_adr020_activation(connection)
@@ -198,13 +237,96 @@ def _digest(label):
 
 def _bindings():
     return {
-        "authority_bindings": {"roles": ["auditor", "operator"], "source": {"v": 1, "id": "authority"}},
-        "policy_bindings": {"policies": [{"version": 3, "id": "p-1"}, {"version": 1, "id": "p-2"}]},
-        "coverage_binding": {"domains": ["iva", "irs"], "complete": True},
-        "continuity_binding": {"previous": None, "sequence": [1, 2]},
-        "precedence_binding": {"order": ["constitution", "law"], "strict": True},
-        "gates_evidence": {"checks": [{"passed": True, "name": "integrity"}], "count": 1},
+        "authority_bindings": {
+            "bootstrap_authority_record_id": "bootstrap-authority",
+            "bootstrap_authority_record_hash": _digest("bootstrap-authority"),
+        },
+        "policy_bindings": [
+            {
+                "policy_type": "normative_continuity",
+                "policy_id": "continuity-policy",
+                "policy_version": 1,
+                "policy_hash": _digest("continuity-policy"),
+                "policy_activation_id": "continuity-activation",
+                "policy_activation_record_hash": _digest("continuity-activation"),
+            },
+            {
+                "policy_type": "normative_precedence",
+                "policy_id": "precedence-policy",
+                "policy_version": 1,
+                "policy_hash": _digest("precedence-policy"),
+                "policy_activation_id": "precedence-activation",
+                "policy_activation_record_hash": _digest("precedence-activation"),
+            },
+        ],
+        "coverage_binding": {
+            "coverage_subject_type": "coverage_contract",
+            "coverage_contract_id": "coverage-contract",
+            "contract_version": 1,
+            "contract_hash": _digest("coverage-contract"),
+            "coverage_contract_record_id": "coverage-record",
+            "coverage_contract_record_hash": _digest("coverage-record"),
+        },
+        "continuity_binding": {
+            "continuity_subject_type": "normative_continuity",
+            "continuity_policy_id": "continuity-policy",
+            "continuity_policy_version": 1,
+            "continuity_policy_hash": _digest("continuity-policy"),
+            "continuity_policy_activation_id": "continuity-activation",
+            "continuity_policy_activation_record_hash": _digest("continuity-activation"),
+        },
+        "precedence_binding": {
+            "precedence_subject_type": "normative_precedence",
+            "precedence_policy_id": "precedence-policy",
+            "precedence_policy_version": 1,
+            "precedence_policy_hash": _digest("precedence-policy"),
+            "precedence_policy_activation_id": "precedence-activation",
+            "precedence_policy_activation_record_hash": _digest("precedence-activation"),
+        },
+        "gates_evidence": [
+            {
+                "gate_id": "integrity-gate",
+                "gate_version": 1,
+                "gate_hash": _digest("integrity-gate"),
+                "gate_outcome": "approved",
+                "evidence_record_id": "integrity-evidence",
+                "evidence_record_hash": _digest("integrity-evidence"),
+            }
+        ],
     }
+
+
+def _divergent_bindings(bindings, field):
+    divergent = copy.deepcopy(bindings)
+    if field == "authority_bindings":
+        divergent[field]["bootstrap_authority_record_id"] = "other-bootstrap-authority"
+    elif field == "policy_bindings":
+        divergent[field].reverse()
+    elif field == "coverage_binding":
+        divergent[field]["coverage_contract_record_id"] = "other-coverage-record"
+    elif field == "continuity_binding":
+        record_hash = _digest("other-continuity-activation")
+        divergent[field]["continuity_policy_activation_record_hash"] = record_hash
+        divergent["policy_bindings"][0]["policy_activation_record_hash"] = record_hash
+    elif field == "precedence_binding":
+        record_hash = _digest("other-precedence-activation")
+        divergent[field]["precedence_policy_activation_record_hash"] = record_hash
+        divergent["policy_bindings"][1]["policy_activation_record_hash"] = record_hash
+    else:
+        divergent[field][0]["gate_outcome"] = "rejected"
+    ADR020BindingsContract.model_validate(divergent, strict=True)
+    return divergent
+
+
+def test_positive_bindings_are_canonical_strict_and_preserve_input():
+    payload = _bindings()
+    original = copy.deepcopy(payload)
+    validated = ADR020BindingsContract.model_validate(payload, strict=True)
+    assert payload == original
+    assert validated.model_dump() == original
+    assert validated.policy_bindings[0].policy_type == "normative_continuity"
+    assert validated.policy_bindings[1].policy_type == "normative_precedence"
+    assert [gate.gate_id for gate in validated.gates_evidence] == ["integrity-gate"]
 
 
 def _decision(suffix=None, bindings=None):
@@ -352,7 +474,10 @@ def test_exact_bindings_key_order_and_visible_decision_are_accepted(postgresql_0
     decision = _seed(engine)
     exact = _execution(decision)
     reordered = _execution(decision)
-    reordered["authority_bindings"] = {"source": {"id": "authority", "v": 1}, "roles": ["auditor", "operator"]}
+    reordered["authority_bindings"] = {
+        "bootstrap_authority_record_hash": _digest("bootstrap-authority"),
+        "bootstrap_authority_record_id": "bootstrap-authority",
+    }
     with engine.begin() as connection:
         connection.execute(insert(models.ActivationExecution), [exact, reordered])
     with engine.begin() as connection:
@@ -363,7 +488,9 @@ def test_exact_bindings_key_order_and_visible_decision_are_accepted(postgresql_0
 @pytest.mark.parametrize("field", BINDINGS)
 def test_each_divergent_binding_is_rejected_and_rolled_back(postgresql_0029, field):
     engine = postgresql_0029["engine"]; decision = _seed(engine); row = _execution(decision)
-    row[field] = {"divergent": True}
+    divergent = _divergent_bindings(_bindings(), field)
+    for binding in BINDINGS:
+        row[binding] = divergent[binding]
     _assert_db_rejects(lambda: _connection_insert(engine, row), engine, row["activation_execution_id"])
 
 
@@ -384,7 +511,7 @@ def test_missing_decision_and_wrong_decision_hash_are_rejected(postgresql_0029):
 
 def test_reordered_arrays_and_incompatible_null_are_rejected(postgresql_0029):
     engine = postgresql_0029["engine"]; decision = _seed(engine)
-    reordered = _execution(decision); reordered["authority_bindings"]["roles"].reverse()
+    reordered = _execution(decision); reordered["policy_bindings"].reverse()
     _assert_db_rejects(lambda: _connection_insert(engine, reordered), engine, reordered["activation_execution_id"])
     null_row = _execution(decision); null_row["coverage_binding"] = None
     with pytest.raises(DBAPIError):
@@ -416,7 +543,11 @@ def _orm_object(row):
 ])
 def test_all_sqlalchemy_and_sql_bypasses_accept_exact_and_reject_divergence(postgresql_0029, path):
     engine = postgresql_0029["engine"]; decision = _seed(engine)
-    exact = _execution(decision); bad = _execution(decision); bad["policy_bindings"] = {"divergent": True}
+    exact = _execution(decision); bad = _execution(decision)
+    bad["policy_bindings"].reverse()
+    ADR020BindingsContract.model_validate(
+        {binding: bad[binding] for binding in BINDINGS}, strict=True,
+    )
 
     def execute(row):
         if path == "session_add":
@@ -443,11 +574,7 @@ def test_all_sqlalchemy_and_sql_bypasses_accept_exact_and_reject_divergence(post
                 connection.execute(text(f"INSERT INTO activation_executions ({','.join(columns)}) VALUES ({','.join(casts)})"), params)
 
     execute(exact)
-    if path == "session_add":
-        with pytest.raises((ValueError, DBAPIError)):
-            execute(bad)
-    else:
-        _assert_db_rejects(lambda: execute(bad), engine, bad["activation_execution_id"])
+    _assert_db_rejects(lambda: execute(bad), engine, bad["activation_execution_id"])
 
 
 def test_copy_from_accepts_exact_and_trigger_rejects_divergence(postgresql_0029):
@@ -472,7 +599,10 @@ def test_copy_from_accepts_exact_and_trigger_rejects_divergence(postgresql_0029)
                     copier.write(buffer.read())
 
     copy_row(_execution(decision))
-    bad = _execution(decision); bad["gates_evidence"] = {"divergent": True}
+    bad = _execution(decision); bad["gates_evidence"][0]["gate_outcome"] = "rejected"
+    ADR020BindingsContract.model_validate(
+        {binding: bad[binding] for binding in BINDINGS}, strict=True,
+    )
     with pytest.raises(psycopg.Error, match="bindings diverge"):
         copy_row(bad)
     with engine.connect() as connection:
