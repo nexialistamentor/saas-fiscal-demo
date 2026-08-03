@@ -18,7 +18,7 @@ import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import create_engine, insert, null, text
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models
@@ -28,12 +28,16 @@ from app.schemas.adr020_bindings import ADR020BindingsContract
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "migrations" / "versions" / "0029_adr020_activation_execution_gate.py"
 POLICY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0030_adr020_policy_binding_gate.py"
+BOOTSTRAP_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0031_adr020_bootstrap_binding_gate.py"
 POLICY_FOUNDATION = ROOT / "migrations" / "versions" / "0022_adr020_policy_foundation.py"
 HISTORICAL = ROOT / "migrations" / "versions" / "0024_adr020_activation_foundation.py"
 ATOMIC_REPAIR = ROOT / "migrations" / "versions" / "0028_adr020_atomic_activation_trigger_fix.py"
 ATOMIC_REVISION = "0028_adr020_atomic_trigger_fix"
 REVISION = "0029_adr020_activation_exec_gate"
 POLICY_BINDING_REVISION = "0030_adr020_policy_binding_gate"
+BOOTSTRAP_BINDING_REVISION = "0031_adr020_bootstrap_binding"
+BOOTSTRAP_UNIQUE = "uq_bootstrap_authority_records_exact_record"
+BOOTSTRAP_FK = "fk_policy_activation_executions_exact_bootstrap_record"
 POLICY_BINDING_FUNCTION = "adr020_validate_policy_binding_activations"
 POLICY_BINDING_TRIGGER = "trg_adr020_validate_policy_binding_activations"
 FUNCTION = "adr020_validate_activation_execution_decision_bindings"
@@ -158,8 +162,8 @@ def _is_postgresql_unavailable(error):
     return sqlstate is None or sqlstate == "57P03" or sqlstate.startswith("08")
 
 
-def _postgresql_instance(apply_policy_binding_gate):
-    intention = "int4" if apply_policy_binding_gate else "int3a"
+def _postgresql_instance(target_revision):
+    intention = {REVISION: "int3a", POLICY_BINDING_REVISION: "int4", BOOTSTRAP_BINDING_REVISION: "int5"}[target_revision]
     name = f"mission-009a-{intention}-{uuid.uuid4().hex[:12]}"
     database = f"adr020_{uuid.uuid4().hex[:12]}"
     password = uuid.uuid4().hex
@@ -225,7 +229,7 @@ def _postgresql_instance(apply_policy_binding_gate):
         engine = create_engine(url)
         with engine.begin() as connection:
             _bootstrap_adr020_activation(connection)
-            if apply_policy_binding_gate:
+            if target_revision in {POLICY_BINDING_REVISION, BOOTSTRAP_BINDING_REVISION}:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0030 = _load_migration(
                     POLICY_BINDING_MIGRATION, "test_physical_0030",
@@ -239,6 +243,21 @@ def _postgresql_instance(apply_policy_binding_gate):
                 """), {
                     "policy_binding_revision": POLICY_BINDING_REVISION,
                     "revision": REVISION,
+                })
+            if target_revision == BOOTSTRAP_BINDING_REVISION:
+                operations = Operations(MigrationContext.configure(connection))
+                migration_0031 = _load_migration(
+                    BOOTSTRAP_BINDING_MIGRATION, "test_physical_0031",
+                )
+                migration_0031.op = operations
+                migration_0031.upgrade()
+                connection.execute(text("""
+                    UPDATE alembic_version
+                    SET version_num = :bootstrap_binding_revision
+                    WHERE version_num = :policy_binding_revision
+                """), {
+                    "bootstrap_binding_revision": BOOTSTRAP_BINDING_REVISION,
+                    "policy_binding_revision": POLICY_BINDING_REVISION,
                 })
         env = os.environ.copy()
         env["DATABASE_URL"] = url
@@ -258,12 +277,22 @@ def _postgresql_instance(apply_policy_binding_gate):
 
 @pytest.fixture(scope="session")
 def postgresql_0029():
-    yield from _postgresql_instance(False)
+    yield from _postgresql_instance(REVISION)
 
 
 @pytest.fixture(scope="session")
 def postgresql_0030():
-    yield from _postgresql_instance(True)
+    yield from _postgresql_instance(POLICY_BINDING_REVISION)
+
+
+@pytest.fixture(scope="session")
+def postgresql_0031():
+    yield from _postgresql_instance(BOOTSTRAP_BINDING_REVISION)
+
+
+@pytest.fixture
+def postgresql_0030_prospective():
+    yield from _postgresql_instance(POLICY_BINDING_REVISION)
 
 
 def _digest(label):
@@ -499,6 +528,278 @@ def _materialize_policy_activations(engine, bindings):
         connection.execute(insert(models.PolicyActivation), [row[3] for row in records])
 
 
+def _bootstrap_rows(suffix):
+    policy_hash = _digest(f"bootstrap-policy-{suffix}")
+    policy_version = {
+        "policy_version_record_id": f"bootstrap-policy-version-{suffix}",
+        "policy_type": "activation_authority",
+        "policy_id": f"bootstrap-policy-{suffix}",
+        "policy_version": 1,
+        "policy_hash": policy_hash,
+        "domain": "fiscal",
+        "scope": {"country": "PT"},
+        "declared_material_applicability": {"taxes": ["iva"]},
+        "modalities": ["manual"],
+        "permitted_authorization_classes": ["constitucional_reservada"],
+        "permitted_execution_modes": ["manual"],
+        "gates": [],
+        "roles": [],
+        "segregation_of_duties": {},
+        "limits": {},
+        "rules": [],
+        "exact_references": [],
+        "origin_evidence": {"mission": "MISSION-009A-INTENCAO-5"},
+        "record_hash": _digest(f"bootstrap-policy-version-{suffix}"),
+    }
+    policy_decision = {
+        "decision_id": f"bootstrap-policy-decision-{suffix}",
+        "decision_event": "submetida",
+        "policy_type": "activation_authority",
+        "policy_id": f"bootstrap-policy-{suffix}",
+        "policy_version": 1,
+        "policy_hash": policy_hash,
+        "actor": "bootstrap-proponent",
+        "institutional_role": "proponente_institucional",
+        "evidence": {"mission": "MISSION-009A-INTENCAO-5"},
+        "rationale": "physical predecessor for bootstrap authority execution",
+        "previous_decision_id": None,
+        "idempotency_key": f"bootstrap-policy-decision-idempotency-{suffix}",
+        "record_hash": _digest(f"bootstrap-policy-decision-{suffix}"),
+    }
+    bootstrap_common = {
+        "policy_type": "activation_authority",
+        "policy_id": f"bootstrap-policy-{suffix}",
+        "policy_version": 1,
+        "policy_hash": policy_hash,
+        "domain": "fiscal",
+        "scope": {"country": "PT"},
+        "actor_proponente": "bootstrap-proponent",
+        "actor_auditor": "bootstrap-auditor",
+        "independent_audit_result": "favoravel",
+        "constitutional_authority_declaration": "constitutional bootstrap authority",
+        "actor_ratificador": "bootstrap-ratifier",
+        "segregation_evidence": {"actors_are_distinct": True},
+        "evidence": {"mission": "MISSION-009A-INTENCAO-5"},
+        "validity": "valida",
+        "submission_mode": "manual",
+        "audit_mode": "manual",
+        "ratification_mode": "manual",
+        "activation_mode": "manual",
+        "provenance": {"mission": "MISSION-009A-INTENCAO-5"},
+    }
+    bootstrap_a = {
+        **bootstrap_common,
+        "bootstrap_authority_record_id": f"bootstrap-a-{suffix}",
+        "record_hash": _digest(f"bootstrap-a-{suffix}"),
+    }
+    bootstrap_b = {
+        **bootstrap_common,
+        "bootstrap_authority_record_id": f"bootstrap-b-{suffix}",
+        "record_hash": _digest(f"bootstrap-b-{suffix}"),
+    }
+    false_pair_row = {
+        "policy_activation_execution_id": f"bootstrap-execution-{suffix}",
+        "policy_decision_id": f"bootstrap-policy-decision-{suffix}",
+        "policy_type": "activation_authority",
+        "policy_id": f"bootstrap-policy-{suffix}",
+        "policy_version": 1,
+        "policy_hash": policy_hash,
+        "authorization_basis_type": "bootstrap_authority_record",
+        "authorization_class": "constitucional_reservada",
+        "execution_mode": "manual",
+        "bootstrap_authority_record_id": bootstrap_a["bootstrap_authority_record_id"],
+        "bootstrap_authority_record_hash": bootstrap_b["record_hash"],
+        "activation_authority_policy_id": None,
+        "activation_authority_policy_version": None,
+        "activation_authority_policy_hash": None,
+        "activation_authority_policy_activation_id": None,
+        "automation_envelope_id": None,
+        "automation_envelope_version": None,
+        "automation_envelope_hash": None,
+        "automation_envelope_activation_id": None,
+        "attempt_number": 1,
+        "actor_or_worker": "integration-auditor",
+        "lease_id": f"bootstrap-lease-{suffix}",
+        "fencing_token": 1,
+        "idempotency_key": f"bootstrap-idempotency-{suffix}",
+        "state": "pendente",
+        "started_at": None,
+        "finished_at": None,
+        "structured_result": None,
+        "structured_error": None,
+        "provenance": {"mission": "MISSION-009A-INTENCAO-5"},
+        "record_hash": _digest(f"bootstrap-execution-{suffix}"),
+    }
+    return policy_version, policy_decision, bootstrap_a, bootstrap_b, false_pair_row
+
+
+def _seed_bootstrap_rows(engine, suffix):
+    rows = _bootstrap_rows(suffix)
+    policy_version, policy_decision, bootstrap_a, bootstrap_b, _ = rows
+
+    with engine.begin() as connection:
+        connection.execute(insert(models.PolicyVersion), policy_version)
+        connection.execute(insert(models.PolicyDecision), policy_decision)
+        connection.execute(
+            insert(models.BootstrapAuthorityRecord), [bootstrap_a, bootstrap_b],
+        )
+    return rows
+
+
+def test_bootstrap_authority_rejects_id_and_record_hash_from_different_records(
+    postgresql_0031,
+):
+    engine = postgresql_0031["engine"]
+    _, _, bootstrap_a, bootstrap_b, false_pair_row = _seed_bootstrap_rows(
+        engine, "negative",
+    )
+
+    with engine.connect() as connection:
+        persisted = connection.execute(text("""
+            SELECT bootstrap_authority_record_id, record_hash
+            FROM bootstrap_authority_records
+            ORDER BY bootstrap_authority_record_id
+        """)).all()
+    assert persisted == [
+        (bootstrap_a["bootstrap_authority_record_id"], bootstrap_a["record_hash"]),
+        (bootstrap_b["bootstrap_authority_record_id"], bootstrap_b["record_hash"]),
+    ]
+
+    with pytest.raises(IntegrityError) as caught:
+        with engine.begin() as connection:
+            connection.execute(
+                insert(models.PolicyActivationExecution),
+                false_pair_row,
+            )
+    assert caught.value.orig.sqlstate == "23503"
+    assert (
+        getattr(caught.value.orig.diag, "constraint_name", None) == BOOTSTRAP_FK
+        or BOOTSTRAP_FK in str(caught.value)
+    )
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM policy_activation_executions
+            WHERE policy_activation_execution_id = :execution_id
+        """), {
+            "execution_id": false_pair_row["policy_activation_execution_id"],
+        }) == 0
+
+
+def test_bootstrap_authority_accepts_matching_id_and_record_hash(postgresql_0031):
+    engine = postgresql_0031["engine"]
+    _, _, bootstrap_a, _, execution = _seed_bootstrap_rows(engine, "positive")
+    execution["bootstrap_authority_record_hash"] = bootstrap_a["record_hash"]
+
+    with engine.begin() as connection:
+        connection.execute(insert(models.PolicyActivationExecution), execution)
+    with engine.connect() as connection:
+        persisted = connection.execute(text("""
+            SELECT bootstrap_authority_record_id, bootstrap_authority_record_hash
+            FROM policy_activation_executions
+            WHERE policy_activation_execution_id = :execution_id
+        """), {"execution_id": execution["policy_activation_execution_id"]}).one()
+    assert persisted == (
+        bootstrap_a["bootstrap_authority_record_id"], bootstrap_a["record_hash"],
+    )
+
+
+@pytest.mark.parametrize("fixture_name", ["postgresql_0030", "postgresql_0031"])
+@pytest.mark.parametrize(
+    ("bootstrap_id", "bootstrap_hash"),
+    [
+        (None, None),
+        ("existing", None),
+        (None, "unmatched"),
+    ],
+    ids=["both-null", "id-without-hash", "hash-without-id"],
+)
+def test_bootstrap_binding_preserves_match_simple_null_compatibility(
+    request, fixture_name, bootstrap_id, bootstrap_hash,
+):
+    engine = request.getfixturevalue(fixture_name)["engine"]
+    revision = "0030" if fixture_name == "postgresql_0030" else "0031"
+    suffix = f"null-{revision}-{bootstrap_id}-{bootstrap_hash}"
+    _, _, bootstrap_a, _, execution = _seed_bootstrap_rows(engine, suffix)
+    execution["bootstrap_authority_record_id"] = (
+        bootstrap_a["bootstrap_authority_record_id"]
+        if bootstrap_id == "existing" else None
+    )
+    execution["bootstrap_authority_record_hash"] = (
+        _digest(f"unmatched-bootstrap-hash-{suffix}")
+        if bootstrap_hash == "unmatched" else None
+    )
+
+    with engine.begin() as connection:
+        connection.execute(insert(models.PolicyActivationExecution), execution)
+    with engine.connect() as connection:
+        persisted = connection.execute(text("""
+            SELECT bootstrap_authority_record_id, bootstrap_authority_record_hash
+            FROM policy_activation_executions
+            WHERE policy_activation_execution_id = :execution_id
+        """), {"execution_id": execution["policy_activation_execution_id"]}).one()
+    assert persisted == (
+        execution["bootstrap_authority_record_id"],
+        execution["bootstrap_authority_record_hash"],
+    )
+
+
+def test_bootstrap_binding_gate_is_prospective_and_rejects_new_mismatch(
+    postgresql_0030_prospective,
+):
+    engine = postgresql_0030_prospective["engine"]
+    _, _, _, _, historical = _seed_bootstrap_rows(engine, "historical")
+    with engine.begin() as connection:
+        connection.execute(insert(models.PolicyActivationExecution), historical)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM policy_activation_executions
+            WHERE policy_activation_execution_id = :execution_id
+        """), {"execution_id": historical["policy_activation_execution_id"]}) == 1
+
+    with engine.begin() as connection:
+        operations = Operations(MigrationContext.configure(connection))
+        migration_0031 = _load_migration(
+            BOOTSTRAP_BINDING_MIGRATION, "test_prospective_physical_0031",
+        )
+        migration_0031.op = operations
+        migration_0031.upgrade()
+        connection.execute(text("""
+            UPDATE alembic_version
+            SET version_num = :bootstrap_revision
+            WHERE version_num = :policy_revision
+        """), {
+            "bootstrap_revision": BOOTSTRAP_BINDING_REVISION,
+            "policy_revision": POLICY_BINDING_REVISION,
+        })
+
+    _, _, _, _, new_mismatch = _seed_bootstrap_rows(engine, "prospective")
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT convalidated FROM pg_constraint WHERE conname = :constraint
+        """), {"constraint": BOOTSTRAP_FK}) is False
+        assert connection.scalar(text("""
+            SELECT count(*) FROM policy_activation_executions
+            WHERE policy_activation_execution_id = :execution_id
+        """), {"execution_id": historical["policy_activation_execution_id"]}) == 1
+
+    with pytest.raises(IntegrityError) as caught:
+        with engine.begin() as connection:
+            connection.execute(insert(models.PolicyActivationExecution), new_mismatch)
+    assert caught.value.orig.sqlstate == "23503"
+    assert getattr(caught.value.orig.diag, "constraint_name", None) == BOOTSTRAP_FK
+    with engine.connect() as connection:
+        counts = connection.execute(text("""
+            SELECT policy_activation_execution_id, count(*)
+            FROM policy_activation_executions
+            WHERE policy_activation_execution_id IN (:historical_id, :new_id)
+            GROUP BY policy_activation_execution_id
+        """), {
+            "historical_id": historical["policy_activation_execution_id"],
+            "new_id": new_mismatch["policy_activation_execution_id"],
+        }).all()
+    assert counts == [(historical["policy_activation_execution_id"], 1)]
+
+
 def test_policy_binding_rejects_activation_from_different_exact_policy(
     postgresql_0030,
 ):
@@ -640,6 +941,99 @@ def test_policy_binding_rejects_invalid_physical_forms(postgresql_0030, case):
             WHERE activation_decision_id = :decision_id
         """), {"decision_id": decision["activation_decision_id"]})
     assert persisted == 0
+
+
+def test_bootstrap_binding_migration_has_exact_static_contract(monkeypatch):
+    assert BOOTSTRAP_BINDING_MIGRATION.exists()
+    source = BOOTSTRAP_BINDING_MIGRATION.read_text(encoding="utf-8")
+    lowered = source.lower()
+    tree = ast.parse(source)
+    assignments = {
+        node.targets[0].id: ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign) and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id in {"revision", "down_revision"}
+    }
+    assert assignments == {
+        "revision": BOOTSTRAP_BINDING_REVISION,
+        "down_revision": POLICY_BINDING_REVISION,
+    }
+    assert len(BOOTSTRAP_BINDING_REVISION) <= 32
+    assert re.search(
+        rf"ALTER\s+TABLE\s+bootstrap_authority_records\s+ADD\s+CONSTRAINT\s+"
+        rf"{BOOTSTRAP_UNIQUE}\s+UNIQUE\s*\(\s*bootstrap_authority_record_id\s*,\s*"
+        r"record_hash\s*\)", source, re.I,
+    )
+    assert re.search(
+        rf"ALTER\s+TABLE\s+policy_activation_executions\s+ADD\s+CONSTRAINT\s+"
+        rf"{BOOTSTRAP_FK}\s+FOREIGN\s+KEY\s*\(\s*"
+        r"bootstrap_authority_record_id\s*,\s*bootstrap_authority_record_hash\s*\)"
+        r"\s*REFERENCES\s+bootstrap_authority_records\s*\(\s*"
+        r"bootstrap_authority_record_id\s*,\s*record_hash\s*\)\s*NOT\s+VALID",
+        source, re.I,
+    )
+    assert "validate constraint" not in lowered
+    assert "match full" not in lowered
+    assert "not null" not in lowered
+    assert not re.search(r"\b(update|delete)\b", lowered)
+    assert "backfill" not in lowered
+    assert "raise runtimeerror" in lowered and "irreversible" in lowered
+
+    migration = _load_migration(
+        BOOTSTRAP_BINDING_MIGRATION, "test_0031_non_postgresql_guard",
+    )
+    class NonPostgresqlOperations:
+        def get_bind(self):
+            return type("Bind", (), {"dialect": type("Dialect", (), {"name": "sqlite"})()})()
+    monkeypatch.setattr(migration, "op", NonPostgresqlOperations())
+    with pytest.raises(RuntimeError, match="PostgreSQL-only"):
+        migration.upgrade()
+    with pytest.raises(RuntimeError, match="irreversible"):
+        migration.downgrade()
+
+
+def test_bootstrap_binding_constraints_are_physically_installed(postgresql_0031):
+    engine = postgresql_0031["engine"]
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == BOOTSTRAP_BINDING_REVISION
+        constraints = connection.execute(text("""
+            SELECT c.conname, c.contype, c.convalidated,
+                   array_agg(source_attribute.attname ORDER BY source_key.ordinality),
+                   array_agg(target_attribute.attname ORDER BY source_key.ordinality)
+                       FILTER (WHERE target_attribute.attname IS NOT NULL),
+                   source_table.relname, target_table.relname
+            FROM pg_constraint AS c
+            JOIN pg_class AS source_table ON source_table.oid = c.conrelid
+            JOIN unnest(c.conkey) WITH ORDINALITY AS source_key(attnum, ordinality)
+              ON true
+            JOIN pg_attribute AS source_attribute
+              ON source_attribute.attrelid = c.conrelid
+             AND source_attribute.attnum = source_key.attnum
+            LEFT JOIN pg_class AS target_table ON target_table.oid = c.confrelid
+            LEFT JOIN unnest(c.confkey) WITH ORDINALITY AS target_key(attnum, ordinality)
+              ON target_key.ordinality = source_key.ordinality
+            LEFT JOIN pg_attribute AS target_attribute
+              ON target_attribute.attrelid = c.confrelid
+             AND target_attribute.attnum = target_key.attnum
+            WHERE c.conname IN (:unique_name, :fk_name)
+            GROUP BY c.conname, c.contype, c.convalidated,
+                     source_table.relname, target_table.relname
+            ORDER BY c.conname
+        """), {"unique_name": BOOTSTRAP_UNIQUE, "fk_name": BOOTSTRAP_FK}).all()
+    assert constraints == [
+        (
+            BOOTSTRAP_FK, "f", False,
+            ["bootstrap_authority_record_id", "bootstrap_authority_record_hash"],
+            ["bootstrap_authority_record_id", "record_hash"],
+            "policy_activation_executions", "bootstrap_authority_records",
+        ),
+        (
+            BOOTSTRAP_UNIQUE, "u", True,
+            ["bootstrap_authority_record_id", "record_hash"],
+            None, "bootstrap_authority_records", None,
+        ),
+    ]
 
 
 def test_policy_binding_migration_has_exact_static_contract():
