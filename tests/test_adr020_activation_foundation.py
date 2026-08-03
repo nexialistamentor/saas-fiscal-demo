@@ -28,7 +28,22 @@ def test_exact_policy_decision_bootstrap_and_delegation_bindings():
     assert {"policy_id","policy_version","policy_hash","policy_decision_id","bootstrap_authority_record_id","bootstrap_authority_record_hash","activation_authority_policy_id","activation_authority_policy_version","activation_authority_policy_hash","activation_authority_policy_activation_id","automation_envelope_id","automation_envelope_version","automation_envelope_hash","automation_envelope_activation_id"} <= fields
 
 def decision(**kw):
-    d=dict(activation_decision_id="d",decision_action="activate",decision_outcome="approved",authorization_class="constitucional_reservada",actor="a",institutional_role="autoridade_constitucional_final",target_scope={},scope_hash="a"*64,target_manifest=[{"review_outcome":"validada"}],target_manifest_hash="b"*64,authority_bindings={},policy_bindings=[],coverage_binding={},continuity_binding={},precedence_binding={},gates_evidence=[],rationale="r",evidence={},previous_activation_decision_id=None,idempotency_key="k",record_hash="c"*64); d.update(kw); return SimpleNamespace(**d)
+    d=dict(activation_decision_id="d",decision_action="activate",decision_outcome="approved",authorization_class="constitucional_reservada",actor="a",institutional_role="autoridade_constitucional_final",target_scope={},scope_hash="a"*64,target_manifest=[{"review_outcome":"validada"}],target_manifest_hash="b"*64,authority_bindings={"bootstrap_authority_record_id":"ba","bootstrap_authority_record_hash":"a"*64},policy_bindings=[{"policy_type":"normative_continuity","policy_id":"nc","policy_version":1,"policy_hash":"b"*64,"policy_activation_id":"nca","policy_activation_record_hash":"c"*64},{"policy_type":"normative_precedence","policy_id":"np","policy_version":1,"policy_hash":"d"*64,"policy_activation_id":"npa","policy_activation_record_hash":"e"*64}],coverage_binding={"coverage_subject_type":"coverage_contract","coverage_contract_id":"cc","contract_version":1,"contract_hash":"f"*64,"coverage_contract_record_id":"ccr","coverage_contract_record_hash":"1"*64},continuity_binding={"continuity_subject_type":"normative_continuity","continuity_policy_id":"nc","continuity_policy_version":1,"continuity_policy_hash":"b"*64,"continuity_policy_activation_id":"nca","continuity_policy_activation_record_hash":"c"*64},precedence_binding={"precedence_subject_type":"normative_precedence","precedence_policy_id":"np","precedence_policy_version":1,"precedence_policy_hash":"d"*64,"precedence_policy_activation_id":"npa","precedence_policy_activation_record_hash":"e"*64},gates_evidence=[{"gate_id":"g","gate_version":1,"gate_hash":"2"*64,"gate_outcome":"approved","evidence_record_id":"er","evidence_record_hash":"3"*64}],rationale="r",evidence={},previous_activation_decision_id=None,idempotency_key="k",record_hash="c"*64); d.update(kw); return SimpleNamespace(**d)
+
+def test_activation_decision_rejeita_bindings_vazios():
+    with pytest.raises(ValueError):
+        models._adr020_validate_activation_decision_insert(
+            None,
+            None,
+            decision(
+                authority_bindings={},
+                policy_bindings=[],
+                coverage_binding={},
+                continuity_binding={},
+                precedence_binding={},
+                gates_evidence=[],
+            ),
+        )
 
 def execution(**kw):
     d=dict(activation_execution_id="e",activation_decision_id="d",activation_decision_record_hash="a"*64,decision_outcome="approved",decision_action="activate",authorization_class="constitucional_reservada",execution_mode="manual",state="pending",scope_hash="b"*64,target_manifest_hash="c"*64,attempt_number=1,actor_or_worker="actor",lease_id="l",fencing_token=1,idempotency_key="k",authority_bindings={},policy_bindings=[],coverage_binding={},continuity_binding={},precedence_binding={},gates_evidence=[],started_at=None,finished_at=None,structured_result=None,structured_error=None,provenance={},record_hash="d"*64); d.update(kw); return SimpleNamespace(**d)

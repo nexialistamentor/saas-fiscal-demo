@@ -3653,6 +3653,21 @@ def _adr020_validate_policy_activation_insert(mapper, connection, target) -> Non
 
 
 def _adr020_validate_activation_decision_insert(mapper, connection, target) -> None:
+    from app.schemas.adr020_bindings import ADR020BindingsContract
+
+    try:
+        ADR020BindingsContract(
+            authority_bindings=target.authority_bindings,
+            policy_bindings=target.policy_bindings,
+            coverage_binding=target.coverage_binding,
+            continuity_binding=target.continuity_binding,
+            precedence_binding=target.precedence_binding,
+            gates_evidence=target.gates_evidence,
+        )
+    except ValueError as exc:
+        raise ValueError(
+            "activation decision bindings must satisfy ADR020BindingsContract"
+        ) from exc
     for name in ("scope_hash", "target_manifest_hash", "record_hash"): _adr020_require_sha256(getattr(target, name), name)
     if target.decision_outcome not in {"approved", "rejected", "cancelled"}: raise ValueError("ADR-020 invalid activation decision outcome")
     if target.decision_action == "activate":
