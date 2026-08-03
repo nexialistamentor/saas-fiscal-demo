@@ -27,6 +27,7 @@ from app.schemas.adr020_bindings import (
     ADR020BindingsContract,
     ContinuityBinding,
     PolicyBinding,
+    PrecedenceBinding,
 )
 
 
@@ -36,6 +37,7 @@ POLICY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0030_adr020_polic
 BOOTSTRAP_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0031_adr020_bootstrap_binding_gate.py"
 COVERAGE_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0032_adr020_coverage_binding_gate.py"
 CONTINUITY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0033_adr020_continuity_binding_gate.py"
+PRECEDENCE_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0034_adr020_precedence_binding_gate.py"
 POLICY_FOUNDATION = ROOT / "migrations" / "versions" / "0022_adr020_policy_foundation.py"
 COVERAGE_FOUNDATION = ROOT / "migrations" / "versions" / "0023_adr020_coverage_foundation.py"
 HISTORICAL = ROOT / "migrations" / "versions" / "0024_adr020_activation_foundation.py"
@@ -46,6 +48,7 @@ POLICY_BINDING_REVISION = "0030_adr020_policy_binding_gate"
 BOOTSTRAP_BINDING_REVISION = "0031_adr020_bootstrap_binding"
 COVERAGE_BINDING_REVISION = "0032_adr020_coverage_gate"
 CONTINUITY_BINDING_REVISION = "0033_adr020_continuity_gate"
+PRECEDENCE_BINDING_REVISION = "0034_adr020_precedence_gate"
 BOOTSTRAP_UNIQUE = "uq_bootstrap_authority_records_exact_record"
 BOOTSTRAP_FK = "fk_policy_activation_executions_exact_bootstrap_record"
 POLICY_BINDING_FUNCTION = "adr020_validate_policy_binding_activations"
@@ -56,6 +59,9 @@ COVERAGE_BINDING_TOKEN = "ADR020_COVERAGE_BINDING_CONTRACT_MISMATCH"
 CONTINUITY_BINDING_FUNCTION = "adr020_validate_continuity_binding_policy"
 CONTINUITY_BINDING_TRIGGER = "trg_adr020_validate_continuity_binding_policy"
 CONTINUITY_BINDING_TOKEN = "ADR020_CONTINUITY_BINDING_POLICY_MISMATCH"
+PRECEDENCE_BINDING_FUNCTION = "adr020_validate_precedence_binding_policy"
+PRECEDENCE_BINDING_TRIGGER = "trg_adr020_validate_precedence_binding_policy"
+PRECEDENCE_BINDING_TOKEN = "ADR020_PRECEDENCE_BINDING_POLICY_MISMATCH"
 FUNCTION = "adr020_validate_activation_execution_decision_bindings"
 HISTORICAL_FUNCTION = "adr020_validate_atomic_activation"
 TRIGGER = "trg_activation_executions_exact_decision_bindings"
@@ -187,7 +193,10 @@ def _is_postgresql_unavailable(error):
 def _postgresql_instance(target_revision, physical_coverage=False):
     intention = (
         "int6" if physical_coverage else
-        {REVISION: "int3a", POLICY_BINDING_REVISION: "int4", BOOTSTRAP_BINDING_REVISION: "int5"}[target_revision]
+        {
+            REVISION: "int3a", POLICY_BINDING_REVISION: "int4",
+            BOOTSTRAP_BINDING_REVISION: "int5",
+        }[target_revision]
     )
     name = f"mission-009a-{intention}-{uuid.uuid4().hex[:12]}"
     database = f"adr020_{uuid.uuid4().hex[:12]}"
@@ -257,6 +266,7 @@ def _postgresql_instance(target_revision, physical_coverage=False):
             if target_revision in {
                 POLICY_BINDING_REVISION, BOOTSTRAP_BINDING_REVISION,
                 COVERAGE_BINDING_REVISION, CONTINUITY_BINDING_REVISION,
+                PRECEDENCE_BINDING_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0030 = _load_migration(
@@ -274,7 +284,7 @@ def _postgresql_instance(target_revision, physical_coverage=False):
                 })
             if target_revision in {
                 BOOTSTRAP_BINDING_REVISION, COVERAGE_BINDING_REVISION,
-                CONTINUITY_BINDING_REVISION,
+                CONTINUITY_BINDING_REVISION, PRECEDENCE_BINDING_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0031 = _load_migration(
@@ -292,6 +302,7 @@ def _postgresql_instance(target_revision, physical_coverage=False):
                 })
             if target_revision in {
                 COVERAGE_BINDING_REVISION, CONTINUITY_BINDING_REVISION,
+                PRECEDENCE_BINDING_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0032 = _load_migration(
@@ -307,7 +318,9 @@ def _postgresql_instance(target_revision, physical_coverage=False):
                     "coverage_binding_revision": COVERAGE_BINDING_REVISION,
                     "bootstrap_binding_revision": BOOTSTRAP_BINDING_REVISION,
                 })
-            if target_revision == CONTINUITY_BINDING_REVISION:
+            if target_revision in {
+                CONTINUITY_BINDING_REVISION, PRECEDENCE_BINDING_REVISION,
+            }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0033 = _load_migration(
                     CONTINUITY_BINDING_MIGRATION, "test_physical_0033",
@@ -321,6 +334,21 @@ def _postgresql_instance(target_revision, physical_coverage=False):
                 """), {
                     "continuity_binding_revision": CONTINUITY_BINDING_REVISION,
                     "coverage_binding_revision": COVERAGE_BINDING_REVISION,
+                })
+            if target_revision == PRECEDENCE_BINDING_REVISION:
+                operations = Operations(MigrationContext.configure(connection))
+                migration_0034 = _load_migration(
+                    PRECEDENCE_BINDING_MIGRATION, "test_physical_0034",
+                )
+                migration_0034.op = operations
+                migration_0034.upgrade()
+                connection.execute(text("""
+                    UPDATE alembic_version
+                    SET version_num = :precedence_binding_revision
+                    WHERE version_num = :continuity_binding_revision
+                """), {
+                    "precedence_binding_revision": PRECEDENCE_BINDING_REVISION,
+                    "continuity_binding_revision": CONTINUITY_BINDING_REVISION,
                 })
         env = os.environ.copy()
         env["DATABASE_URL"] = url
@@ -383,6 +411,20 @@ def postgresql_0033():
 def postgresql_0033_prospective():
     yield from _postgresql_instance(
         COVERAGE_BINDING_REVISION, physical_coverage=True,
+    )
+
+
+@pytest.fixture
+def postgresql_0034():
+    yield from _postgresql_instance(
+        PRECEDENCE_BINDING_REVISION, physical_coverage=True,
+    )
+
+
+@pytest.fixture
+def postgresql_0034_prospective():
+    yield from _postgresql_instance(
+        CONTINUITY_BINDING_REVISION, physical_coverage=True,
     )
 
 
@@ -1072,6 +1114,259 @@ def test_continuity_binding_rejects_divergence_from_exact_policy_binding(
         """), {
             "decision_id": false_continuity_decision["activation_decision_id"],
         }) == 0
+
+
+def test_precedence_binding_rejects_divergence_from_exact_policy_binding(
+    postgresql_0034,
+):
+    engine = postgresql_0034["engine"]
+    contract_a, contract_b, bindings = _coverage_intention_6_records(
+        "precedence-divergence-int7b",
+    )
+    _set_coverage_binding(bindings, contract_a, contract_a)
+
+    policy_binding_a = next(
+        binding
+        for binding in bindings["policy_bindings"]
+        if binding["policy_type"] == "normative_precedence"
+    )
+    precedence_activation_b = copy.deepcopy(policy_binding_a)
+    precedence_activation_b.update({
+        "policy_id": "precedence-policy-b-int7b",
+        "policy_hash": _digest("precedence-policy-b-int7b"),
+        "policy_activation_id": "precedence-activation-b-int7b",
+        "policy_activation_record_hash": _digest(
+            "precedence-activation-b-int7b",
+        ),
+    })
+    precedence_binding_b = {
+        "precedence_subject_type": "normative_precedence",
+        "precedence_policy_id": precedence_activation_b["policy_id"],
+        "precedence_policy_version": precedence_activation_b["policy_version"],
+        "precedence_policy_hash": precedence_activation_b["policy_hash"],
+        "precedence_policy_activation_id":
+            precedence_activation_b["policy_activation_id"],
+        "precedence_policy_activation_record_hash":
+            precedence_activation_b["policy_activation_record_hash"],
+    }
+    bindings["precedence_binding"] = precedence_binding_b
+
+    assert PolicyBinding.model_validate(
+        policy_binding_a, strict=True,
+    ).model_dump() == policy_binding_a
+    assert PrecedenceBinding.model_validate(
+        precedence_binding_b, strict=True,
+    ).model_dump() == precedence_binding_b
+
+    with engine.begin() as connection:
+        connection.execute(
+            insert(models.CoverageContract), [contract_a, contract_b],
+        )
+    _materialize_policy_activations(
+        engine,
+        [*bindings["policy_bindings"], precedence_activation_b],
+    )
+    with engine.connect() as connection:
+        persisted_activations = connection.execute(text("""
+            SELECT policy_activation_id, policy_id, policy_version,
+                   policy_hash, record_hash
+            FROM policy_activations
+            WHERE policy_activation_id IN (:activation_a, :activation_b)
+            ORDER BY policy_activation_id
+        """), {
+            "activation_a": policy_binding_a["policy_activation_id"],
+            "activation_b": precedence_activation_b["policy_activation_id"],
+        }).all()
+    assert persisted_activations == sorted([
+        (
+            policy_binding_a["policy_activation_id"],
+            policy_binding_a["policy_id"],
+            policy_binding_a["policy_version"],
+            policy_binding_a["policy_hash"],
+            policy_binding_a["policy_activation_record_hash"],
+        ),
+        (
+            precedence_activation_b["policy_activation_id"],
+            precedence_activation_b["policy_id"],
+            precedence_activation_b["policy_version"],
+            precedence_activation_b["policy_hash"],
+            precedence_activation_b["policy_activation_record_hash"],
+        ),
+    ])
+
+    with pytest.raises(ValidationError) as structural_rejection:
+        ADR020BindingsContract.model_validate(bindings, strict=True)
+    errors = structural_rejection.value.errors()
+    assert len(errors) == 1
+    assert errors[0]["type"] == "value_error"
+    assert (
+        "precedence_binding must match exactly one normative_precedence "
+        "policy_binding"
+    ) in errors[0]["msg"]
+
+    false_precedence_decision = _decision(
+        "precedence-divergence-int7b", bindings,
+    )
+    with pytest.raises((DBAPIError, IntegrityError)) as caught:
+        with engine.begin() as connection:
+            connection.execute(
+                insert(models.ActivationDecision),
+                false_precedence_decision,
+            )
+    assert caught.value.orig.sqlstate == "23503"
+    assert PRECEDENCE_BINDING_TOKEN in str(caught.value)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {
+            "decision_id": false_precedence_decision["activation_decision_id"],
+        }) == 0
+
+
+def _assert_precedence_rejection(engine, decision):
+    with pytest.raises((DBAPIError, IntegrityError)) as caught:
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+    assert caught.value.orig.sqlstate == "23503"
+    assert PRECEDENCE_BINDING_TOKEN in str(caught.value)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": decision["activation_decision_id"]}) == 0
+
+
+def _precedence_physical_records(engine, suffix):
+    contract_a, contract_b, bindings = _coverage_intention_6_records(suffix)
+    _set_coverage_binding(bindings, contract_a, contract_a)
+    with engine.begin() as connection:
+        connection.execute(insert(models.CoverageContract), [contract_a, contract_b])
+    return bindings
+
+
+def test_precedence_binding_accepts_exact_policy_binding(postgresql_0034):
+    engine = postgresql_0034["engine"]
+    bindings = _precedence_physical_records(engine, "precedence-exact-int7b")
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    assert ADR020BindingsContract.model_validate(
+        bindings, strict=True,
+    ).model_dump() == bindings
+    decision = _decision("precedence-exact-int7b", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), decision)
+    with engine.connect() as connection:
+        persisted = connection.execute(text("""
+            SELECT precedence_binding, continuity_binding,
+                   activation_decision_id
+            FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": decision["activation_decision_id"]}).one()
+    assert persisted == (
+        decision["precedence_binding"], decision["continuity_binding"],
+        decision["activation_decision_id"],
+    )
+
+
+@pytest.mark.parametrize(
+    "case", ("zero_exact", "two_exact", "one_exact_one_other"),
+)
+def test_precedence_binding_enforces_exact_cumulative_cardinality(
+    postgresql_0034, case,
+):
+    engine = postgresql_0034["engine"]
+    bindings = _precedence_physical_records(engine, f"precedence-cardinality-{case}")
+    exact = next(
+        item for item in bindings["policy_bindings"]
+        if item["policy_type"] == "normative_precedence"
+    )
+    activations = list(bindings["policy_bindings"])
+    if case == "zero_exact":
+        bindings["precedence_binding"]["precedence_policy_id"] = "absent-policy"
+    elif case == "two_exact":
+        bindings["policy_bindings"].append(copy.deepcopy(exact))
+    else:
+        other = copy.deepcopy(exact)
+        other.update({
+            "policy_id": f"other-precedence-{case}",
+            "policy_hash": _digest(f"other-precedence-{case}"),
+            "policy_activation_id": f"other-precedence-activation-{case}",
+            "policy_activation_record_hash": _digest(
+                f"other-precedence-activation-{case}",
+            ),
+        })
+        bindings["policy_bindings"].append(other)
+        activations.append(other)
+    _materialize_policy_activations(engine, activations)
+    decision = _decision(f"precedence-cardinality-{case}", bindings)
+    if case == "one_exact_one_other":
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+        with engine.connect() as connection:
+            assert connection.scalar(text("""
+                SELECT count(*) FROM activation_decisions
+                WHERE activation_decision_id = :decision_id
+            """), {"decision_id": decision["activation_decision_id"]}) == 1
+    else:
+        _assert_precedence_rejection(engine, decision)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "json_null", "array", "string", "wrong_subject_type",
+        "missing_policy_id", "missing_policy_version", "missing_policy_hash",
+        "missing_activation_id", "missing_activation_record_hash",
+        "numeric_policy_id", "text_policy_version", "non_text_policy_hash",
+        "numeric_activation_id", "non_text_activation_record_hash",
+    ),
+)
+def test_precedence_binding_rejects_adversarial_jsonb_types(
+    postgresql_0034, case,
+):
+    engine = postgresql_0034["engine"]
+    bindings = _precedence_physical_records(engine, f"precedence-{case}")
+    exact = next(
+        item for item in bindings["policy_bindings"]
+        if item["policy_type"] == "normative_precedence"
+    )
+    precedence = bindings["precedence_binding"]
+    if case == "numeric_policy_id":
+        exact["policy_id"] = "12345"
+        precedence["precedence_policy_id"] = 12345
+    elif case == "numeric_activation_id":
+        exact["policy_activation_id"] = "67890"
+        precedence["precedence_policy_activation_id"] = 67890
+    elif case == "non_text_policy_hash":
+        exact["policy_hash"] = "1" * 64
+        precedence["precedence_policy_hash"] = int("1" * 64)
+    elif case == "non_text_activation_record_hash":
+        exact["policy_activation_record_hash"] = "2" * 64
+        precedence["precedence_policy_activation_record_hash"] = int("2" * 64)
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    if case == "json_null":
+        bindings["precedence_binding"] = None
+    elif case == "array":
+        bindings["precedence_binding"] = []
+    elif case == "string":
+        bindings["precedence_binding"] = "normative_precedence"
+    elif case == "wrong_subject_type":
+        precedence["precedence_subject_type"] = "other"
+    elif case.startswith("missing_"):
+        field = {
+            "missing_policy_id": "precedence_policy_id",
+            "missing_policy_version": "precedence_policy_version",
+            "missing_policy_hash": "precedence_policy_hash",
+            "missing_activation_id": "precedence_policy_activation_id",
+            "missing_activation_record_hash":
+                "precedence_policy_activation_record_hash",
+        }[case]
+        precedence.pop(field)
+    elif case == "text_policy_version":
+        precedence["precedence_policy_version"] = "1"
+    _assert_precedence_rejection(
+        engine, _decision(f"precedence-adversarial-{case}", bindings),
+    )
 
 
 def _assert_continuity_rejection(engine, decision):
@@ -1850,6 +2145,266 @@ def test_continuity_binding_function_and_trigger_are_physically_installed(
     )
     assert "BEFORE INSERT" in trigger[4]
     assert trigger[5] == CONTINUITY_BINDING_FUNCTION
+
+
+def test_precedence_binding_gate_is_prospective_and_rejects_new_divergence(
+    postgresql_0034_prospective,
+):
+    engine = postgresql_0034_prospective["engine"]
+    bindings = _precedence_physical_records(engine, "precedence-prospective")
+    exact = next(
+        item for item in bindings["policy_bindings"]
+        if item["policy_type"] == "normative_precedence"
+    )
+    other = copy.deepcopy(exact)
+    other.update({
+        "policy_id": "precedence-policy-prospective-b",
+        "policy_hash": _digest("precedence-policy-prospective-b"),
+        "policy_activation_id": "precedence-activation-prospective-b",
+        "policy_activation_record_hash": _digest(
+            "precedence-activation-prospective-b",
+        ),
+    })
+    _materialize_policy_activations(engine, [*bindings["policy_bindings"], other])
+    bindings["precedence_binding"].update({
+        "precedence_policy_id": other["policy_id"],
+        "precedence_policy_version": other["policy_version"],
+        "precedence_policy_hash": other["policy_hash"],
+        "precedence_policy_activation_id": other["policy_activation_id"],
+        "precedence_policy_activation_record_hash":
+            other["policy_activation_record_hash"],
+    })
+    historical = _decision("precedence-historical-int7b", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), historical)
+        before = connection.execute(text("""
+            SELECT activation_decision_id, record_hash
+            FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": historical["activation_decision_id"]}).one()
+
+    with engine.begin() as connection:
+        operations = Operations(MigrationContext.configure(connection))
+        migration_0034 = _load_migration(
+            PRECEDENCE_BINDING_MIGRATION, "test_prospective_physical_0034",
+        )
+        migration_0034.op = operations
+        migration_0034.upgrade()
+        connection.execute(text("""
+            UPDATE alembic_version
+            SET version_num = :precedence_revision
+            WHERE version_num = :continuity_revision
+        """), {
+            "precedence_revision": PRECEDENCE_BINDING_REVISION,
+            "continuity_revision": CONTINUITY_BINDING_REVISION,
+        })
+
+    with engine.connect() as connection:
+        after = connection.execute(text("""
+            SELECT activation_decision_id, record_hash
+            FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": historical["activation_decision_id"]}).one()
+    assert after == before
+    _assert_precedence_rejection(
+        engine, _decision("precedence-new-mismatch-int7b", bindings),
+    )
+    bindings["precedence_binding"].update({
+        "precedence_policy_id": exact["policy_id"],
+        "precedence_policy_version": exact["policy_version"],
+        "precedence_policy_hash": exact["policy_hash"],
+        "precedence_policy_activation_id": exact["policy_activation_id"],
+        "precedence_policy_activation_record_hash":
+            exact["policy_activation_record_hash"],
+    })
+    accepted = _decision("precedence-new-exact-int7b", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), accepted)
+    with engine.connect() as connection:
+        assert connection.scalar(text(
+            "SELECT count(*) FROM activation_decisions"
+        )) == 2
+
+
+def test_precedence_binding_migration_has_exact_static_contract(monkeypatch):
+    assert PRECEDENCE_BINDING_MIGRATION.exists()
+    source = PRECEDENCE_BINDING_MIGRATION.read_text(encoding="utf-8")
+    lowered = source.lower()
+    tree = ast.parse(source)
+    assignments = {
+        node.targets[0].id: ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign) and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id in {"revision", "down_revision"}
+    }
+    assert assignments == {
+        "revision": PRECEDENCE_BINDING_REVISION,
+        "down_revision": CONTINUITY_BINDING_REVISION,
+    }
+    assert len(PRECEDENCE_BINDING_REVISION) <= 32
+    for token in (
+        PRECEDENCE_BINDING_FUNCTION, PRECEDENCE_BINDING_TRIGGER,
+        "BEFORE INSERT ON activation_decisions", "FOR EACH ROW",
+        "jsonb_array_elements", "SELECT count(*)", "exact_match_count <> 1",
+        "23503", PRECEDENCE_BINDING_TOKEN,
+    ):
+        assert token in source
+    for field, jsonb_type in (
+        ("precedence_subject_type", "string"),
+        ("precedence_policy_id", "string"),
+        ("precedence_policy_version", "number"),
+        ("precedence_policy_hash", "string"),
+        ("precedence_policy_activation_id", "string"),
+        ("precedence_policy_activation_record_hash", "string"),
+    ):
+        assert re.search(
+            rf"jsonb_typeof\(\s*NEW\.precedence_binding\s*"
+            rf"->\s*'{field}'\s*\)\s+IS DISTINCT FROM\s+'{jsonb_type}'",
+            source,
+        )
+    for field in (
+        "policy_type", "policy_id", "policy_version", "policy_hash",
+        "policy_activation_id", "policy_activation_record_hash",
+    ):
+        assert re.search(rf"binding\s*->\s*'{field}'", source)
+        assert not re.search(rf"binding\s*->>\s*'{field}'", source)
+    assert "policy_bindings) IS DISTINCT FROM 'array'" in source
+    assert not re.search(r"\b(update|delete)\b", lowered)
+    for forbidden in ("backfill", "gates"):
+        assert forbidden not in lowered
+    assert "continuity" not in lowered.replace(CONTINUITY_BINDING_REVISION, "")
+    assert "raise runtimeerror" in lowered and "irreversible" in lowered
+
+    migration = _load_migration(
+        PRECEDENCE_BINDING_MIGRATION, "test_0034_non_postgresql_guard",
+    )
+    class NonPostgresqlOperations:
+        def get_bind(self):
+            return type("Bind", (), {
+                "dialect": type("Dialect", (), {"name": "sqlite"})(),
+            })()
+    monkeypatch.setattr(migration, "op", NonPostgresqlOperations())
+    with pytest.raises(RuntimeError, match="PostgreSQL-only"):
+        migration.upgrade()
+    with pytest.raises(RuntimeError, match="irreversible"):
+        migration.downgrade()
+
+
+def test_precedence_binding_function_and_trigger_are_physically_installed(
+    postgresql_0034,
+):
+    engine = postgresql_0034["engine"]
+    with engine.connect() as connection:
+        assert connection.scalar(text(
+            "SELECT version_num FROM alembic_version"
+        )) == PRECEDENCE_BINDING_REVISION
+        assert connection.scalar(text("""
+            SELECT count(*) FROM pg_proc WHERE proname = :function_name
+        """), {"function_name": PRECEDENCE_BINDING_FUNCTION}) == 1
+        trigger = connection.execute(text("""
+            SELECT t.tgname, t.tgisinternal, t.tgenabled, c.relname,
+                   pg_get_triggerdef(t.oid), p.proname
+            FROM pg_trigger AS t
+            JOIN pg_class AS c ON c.oid = t.tgrelid
+            JOIN pg_proc AS p ON p.oid = t.tgfoid
+            WHERE t.tgname = :trigger_name
+        """), {"trigger_name": PRECEDENCE_BINDING_TRIGGER}).one()
+    assert trigger[0:4] == (
+        PRECEDENCE_BINDING_TRIGGER, False, "O", "activation_decisions",
+    )
+    assert "BEFORE INSERT" in trigger[4]
+    assert trigger[5] == PRECEDENCE_BINDING_FUNCTION
+
+
+@pytest.mark.parametrize(
+    "case, expected_token",
+    (
+        ("continuity_false", CONTINUITY_BINDING_TOKEN),
+        ("precedence_false", PRECEDENCE_BINDING_TOKEN),
+        ("policy_activation_false", "ADR020_POLICY_BINDING_ACTIVATION_MISMATCH"),
+        ("coverage_false", COVERAGE_BINDING_TOKEN),
+        ("integrally_exact", None),
+    ),
+)
+def test_binding_triggers_0030_through_0034_coexist(
+    postgresql_0034, case, expected_token,
+):
+    engine = postgresql_0034["engine"]
+    bindings = _precedence_physical_records(engine, f"coexist-{case}")
+    activations = copy.deepcopy(bindings["policy_bindings"])
+    if case == "continuity_false":
+        bindings["continuity_binding"][
+            "continuity_policy_activation_record_hash"
+        ] = _digest("false-continuity")
+    elif case == "precedence_false":
+        bindings["precedence_binding"][
+            "precedence_policy_activation_record_hash"
+        ] = _digest("false-precedence")
+    elif case == "policy_activation_false":
+        precedence = next(
+            item for item in bindings["policy_bindings"]
+            if item["policy_type"] == "normative_precedence"
+        )
+        false_hash = _digest("false-policy-activation")
+        precedence["policy_activation_record_hash"] = false_hash
+        bindings["precedence_binding"][
+            "precedence_policy_activation_record_hash"
+        ] = false_hash
+    elif case == "coverage_false":
+        bindings["coverage_binding"][
+            "coverage_contract_record_hash"
+        ] = _digest("false-coverage")
+    _materialize_policy_activations(engine, activations)
+    decision = _decision(f"coexist-{case}", bindings)
+    if expected_token is None:
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+    else:
+        with pytest.raises((DBAPIError, IntegrityError)) as caught:
+            with engine.begin() as connection:
+                connection.execute(insert(models.ActivationDecision), decision)
+        assert caught.value.orig.sqlstate == "23503"
+        assert expected_token in str(caught.value)
+    with engine.connect() as connection:
+        triggers = connection.execute(text("""
+            SELECT tgname FROM pg_trigger
+            WHERE tgrelid = 'activation_decisions'::regclass
+              AND NOT tgisinternal
+              AND (tgtype & 2) = 2
+              AND (tgtype & 4) = 4
+            ORDER BY tgname
+        """)).scalars().all()
+    assert triggers == sorted([
+        POLICY_BINDING_TRIGGER, COVERAGE_BINDING_TRIGGER,
+        CONTINUITY_BINDING_TRIGGER, PRECEDENCE_BINDING_TRIGGER,
+    ])
+
+
+@pytest.mark.parametrize(
+    "value, expected_token",
+    (
+        (None, "ADR020_POLICY_BINDING_ACTIVATION_MISMATCH"),
+        ({}, "ADR020_POLICY_BINDING_ACTIVATION_MISMATCH"),
+        ("bindings", "ADR020_POLICY_BINDING_ACTIVATION_MISMATCH"),
+        ([], CONTINUITY_BINDING_TOKEN),
+    ),
+)
+def test_policy_bindings_non_array_or_empty_has_canonical_physical_rejection(
+    postgresql_0034, value, expected_token,
+):
+    engine = postgresql_0034["engine"]
+    bindings = _precedence_physical_records(
+        engine, f"policy-bindings-shape-{type(value).__name__}",
+    )
+    bindings["policy_bindings"] = value
+    decision = _decision(f"policy-bindings-shape-{uuid.uuid4().hex}", bindings)
+    with pytest.raises((DBAPIError, IntegrityError)) as caught:
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+    assert caught.value.orig.sqlstate == "23503"
+    assert expected_token in str(caught.value)
+    assert "cannot extract elements" not in str(caught.value).lower()
 
 
 def test_coverage_binding_migration_has_exact_static_contract(monkeypatch):
