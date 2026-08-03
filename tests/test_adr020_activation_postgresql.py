@@ -1,5 +1,6 @@
 import ast
 import copy
+from datetime import datetime, timezone
 import hashlib
 import importlib.util
 import io
@@ -16,7 +17,7 @@ import psycopg
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy import create_engine, insert, text
+from sqlalchemy import create_engine, insert, null, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
@@ -26,10 +27,15 @@ from app.schemas.adr020_bindings import ADR020BindingsContract
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "migrations" / "versions" / "0029_adr020_activation_execution_gate.py"
+POLICY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0030_adr020_policy_binding_gate.py"
+POLICY_FOUNDATION = ROOT / "migrations" / "versions" / "0022_adr020_policy_foundation.py"
 HISTORICAL = ROOT / "migrations" / "versions" / "0024_adr020_activation_foundation.py"
 ATOMIC_REPAIR = ROOT / "migrations" / "versions" / "0028_adr020_atomic_activation_trigger_fix.py"
 ATOMIC_REVISION = "0028_adr020_atomic_trigger_fix"
 REVISION = "0029_adr020_activation_exec_gate"
+POLICY_BINDING_REVISION = "0030_adr020_policy_binding_gate"
+POLICY_BINDING_FUNCTION = "adr020_validate_policy_binding_activations"
+POLICY_BINDING_TRIGGER = "trg_adr020_validate_policy_binding_activations"
 FUNCTION = "adr020_validate_activation_execution_decision_bindings"
 HISTORICAL_FUNCTION = "adr020_validate_atomic_activation"
 TRIGGER = "trg_activation_executions_exact_decision_bindings"
@@ -52,22 +58,9 @@ def _load_migration(path, module_name):
 
 
 def _bootstrap_adr020_activation(connection):
-    # Exact FK predecessors required by 0024, reduced to the columns and
-    # candidate keys that 0024 references. Names and types derive from 0022.
+    # The append-only function is the sole physical predecessor from 0021
+    # required by the real 0022 and 0024 upgrades in this isolated bootstrap.
     connection.execute(text("""
-        CREATE TABLE policy_versions (
-            policy_id varchar(64) NOT NULL,
-            policy_version integer NOT NULL,
-            policy_hash varchar(64) NOT NULL,
-            CONSTRAINT uq_policy_versions_exact_subject
-                UNIQUE (policy_id, policy_version, policy_hash)
-        );
-        CREATE TABLE policy_decisions (
-            decision_id varchar(64) PRIMARY KEY
-        );
-        CREATE TABLE bootstrap_authority_records (
-            bootstrap_authority_record_id varchar(64) PRIMARY KEY
-        );
         CREATE FUNCTION adr020_reject_append_only_mutation()
         RETURNS trigger
         LANGUAGE plpgsql
@@ -84,10 +77,27 @@ def _bootstrap_adr020_activation(connection):
             version_num varchar(32) NOT NULL PRIMARY KEY
         );
         INSERT INTO alembic_version (version_num)
-        VALUES ('0023_adr020_coverage');
+        VALUES ('0021_adr020_relation_foundation');
     """))
 
     operations = Operations(MigrationContext.configure(connection))
+    migration_0022 = _load_migration(POLICY_FOUNDATION, "test_physical_0022")
+    migration_0022.op = operations
+    migration_0022.upgrade()
+    connection.execute(text("""
+        UPDATE alembic_version
+        SET version_num = '0022_adr020_policy'
+        WHERE version_num = '0021_adr020_relation_foundation'
+    """))
+
+    # 0023 is statically audited and stamped because none of its coverage
+    # objects is referenced by the tables or binding relation under test.
+    connection.execute(text("""
+        UPDATE alembic_version
+        SET version_num = '0023_adr020_coverage'
+        WHERE version_num = '0022_adr020_policy'
+    """))
+
     migration_0024 = _load_migration(HISTORICAL, "test_physical_0024")
     migration_0024.op = operations
     migration_0024.upgrade()
@@ -148,9 +158,9 @@ def _is_postgresql_unavailable(error):
     return sqlstate is None or sqlstate == "57P03" or sqlstate.startswith("08")
 
 
-@pytest.fixture(scope="session")
-def postgresql_0029():
-    name = f"mission-009a-int3a-{uuid.uuid4().hex[:12]}"
+def _postgresql_instance(apply_policy_binding_gate):
+    intention = "int4" if apply_policy_binding_gate else "int3a"
+    name = f"mission-009a-{intention}-{uuid.uuid4().hex[:12]}"
     database = f"adr020_{uuid.uuid4().hex[:12]}"
     password = uuid.uuid4().hex
     port = _free_port()
@@ -160,7 +170,7 @@ def postgresql_0029():
     try:
         result = _run([
             "docker", "run", "--detach", "--name", name,
-            "--label", "mission=MISSION-009A-INTENCAO-3A",
+            "--label", f"mission=MISSION-009A-{intention.upper()}",
             "-e", "POSTGRES_USER=adr020", "-e", f"POSTGRES_PASSWORD={password}",
             "-e", f"POSTGRES_DB={database}", "-p", f"127.0.0.1:{port}:5432",
             "postgres:16-alpine",
@@ -215,6 +225,21 @@ def postgresql_0029():
         engine = create_engine(url)
         with engine.begin() as connection:
             _bootstrap_adr020_activation(connection)
+            if apply_policy_binding_gate:
+                operations = Operations(MigrationContext.configure(connection))
+                migration_0030 = _load_migration(
+                    POLICY_BINDING_MIGRATION, "test_physical_0030",
+                )
+                migration_0030.op = operations
+                migration_0030.upgrade()
+                connection.execute(text("""
+                    UPDATE alembic_version
+                    SET version_num = :policy_binding_revision
+                    WHERE version_num = :revision
+                """), {
+                    "policy_binding_revision": POLICY_BINDING_REVISION,
+                    "revision": REVISION,
+                })
         env = os.environ.copy()
         env["DATABASE_URL"] = url
         yield {
@@ -229,6 +254,16 @@ def postgresql_0029():
                 ["docker", "rm", "--force", name], text=True, capture_output=True,
                 check=False,
             )
+
+
+@pytest.fixture(scope="session")
+def postgresql_0029():
+    yield from _postgresql_instance(False)
+
+
+@pytest.fixture(scope="session")
+def postgresql_0030():
+    yield from _postgresql_instance(True)
 
 
 def _digest(label):
@@ -383,6 +418,284 @@ def _assert_db_rejects(call, engine, execution_id):
             "SELECT count(*) FROM activation_executions WHERE activation_execution_id=:id"
         ), {"id": execution_id})
     assert count == 0
+
+
+def _policy_records(binding, suffix):
+    decision_id = f"policy-decision-{suffix}"
+    execution_id = f"policy-execution-{suffix}"
+    common = {
+        key: binding[key]
+        for key in ("policy_type", "policy_id", "policy_version", "policy_hash")
+    }
+    version = {
+        "policy_version_record_id": f"policy-version-{suffix}", **common,
+        "domain": "fiscal", "scope": {"country": "PT"},
+        "declared_material_applicability": {"taxes": ["iva"]},
+        "modalities": ["manual"],
+        "permitted_authorization_classes": ["humana_delegada"],
+        "permitted_execution_modes": ["manual"], "gates": [], "roles": [],
+        "segregation_of_duties": {}, "limits": {}, "rules": [],
+        "exact_references": [],
+        "origin_evidence": {"mission": "MISSION-009A-INTENCAO-4"},
+        "record_hash": _digest(f"policy-version-{suffix}"),
+    }
+    decision = {
+        "decision_id": decision_id, "decision_event": "submetida", **common,
+        "actor": "policy-proponent", "institutional_role": "proponente_institucional",
+        "evidence": {"mission": "MISSION-009A-INTENCAO-4"},
+        "rationale": "physical predecessor for exact policy activation",
+        "previous_decision_id": None,
+        "idempotency_key": f"policy-decision-idempotency-{suffix}",
+        "record_hash": _digest(f"policy-decision-{suffix}"),
+    }
+    execution = {
+        "policy_activation_execution_id": execution_id,
+        "policy_decision_id": decision_id, **common,
+        "authorization_basis_type": "active_policy_chain",
+        "authorization_class": "humana_delegada", "execution_mode": "manual",
+        "bootstrap_authority_record_id": None,
+        "bootstrap_authority_record_hash": None,
+        "activation_authority_policy_id": None,
+        "activation_authority_policy_version": None,
+        "activation_authority_policy_hash": None,
+        "activation_authority_policy_activation_id": None,
+        "automation_envelope_id": None, "automation_envelope_version": None,
+        "automation_envelope_hash": None, "automation_envelope_activation_id": None,
+        "attempt_number": 1, "actor_or_worker": "integration-auditor",
+        "lease_id": f"policy-lease-{suffix}", "fencing_token": 1,
+        "idempotency_key": f"policy-execution-idempotency-{suffix}",
+        "state": "concluida", "started_at": datetime.now(timezone.utc),
+        "finished_at": datetime.now(timezone.utc),
+        "structured_result": {"activated": True}, "structured_error": None,
+        "provenance": {"mission": "MISSION-009A-INTENCAO-4"},
+        "record_hash": _digest(f"policy-execution-{suffix}"),
+    }
+    activation = {
+        "policy_activation_id": binding["policy_activation_id"],
+        "policy_activation_execution_id": execution_id,
+        "policy_decision_id": decision_id, **common,
+        "domain": "fiscal", "modality": "manual",
+        "operational_interval": {"from": "2026-08-03T00:00:00Z"},
+        "activation_generation_id": f"policy-generation-{suffix}",
+        "activated_at": datetime.now(timezone.utc), "state": "activa",
+        "technical_actor": "integration-auditor",
+        "provenance": {"mission": "MISSION-009A-INTENCAO-4"},
+        "record_hash": binding["policy_activation_record_hash"],
+    }
+    return version, decision, execution, activation
+
+
+def _materialize_policy_activations(engine, bindings):
+    records = [
+        _policy_records(binding, f"{index}-{uuid.uuid4().hex[:8]}")
+        for index, binding in enumerate(bindings)
+    ]
+    with engine.begin() as connection:
+        connection.execute(insert(models.PolicyVersion), [row[0] for row in records])
+        connection.execute(insert(models.PolicyDecision), [row[1] for row in records])
+        connection.execute(
+            insert(models.PolicyActivationExecution), [row[2] for row in records],
+        )
+        connection.execute(insert(models.PolicyActivation), [row[3] for row in records])
+
+
+def test_policy_binding_rejects_activation_from_different_exact_policy(
+    postgresql_0030,
+):
+    engine = postgresql_0030["engine"]
+    bindings = _bindings()
+    activation_a = copy.deepcopy(bindings["policy_bindings"][0])
+    activation_a.update({
+        "policy_id": "policy-a", "policy_hash": _digest("hash-a"),
+        "policy_activation_id": "activation-a",
+        "policy_activation_record_hash": _digest("activation-record-hash-a"),
+    })
+    declared_b = copy.deepcopy(activation_a)
+    declared_b.update({"policy_id": "policy-b", "policy_hash": _digest("hash-b")})
+    _materialize_policy_activations(
+        engine, [activation_a, bindings["policy_bindings"][1]],
+    )
+    version_b = _policy_records(declared_b, f"b-{uuid.uuid4().hex[:8]}")[0]
+    with engine.begin() as connection:
+        connection.execute(insert(models.PolicyVersion), version_b)
+
+    bindings["policy_bindings"][0] = declared_b
+    bindings["continuity_binding"].update({
+        "continuity_policy_id": declared_b["policy_id"],
+        "continuity_policy_version": declared_b["policy_version"],
+        "continuity_policy_hash": declared_b["policy_hash"],
+        "continuity_policy_activation_id": declared_b["policy_activation_id"],
+        "continuity_policy_activation_record_hash":
+            declared_b["policy_activation_record_hash"],
+    })
+    ADR020BindingsContract.model_validate(bindings, strict=True)
+    decision = _decision("mismatched-policy-activation", bindings)
+
+    with pytest.raises(DBAPIError) as caught:
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+    assert caught.value.orig.sqlstate == "23503"
+    assert "ADR020_POLICY_BINDING_ACTIVATION_MISMATCH" in str(caught.value)
+
+
+def test_policy_binding_accepts_activation_from_same_exact_policy(postgresql_0030):
+    engine = postgresql_0030["engine"]
+    bindings = _bindings()
+    for index, binding in enumerate(bindings["policy_bindings"]):
+        suffix = f"positive-{index}"
+        binding.update({
+            "policy_id": f"{binding['policy_id']}-{suffix}",
+            "policy_hash": _digest(f"policy-{suffix}"),
+            "policy_activation_id": f"activation-{suffix}",
+            "policy_activation_record_hash": _digest(f"activation-{suffix}"),
+        })
+    continuity, precedence = bindings["policy_bindings"]
+    bindings["continuity_binding"].update({
+        "continuity_policy_id": continuity["policy_id"],
+        "continuity_policy_hash": continuity["policy_hash"],
+        "continuity_policy_activation_id": continuity["policy_activation_id"],
+        "continuity_policy_activation_record_hash":
+            continuity["policy_activation_record_hash"],
+    })
+    bindings["precedence_binding"].update({
+        "precedence_policy_id": precedence["policy_id"],
+        "precedence_policy_hash": precedence["policy_hash"],
+        "precedence_policy_activation_id": precedence["policy_activation_id"],
+        "precedence_policy_activation_record_hash":
+            precedence["policy_activation_record_hash"],
+    })
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    ADR020BindingsContract.model_validate(bindings, strict=True)
+    decision = _decision("exact-policy-activation", bindings)
+
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), decision)
+    with engine.connect() as connection:
+        persisted = connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": decision["activation_decision_id"]})
+    assert persisted == 1
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "sql_null",
+        "json_object",
+        "empty_array",
+        "missing_activation_id",
+        "missing_activation_record_hash",
+        "non_integer_policy_version",
+        "null_policy_version",
+        "one_exact_one_divergent",
+    ),
+)
+def test_policy_binding_rejects_invalid_physical_forms(postgresql_0030, case):
+    engine = postgresql_0030["engine"]
+    bindings = _bindings()
+    if case == "one_exact_one_divergent":
+        for index, binding in enumerate(bindings["policy_bindings"]):
+            binding.update({
+                "policy_id": f"multi-binding-policy-{index}",
+                "policy_hash": _digest(f"multi-binding-policy-{index}"),
+                "policy_activation_id": f"multi-binding-activation-{index}",
+                "policy_activation_record_hash": _digest(
+                    f"multi-binding-activation-{index}"
+                ),
+            })
+        _materialize_policy_activations(engine, bindings["policy_bindings"])
+
+    if case == "sql_null":
+        policy_bindings = null()
+    elif case == "json_object":
+        policy_bindings = copy.deepcopy(bindings["policy_bindings"][0])
+    elif case == "empty_array":
+        policy_bindings = []
+    else:
+        policy_bindings = copy.deepcopy(bindings["policy_bindings"])
+        if case == "missing_activation_id":
+            policy_bindings[0].pop("policy_activation_id")
+        elif case == "missing_activation_record_hash":
+            policy_bindings[0].pop("policy_activation_record_hash")
+        elif case == "non_integer_policy_version":
+            policy_bindings[0]["policy_version"] = "not-an-integer"
+        elif case == "null_policy_version":
+            policy_bindings[0]["policy_version"] = None
+        else:
+            policy_bindings[1]["policy_activation_record_hash"] = _digest(
+                "divergent-activation-record"
+            )
+
+    decision = _decision(f"invalid-{case}")
+    decision["policy_bindings"] = policy_bindings
+    with pytest.raises(DBAPIError) as caught:
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+    assert caught.value.orig.sqlstate == "23503"
+    assert "ADR020_POLICY_BINDING_ACTIVATION_MISMATCH" in str(caught.value)
+    with engine.connect() as connection:
+        persisted = connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": decision["activation_decision_id"]})
+    assert persisted == 0
+
+
+def test_policy_binding_migration_has_exact_static_contract():
+    assert POLICY_BINDING_MIGRATION.exists()
+    source = POLICY_BINDING_MIGRATION.read_text(encoding="utf-8")
+    lowered = source.lower()
+    tree = ast.parse(source)
+    assignments = {
+        node.targets[0].id: ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign) and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id in {"revision", "down_revision"}
+    }
+    assert assignments == {
+        "revision": POLICY_BINDING_REVISION,
+        "down_revision": REVISION,
+    }
+    assert len(POLICY_BINDING_REVISION) <= 32
+    assert POLICY_BINDING_FUNCTION in source
+    assert POLICY_BINDING_TRIGGER in source
+    assert re.search(
+        rf"CREATE\s+TRIGGER\s+{POLICY_BINDING_TRIGGER}\s+"
+        r"BEFORE\s+INSERT\s+ON\s+activation_decisions\s+FOR\s+EACH\s+ROW",
+        source, re.I,
+    )
+    for comparison in (
+        "policy_activations.policy_type = binding ->> 'policy_type'",
+        "policy_activations.policy_id = binding ->> 'policy_id'",
+        "policy_activations.policy_version =",
+        "policy_activations.policy_hash = binding ->> 'policy_hash'",
+        "policy_activations.policy_activation_id =",
+        "policy_activations.record_hash =",
+    ):
+        assert comparison in lowered
+    assert "errcode = '23503'" in lowered
+    assert "ADR020_POLICY_BINDING_ACTIVATION_MISMATCH" in source
+    assert "raise runtimeerror" in lowered and "irreversible" in lowered
+    for forbidden in ("update ", "delete ", "backfill", "alter table"):
+        assert forbidden not in lowered
+
+
+def test_policy_binding_gate_is_physically_installed(postgresql_0030):
+    engine = postgresql_0030["engine"]
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == POLICY_BINDING_REVISION
+        assert connection.scalar(
+            text("SELECT to_regprocedure(:name) IS NOT NULL"),
+            {"name": f"{POLICY_BINDING_FUNCTION}()"},
+        )
+        trigger = connection.execute(text("""
+            SELECT event_manipulation, action_timing, event_object_table
+            FROM information_schema.triggers
+            WHERE trigger_name = :trigger
+        """), {"trigger": POLICY_BINDING_TRIGGER}).one()
+    assert trigger == ("INSERT", "BEFORE", "activation_decisions")
 
 
 def test_migration_exists_with_sovereign_gate_objects():
