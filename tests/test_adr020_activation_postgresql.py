@@ -17,12 +17,17 @@ import psycopg
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from pydantic import ValidationError
 from sqlalchemy import create_engine, insert, null, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models
-from app.schemas.adr020_bindings import ADR020BindingsContract
+from app.schemas.adr020_bindings import (
+    ADR020BindingsContract,
+    ContinuityBinding,
+    PolicyBinding,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +35,7 @@ MIGRATION = ROOT / "migrations" / "versions" / "0029_adr020_activation_execution
 POLICY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0030_adr020_policy_binding_gate.py"
 BOOTSTRAP_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0031_adr020_bootstrap_binding_gate.py"
 COVERAGE_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0032_adr020_coverage_binding_gate.py"
+CONTINUITY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0033_adr020_continuity_binding_gate.py"
 POLICY_FOUNDATION = ROOT / "migrations" / "versions" / "0022_adr020_policy_foundation.py"
 COVERAGE_FOUNDATION = ROOT / "migrations" / "versions" / "0023_adr020_coverage_foundation.py"
 HISTORICAL = ROOT / "migrations" / "versions" / "0024_adr020_activation_foundation.py"
@@ -39,6 +45,7 @@ REVISION = "0029_adr020_activation_exec_gate"
 POLICY_BINDING_REVISION = "0030_adr020_policy_binding_gate"
 BOOTSTRAP_BINDING_REVISION = "0031_adr020_bootstrap_binding"
 COVERAGE_BINDING_REVISION = "0032_adr020_coverage_gate"
+CONTINUITY_BINDING_REVISION = "0033_adr020_continuity_gate"
 BOOTSTRAP_UNIQUE = "uq_bootstrap_authority_records_exact_record"
 BOOTSTRAP_FK = "fk_policy_activation_executions_exact_bootstrap_record"
 POLICY_BINDING_FUNCTION = "adr020_validate_policy_binding_activations"
@@ -46,6 +53,9 @@ POLICY_BINDING_TRIGGER = "trg_adr020_validate_policy_binding_activations"
 COVERAGE_BINDING_FUNCTION = "adr020_validate_coverage_binding_contract"
 COVERAGE_BINDING_TRIGGER = "trg_adr020_validate_coverage_binding_contract"
 COVERAGE_BINDING_TOKEN = "ADR020_COVERAGE_BINDING_CONTRACT_MISMATCH"
+CONTINUITY_BINDING_FUNCTION = "adr020_validate_continuity_binding_policy"
+CONTINUITY_BINDING_TRIGGER = "trg_adr020_validate_continuity_binding_policy"
+CONTINUITY_BINDING_TOKEN = "ADR020_CONTINUITY_BINDING_POLICY_MISMATCH"
 FUNCTION = "adr020_validate_activation_execution_decision_bindings"
 HISTORICAL_FUNCTION = "adr020_validate_atomic_activation"
 TRIGGER = "trg_activation_executions_exact_decision_bindings"
@@ -246,7 +256,7 @@ def _postgresql_instance(target_revision, physical_coverage=False):
             _bootstrap_adr020_activation(connection, physical_coverage)
             if target_revision in {
                 POLICY_BINDING_REVISION, BOOTSTRAP_BINDING_REVISION,
-                COVERAGE_BINDING_REVISION,
+                COVERAGE_BINDING_REVISION, CONTINUITY_BINDING_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0030 = _load_migration(
@@ -264,6 +274,7 @@ def _postgresql_instance(target_revision, physical_coverage=False):
                 })
             if target_revision in {
                 BOOTSTRAP_BINDING_REVISION, COVERAGE_BINDING_REVISION,
+                CONTINUITY_BINDING_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0031 = _load_migration(
@@ -279,7 +290,9 @@ def _postgresql_instance(target_revision, physical_coverage=False):
                     "bootstrap_binding_revision": BOOTSTRAP_BINDING_REVISION,
                     "policy_binding_revision": POLICY_BINDING_REVISION,
                 })
-            if target_revision == COVERAGE_BINDING_REVISION:
+            if target_revision in {
+                COVERAGE_BINDING_REVISION, CONTINUITY_BINDING_REVISION,
+            }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0032 = _load_migration(
                     COVERAGE_BINDING_MIGRATION, "test_physical_0032",
@@ -293,6 +306,21 @@ def _postgresql_instance(target_revision, physical_coverage=False):
                 """), {
                     "coverage_binding_revision": COVERAGE_BINDING_REVISION,
                     "bootstrap_binding_revision": BOOTSTRAP_BINDING_REVISION,
+                })
+            if target_revision == CONTINUITY_BINDING_REVISION:
+                operations = Operations(MigrationContext.configure(connection))
+                migration_0033 = _load_migration(
+                    CONTINUITY_BINDING_MIGRATION, "test_physical_0033",
+                )
+                migration_0033.op = operations
+                migration_0033.upgrade()
+                connection.execute(text("""
+                    UPDATE alembic_version
+                    SET version_num = :continuity_binding_revision
+                    WHERE version_num = :coverage_binding_revision
+                """), {
+                    "continuity_binding_revision": CONTINUITY_BINDING_REVISION,
+                    "coverage_binding_revision": COVERAGE_BINDING_REVISION,
                 })
         env = os.environ.copy()
         env["DATABASE_URL"] = url
@@ -341,6 +369,20 @@ def postgresql_intention_6():
 def postgresql_intention_6_prospective():
     yield from _postgresql_instance(
         BOOTSTRAP_BINDING_REVISION, physical_coverage=True,
+    )
+
+
+@pytest.fixture
+def postgresql_0033():
+    yield from _postgresql_instance(
+        CONTINUITY_BINDING_REVISION, physical_coverage=True,
+    )
+
+
+@pytest.fixture
+def postgresql_0033_prospective():
+    yield from _postgresql_instance(
+        COVERAGE_BINDING_REVISION, physical_coverage=True,
     )
 
 
@@ -928,6 +970,244 @@ def test_policy_binding_accepts_activation_from_same_exact_policy(postgresql_003
     assert persisted == 1
 
 
+def test_continuity_binding_rejects_divergence_from_exact_policy_binding(
+    postgresql_0033,
+):
+    engine = postgresql_0033["engine"]
+    contract_a, contract_b, bindings = _coverage_intention_6_records(
+        "continuity-divergence-int7a",
+    )
+    _set_coverage_binding(bindings, contract_a, contract_a)
+
+    policy_binding_a = bindings["policy_bindings"][0]
+    continuity_activation_b = copy.deepcopy(policy_binding_a)
+    continuity_activation_b.update({
+        "policy_id": "continuity-policy-b-int7a",
+        "policy_hash": _digest("continuity-policy-b-int7a"),
+        "policy_activation_id": "continuity-activation-b-int7a",
+        "policy_activation_record_hash": _digest(
+            "continuity-activation-b-int7a",
+        ),
+    })
+    continuity_binding_b = {
+        "continuity_subject_type": "normative_continuity",
+        "continuity_policy_id": continuity_activation_b["policy_id"],
+        "continuity_policy_version": continuity_activation_b["policy_version"],
+        "continuity_policy_hash": continuity_activation_b["policy_hash"],
+        "continuity_policy_activation_id":
+            continuity_activation_b["policy_activation_id"],
+        "continuity_policy_activation_record_hash":
+            continuity_activation_b["policy_activation_record_hash"],
+    }
+    bindings["continuity_binding"] = continuity_binding_b
+
+    assert PolicyBinding.model_validate(
+        policy_binding_a, strict=True,
+    ).model_dump() == policy_binding_a
+    assert ContinuityBinding.model_validate(
+        continuity_binding_b, strict=True,
+    ).model_dump() == continuity_binding_b
+
+    with engine.begin() as connection:
+        connection.execute(
+            insert(models.CoverageContract), [contract_a, contract_b],
+        )
+    _materialize_policy_activations(
+        engine,
+        [*bindings["policy_bindings"], continuity_activation_b],
+    )
+    with engine.connect() as connection:
+        persisted_activations = connection.execute(text("""
+            SELECT policy_activation_id, policy_id, policy_version,
+                   policy_hash, record_hash
+            FROM policy_activations
+            WHERE policy_activation_id IN (:activation_a, :activation_b)
+            ORDER BY policy_activation_id
+        """), {
+            "activation_a": policy_binding_a["policy_activation_id"],
+            "activation_b": continuity_activation_b["policy_activation_id"],
+        }).all()
+    assert persisted_activations == sorted([
+        (
+            policy_binding_a["policy_activation_id"],
+            policy_binding_a["policy_id"],
+            policy_binding_a["policy_version"],
+            policy_binding_a["policy_hash"],
+            policy_binding_a["policy_activation_record_hash"],
+        ),
+        (
+            continuity_activation_b["policy_activation_id"],
+            continuity_activation_b["policy_id"],
+            continuity_activation_b["policy_version"],
+            continuity_activation_b["policy_hash"],
+            continuity_activation_b["policy_activation_record_hash"],
+        ),
+    ])
+
+    with pytest.raises(ValidationError) as structural_rejection:
+        ADR020BindingsContract.model_validate(bindings, strict=True)
+    errors = structural_rejection.value.errors()
+    assert len(errors) == 1
+    assert errors[0]["type"] == "value_error"
+    assert (
+        "continuity_binding must match exactly one normative_continuity "
+        "policy_binding"
+    ) in errors[0]["msg"]
+
+    false_continuity_decision = _decision(
+        "continuity-divergence-int7a", bindings,
+    )
+    with pytest.raises((DBAPIError, IntegrityError)) as caught:
+        with engine.begin() as connection:
+            connection.execute(
+                insert(models.ActivationDecision),
+                false_continuity_decision,
+            )
+    assert caught.value.orig.sqlstate == "23503"
+    assert CONTINUITY_BINDING_TOKEN in str(caught.value)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {
+            "decision_id": false_continuity_decision["activation_decision_id"],
+        }) == 0
+
+
+def _assert_continuity_rejection(engine, decision):
+    with pytest.raises((DBAPIError, IntegrityError)) as caught:
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+    assert caught.value.orig.sqlstate == "23503"
+    assert CONTINUITY_BINDING_TOKEN in str(caught.value)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": decision["activation_decision_id"]}) == 0
+
+
+def _continuity_physical_records(engine, suffix):
+    contract_a, contract_b, bindings = _coverage_intention_6_records(suffix)
+    _set_coverage_binding(bindings, contract_a, contract_a)
+    with engine.begin() as connection:
+        connection.execute(insert(models.CoverageContract), [contract_a, contract_b])
+    return bindings
+
+
+def test_continuity_binding_accepts_exact_policy_binding(postgresql_0033):
+    engine = postgresql_0033["engine"]
+    bindings = _continuity_physical_records(engine, "continuity-exact-int7a")
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    assert ADR020BindingsContract.model_validate(
+        bindings, strict=True,
+    ).model_dump() == bindings
+    decision = _decision("continuity-exact-int7a", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), decision)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": decision["activation_decision_id"]}) == 1
+
+
+@pytest.mark.parametrize(
+    "case", ("zero_exact", "two_exact", "one_exact_one_other"),
+)
+def test_continuity_binding_enforces_exact_cumulative_cardinality(
+    postgresql_0033, case,
+):
+    engine = postgresql_0033["engine"]
+    bindings = _continuity_physical_records(engine, f"cardinality-{case}")
+    exact = bindings["policy_bindings"][0]
+    activations = list(bindings["policy_bindings"])
+    if case == "zero_exact":
+        bindings["continuity_binding"]["continuity_policy_id"] = "absent-policy"
+    elif case == "two_exact":
+        bindings["policy_bindings"].append(copy.deepcopy(exact))
+    else:
+        other = copy.deepcopy(exact)
+        other.update({
+            "policy_id": f"other-continuity-{case}",
+            "policy_hash": _digest(f"other-continuity-{case}"),
+            "policy_activation_id": f"other-continuity-activation-{case}",
+            "policy_activation_record_hash": _digest(
+                f"other-continuity-activation-{case}",
+            ),
+        })
+        bindings["policy_bindings"].append(other)
+        activations.append(other)
+    _materialize_policy_activations(engine, activations)
+    decision = _decision(f"continuity-cardinality-{case}", bindings)
+    if case == "one_exact_one_other":
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+        with engine.connect() as connection:
+            assert connection.scalar(text("""
+                SELECT count(*) FROM activation_decisions
+                WHERE activation_decision_id = :decision_id
+            """), {"decision_id": decision["activation_decision_id"]}) == 1
+    else:
+        _assert_continuity_rejection(engine, decision)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "json_null", "array", "string", "wrong_subject_type",
+        "missing_policy_id", "missing_policy_version", "missing_policy_hash",
+        "missing_activation_id", "missing_activation_record_hash",
+        "numeric_policy_id", "text_policy_version", "non_text_policy_hash",
+        "numeric_activation_id", "non_text_activation_record_hash",
+    ),
+)
+def test_continuity_binding_rejects_adversarial_jsonb_types(
+    postgresql_0033, case,
+):
+    engine = postgresql_0033["engine"]
+    bindings = _continuity_physical_records(engine, f"continuity-{case}")
+    exact = bindings["policy_bindings"][0]
+    if case == "numeric_policy_id":
+        exact["policy_id"] = "12345"
+        bindings["continuity_binding"]["continuity_policy_id"] = 12345
+    elif case == "numeric_activation_id":
+        exact["policy_activation_id"] = "67890"
+        bindings["continuity_binding"]["continuity_policy_activation_id"] = 67890
+    elif case == "non_text_policy_hash":
+        exact["policy_hash"] = "1" * 64
+        bindings["continuity_binding"]["continuity_policy_hash"] = int("1" * 64)
+    elif case == "non_text_activation_record_hash":
+        exact["policy_activation_record_hash"] = "2" * 64
+        bindings["continuity_binding"][
+            "continuity_policy_activation_record_hash"
+        ] = int("2" * 64)
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    continuity = bindings["continuity_binding"]
+    if case == "json_null":
+        bindings["continuity_binding"] = None
+    elif case == "array":
+        bindings["continuity_binding"] = []
+    elif case == "string":
+        bindings["continuity_binding"] = "normative_continuity"
+    elif case == "wrong_subject_type":
+        continuity["continuity_subject_type"] = "other"
+    elif case.startswith("missing_"):
+        field = {
+            "missing_policy_id": "continuity_policy_id",
+            "missing_policy_version": "continuity_policy_version",
+            "missing_policy_hash": "continuity_policy_hash",
+            "missing_activation_id": "continuity_policy_activation_id",
+            "missing_activation_record_hash":
+                "continuity_policy_activation_record_hash",
+        }[case]
+        continuity.pop(field)
+    elif case == "text_policy_version":
+        continuity["continuity_policy_version"] = "1"
+    decision = _decision(f"continuity-adversarial-{case}", bindings)
+    _assert_continuity_rejection(engine, decision)
+
+
 def _coverage_intention_6_records(suffix):
     common = {
         "source_id": f"coverage-source-{suffix}", "contract_version": 1,
@@ -1393,6 +1673,183 @@ def test_policy_binding_rejects_invalid_physical_forms(postgresql_0030, case):
             WHERE activation_decision_id = :decision_id
         """), {"decision_id": decision["activation_decision_id"]})
     assert persisted == 0
+
+
+def test_continuity_binding_gate_is_prospective_and_rejects_new_divergence(
+    postgresql_0033_prospective,
+):
+    engine = postgresql_0033_prospective["engine"]
+    bindings = _continuity_physical_records(engine, "continuity-prospective")
+    exact = bindings["policy_bindings"][0]
+    other = copy.deepcopy(exact)
+    other.update({
+        "policy_id": "continuity-policy-prospective-b",
+        "policy_hash": _digest("continuity-policy-prospective-b"),
+        "policy_activation_id": "continuity-activation-prospective-b",
+        "policy_activation_record_hash": _digest(
+            "continuity-activation-prospective-b",
+        ),
+    })
+    _materialize_policy_activations(
+        engine, [*bindings["policy_bindings"], other],
+    )
+    bindings["continuity_binding"].update({
+        "continuity_policy_id": other["policy_id"],
+        "continuity_policy_version": other["policy_version"],
+        "continuity_policy_hash": other["policy_hash"],
+        "continuity_policy_activation_id": other["policy_activation_id"],
+        "continuity_policy_activation_record_hash":
+            other["policy_activation_record_hash"],
+    })
+    historical = _decision("continuity-historical-int7a", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), historical)
+
+    with engine.begin() as connection:
+        operations = Operations(MigrationContext.configure(connection))
+        migration_0033 = _load_migration(
+            CONTINUITY_BINDING_MIGRATION, "test_prospective_physical_0033",
+        )
+        migration_0033.op = operations
+        migration_0033.upgrade()
+        connection.execute(text("""
+            UPDATE alembic_version
+            SET version_num = :continuity_revision
+            WHERE version_num = :coverage_revision
+        """), {
+            "continuity_revision": CONTINUITY_BINDING_REVISION,
+            "coverage_revision": COVERAGE_BINDING_REVISION,
+        })
+
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": historical["activation_decision_id"]}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM pg_proc WHERE proname = :function_name
+        """), {"function_name": CONTINUITY_BINDING_FUNCTION}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM pg_trigger WHERE tgname = :trigger_name
+        """), {"trigger_name": CONTINUITY_BINDING_TRIGGER}) == 1
+
+    mismatch = _decision("continuity-new-mismatch-int7a", bindings)
+    _assert_continuity_rejection(engine, mismatch)
+    bindings["continuity_binding"].update({
+        "continuity_policy_id": exact["policy_id"],
+        "continuity_policy_version": exact["policy_version"],
+        "continuity_policy_hash": exact["policy_hash"],
+        "continuity_policy_activation_id": exact["policy_activation_id"],
+        "continuity_policy_activation_record_hash":
+            exact["policy_activation_record_hash"],
+    })
+    accepted = _decision("continuity-new-exact-int7a", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), accepted)
+    with engine.connect() as connection:
+        assert connection.execute(text("""
+            SELECT activation_decision_id FROM activation_decisions
+            WHERE activation_decision_id IN (:historical_id, :accepted_id)
+            ORDER BY activation_decision_id
+        """), {
+            "historical_id": historical["activation_decision_id"],
+            "accepted_id": accepted["activation_decision_id"],
+        }).scalars().all() == sorted([
+            historical["activation_decision_id"],
+            accepted["activation_decision_id"],
+        ])
+
+
+def test_continuity_binding_migration_has_exact_static_contract(monkeypatch):
+    assert CONTINUITY_BINDING_MIGRATION.exists()
+    source = CONTINUITY_BINDING_MIGRATION.read_text(encoding="utf-8")
+    lowered = source.lower()
+    tree = ast.parse(source)
+    assignments = {
+        node.targets[0].id: ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign) and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id in {"revision", "down_revision"}
+    }
+    assert assignments == {
+        "revision": CONTINUITY_BINDING_REVISION,
+        "down_revision": COVERAGE_BINDING_REVISION,
+    }
+    assert len(CONTINUITY_BINDING_REVISION) <= 32
+    for token in (
+        CONTINUITY_BINDING_FUNCTION, CONTINUITY_BINDING_TRIGGER,
+        "BEFORE INSERT ON activation_decisions", "FOR EACH ROW",
+        "jsonb_array_elements", "SELECT count(*)", "exact_match_count <> 1",
+        "23503", CONTINUITY_BINDING_TOKEN,
+    ):
+        assert token in source
+    for field, jsonb_type in (
+        ("continuity_subject_type", "string"),
+        ("continuity_policy_id", "string"),
+        ("continuity_policy_version", "number"),
+        ("continuity_policy_hash", "string"),
+        ("continuity_policy_activation_id", "string"),
+        ("continuity_policy_activation_record_hash", "string"),
+    ):
+        assert re.search(
+            rf"jsonb_typeof\(\s*NEW\.continuity_binding\s*"
+            rf"->\s*'{field}'\s*\)\s+IS DISTINCT FROM\s+'{jsonb_type}'",
+            source,
+        )
+    compared_fields = (
+        "policy_type", "policy_id", "policy_version", "policy_hash",
+        "policy_activation_id", "policy_activation_record_hash",
+    )
+    for field in compared_fields:
+        assert re.search(rf"binding\s*->\s*'{field}'", source)
+        assert not re.search(rf"binding\s*->>\s*'{field}'", source)
+    assert "policy_bindings) IS DISTINCT FROM 'array'" in source
+    assert not re.search(r"\b(update|delete)\b", lowered)
+    for forbidden in ("backfill", "precedence", "gates"):
+        assert forbidden not in lowered
+    assert "raise runtimeerror" in lowered and "irreversible" in lowered
+
+    migration = _load_migration(
+        CONTINUITY_BINDING_MIGRATION, "test_0033_non_postgresql_guard",
+    )
+    class NonPostgresqlOperations:
+        def get_bind(self):
+            return type("Bind", (), {
+                "dialect": type("Dialect", (), {"name": "sqlite"})(),
+            })()
+    monkeypatch.setattr(migration, "op", NonPostgresqlOperations())
+    with pytest.raises(RuntimeError, match="PostgreSQL-only"):
+        migration.upgrade()
+    with pytest.raises(RuntimeError, match="irreversible"):
+        migration.downgrade()
+
+
+def test_continuity_binding_function_and_trigger_are_physically_installed(
+    postgresql_0033,
+):
+    engine = postgresql_0033["engine"]
+    with engine.connect() as connection:
+        assert connection.scalar(text(
+            "SELECT version_num FROM alembic_version"
+        )) == CONTINUITY_BINDING_REVISION
+        function_count = connection.scalar(text("""
+            SELECT count(*) FROM pg_proc WHERE proname = :function_name
+        """), {"function_name": CONTINUITY_BINDING_FUNCTION})
+        trigger = connection.execute(text("""
+            SELECT t.tgname, t.tgisinternal, t.tgenabled, c.relname,
+                   pg_get_triggerdef(t.oid), p.proname
+            FROM pg_trigger AS t
+            JOIN pg_class AS c ON c.oid = t.tgrelid
+            JOIN pg_proc AS p ON p.oid = t.tgfoid
+            WHERE t.tgname = :trigger_name
+        """), {"trigger_name": CONTINUITY_BINDING_TRIGGER}).one()
+    assert function_count == 1
+    assert trigger[0:4] == (
+        CONTINUITY_BINDING_TRIGGER, False, "O", "activation_decisions",
+    )
+    assert "BEFORE INSERT" in trigger[4]
+    assert trigger[5] == CONTINUITY_BINDING_FUNCTION
 
 
 def test_coverage_binding_migration_has_exact_static_contract(monkeypatch):
