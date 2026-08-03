@@ -3680,7 +3680,24 @@ def _adr020_validate_activation_execution_insert(mapper, connection, target) -> 
     if target.authorization_class == "constitucional_reservada" and target.execution_mode != "manual": raise ValueError("ADR-020 reserved activation is manual")
     if target.execution_mode == "automatico" and target.authorization_class != "automatica_delegada": raise ValueError("ADR-020 automatic execution requires delegated automation")
     if target.attempt_number <= 0 or target.fencing_token <= 0: raise ValueError("ADR-020 retry requires new execution attempt")
-    _adr020_require_exact_bindings(target)
+    from app.schemas.adr020_bindings import ADR020BindingsContract
+
+    try:
+        ADR020BindingsContract.model_validate(
+            {
+                "authority_bindings": target.authority_bindings,
+                "policy_bindings": target.policy_bindings,
+                "coverage_binding": target.coverage_binding,
+                "continuity_binding": target.continuity_binding,
+                "precedence_binding": target.precedence_binding,
+                "gates_evidence": target.gates_evidence,
+            },
+            strict=True,
+        )
+    except ValueError as exc:
+        raise ValueError(
+            "activation execution bindings must satisfy ADR020BindingsContract"
+        ) from exc
     if target.state in {"completed", "failed", "cancelled"} and target.finished_at is None: raise ValueError("ADR-020 terminal execution requires finished_at")
     if target.state == "completed" and target.structured_result is None: raise ValueError("ADR-020 completed execution requires atomic result")
 

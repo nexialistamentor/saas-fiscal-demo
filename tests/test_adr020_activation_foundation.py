@@ -46,7 +46,81 @@ def test_activation_decision_rejeita_bindings_vazios():
         )
 
 def execution(**kw):
-    d=dict(activation_execution_id="e",activation_decision_id="d",activation_decision_record_hash="a"*64,decision_outcome="approved",decision_action="activate",authorization_class="constitucional_reservada",execution_mode="manual",state="pending",scope_hash="b"*64,target_manifest_hash="c"*64,attempt_number=1,actor_or_worker="actor",lease_id="l",fencing_token=1,idempotency_key="k",authority_bindings={},policy_bindings=[],coverage_binding={},continuity_binding={},precedence_binding={},gates_evidence=[],started_at=None,finished_at=None,structured_result=None,structured_error=None,provenance={},record_hash="d"*64); d.update(kw); return SimpleNamespace(**d)
+    bindings = decision()
+    d=dict(activation_execution_id="e",activation_decision_id="d",activation_decision_record_hash="a"*64,decision_outcome="approved",decision_action="activate",authorization_class="constitucional_reservada",execution_mode="manual",state="pending",scope_hash="b"*64,target_manifest_hash="c"*64,attempt_number=1,actor_or_worker="actor",lease_id="l",fencing_token=1,idempotency_key="k",authority_bindings=bindings.authority_bindings,policy_bindings=bindings.policy_bindings,coverage_binding=bindings.coverage_binding,continuity_binding=bindings.continuity_binding,precedence_binding=bindings.precedence_binding,gates_evidence=bindings.gates_evidence,started_at=None,finished_at=None,structured_result=None,structured_error=None,provenance={},record_hash="d"*64); d.update(kw); return SimpleNamespace(**d)
+
+def test_activation_execution_rejects_empty_bindings():
+    with pytest.raises(ValueError, match="ADR020BindingsContract"):
+        models._adr020_validate_activation_execution_insert(
+            None,
+            None,
+            execution(
+                authority_bindings={},
+                policy_bindings=[],
+                coverage_binding={},
+                continuity_binding={},
+                precedence_binding={},
+                gates_evidence=[],
+            ),
+        )
+
+def test_activation_execution_rejects_structurally_invalid_bindings():
+    invalid_policy_bindings = [dict(item) for item in execution().policy_bindings]
+    invalid_policy_bindings[0]["policy_version"] = 0
+    with pytest.raises(ValueError, match="ADR020BindingsContract"):
+        models._adr020_validate_activation_execution_insert(
+            None,
+            None,
+            execution(policy_bindings=invalid_policy_bindings),
+        )
+
+@pytest.mark.parametrize(
+    ("binding_name", "invalid_value"),
+    [
+        ("authority_bindings", None),
+        ("policy_bindings", {}),
+        ("coverage_binding", []),
+        ("continuity_binding", None),
+        ("precedence_binding", {"precedence_subject_type": "normative_precedence"}),
+        ("gates_evidence", {}),
+    ],
+)
+def test_activation_execution_rejects_invalid_binding_shapes(
+    binding_name, invalid_value
+):
+    with pytest.raises(ValueError, match="ADR020BindingsContract"):
+        models._adr020_validate_activation_execution_insert(
+            None,
+            None,
+            execution(**{binding_name: invalid_value}),
+        )
+
+def test_activation_execution_rejects_coercible_types_and_extra_fields():
+    coercible_policy_bindings = [dict(item) for item in execution().policy_bindings]
+    coercible_policy_bindings[0]["policy_version"] = "1"
+    extra_coverage_binding = dict(execution().coverage_binding, unexpected=True)
+
+    for override in (
+        {"policy_bindings": coercible_policy_bindings},
+        {"coverage_binding": extra_coverage_binding},
+    ):
+        with pytest.raises(ValueError, match="ADR020BindingsContract"):
+            models._adr020_validate_activation_execution_insert(
+                None,
+                None,
+                execution(**override),
+            )
+
+def test_activation_execution_accepts_valid_bindings_without_mutation():
+    target = execution()
+    target.coverage_binding = dict(reversed(target.coverage_binding.items()))
+    original_policy_order = [item["policy_type"] for item in target.policy_bindings]
+    original_coverage_key_order = list(target.coverage_binding)
+
+    models._adr020_validate_activation_execution_insert(None, None, target)
+
+    assert [item["policy_type"] for item in target.policy_bindings] == original_policy_order
+    assert list(target.coverage_binding) == original_coverage_key_order
 
 def test_approved_and_favorable_review_required_and_terminal_decisions_blocked():
     models._adr020_validate_activation_decision_insert(None,None,decision())

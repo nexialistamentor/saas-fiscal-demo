@@ -245,9 +245,13 @@ def sovereign_chain():
         execution_mode="manual",
         attempt_number=1,
         fencing_token=1,
-        authority_bindings={"ratified_contract_hash": h("ratified-contract")},
-        policy_bindings=[], coverage_binding={}, continuity_binding={},
-        precedence_binding={}, gates_evidence=[], state="completed",
+        authority_bindings=decision.authority_bindings,
+        policy_bindings=decision.policy_bindings,
+        coverage_binding=decision.coverage_binding,
+        continuity_binding=decision.continuity_binding,
+        precedence_binding=decision.precedence_binding,
+        gates_evidence=decision.gates_evidence,
+        state="completed",
         finished_at=AT, structured_result={"activation_complete": True},
     )
     models._adr020_validate_activation_execution_insert(None, None, execution)
