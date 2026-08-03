@@ -29,17 +29,23 @@ ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "migrations" / "versions" / "0029_adr020_activation_execution_gate.py"
 POLICY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0030_adr020_policy_binding_gate.py"
 BOOTSTRAP_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0031_adr020_bootstrap_binding_gate.py"
+COVERAGE_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0032_adr020_coverage_binding_gate.py"
 POLICY_FOUNDATION = ROOT / "migrations" / "versions" / "0022_adr020_policy_foundation.py"
+COVERAGE_FOUNDATION = ROOT / "migrations" / "versions" / "0023_adr020_coverage_foundation.py"
 HISTORICAL = ROOT / "migrations" / "versions" / "0024_adr020_activation_foundation.py"
 ATOMIC_REPAIR = ROOT / "migrations" / "versions" / "0028_adr020_atomic_activation_trigger_fix.py"
 ATOMIC_REVISION = "0028_adr020_atomic_trigger_fix"
 REVISION = "0029_adr020_activation_exec_gate"
 POLICY_BINDING_REVISION = "0030_adr020_policy_binding_gate"
 BOOTSTRAP_BINDING_REVISION = "0031_adr020_bootstrap_binding"
+COVERAGE_BINDING_REVISION = "0032_adr020_coverage_gate"
 BOOTSTRAP_UNIQUE = "uq_bootstrap_authority_records_exact_record"
 BOOTSTRAP_FK = "fk_policy_activation_executions_exact_bootstrap_record"
 POLICY_BINDING_FUNCTION = "adr020_validate_policy_binding_activations"
 POLICY_BINDING_TRIGGER = "trg_adr020_validate_policy_binding_activations"
+COVERAGE_BINDING_FUNCTION = "adr020_validate_coverage_binding_contract"
+COVERAGE_BINDING_TRIGGER = "trg_adr020_validate_coverage_binding_contract"
+COVERAGE_BINDING_TOKEN = "ADR020_COVERAGE_BINDING_CONTRACT_MISMATCH"
 FUNCTION = "adr020_validate_activation_execution_decision_bindings"
 HISTORICAL_FUNCTION = "adr020_validate_atomic_activation"
 TRIGGER = "trg_activation_executions_exact_decision_bindings"
@@ -61,7 +67,7 @@ def _load_migration(path, module_name):
     return module
 
 
-def _bootstrap_adr020_activation(connection):
+def _bootstrap_adr020_activation(connection, physical_coverage=False):
     # The append-only function is the sole physical predecessor from 0021
     # required by the real 0022 and 0024 upgrades in this isolated bootstrap.
     connection.execute(text("""
@@ -94,8 +100,14 @@ def _bootstrap_adr020_activation(connection):
         WHERE version_num = '0021_adr020_relation_foundation'
     """))
 
-    # 0023 is statically audited and stamped because none of its coverage
-    # objects is referenced by the tables or binding relation under test.
+    if physical_coverage:
+        migration_0023 = _load_migration(
+            COVERAGE_FOUNDATION, "test_physical_0023_intention_6",
+        )
+        migration_0023.op = operations
+        migration_0023.upgrade()
+    # Historical fixtures keep 0023 stamped because their tests do not use
+    # coverage objects. Intention 6 opts into the physical upgrade above.
     connection.execute(text("""
         UPDATE alembic_version
         SET version_num = '0023_adr020_coverage'
@@ -162,8 +174,11 @@ def _is_postgresql_unavailable(error):
     return sqlstate is None or sqlstate == "57P03" or sqlstate.startswith("08")
 
 
-def _postgresql_instance(target_revision):
-    intention = {REVISION: "int3a", POLICY_BINDING_REVISION: "int4", BOOTSTRAP_BINDING_REVISION: "int5"}[target_revision]
+def _postgresql_instance(target_revision, physical_coverage=False):
+    intention = (
+        "int6" if physical_coverage else
+        {REVISION: "int3a", POLICY_BINDING_REVISION: "int4", BOOTSTRAP_BINDING_REVISION: "int5"}[target_revision]
+    )
     name = f"mission-009a-{intention}-{uuid.uuid4().hex[:12]}"
     database = f"adr020_{uuid.uuid4().hex[:12]}"
     password = uuid.uuid4().hex
@@ -228,8 +243,11 @@ def _postgresql_instance(target_revision):
         assert readiness_confirmed
         engine = create_engine(url)
         with engine.begin() as connection:
-            _bootstrap_adr020_activation(connection)
-            if target_revision in {POLICY_BINDING_REVISION, BOOTSTRAP_BINDING_REVISION}:
+            _bootstrap_adr020_activation(connection, physical_coverage)
+            if target_revision in {
+                POLICY_BINDING_REVISION, BOOTSTRAP_BINDING_REVISION,
+                COVERAGE_BINDING_REVISION,
+            }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0030 = _load_migration(
                     POLICY_BINDING_MIGRATION, "test_physical_0030",
@@ -244,7 +262,9 @@ def _postgresql_instance(target_revision):
                     "policy_binding_revision": POLICY_BINDING_REVISION,
                     "revision": REVISION,
                 })
-            if target_revision == BOOTSTRAP_BINDING_REVISION:
+            if target_revision in {
+                BOOTSTRAP_BINDING_REVISION, COVERAGE_BINDING_REVISION,
+            }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0031 = _load_migration(
                     BOOTSTRAP_BINDING_MIGRATION, "test_physical_0031",
@@ -258,6 +278,21 @@ def _postgresql_instance(target_revision):
                 """), {
                     "bootstrap_binding_revision": BOOTSTRAP_BINDING_REVISION,
                     "policy_binding_revision": POLICY_BINDING_REVISION,
+                })
+            if target_revision == COVERAGE_BINDING_REVISION:
+                operations = Operations(MigrationContext.configure(connection))
+                migration_0032 = _load_migration(
+                    COVERAGE_BINDING_MIGRATION, "test_physical_0032",
+                )
+                migration_0032.op = operations
+                migration_0032.upgrade()
+                connection.execute(text("""
+                    UPDATE alembic_version
+                    SET version_num = :coverage_binding_revision
+                    WHERE version_num = :bootstrap_binding_revision
+                """), {
+                    "coverage_binding_revision": COVERAGE_BINDING_REVISION,
+                    "bootstrap_binding_revision": BOOTSTRAP_BINDING_REVISION,
                 })
         env = os.environ.copy()
         env["DATABASE_URL"] = url
@@ -293,6 +328,20 @@ def postgresql_0031():
 @pytest.fixture
 def postgresql_0030_prospective():
     yield from _postgresql_instance(POLICY_BINDING_REVISION)
+
+
+@pytest.fixture
+def postgresql_intention_6():
+    yield from _postgresql_instance(
+        COVERAGE_BINDING_REVISION, physical_coverage=True,
+    )
+
+
+@pytest.fixture
+def postgresql_intention_6_prospective():
+    yield from _postgresql_instance(
+        BOOTSTRAP_BINDING_REVISION, physical_coverage=True,
+    )
 
 
 def _digest(label):
@@ -879,6 +928,409 @@ def test_policy_binding_accepts_activation_from_same_exact_policy(postgresql_003
     assert persisted == 1
 
 
+def _coverage_intention_6_records(suffix):
+    common = {
+        "source_id": f"coverage-source-{suffix}", "contract_version": 1,
+        "contract_state": "ratificada",
+        "effective_from": datetime(2026, 8, 3, tzinfo=timezone.utc),
+        "effective_to": None, "timezone": "UTC",
+        "expected_calendar": {"frequency": "daily"},
+        "publication_schedule": {"hour": 0},
+        "delay_windows": {"maximum_minutes": 60},
+        "mandatory_sections": ["records"],
+        "expected_files_partitions": {"partitions": ["daily"]},
+        "pagination": {"mode": "cursor"}, "cursors": {"field": "next_cursor"},
+        "empty_response_semantics": {"allowed": True},
+        "proven_absence_rules": {"requires_evidence": True},
+        "authorized_redirects": [], "media_types": ["application/json"],
+        "adapter_id": "coverage-adapter", "compatible_adapter_versions": [1],
+        "technical_limits": {"requests_per_minute": 60},
+        "retry_policy": {"maximum_attempts": 3},
+        "continuity_policy_reference": {"policy_id": f"continuity-{suffix}"},
+        "evidence": {"mission": "MISSION-009A-INTENCAO-6"},
+        "audit": {"outcome": "favorable"},
+        "ratification": {"state": "ratified"},
+        "revocation": {"state": "not_revoked"},
+    }
+    contracts = []
+    for label in ("a", "b"):
+        contracts.append({
+            **common,
+            "coverage_contract_record_id": f"coverage-record-{label}-{suffix}",
+            "coverage_contract_id": f"coverage-contract-{label}-{suffix}",
+            "contract_hash": _digest(f"coverage-contract-{label}-{suffix}"),
+            "record_hash": _digest(f"coverage-record-{label}-{suffix}"),
+        })
+    bindings = _bindings()
+    continuity, precedence = bindings["policy_bindings"]
+    for label, binding in (("continuity", continuity), ("precedence", precedence)):
+        binding.update({
+            "policy_id": f"{label}-{suffix}",
+            "policy_hash": _digest(f"{label}-{suffix}"),
+            "policy_activation_id": f"{label}-activation-{suffix}",
+            "policy_activation_record_hash": _digest(f"{label}-activation-{suffix}"),
+        })
+    bindings["continuity_binding"].update({
+        "continuity_policy_id": continuity["policy_id"],
+        "continuity_policy_hash": continuity["policy_hash"],
+        "continuity_policy_activation_id": continuity["policy_activation_id"],
+        "continuity_policy_activation_record_hash":
+            continuity["policy_activation_record_hash"],
+    })
+    bindings["precedence_binding"].update({
+        "precedence_policy_id": precedence["policy_id"],
+        "precedence_policy_hash": precedence["policy_hash"],
+        "precedence_policy_activation_id": precedence["policy_activation_id"],
+        "precedence_policy_activation_record_hash":
+            precedence["policy_activation_record_hash"],
+    })
+    coverage_policy = {
+        "policy_type": "coverage_contract", "policy_id": f"coverage-policy-{suffix}",
+        "policy_version": 1, "policy_hash": _digest(f"coverage-policy-{suffix}"),
+        "policy_activation_id": f"coverage-activation-{suffix}",
+        "policy_activation_record_hash": _digest(f"coverage-activation-{suffix}"),
+    }
+    bindings["policy_bindings"].append(coverage_policy)
+    return contracts[0], contracts[1], bindings
+
+
+def _set_coverage_binding(bindings, identity_contract, record_contract):
+    bindings["coverage_binding"] = {
+        "coverage_subject_type": "coverage_contract",
+        "coverage_contract_id": identity_contract["coverage_contract_id"],
+        "contract_version": identity_contract["contract_version"],
+        "contract_hash": identity_contract["contract_hash"],
+        "coverage_contract_record_id":
+            record_contract["coverage_contract_record_id"],
+        "coverage_contract_record_hash": record_contract["record_hash"],
+    }
+
+
+def _assert_coverage_rejection(engine, decision):
+    with pytest.raises((DBAPIError, IntegrityError)) as caught:
+        with engine.begin() as connection:
+            connection.execute(insert(models.ActivationDecision), decision)
+    assert caught.value.orig.sqlstate == "23503"
+    assert COVERAGE_BINDING_TOKEN in str(caught.value)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": decision["activation_decision_id"]}) == 0
+
+
+def test_coverage_binding_rejects_contract_identity_and_record_from_different_contracts(
+    postgresql_intention_6,
+):
+    engine = postgresql_intention_6["engine"]
+    contract_common = {
+        "source_id": "coverage-source",
+        "contract_version": 1,
+        "contract_state": "ratificada",
+        "effective_from": datetime(2026, 8, 3, tzinfo=timezone.utc),
+        "effective_to": None,
+        "timezone": "UTC",
+        "expected_calendar": {"frequency": "daily"},
+        "publication_schedule": {"hour": 0},
+        "delay_windows": {"maximum_minutes": 60},
+        "mandatory_sections": ["records"],
+        "expected_files_partitions": {"partitions": ["daily"]},
+        "pagination": {"mode": "cursor"},
+        "cursors": {"field": "next_cursor"},
+        "empty_response_semantics": {"allowed": True},
+        "proven_absence_rules": {"requires_evidence": True},
+        "authorized_redirects": [],
+        "media_types": ["application/json"],
+        "adapter_id": "coverage-adapter",
+        "compatible_adapter_versions": [1],
+        "technical_limits": {"requests_per_minute": 60},
+        "retry_policy": {"maximum_attempts": 3},
+        "continuity_policy_reference": {"policy_id": "continuity-policy-int6"},
+        "evidence": {"mission": "MISSION-009A-INTENCAO-6"},
+        "audit": {"outcome": "favorable"},
+        "ratification": {"state": "ratified"},
+        "revocation": {"state": "not_revoked"},
+    }
+    contract_a = {
+        **contract_common,
+        "coverage_contract_record_id": "coverage-record-a",
+        "coverage_contract_id": "coverage-contract-a",
+        "contract_hash": _digest("coverage-contract-a"),
+        "record_hash": _digest("coverage-record-a"),
+    }
+    contract_b = {
+        **contract_common,
+        "coverage_contract_record_id": "coverage-record-b",
+        "coverage_contract_id": "coverage-contract-b",
+        "contract_hash": _digest("coverage-contract-b"),
+        "record_hash": _digest("coverage-record-b"),
+    }
+
+    bindings = _bindings()
+    continuity, precedence = bindings["policy_bindings"]
+    continuity.update({
+        "policy_id": "continuity-policy-int6",
+        "policy_hash": _digest("continuity-policy-int6"),
+        "policy_activation_id": "continuity-activation-int6",
+        "policy_activation_record_hash": _digest("continuity-activation-int6"),
+    })
+    precedence.update({
+        "policy_id": "precedence-policy-int6",
+        "policy_hash": _digest("precedence-policy-int6"),
+        "policy_activation_id": "precedence-activation-int6",
+        "policy_activation_record_hash": _digest("precedence-activation-int6"),
+    })
+    coverage_policy = {
+        "policy_type": "coverage_contract",
+        "policy_id": "coverage-policy-int6",
+        "policy_version": 1,
+        "policy_hash": _digest("coverage-policy-int6"),
+        "policy_activation_id": "coverage-policy-activation-int6",
+        "policy_activation_record_hash": _digest(
+            "coverage-policy-activation-int6"
+        ),
+    }
+    bindings["policy_bindings"].append(coverage_policy)
+    bindings["continuity_binding"].update({
+        "continuity_policy_id": continuity["policy_id"],
+        "continuity_policy_hash": continuity["policy_hash"],
+        "continuity_policy_activation_id": continuity["policy_activation_id"],
+        "continuity_policy_activation_record_hash":
+            continuity["policy_activation_record_hash"],
+    })
+    bindings["precedence_binding"].update({
+        "precedence_policy_id": precedence["policy_id"],
+        "precedence_policy_hash": precedence["policy_hash"],
+        "precedence_policy_activation_id": precedence["policy_activation_id"],
+        "precedence_policy_activation_record_hash":
+            precedence["policy_activation_record_hash"],
+    })
+    bindings["coverage_binding"] = {
+        "coverage_subject_type": "coverage_contract",
+        "coverage_contract_id": contract_a["coverage_contract_id"],
+        "contract_version": contract_a["contract_version"],
+        "contract_hash": contract_a["contract_hash"],
+        "coverage_contract_record_id": contract_b["coverage_contract_record_id"],
+        "coverage_contract_record_hash": contract_b["record_hash"],
+    }
+
+    validated = ADR020BindingsContract.model_validate(bindings, strict=True)
+    assert validated.model_dump() == bindings
+    assert sum(
+        binding.policy_type == "coverage_contract"
+        for binding in validated.policy_bindings
+    ) == 1
+
+    with engine.begin() as connection:
+        connection.execute(
+            insert(models.CoverageContract), [contract_a, contract_b],
+        )
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    with engine.connect() as connection:
+        persisted_contracts = connection.execute(text("""
+            SELECT coverage_contract_record_id, coverage_contract_id,
+                   contract_version, contract_hash, record_hash
+            FROM coverage_contracts
+            ORDER BY coverage_contract_record_id
+        """)).all()
+    assert persisted_contracts == [
+        (
+            contract_a["coverage_contract_record_id"],
+            contract_a["coverage_contract_id"],
+            contract_a["contract_version"],
+            contract_a["contract_hash"],
+            contract_a["record_hash"],
+        ),
+        (
+            contract_b["coverage_contract_record_id"],
+            contract_b["coverage_contract_id"],
+            contract_b["contract_version"],
+            contract_b["contract_hash"],
+            contract_b["record_hash"],
+        ),
+    ]
+
+    false_pair_decision = _decision("coverage-false-pair-int6", bindings)
+    _assert_coverage_rejection(engine, false_pair_decision)
+
+
+def test_coverage_binding_accepts_exact_contract_record(postgresql_intention_6):
+    engine = postgresql_intention_6["engine"]
+    contract_a, contract_b, bindings = _coverage_intention_6_records("positive")
+    _set_coverage_binding(bindings, contract_a, contract_a)
+    validated = ADR020BindingsContract.model_validate(bindings, strict=True)
+    assert validated.model_dump() == bindings
+    with engine.begin() as connection:
+        connection.execute(insert(models.CoverageContract), [contract_a, contract_b])
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    decision = _decision("coverage-exact-int6", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), decision)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": decision["activation_decision_id"]}) == 1
+
+
+def test_coverage_binding_gate_is_prospective_and_rejects_new_mismatch(
+    postgresql_intention_6_prospective,
+):
+    engine = postgresql_intention_6_prospective["engine"]
+    contract_a, contract_b, bindings = _coverage_intention_6_records("prospective")
+    with engine.begin() as connection:
+        connection.execute(insert(models.CoverageContract), [contract_a, contract_b])
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    _set_coverage_binding(bindings, contract_a, contract_b)
+    historical = _decision("coverage-historical-int6", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), historical)
+
+    with engine.begin() as connection:
+        operations = Operations(MigrationContext.configure(connection))
+        migration_0032 = _load_migration(
+            COVERAGE_BINDING_MIGRATION, "test_prospective_physical_0032",
+        )
+        migration_0032.op = operations
+        migration_0032.upgrade()
+        connection.execute(text("""
+            UPDATE alembic_version
+            SET version_num = :coverage_revision
+            WHERE version_num = :bootstrap_revision
+        """), {
+            "coverage_revision": COVERAGE_BINDING_REVISION,
+            "bootstrap_revision": BOOTSTRAP_BINDING_REVISION,
+        })
+
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id = :decision_id
+        """), {"decision_id": historical["activation_decision_id"]}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM pg_proc WHERE proname = :function_name
+        """), {"function_name": COVERAGE_BINDING_FUNCTION}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM pg_trigger WHERE tgname = :trigger_name
+        """), {"trigger_name": COVERAGE_BINDING_TRIGGER}) == 1
+
+    mismatch = _decision("coverage-new-mismatch-int6", bindings)
+    _assert_coverage_rejection(engine, mismatch)
+    _set_coverage_binding(bindings, contract_a, contract_a)
+    exact = _decision("coverage-new-exact-int6", bindings)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), exact)
+    with engine.connect() as connection:
+        counts = connection.execute(text("""
+            SELECT activation_decision_id FROM activation_decisions
+            WHERE activation_decision_id IN (:historical_id, :exact_id)
+            ORDER BY activation_decision_id
+        """), {
+            "historical_id": historical["activation_decision_id"],
+            "exact_id": exact["activation_decision_id"],
+        }).scalars().all()
+    assert counts == sorted([
+        historical["activation_decision_id"], exact["activation_decision_id"],
+    ])
+
+
+@pytest.mark.parametrize(
+    "case", ("missing_contract", "mixed_contracts", "missing_record_hash", "text_version"),
+)
+def test_coverage_binding_rejects_fail_closed_forms(postgresql_intention_6, case):
+    engine = postgresql_intention_6["engine"]
+    contract_a, contract_b, bindings = _coverage_intention_6_records(case)
+    with engine.begin() as connection:
+        connection.execute(insert(models.CoverageContract), [contract_a, contract_b])
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    _set_coverage_binding(bindings, contract_a, contract_a)
+    if case == "missing_contract":
+        bindings["coverage_binding"]["coverage_contract_id"] = "absent-contract"
+    elif case == "mixed_contracts":
+        _set_coverage_binding(bindings, contract_a, contract_b)
+    elif case == "missing_record_hash":
+        bindings["coverage_binding"].pop("coverage_contract_record_hash")
+    else:
+        bindings["coverage_binding"]["contract_version"] = "1"
+    decision = _decision(f"coverage-fail-closed-{case}", bindings)
+    _assert_coverage_rejection(engine, decision)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "json_null",
+        "array",
+        "string",
+        "wrong_subject_type",
+        "missing_record_id",
+        "missing_contract_id",
+        "missing_contract_version",
+        "missing_contract_hash",
+        "missing_record_hash",
+        "text_contract_version",
+        "numeric_record_id",
+        "numeric_contract_id",
+        "non_text_contract_hash",
+        "non_text_record_hash",
+    ),
+)
+def test_coverage_binding_rejects_adversarial_jsonb_types(
+    postgresql_intention_6, case,
+):
+    engine = postgresql_intention_6["engine"]
+    contract_a, contract_b, bindings = _coverage_intention_6_records(
+        f"adversarial-{case}"
+    )
+    if case == "numeric_record_id":
+        contract_a["coverage_contract_record_id"] = "12345"
+    elif case == "numeric_contract_id":
+        contract_a["coverage_contract_id"] = "67890"
+    elif case == "non_text_contract_hash":
+        contract_a["contract_hash"] = "1" * 64
+    elif case == "non_text_record_hash":
+        contract_a["record_hash"] = "2" * 64
+
+    with engine.begin() as connection:
+        connection.execute(insert(models.CoverageContract), [contract_a, contract_b])
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+    _set_coverage_binding(bindings, contract_a, contract_a)
+
+    if case == "json_null":
+        bindings["coverage_binding"] = None
+    elif case == "array":
+        bindings["coverage_binding"] = []
+    elif case == "string":
+        bindings["coverage_binding"] = "coverage_contract"
+    elif case == "wrong_subject_type":
+        bindings["coverage_binding"]["coverage_subject_type"] = "other"
+    elif case == "missing_record_id":
+        bindings["coverage_binding"].pop("coverage_contract_record_id")
+    elif case == "missing_contract_id":
+        bindings["coverage_binding"].pop("coverage_contract_id")
+    elif case == "missing_contract_version":
+        bindings["coverage_binding"].pop("contract_version")
+    elif case == "missing_contract_hash":
+        bindings["coverage_binding"].pop("contract_hash")
+    elif case == "missing_record_hash":
+        bindings["coverage_binding"].pop("coverage_contract_record_hash")
+    elif case == "text_contract_version":
+        bindings["coverage_binding"]["contract_version"] = "1"
+    elif case == "numeric_record_id":
+        bindings["coverage_binding"]["coverage_contract_record_id"] = 12345
+    elif case == "numeric_contract_id":
+        bindings["coverage_binding"]["coverage_contract_id"] = 67890
+    elif case == "non_text_contract_hash":
+        bindings["coverage_binding"]["contract_hash"] = int("1" * 64)
+    else:
+        bindings["coverage_binding"]["coverage_contract_record_hash"] = int(
+            "2" * 64
+        )
+
+    decision = _decision(f"coverage-adversarial-{case}", bindings)
+    _assert_coverage_rejection(engine, decision)
+
+
 @pytest.mark.parametrize(
     "case",
     (
@@ -941,6 +1393,94 @@ def test_policy_binding_rejects_invalid_physical_forms(postgresql_0030, case):
             WHERE activation_decision_id = :decision_id
         """), {"decision_id": decision["activation_decision_id"]})
     assert persisted == 0
+
+
+def test_coverage_binding_migration_has_exact_static_contract(monkeypatch):
+    assert COVERAGE_BINDING_MIGRATION.exists()
+    source = COVERAGE_BINDING_MIGRATION.read_text(encoding="utf-8")
+    lowered = source.lower()
+    tree = ast.parse(source)
+    assignments = {
+        node.targets[0].id: ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign) and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id in {"revision", "down_revision"}
+    }
+    assert assignments == {
+        "revision": COVERAGE_BINDING_REVISION,
+        "down_revision": BOOTSTRAP_BINDING_REVISION,
+    }
+    assert len(COVERAGE_BINDING_REVISION) <= 32
+    for token in (
+        COVERAGE_BINDING_FUNCTION, COVERAGE_BINDING_TRIGGER,
+        "BEFORE INSERT ON activation_decisions", "coverage_contracts",
+        "coverage_contract_record_id", "coverage_contract_id", "contract_version",
+        "contract_hash", "coverage_contract_record_hash", "record_hash",
+        "to_jsonb(coverage_contracts.contract_version)", "23503",
+        COVERAGE_BINDING_TOKEN,
+    ):
+        assert token in source
+    assert "NOT EXISTS" in source
+    for field, jsonb_type in (
+        ("coverage_subject_type", "string"),
+        ("coverage_contract_record_id", "string"),
+        ("coverage_contract_id", "string"),
+        ("contract_version", "number"),
+        ("contract_hash", "string"),
+        ("coverage_contract_record_hash", "string"),
+    ):
+        assert re.search(
+            rf"jsonb_typeof\(\s*NEW\.coverage_binding\s*->\s*'{field}'\s*\)"
+            rf"\s+IS DISTINCT FROM\s+'{jsonb_type}'",
+            source,
+        )
+    assert "policy_versions" not in lowered
+    assert "policy_binding" not in lowered
+    assert not re.search(r"\b(update|delete)\b", lowered)
+    assert "backfill" not in lowered
+    assert "raise runtimeerror" in lowered and "irreversible" in lowered
+
+    migration = _load_migration(
+        COVERAGE_BINDING_MIGRATION, "test_0032_non_postgresql_guard",
+    )
+    class NonPostgresqlOperations:
+        def get_bind(self):
+            return type("Bind", (), {
+                "dialect": type("Dialect", (), {"name": "sqlite"})(),
+            })()
+    monkeypatch.setattr(migration, "op", NonPostgresqlOperations())
+    with pytest.raises(RuntimeError, match="PostgreSQL-only"):
+        migration.upgrade()
+    with pytest.raises(RuntimeError, match="irreversible"):
+        migration.downgrade()
+
+
+def test_coverage_binding_function_and_trigger_are_physically_installed(
+    postgresql_intention_6,
+):
+    engine = postgresql_intention_6["engine"]
+    with engine.connect() as connection:
+        assert connection.scalar(text(
+            "SELECT version_num FROM alembic_version"
+        )) == COVERAGE_BINDING_REVISION
+        function_count = connection.scalar(text("""
+            SELECT count(*) FROM pg_proc WHERE proname = :function_name
+        """), {"function_name": COVERAGE_BINDING_FUNCTION})
+        trigger = connection.execute(text("""
+            SELECT t.tgname, t.tgisinternal, t.tgenabled, c.relname,
+                   pg_get_triggerdef(t.oid), p.proname
+            FROM pg_trigger AS t
+            JOIN pg_class AS c ON c.oid = t.tgrelid
+            JOIN pg_proc AS p ON p.oid = t.tgfoid
+            WHERE t.tgname = :trigger_name
+        """), {"trigger_name": COVERAGE_BINDING_TRIGGER}).one()
+    assert function_count == 1
+    assert trigger[0:4] == (
+        COVERAGE_BINDING_TRIGGER, False, "O", "activation_decisions",
+    )
+    assert "BEFORE INSERT" in trigger[4]
+    assert trigger[5] == COVERAGE_BINDING_FUNCTION
 
 
 def test_bootstrap_binding_migration_has_exact_static_contract(monkeypatch):
