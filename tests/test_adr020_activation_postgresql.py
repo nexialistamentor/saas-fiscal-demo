@@ -19,7 +19,7 @@ import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from pydantic import ValidationError
-from sqlalchemy import create_engine, insert, null, text
+from sqlalchemy import bindparam, create_engine, insert, null, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
@@ -41,6 +41,7 @@ CONTINUITY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0033_adr020_c
 PRECEDENCE_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0034_adr020_precedence_binding_gate.py"
 SUBJECT_GATE_MIGRATION = ROOT / "migrations" / "versions" / "0035_adr020_normative_activation_subject_gate.py"
 REVIEW_GATE_MIGRATION = ROOT / "migrations" / "versions" / "0036_adr020_normative_activation_review_gate.py"
+GENERATION_FK_MIGRATION = ROOT / "migrations" / "versions" / "0037_adr020_activation_generation_fk.py"
 RULE_FOUNDATION = ROOT / "migrations" / "versions" / "0020_adr020_rule_foundation.py"
 RELATION_FOUNDATION = ROOT / "migrations" / "versions" / "0021_adr020_relation_foundation.py"
 POLICY_FOUNDATION = ROOT / "migrations" / "versions" / "0022_adr020_policy_foundation.py"
@@ -56,6 +57,8 @@ CONTINUITY_BINDING_REVISION = "0033_adr020_continuity_gate"
 PRECEDENCE_BINDING_REVISION = "0034_adr020_precedence_gate"
 SUBJECT_GATE_REVISION = "0035_adr020_subject_gate"
 REVIEW_GATE_REVISION = "0036_adr020_review_gate"
+GENERATION_FK_REVISION = "0037_adr020_generation_fk"
+GENERATION_FK = "fk_normative_activations_activation_generation"
 REVIEW_GATE_FUNCTION = "adr020_validate_normative_activation_review"
 REVIEW_GATE_TRIGGER = "trg_adr020_validate_normative_activation_subject_review"
 REVIEW_GATE_TOKEN = "ADR020_NORMATIVE_ACTIVATION_REVIEW_MISMATCH"
@@ -322,7 +325,7 @@ def _postgresql_instance(
                 POLICY_BINDING_REVISION, BOOTSTRAP_BINDING_REVISION,
                 COVERAGE_BINDING_REVISION, CONTINUITY_BINDING_REVISION,
                 PRECEDENCE_BINDING_REVISION, SUBJECT_GATE_REVISION,
-                REVIEW_GATE_REVISION,
+                REVIEW_GATE_REVISION, GENERATION_FK_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0030 = _load_migration(
@@ -342,6 +345,7 @@ def _postgresql_instance(
                 BOOTSTRAP_BINDING_REVISION, COVERAGE_BINDING_REVISION,
                 CONTINUITY_BINDING_REVISION, PRECEDENCE_BINDING_REVISION,
                 SUBJECT_GATE_REVISION, REVIEW_GATE_REVISION,
+                GENERATION_FK_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0031 = _load_migration(
@@ -360,7 +364,7 @@ def _postgresql_instance(
             if target_revision in {
                 COVERAGE_BINDING_REVISION, CONTINUITY_BINDING_REVISION,
                 PRECEDENCE_BINDING_REVISION, SUBJECT_GATE_REVISION,
-                REVIEW_GATE_REVISION,
+                REVIEW_GATE_REVISION, GENERATION_FK_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0032 = _load_migration(
@@ -379,6 +383,7 @@ def _postgresql_instance(
             if target_revision in {
                 CONTINUITY_BINDING_REVISION, PRECEDENCE_BINDING_REVISION,
                 SUBJECT_GATE_REVISION, REVIEW_GATE_REVISION,
+                GENERATION_FK_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0033 = _load_migration(
@@ -396,7 +401,7 @@ def _postgresql_instance(
                 })
             if target_revision in {
                 PRECEDENCE_BINDING_REVISION, SUBJECT_GATE_REVISION,
-                REVIEW_GATE_REVISION,
+                REVIEW_GATE_REVISION, GENERATION_FK_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0034 = _load_migration(
@@ -412,7 +417,10 @@ def _postgresql_instance(
                     "precedence_binding_revision": PRECEDENCE_BINDING_REVISION,
                     "continuity_binding_revision": CONTINUITY_BINDING_REVISION,
                 })
-            if target_revision in {SUBJECT_GATE_REVISION, REVIEW_GATE_REVISION}:
+            if target_revision in {
+                SUBJECT_GATE_REVISION, REVIEW_GATE_REVISION,
+                GENERATION_FK_REVISION,
+            }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0035 = _load_migration(
                     SUBJECT_GATE_MIGRATION, "test_physical_0035",
@@ -427,7 +435,7 @@ def _postgresql_instance(
                     "subject_gate_revision": SUBJECT_GATE_REVISION,
                     "precedence_binding_revision": PRECEDENCE_BINDING_REVISION,
                 })
-            if target_revision == REVIEW_GATE_REVISION:
+            if target_revision in {REVIEW_GATE_REVISION, GENERATION_FK_REVISION}:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0036 = _load_migration(
                     REVIEW_GATE_MIGRATION, "test_physical_0036",
@@ -441,6 +449,21 @@ def _postgresql_instance(
                 """), {
                     "review_gate_revision": REVIEW_GATE_REVISION,
                     "subject_gate_revision": SUBJECT_GATE_REVISION,
+                })
+            if target_revision == GENERATION_FK_REVISION:
+                operations = Operations(MigrationContext.configure(connection))
+                migration_0037 = _load_migration(
+                    GENERATION_FK_MIGRATION, "test_physical_0037",
+                )
+                migration_0037.op = operations
+                migration_0037.upgrade()
+                connection.execute(text("""
+                    UPDATE alembic_version
+                    SET version_num = :generation_fk_revision
+                    WHERE version_num = :review_gate_revision
+                """), {
+                    "generation_fk_revision": GENERATION_FK_REVISION,
+                    "review_gate_revision": REVIEW_GATE_REVISION,
                 })
         env = os.environ.copy()
         env["DATABASE_URL"] = url
@@ -550,6 +573,22 @@ def postgresql_intention_8b1():
 def postgresql_intention_8b1_prospective():
     yield from _postgresql_instance(
         SUBJECT_GATE_REVISION, physical_coverage=True,
+        physical_rule_relation=True,
+    )
+
+
+@pytest.fixture
+def postgresql_intention_9a():
+    yield from _postgresql_instance(
+        GENERATION_FK_REVISION, physical_coverage=True,
+        physical_rule_relation=True,
+    )
+
+
+@pytest.fixture
+def postgresql_intention_9a_prospective():
+    yield from _postgresql_instance(
+        REVIEW_GATE_REVISION, physical_coverage=True,
         physical_rule_relation=True,
     )
 
@@ -4180,3 +4219,415 @@ def test_normative_activation_review_function_and_trigger_are_physical(
         ("trg_normative_activations_append_only_mutation", "O"),
         ("trg_normative_activations_append_only_truncate", "O"),
     ]
+
+
+def test_normative_activation_rejects_missing_activation_generation_via_core(
+    postgresql_intention_9a,
+):
+    engine = postgresql_intention_9a["engine"]
+    suffix = "missing-activation-generation-int9a"
+    control_activation, rules, _, rule_reviews, _ = _intention_8b1_context(
+        engine, suffix,
+    )
+    subject = rules[0]
+    review = rule_reviews[0]
+
+    with engine.connect() as connection:
+        decision = connection.execute(text("""
+            SELECT activation_decision_id, record_hash, decision_action,
+                   decision_outcome, target_manifest_hash, scope_hash,
+                   policy_bindings, coverage_binding, continuity_binding,
+                   precedence_binding, gates_evidence
+            FROM activation_decisions
+            WHERE activation_decision_id=:decision_id
+              AND record_hash=:decision_hash
+        """), {
+            "decision_id": control_activation["activation_decision_id"],
+            "decision_hash": control_activation["activation_decision_record_hash"],
+        }).mappings().one()
+        execution = connection.execute(text("""
+            SELECT activation_execution_id, activation_decision_id,
+                   activation_decision_record_hash, state
+            FROM activation_executions
+            WHERE activation_execution_id=:execution_id
+        """), {
+            "execution_id": control_activation["activation_execution_id"],
+        }).mappings().one()
+
+    generation = {
+        "activation_generation_id": f"generation-{suffix}",
+        "previous_activation_generation_id": None,
+        "previous_activation_generation_record_hash": None,
+        "activation_execution_id": execution["activation_execution_id"],
+        "activation_decision_id": decision["activation_decision_id"],
+        "activation_decision_record_hash": decision["record_hash"],
+        "target_manifest_hash": decision["target_manifest_hash"],
+        "scope_descriptor": {"country": "PT", "taxes": ["iva", "irs"]},
+        "scope_hash": decision["scope_hash"],
+        "composition_manifest": [{
+            "subject_type": control_activation["subject_type"],
+            "subject_id": subject["rule_id"],
+            "subject_version": subject["rule_version"],
+            "subject_hash": subject["rule_hash"],
+        }],
+        "composition_hash": _digest(f"composition-{suffix}"),
+        "policy_bindings": decision["policy_bindings"],
+        "coverage_binding": decision["coverage_binding"],
+        "continuity_binding": decision["continuity_binding"],
+        "precedence_binding": decision["precedence_binding"],
+        "gates_evidence": decision["gates_evidence"],
+        "is_complete": True,
+        "effective_from": datetime.now(timezone.utc),
+        "provenance": {"mission": "MISSION-009A-INTENCAO-9A"},
+        "record_hash": _digest(f"generation-{suffix}"),
+    }
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationGeneration), generation)
+
+    control_activation["activation_generation_id"] = generation[
+        "activation_generation_id"
+    ]
+    false_generation_id = f"missing-generation-{suffix}"
+    false_activation = copy.deepcopy(control_activation)
+    false_activation.update(
+        normative_activation_id=f"activation-false-{suffix}",
+        record_hash=_digest(f"activation-false-{suffix}"),
+        activation_generation_id=false_generation_id,
+    )
+
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM rule_versions
+            WHERE rule_id=:id AND rule_version=:version AND rule_hash=:hash
+        """), {"id": subject["rule_id"],
+                 "version": subject["rule_version"],
+                 "hash": subject["rule_hash"]}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM rule_review_records
+            WHERE rule_review_record_id=:review_id
+              AND record_hash=:review_hash AND subject_id=:id
+              AND subject_version=:version AND subject_hash=:hash
+        """), {"review_id": review["rule_review_record_id"],
+                 "review_hash": review["record_hash"],
+                 "id": subject["rule_id"],
+                 "version": subject["rule_version"],
+                 "hash": subject["rule_hash"]}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_decisions
+            WHERE activation_decision_id=:id AND record_hash=:hash
+              AND decision_action='activate' AND decision_outcome='approved'
+        """), {"id": decision["activation_decision_id"],
+                 "hash": decision["record_hash"]}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_executions
+            WHERE activation_execution_id=:execution_id
+              AND activation_decision_id=:decision_id
+              AND activation_decision_record_hash=:decision_hash
+        """), {"execution_id": execution["activation_execution_id"],
+                 "decision_id": decision["activation_decision_id"],
+                 "decision_hash": decision["record_hash"]}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_generations
+            WHERE activation_generation_id=:generation_id
+              AND record_hash=:generation_hash
+              AND activation_decision_id=:decision_id
+              AND activation_decision_record_hash=:decision_hash
+              AND activation_execution_id=:execution_id
+              AND scope_hash=:scope_hash
+              AND composition_hash=:composition_hash AND is_complete IS TRUE
+        """), {"generation_id": generation["activation_generation_id"],
+                 "generation_hash": generation["record_hash"],
+                 "decision_id": decision["activation_decision_id"],
+                 "decision_hash": decision["record_hash"],
+                 "execution_id": execution["activation_execution_id"],
+                 "scope_hash": generation["scope_hash"],
+                 "composition_hash": generation["composition_hash"]}) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_generations
+            WHERE activation_generation_id=:generation_id
+        """), {"generation_id": false_generation_id}) == 0
+        assert connection.scalar(text("""
+            SELECT count(*) FROM normative_activations
+            WHERE normative_activation_id=:activation_id
+        """), {"activation_id": false_activation[
+            "normative_activation_id"
+        ]}) == 0
+
+    with engine.begin() as connection:
+        connection.execute(insert(models.NormativeActivation), control_activation)
+    with engine.connect() as connection:
+        persisted_control = connection.execute(text("""
+            SELECT normative_activation_id, activation_decision_id,
+                   activation_decision_record_hash, activation_execution_id,
+                   subject_type, subject_id, subject_version, subject_hash,
+                   review_record_id, review_record_hash,
+                   activation_generation_id, scope_hash, state, record_hash
+            FROM normative_activations
+            WHERE normative_activation_id=:activation_id
+        """), {"activation_id": control_activation[
+            "normative_activation_id"
+        ]}).one()
+        assert persisted_control == tuple(control_activation[key] for key in (
+            "normative_activation_id", "activation_decision_id",
+            "activation_decision_record_hash", "activation_execution_id",
+            "subject_type", "subject_id", "subject_version", "subject_hash",
+            "review_record_id", "review_record_hash",
+            "activation_generation_id", "scope_hash", "state", "record_hash",
+        ))
+
+    with pytest.raises((DBAPIError, IntegrityError)) as raised:
+        with engine.begin() as connection:
+            connection.execute(insert(models.NormativeActivation), false_activation)
+    assert raised.value.orig.sqlstate == "23503"
+    assert raised.value.orig.diag.constraint_name == GENERATION_FK
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM normative_activations
+            WHERE normative_activation_id=:activation_id
+        """), {"activation_id": false_activation[
+            "normative_activation_id"
+        ]}) == 0
+
+
+def _intention_9a_context(engine, suffix):
+    activation, rules, _, rule_reviews, _ = _intention_8b1_context(
+        engine, suffix,
+    )
+    with engine.connect() as connection:
+        decision = connection.execute(text("""
+            SELECT activation_decision_id, record_hash, target_manifest_hash,
+                   scope_hash, policy_bindings, coverage_binding,
+                   continuity_binding, precedence_binding, gates_evidence
+            FROM activation_decisions
+            WHERE activation_decision_id=:id
+        """), {"id": activation["activation_decision_id"]}).mappings().one()
+    generation = {
+        "activation_generation_id": f"generation-{suffix}",
+        "previous_activation_generation_id": None,
+        "previous_activation_generation_record_hash": None,
+        "activation_execution_id": activation["activation_execution_id"],
+        "activation_decision_id": decision["activation_decision_id"],
+        "activation_decision_record_hash": decision["record_hash"],
+        "target_manifest_hash": decision["target_manifest_hash"],
+        "scope_descriptor": {"country": "PT", "taxes": ["iva", "irs"]},
+        "scope_hash": decision["scope_hash"],
+        "composition_manifest": [{
+            "subject_type": activation["subject_type"],
+            "subject_id": activation["subject_id"],
+            "subject_version": activation["subject_version"],
+            "subject_hash": activation["subject_hash"],
+        }],
+        "composition_hash": _digest(f"composition-{suffix}"),
+        "policy_bindings": decision["policy_bindings"],
+        "coverage_binding": decision["coverage_binding"],
+        "continuity_binding": decision["continuity_binding"],
+        "precedence_binding": decision["precedence_binding"],
+        "gates_evidence": decision["gates_evidence"],
+        "is_complete": True,
+        "effective_from": datetime.now(timezone.utc),
+        "provenance": {"mission": "MISSION-009A-INTENCAO-9A"},
+        "record_hash": _digest(f"generation-{suffix}"),
+    }
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationGeneration), generation)
+    activation.update(
+        normative_activation_id=f"activation-{suffix}",
+        activation_generation_id=generation["activation_generation_id"],
+        record_hash=_digest(f"activation-{suffix}"),
+    )
+    return activation, generation, rules[0], rule_reviews[0]
+
+
+def test_normative_activation_accepts_existing_activation_generation_via_core(
+    postgresql_intention_9a,
+):
+    engine = postgresql_intention_9a["engine"]
+    activation, generation, _, _ = _intention_9a_context(
+        engine, "existing-generation-int9a",
+    )
+    with engine.begin() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM activation_generations
+            WHERE activation_generation_id=:id
+        """), {"id": generation["activation_generation_id"]}) == 1
+        connection.execute(insert(models.NormativeActivation), activation)
+    columns = tuple(activation)
+    with engine.connect() as connection:
+        persisted = connection.execute(text(f"""
+            SELECT {', '.join(columns)} FROM normative_activations
+            WHERE normative_activation_id=:id
+        """), {"id": activation["normative_activation_id"]}).one()
+    assert persisted == tuple(activation[column] for column in columns)
+
+
+def test_normative_activation_generation_fk_rejects_missing_id_via_sql(
+    postgresql_intention_9a,
+):
+    engine = postgresql_intention_9a["engine"]
+    activation, _, _, _ = _intention_9a_context(engine, "raw-sql-int9a")
+    activation["activation_generation_id"] = "missing-generation-raw-sql-int9a"
+    table = models.NormativeActivation.__table__
+    statement = text(
+        f"INSERT INTO normative_activations "
+        f"({', '.join(column.name for column in table.columns)}) VALUES "
+        f"({', '.join(':' + column.name for column in table.columns)})"
+    ).bindparams(*[
+        bindparam(column.name, type_=column.type) for column in table.columns
+    ])
+    with pytest.raises(DBAPIError) as raised:
+        with engine.begin() as connection:
+            connection.execute(statement, activation)
+    assert raised.value.orig.sqlstate == "23503"
+    assert raised.value.orig.diag.constraint_name == GENERATION_FK
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM normative_activations
+            WHERE normative_activation_id=:id
+        """), {"id": activation["normative_activation_id"]}) == 0
+
+
+def test_normative_activation_generation_fk_is_prospective(
+    postgresql_intention_9a_prospective,
+):
+    engine = postgresql_intention_9a_prospective["engine"]
+    historical, generation, _, _ = _intention_9a_context(
+        engine, "prospective-int9a",
+    )
+    historical.update(
+        normative_activation_id="activation-historical-missing-int9a",
+        activation_generation_id="missing-generation-historical-int9a",
+        record_hash=_digest("activation-historical-missing-int9a"),
+    )
+    with engine.begin() as connection:
+        assert connection.scalar(text(
+            "SELECT version_num FROM alembic_version"
+        )) == REVIEW_GATE_REVISION
+        connection.execute(insert(models.NormativeActivation), historical)
+        before = connection.execute(text("""
+            SELECT normative_activation_id, activation_generation_id, record_hash
+            FROM normative_activations WHERE normative_activation_id=:id
+        """), {"id": historical["normative_activation_id"]}).one()
+        operations = Operations(MigrationContext.configure(connection))
+        migration = _load_migration(GENERATION_FK_MIGRATION,
+                                    "test_prospective_physical_0037")
+        migration.op = operations
+        migration.upgrade()
+        connection.execute(text("""
+            UPDATE alembic_version SET version_num=:new WHERE version_num=:old
+        """), {"new": GENERATION_FK_REVISION, "old": REVIEW_GATE_REVISION})
+    with engine.connect() as connection:
+        after = connection.execute(text("""
+            SELECT normative_activation_id, activation_generation_id, record_hash
+            FROM normative_activations WHERE normative_activation_id=:id
+        """), {"id": historical["normative_activation_id"]}).one()
+        assert after == before
+        assert connection.scalar(text("""
+            SELECT convalidated FROM pg_constraint WHERE conname=:name
+        """), {"name": GENERATION_FK}) is False
+    new_false = copy.deepcopy(historical)
+    new_false.update(normative_activation_id="activation-new-missing-int9a",
+                     record_hash=_digest("activation-new-missing-int9a"))
+    with pytest.raises(DBAPIError) as raised:
+        with engine.begin() as connection:
+            connection.execute(insert(models.NormativeActivation), new_false)
+    assert raised.value.orig.sqlstate == "23503"
+    assert raised.value.orig.diag.constraint_name == GENERATION_FK
+    exact = copy.deepcopy(historical)
+    exact.update(normative_activation_id="activation-new-exact-int9a",
+                 activation_generation_id=generation["activation_generation_id"],
+                 record_hash=_digest("activation-new-exact-int9a"))
+    with engine.begin() as connection:
+        connection.execute(insert(models.NormativeActivation), exact)
+    with engine.connect() as connection:
+        assert connection.execute(text("""
+            SELECT normative_activation_id, activation_generation_id, record_hash
+            FROM normative_activations WHERE normative_activation_id=:id
+        """), {"id": historical["normative_activation_id"]}).one() == before
+        assert connection.scalar(text(
+            "SELECT count(*) FROM normative_activations"
+        )) == 2
+
+
+def test_normative_activation_generation_fk_migration_has_exact_static_contract(
+    monkeypatch,
+):
+    source = GENERATION_FK_MIGRATION.read_text(encoding="utf-8")
+    lowered = source.lower()
+    tree = ast.parse(source)
+    assignments = {
+        node.targets[0].id: ast.literal_eval(node.value)
+        for node in tree.body if isinstance(node, ast.Assign)
+        and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id in {"revision", "down_revision"}
+    }
+    assert assignments == {"revision": GENERATION_FK_REVISION,
+                           "down_revision": REVIEW_GATE_REVISION}
+    assert len(GENERATION_FK_REVISION) <= 32
+    for token in (
+        "PostgreSQL-only", GENERATION_FK,
+        "ALTER TABLE normative_activations",
+        "FOREIGN KEY (activation_generation_id)",
+        "REFERENCES activation_generations (activation_generation_id)",
+        "ON UPDATE RESTRICT", "ON DELETE RESTRICT", "NOT VALID",
+    ):
+        assert token in source
+    assert "validate constraint" not in lowered
+    assert "trigger" not in lowered and "plpgsql" not in lowered
+    data_sql = re.sub(r"on\s+update\s+restrict", "", lowered)
+    assert not re.search(r"\b(update|delete)\s+(?!restrict\b)", data_sql)
+    semantic_source = lowered.replace(REVIEW_GATE_REVISION, "")
+    for forbidden in (
+        "backfill", "activation_decision", "activation_execution", "scope_hash",
+        "composition", "review", "subject",
+    ):
+        assert forbidden not in semantic_source
+    assert "raise runtimeerror" in lowered and "irreversible" in lowered
+    migration = _load_migration(GENERATION_FK_MIGRATION,
+                                "test_0037_non_postgresql_guard")
+    class NonPostgresqlOperations:
+        def get_bind(self):
+            return type("Bind", (), {"dialect": type(
+                "Dialect", (), {"name": "sqlite"},
+            )()})()
+    monkeypatch.setattr(migration, "op", NonPostgresqlOperations())
+    with pytest.raises(RuntimeError, match="PostgreSQL-only"):
+        migration.upgrade()
+    with pytest.raises(RuntimeError, match="irreversible"):
+        migration.downgrade()
+
+
+def test_normative_activation_generation_fk_is_physical(
+    postgresql_intention_9a,
+):
+    engine = postgresql_intention_9a["engine"]
+    with engine.connect() as connection:
+        constraint = connection.execute(text("""
+            SELECT c.conname, c.contype, source.relname, target.relname,
+                   source_attribute.attname, target_attribute.attname,
+                   c.convalidated, c.condeferrable, c.condeferred,
+                   c.confupdtype, c.confdeltype
+            FROM pg_constraint c
+            JOIN pg_class source ON source.oid=c.conrelid
+            JOIN pg_class target ON target.oid=c.confrelid
+            JOIN pg_attribute source_attribute
+              ON source_attribute.attrelid=c.conrelid
+             AND source_attribute.attnum=c.conkey[1]
+            JOIN pg_attribute target_attribute
+              ON target_attribute.attrelid=c.confrelid
+             AND target_attribute.attnum=c.confkey[1]
+            WHERE c.conname=:name
+        """), {"name": GENERATION_FK}).one()
+        triggers = set(connection.execute(text("""
+            SELECT tgname FROM pg_trigger
+            WHERE tgrelid='normative_activations'::regclass AND NOT tgisinternal
+        """)).scalars())
+    assert constraint == (
+        GENERATION_FK, "f", "normative_activations", "activation_generations",
+        "activation_generation_id", "activation_generation_id", False, False,
+        False, "r", "r",
+    )
+    assert {
+        SUBJECT_GATE_TRIGGER, REVIEW_GATE_TRIGGER,
+        "trg_normative_activations_append_only_mutation",
+        "trg_normative_activations_append_only_truncate",
+    } <= triggers
