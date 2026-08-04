@@ -39,6 +39,7 @@ COVERAGE_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0032_adr020_cov
 CONTINUITY_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0033_adr020_continuity_binding_gate.py"
 PRECEDENCE_BINDING_MIGRATION = ROOT / "migrations" / "versions" / "0034_adr020_precedence_binding_gate.py"
 SUBJECT_GATE_MIGRATION = ROOT / "migrations" / "versions" / "0035_adr020_normative_activation_subject_gate.py"
+REVIEW_GATE_MIGRATION = ROOT / "migrations" / "versions" / "0036_adr020_normative_activation_review_gate.py"
 RULE_FOUNDATION = ROOT / "migrations" / "versions" / "0020_adr020_rule_foundation.py"
 RELATION_FOUNDATION = ROOT / "migrations" / "versions" / "0021_adr020_relation_foundation.py"
 POLICY_FOUNDATION = ROOT / "migrations" / "versions" / "0022_adr020_policy_foundation.py"
@@ -53,6 +54,10 @@ COVERAGE_BINDING_REVISION = "0032_adr020_coverage_gate"
 CONTINUITY_BINDING_REVISION = "0033_adr020_continuity_gate"
 PRECEDENCE_BINDING_REVISION = "0034_adr020_precedence_gate"
 SUBJECT_GATE_REVISION = "0035_adr020_subject_gate"
+REVIEW_GATE_REVISION = "0036_adr020_review_gate"
+REVIEW_GATE_FUNCTION = "adr020_validate_normative_activation_review"
+REVIEW_GATE_TRIGGER = "trg_adr020_validate_normative_activation_subject_review"
+REVIEW_GATE_TOKEN = "ADR020_NORMATIVE_ACTIVATION_REVIEW_MISMATCH"
 SUBJECT_GATE_FUNCTION = "adr020_validate_normative_activation_subject"
 SUBJECT_GATE_TRIGGER = "trg_adr020_validate_normative_activation_subject"
 SUBJECT_GATE_TOKEN = "ADR020_NORMATIVE_ACTIVATION_SUBJECT_MISMATCH"
@@ -316,6 +321,7 @@ def _postgresql_instance(
                 POLICY_BINDING_REVISION, BOOTSTRAP_BINDING_REVISION,
                 COVERAGE_BINDING_REVISION, CONTINUITY_BINDING_REVISION,
                 PRECEDENCE_BINDING_REVISION, SUBJECT_GATE_REVISION,
+                REVIEW_GATE_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0030 = _load_migration(
@@ -334,7 +340,7 @@ def _postgresql_instance(
             if target_revision in {
                 BOOTSTRAP_BINDING_REVISION, COVERAGE_BINDING_REVISION,
                 CONTINUITY_BINDING_REVISION, PRECEDENCE_BINDING_REVISION,
-                SUBJECT_GATE_REVISION,
+                SUBJECT_GATE_REVISION, REVIEW_GATE_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0031 = _load_migration(
@@ -353,6 +359,7 @@ def _postgresql_instance(
             if target_revision in {
                 COVERAGE_BINDING_REVISION, CONTINUITY_BINDING_REVISION,
                 PRECEDENCE_BINDING_REVISION, SUBJECT_GATE_REVISION,
+                REVIEW_GATE_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0032 = _load_migration(
@@ -370,7 +377,7 @@ def _postgresql_instance(
                 })
             if target_revision in {
                 CONTINUITY_BINDING_REVISION, PRECEDENCE_BINDING_REVISION,
-                SUBJECT_GATE_REVISION,
+                SUBJECT_GATE_REVISION, REVIEW_GATE_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0033 = _load_migration(
@@ -388,6 +395,7 @@ def _postgresql_instance(
                 })
             if target_revision in {
                 PRECEDENCE_BINDING_REVISION, SUBJECT_GATE_REVISION,
+                REVIEW_GATE_REVISION,
             }:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0034 = _load_migration(
@@ -403,7 +411,7 @@ def _postgresql_instance(
                     "precedence_binding_revision": PRECEDENCE_BINDING_REVISION,
                     "continuity_binding_revision": CONTINUITY_BINDING_REVISION,
                 })
-            if target_revision == SUBJECT_GATE_REVISION:
+            if target_revision in {SUBJECT_GATE_REVISION, REVIEW_GATE_REVISION}:
                 operations = Operations(MigrationContext.configure(connection))
                 migration_0035 = _load_migration(
                     SUBJECT_GATE_MIGRATION, "test_physical_0035",
@@ -417,6 +425,21 @@ def _postgresql_instance(
                 """), {
                     "subject_gate_revision": SUBJECT_GATE_REVISION,
                     "precedence_binding_revision": PRECEDENCE_BINDING_REVISION,
+                })
+            if target_revision == REVIEW_GATE_REVISION:
+                operations = Operations(MigrationContext.configure(connection))
+                migration_0036 = _load_migration(
+                    REVIEW_GATE_MIGRATION, "test_physical_0036",
+                )
+                migration_0036.op = operations
+                migration_0036.upgrade()
+                connection.execute(text("""
+                    UPDATE alembic_version
+                    SET version_num = :review_gate_revision
+                    WHERE version_num = :subject_gate_revision
+                """), {
+                    "review_gate_revision": REVIEW_GATE_REVISION,
+                    "subject_gate_revision": SUBJECT_GATE_REVISION,
                 })
         env = os.environ.copy()
         env["DATABASE_URL"] = url
@@ -510,6 +533,22 @@ def postgresql_intention_8a_prospective():
     yield from _postgresql_instance(
         PRECEDENCE_BINDING_REVISION,
         physical_coverage=True,
+        physical_rule_relation=True,
+    )
+
+
+@pytest.fixture
+def postgresql_intention_8b1():
+    yield from _postgresql_instance(
+        REVIEW_GATE_REVISION, physical_coverage=True,
+        physical_rule_relation=True,
+    )
+
+
+@pytest.fixture
+def postgresql_intention_8b1_prospective():
+    yield from _postgresql_instance(
+        SUBJECT_GATE_REVISION, physical_coverage=True,
         physical_rule_relation=True,
     )
 
@@ -3113,6 +3152,233 @@ def test_normative_activation_rejects_mixed_exact_rule_subject_via_core(
     _assert_subject_gate_rejection(engine, false_activation)
 
 
+def test_normative_activation_rejects_exact_rule_review_from_another_subject_via_core(
+    postgresql_intention_8b1,
+):
+    engine = postgresql_intention_8b1["engine"]
+    suffix = "exact-rule-review-another-subject-int8b1"
+    extractions = [
+        {
+            "extraction_result_id": f"extraction-{label}-{suffix}",
+            "record_hash": _digest(f"extraction-{label}-{suffix}"),
+        }
+        for label in ("a", "b")
+    ]
+
+    def rule(label, version, extraction):
+        return {
+            "rule_version_record_id": f"rule-version-{label}-{suffix}",
+            "rule_id": f"rule-{label}-{suffix}",
+            "rule_version": version,
+            "rule_hash": _digest(f"rule-{label}-{suffix}"),
+            "extraction_result_id": extraction["extraction_result_id"],
+            "extraction_result_record_hash": extraction["record_hash"],
+            "structured_content": {"rule": label, "version": version},
+            "declared_material_validity": {"status": "declared"},
+            "normative_references": [],
+            "exact_precedence_policy_reference": {
+                "policy_id": "precedence-policy",
+                "policy_version": 1,
+                "policy_hash": _digest("precedence-policy"),
+            },
+            "evidence": {"mission": "MISSION-009A-INTENCAO-8B1"},
+            "provenance": {"test": suffix},
+            "record_hash": _digest(f"rule-record-{label}-{suffix}"),
+        }
+
+    rules = [
+        rule("a", 1, extractions[0]),
+        rule("b", 2, extractions[1]),
+    ]
+    rule_a, rule_b = rules
+    bindings = _precedence_physical_records(engine, suffix)
+    _materialize_policy_activations(engine, bindings["policy_bindings"])
+
+    with engine.begin() as connection:
+        connection.execute(text("""
+            INSERT INTO extraction_results (extraction_result_id, record_hash)
+            VALUES (:a_id, :a_hash), (:b_id, :b_hash)
+        """), {
+            "a_id": extractions[0]["extraction_result_id"],
+            "a_hash": extractions[0]["record_hash"],
+            "b_id": extractions[1]["extraction_result_id"],
+            "b_hash": extractions[1]["record_hash"],
+        })
+        connection.execute(insert(models.RuleVersion), rules)
+
+    created_at = []
+    with engine.connect() as connection:
+        for current_rule in rules:
+            exact = connection.execute(text("""
+                SELECT rule_id, rule_version, rule_hash, created_at
+                FROM rule_versions
+                WHERE rule_id=:id AND rule_version=:version AND rule_hash=:hash
+            """), {
+                "id": current_rule["rule_id"],
+                "version": current_rule["rule_version"],
+                "hash": current_rule["rule_hash"],
+            }).one()
+            assert exact[:3] == (
+                current_rule["rule_id"], current_rule["rule_version"],
+                current_rule["rule_hash"],
+            )
+            assert exact.created_at is not None
+            created_at.append(exact.created_at)
+
+    reviews = []
+    for label, current_rule, rule_created_at in zip(
+        ("a", "b"), rules, created_at,
+    ):
+        reviews.append({
+            "rule_review_record_id": f"review-{label}-{suffix}",
+            "subject_id": current_rule["rule_id"],
+            "subject_version": current_rule["rule_version"],
+            "subject_hash": current_rule["rule_hash"],
+            "reviewer": "independent-reviewer",
+            "review_event": "revisao_concluida",
+            "outcome": "validada",
+            "evidence": {"mission": "MISSION-009A-INTENCAO-8B1"},
+            "timestamp": rule_created_at + timedelta(microseconds=1),
+            "record_hash": _digest(f"review-{label}-{suffix}"),
+        })
+    review_a, review_b = reviews
+    with engine.begin() as connection:
+        connection.execute(insert(models.RuleReviewRecord), reviews)
+
+    decision = _decision(suffix, bindings)
+    execution = _execution(decision, suffix)
+    with engine.begin() as connection:
+        connection.execute(insert(models.ActivationDecision), decision)
+        connection.execute(insert(models.ActivationExecution), execution)
+
+    def exact_rule_count(connection, current_rule):
+        return connection.scalar(text("""
+            SELECT count(*) FROM rule_versions
+            WHERE rule_id=:id AND rule_version=:version AND rule_hash=:hash
+        """), {
+            "id": current_rule["rule_id"],
+            "version": current_rule["rule_version"],
+            "hash": current_rule["rule_hash"],
+        })
+
+    def exact_review_count(connection, review, subject):
+        return connection.scalar(text("""
+            SELECT count(*) FROM rule_review_records
+            WHERE rule_review_record_id=:review_id AND record_hash=:review_hash
+              AND subject_id=:id AND subject_version=:version
+              AND subject_hash=:hash
+        """), {
+            "review_id": review["rule_review_record_id"],
+            "review_hash": review["record_hash"],
+            "id": subject["rule_id"],
+            "version": subject["rule_version"],
+            "hash": subject["rule_hash"],
+        })
+
+    false_activation_id = f"activation-false-{suffix}"
+    with engine.connect() as connection:
+        assert exact_rule_count(connection, rule_a) == 1
+        assert exact_rule_count(connection, rule_b) == 1
+        assert exact_review_count(connection, review_a, rule_a) == 1
+        assert exact_review_count(connection, review_b, rule_b) == 1
+        assert exact_review_count(connection, review_b, rule_a) == 0
+        assert connection.scalar(text("""
+            SELECT count(*)
+            FROM activation_decisions AS decision
+            JOIN activation_executions AS execution
+              ON execution.activation_decision_id = decision.activation_decision_id
+             AND execution.activation_decision_record_hash = decision.record_hash
+            WHERE decision.activation_decision_id=:decision_id
+              AND decision.record_hash=:decision_hash
+              AND decision.decision_action='activate'
+              AND decision.decision_outcome='approved'
+              AND execution.activation_execution_id=:execution_id
+              AND execution.state=:execution_state
+        """), {
+            "decision_id": decision["activation_decision_id"],
+            "decision_hash": decision["record_hash"],
+            "execution_id": execution["activation_execution_id"],
+            "execution_state": execution["state"],
+        }) == 1
+        assert connection.scalar(text("""
+            SELECT count(*) FROM normative_activations
+            WHERE normative_activation_id=:activation_id
+        """), {"activation_id": false_activation_id}) == 0
+
+    control_activation = {
+        "normative_activation_id": f"activation-control-{suffix}",
+        "activation_decision_id": decision["activation_decision_id"],
+        "activation_decision_record_hash": decision["record_hash"],
+        "activation_execution_id": execution["activation_execution_id"],
+        "subject_type": "rule_version",
+        "subject_id": rule_a["rule_id"],
+        "subject_version": rule_a["rule_version"],
+        "subject_hash": rule_a["rule_hash"],
+        "review_record_id": review_a["rule_review_record_id"],
+        "review_record_hash": review_a["record_hash"],
+        "domain": "fiscal", "modality": "manual",
+        "resolver_scope": {"country": "PT", "tax": "iva"},
+        "operational_interval": {"from": "2026-08-03T00:00:00Z"},
+        "scope_hash": decision["scope_hash"],
+        "activation_generation_id": f"generation-{suffix}",
+        "activated_at": datetime.now(timezone.utc), "state": "active",
+        "technical_actor": "integration-auditor",
+        "provenance": {"mission": "MISSION-009A-INTENCAO-8B1"},
+        "record_hash": _digest(f"activation-control-{suffix}"),
+    }
+    with engine.begin() as connection:
+        connection.execute(insert(models.NormativeActivation), control_activation)
+    with engine.connect() as connection:
+        persisted_control = connection.execute(text("""
+            SELECT normative_activation_id, subject_type, subject_id,
+                   subject_version, subject_hash, review_record_id,
+                   review_record_hash
+            FROM normative_activations
+            WHERE normative_activation_id=:activation_id
+        """), {
+            "activation_id": control_activation["normative_activation_id"],
+        }).one()
+        assert persisted_control == (
+            control_activation["normative_activation_id"],
+            control_activation["subject_type"], control_activation["subject_id"],
+            control_activation["subject_version"],
+            control_activation["subject_hash"],
+            control_activation["review_record_id"],
+            control_activation["review_record_hash"],
+        )
+
+    false_activation = copy.deepcopy(control_activation)
+    false_activation.update({
+        "normative_activation_id": false_activation_id,
+        "record_hash": _digest(f"activation-false-{suffix}"),
+        "review_record_id": review_b["rule_review_record_id"],
+        "review_record_hash": review_b["record_hash"],
+    })
+    with pytest.raises((DBAPIError, IntegrityError)) as caught:
+        with engine.begin() as connection:
+            connection.execute(
+                insert(models.NormativeActivation),
+                false_activation,
+            )
+            persisted_false = connection.execute(text("""
+                SELECT subject_id, subject_version, subject_hash,
+                       review_record_id, review_record_hash
+                FROM normative_activations
+                WHERE normative_activation_id=:activation_id
+            """), {"activation_id": false_activation_id}).one()
+            assert persisted_false == (
+                rule_a["rule_id"], rule_a["rule_version"], rule_a["rule_hash"],
+                review_b["rule_review_record_id"], review_b["record_hash"],
+            )
+    assert caught.value.orig.sqlstate == "23503"
+    assert REVIEW_GATE_TOKEN in str(caught.value)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM normative_activations
+            WHERE normative_activation_id=:activation_id
+        """), {"activation_id": false_activation_id}) == 0
+
+
 def _intention_8a_context(engine, suffix):
     extractions = [
         {"extraction_result_id": f"extraction-{label}-{suffix}",
@@ -3535,6 +3801,380 @@ def test_normative_activation_subject_function_and_trigger_are_physical(
     )
     assert "BEFORE INSERT" in trigger[4]
     assert trigger[5] == SUBJECT_GATE_FUNCTION
+    assert append_only == [
+        ("trg_normative_activations_append_only_mutation", "O"),
+        ("trg_normative_activations_append_only_truncate", "O"),
+    ]
+
+
+def _intention_8b1_context(engine, suffix):
+    activation, rules, relations, rule_a, relation_a = _intention_8a_context(
+        engine, suffix,
+    )
+    with engine.connect() as connection:
+        rule_b_created = connection.scalar(text("""
+            SELECT created_at FROM rule_versions
+            WHERE rule_id=:id AND rule_version=:version AND rule_hash=:hash
+        """), {"id": rules[1]["rule_id"],
+                 "version": rules[1]["rule_version"],
+                 "hash": rules[1]["rule_hash"]})
+        relation_b_created = connection.scalar(text("""
+            SELECT created_at FROM normative_relation_versions
+            WHERE normative_relation_id=:id
+              AND normative_relation_version=:version
+              AND normative_relation_hash=:hash
+        """), {"id": relations[1]["normative_relation_id"],
+                 "version": relations[1]["normative_relation_version"],
+                 "hash": relations[1]["normative_relation_hash"]})
+    rule_b = {
+        "rule_review_record_id": f"rule-review-b-{suffix}",
+        "subject_id": rules[1]["rule_id"],
+        "subject_version": rules[1]["rule_version"],
+        "subject_hash": rules[1]["rule_hash"],
+        "reviewer": "independent-reviewer",
+        "review_event": "revisao_concluida", "outcome": "validada",
+        "evidence": {"mission": "MISSION-009A-INTENCAO-8B1"},
+        "timestamp": rule_b_created + timedelta(microseconds=1),
+        "record_hash": _digest(f"rule-review-b-{suffix}"),
+    }
+    relation_b = {
+        "relation_review_record_id": f"relation-review-b-{suffix}",
+        "subject_id": relations[1]["normative_relation_id"],
+        "subject_version": relations[1]["normative_relation_version"],
+        "subject_hash": relations[1]["normative_relation_hash"],
+        "reviewer": "independent-reviewer",
+        "review_event": "revisao_concluida", "outcome": "validada",
+        "evidence": {"mission": "MISSION-009A-INTENCAO-8B1"},
+        "timestamp": relation_b_created + timedelta(microseconds=1),
+        "record_hash": _digest(f"relation-review-b-{suffix}"),
+    }
+    with engine.begin() as connection:
+        connection.execute(insert(models.RuleReviewRecord), rule_b)
+        connection.execute(insert(models.RelationReviewRecord), relation_b)
+    return activation, rules, relations, (rule_a, rule_b), (relation_a, relation_b)
+
+
+def _assert_review_gate_rejection(engine, activation):
+    with pytest.raises((DBAPIError, IntegrityError)) as caught:
+        with engine.begin() as connection:
+            connection.execute(insert(models.NormativeActivation), activation)
+    assert caught.value.orig.sqlstate == "23503"
+    assert REVIEW_GATE_TOKEN in str(caught.value)
+    with engine.connect() as connection:
+        assert connection.scalar(text("""
+            SELECT count(*) FROM normative_activations
+            WHERE normative_activation_id=:activation_id
+        """), {"activation_id": activation["normative_activation_id"]}) == 0
+
+
+def _exact_activation(engine, activation):
+    with engine.begin() as connection:
+        connection.execute(insert(models.NormativeActivation), activation)
+    with engine.connect() as connection:
+        return connection.execute(text("""
+            SELECT normative_activation_id, subject_type, subject_id,
+                   subject_version, subject_hash, review_record_id,
+                   review_record_hash
+            FROM normative_activations
+            WHERE normative_activation_id=:activation_id
+        """), {"activation_id": activation["normative_activation_id"]}).one()
+
+
+def test_normative_activation_accepts_exact_rule_review_for_same_subject_via_core(
+    postgresql_intention_8b1,
+):
+    engine = postgresql_intention_8b1["engine"]
+    activation, _, _, _, _ = _intention_8b1_context(engine, "review-rule-ok")
+    assert _exact_activation(engine, activation) == tuple(
+        activation[key] for key in (
+            "normative_activation_id", "subject_type", "subject_id",
+            "subject_version", "subject_hash", "review_record_id",
+            "review_record_hash",
+        )
+    )
+
+
+@pytest.mark.parametrize("case", (
+    "missing", "id_with_other_hash", "hash_with_other_id",
+    "other_subject", "relation_as_rule",
+))
+def test_normative_activation_rejects_false_rule_review_references(
+    postgresql_intention_8b1, case,
+):
+    engine = postgresql_intention_8b1["engine"]
+    activation, _, _, rules_reviews, relation_reviews = _intention_8b1_context(
+        engine, f"review-rule-{case}",
+    )
+    rule_a, rule_b = rules_reviews
+    relation_a, _ = relation_reviews
+    activation.update(
+        normative_activation_id=f"activation-review-rule-{case}",
+        record_hash=_digest(f"activation-review-rule-{case}"),
+    )
+    if case == "missing":
+        activation.update(review_record_id="missing-review",
+                          review_record_hash=_digest("missing-review"))
+    elif case == "id_with_other_hash":
+        activation["review_record_hash"] = rule_b["record_hash"]
+    elif case == "hash_with_other_id":
+        activation["review_record_id"] = rule_b["rule_review_record_id"]
+    elif case == "other_subject":
+        activation.update(review_record_id=rule_b["rule_review_record_id"],
+                          review_record_hash=rule_b["record_hash"])
+    else:
+        activation.update(
+            review_record_id=relation_a["relation_review_record_id"],
+            review_record_hash=relation_a["record_hash"],
+        )
+    _assert_review_gate_rejection(engine, activation)
+
+
+def _relation_activation(activation, relations, review, label):
+    result = copy.deepcopy(activation)
+    result.update(
+        normative_activation_id=f"activation-{label}",
+        record_hash=_digest(f"activation-{label}"),
+        subject_type="normative_relation_version",
+        subject_id=relations[0]["normative_relation_id"],
+        subject_version=relations[0]["normative_relation_version"],
+        subject_hash=relations[0]["normative_relation_hash"],
+        review_record_id=review["relation_review_record_id"],
+        review_record_hash=review["record_hash"],
+    )
+    return result
+
+
+def test_normative_activation_accepts_exact_relation_review_for_same_subject_via_core(
+    postgresql_intention_8b1,
+):
+    engine = postgresql_intention_8b1["engine"]
+    activation, _, relations, _, reviews = _intention_8b1_context(
+        engine, "review-relation-ok",
+    )
+    exact = _relation_activation(activation, relations, reviews[0],
+                                 "review-relation-ok")
+    assert _exact_activation(engine, exact)[0] == exact["normative_activation_id"]
+
+
+def test_normative_activation_rejects_exact_relation_review_from_another_subject_via_core(
+    postgresql_intention_8b1,
+):
+    engine = postgresql_intention_8b1["engine"]
+    activation, _, relations, _, reviews = _intention_8b1_context(
+        engine, "review-relation-other-subject",
+    )
+    false = _relation_activation(activation, relations, reviews[1],
+                                 "review-relation-other-subject")
+    _assert_review_gate_rejection(engine, false)
+
+
+@pytest.mark.parametrize("case", (
+    "missing", "id_with_other_hash", "hash_with_other_id", "rule_as_relation",
+))
+def test_normative_activation_rejects_false_relation_review_references(
+    postgresql_intention_8b1, case,
+):
+    engine = postgresql_intention_8b1["engine"]
+    activation, _, relations, rule_reviews, relation_reviews = (
+        _intention_8b1_context(engine, f"review-relation-{case}")
+    )
+    relation_a, relation_b = relation_reviews
+    false = _relation_activation(activation, relations, relation_a,
+                                 f"review-relation-{case}")
+    if case == "missing":
+        false.update(review_record_id="missing-review",
+                     review_record_hash=_digest("missing-relation-review"))
+    elif case == "id_with_other_hash":
+        false["review_record_hash"] = relation_b["record_hash"]
+    elif case == "hash_with_other_id":
+        false["review_record_id"] = relation_b["relation_review_record_id"]
+    else:
+        false.update(review_record_id=rule_reviews[0]["rule_review_record_id"],
+                     review_record_hash=rule_reviews[0]["record_hash"])
+    _assert_review_gate_rejection(engine, false)
+
+
+def test_normative_activation_review_gate_dispatches_collisions_by_subject_type(
+    postgresql_intention_8b1,
+):
+    engine = postgresql_intention_8b1["engine"]
+    activation, rules, relations, rule_reviews, relation_reviews = (
+        _intention_8b1_context(engine, "review-class-collision")
+    )
+    shared_id = rule_reviews[0]["rule_review_record_id"]
+    shared_hash = rule_reviews[0]["record_hash"]
+    collision = copy.deepcopy(relation_reviews[0])
+    collision.update(relation_review_record_id=shared_id,
+                     record_hash=shared_hash)
+    with engine.begin() as connection:
+        connection.execute(insert(models.RelationReviewRecord), collision)
+    # The exact rule row wins only in the rule table despite the collision.
+    activation.update(normative_activation_id="activation-rule-collision",
+                      record_hash=_digest("activation-rule-collision"))
+    assert _exact_activation(engine, activation)[1] == "rule_version"
+    # For a relation subject, the same textual pair is resolved only in relation.
+    relation = _relation_activation(activation, relations, collision,
+                                    "relation-collision")
+    assert _exact_activation(engine, relation)[1] == "normative_relation_version"
+    # An exact pair present in the opposite class cannot satisfy rule subject B.
+    opposite_only = copy.deepcopy(activation)
+    opposite_only.update(
+        normative_activation_id="activation-opposite-class-only",
+        record_hash=_digest("activation-opposite-class-only"),
+        subject_id=rules[1]["rule_id"],
+        subject_version=rules[1]["rule_version"],
+        subject_hash=rules[1]["rule_hash"],
+        review_record_id=relation_reviews[0]["relation_review_record_id"],
+        review_record_hash=relation_reviews[0]["record_hash"],
+    )
+    _assert_review_gate_rejection(engine, opposite_only)
+
+
+def test_normative_activation_review_gate_is_prospective(
+    postgresql_intention_8b1_prospective,
+):
+    engine = postgresql_intention_8b1_prospective["engine"]
+    activation, _, _, rule_reviews, _ = _intention_8b1_context(
+        engine, "review-prospective",
+    )
+    historical = copy.deepcopy(activation)
+    historical.update(
+        normative_activation_id="activation-review-historical-false",
+        record_hash=_digest("activation-review-historical-false"),
+        review_record_id=rule_reviews[1]["rule_review_record_id"],
+        review_record_hash=rule_reviews[1]["record_hash"],
+    )
+    with engine.begin() as connection:
+        assert connection.scalar(text(
+            "SELECT version_num FROM alembic_version"
+        )) == SUBJECT_GATE_REVISION
+        connection.execute(insert(models.NormativeActivation), historical)
+        before = connection.execute(text("""
+            SELECT normative_activation_id, record_hash, review_record_id,
+                   review_record_hash FROM normative_activations
+            WHERE normative_activation_id=:id
+        """), {"id": historical["normative_activation_id"]}).one()
+        operations = Operations(MigrationContext.configure(connection))
+        migration = _load_migration(REVIEW_GATE_MIGRATION,
+                                    "test_prospective_physical_0036")
+        migration.op = operations
+        migration.upgrade()
+        connection.execute(text("""
+            UPDATE alembic_version SET version_num=:new WHERE version_num=:old
+        """), {"new": REVIEW_GATE_REVISION, "old": SUBJECT_GATE_REVISION})
+    with engine.connect() as connection:
+        assert connection.execute(text("""
+            SELECT normative_activation_id, record_hash, review_record_id,
+                   review_record_hash FROM normative_activations
+            WHERE normative_activation_id=:id
+        """), {"id": historical["normative_activation_id"]}).one() == before
+        assert connection.scalar(text(
+            "SELECT count(*) FROM pg_proc WHERE proname=:name"
+        ), {"name": REVIEW_GATE_FUNCTION}) == 1
+        assert connection.scalar(text(
+            "SELECT count(*) FROM pg_trigger WHERE tgname=:name"
+        ), {"name": REVIEW_GATE_TRIGGER}) == 1
+    new_false = copy.deepcopy(historical)
+    new_false.update(normative_activation_id="activation-review-new-false",
+                     record_hash=_digest("activation-review-new-false"))
+    _assert_review_gate_rejection(engine, new_false)
+    exact = copy.deepcopy(activation)
+    exact.update(normative_activation_id="activation-review-new-exact",
+                 record_hash=_digest("activation-review-new-exact"))
+    _exact_activation(engine, exact)
+    with engine.connect() as connection:
+        assert connection.scalar(text(
+            "SELECT count(*) FROM normative_activations"
+        )) == 2
+
+
+def test_normative_activation_review_gate_migration_has_exact_static_contract(
+    monkeypatch,
+):
+    source = REVIEW_GATE_MIGRATION.read_text(encoding="utf-8")
+    lowered = source.lower()
+    tree = ast.parse(source)
+    assignments = {
+        node.targets[0].id: ast.literal_eval(node.value)
+        for node in tree.body if isinstance(node, ast.Assign)
+        and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id in {"revision", "down_revision"}
+    }
+    assert assignments == {"revision": REVIEW_GATE_REVISION,
+                           "down_revision": SUBJECT_GATE_REVISION}
+    assert len(REVIEW_GATE_REVISION) <= 32
+    for token in (
+        "PostgreSQL-only", REVIEW_GATE_FUNCTION, REVIEW_GATE_TRIGGER,
+        "BEFORE INSERT ON normative_activations", "FOR EACH ROW",
+        "NEW.subject_type = 'rule_version'", "rule_review_records",
+        "rule_review_record_id = NEW.review_record_id",
+        "NEW.subject_type = 'normative_relation_version'",
+        "relation_review_records",
+        "relation_review_record_id = NEW.review_record_id",
+        "record_hash = NEW.review_record_hash", "subject_id = NEW.subject_id",
+        "subject_version = NEW.subject_version",
+        "subject_hash = NEW.subject_hash", "SELECT count(*)",
+        "exact_match_count <> 1", "23503", REVIEW_GATE_TOKEN,
+    ):
+        assert token in source
+    assert not re.search(r"\b(update|delete)\b", lowered)
+    for forbidden in (
+        "backfill", "review_event", "outcome", "revisao_concluida",
+        "validada", "favorabilidade", "activationgeneration",
+    ):
+        assert forbidden not in lowered
+    assert "raise runtimeerror" in lowered and "irreversible" in lowered
+    migration = _load_migration(REVIEW_GATE_MIGRATION,
+                                "test_0036_non_postgresql_guard")
+    class NonPostgresqlOperations:
+        def get_bind(self):
+            return type("Bind", (), {"dialect": type(
+                "Dialect", (), {"name": "sqlite"},
+            )()})()
+    monkeypatch.setattr(migration, "op", NonPostgresqlOperations())
+    with pytest.raises(RuntimeError, match="PostgreSQL-only"):
+        migration.upgrade()
+    with pytest.raises(RuntimeError, match="irreversible"):
+        migration.downgrade()
+
+
+def test_normative_activation_review_function_and_trigger_are_physical(
+    postgresql_intention_8b1,
+):
+    engine = postgresql_intention_8b1["engine"]
+    with engine.connect() as connection:
+        assert connection.scalar(text(
+            "SELECT version_num FROM alembic_version"
+        )) == REVIEW_GATE_REVISION
+        assert connection.scalar(text(
+            "SELECT count(*) FROM pg_proc WHERE proname=:name"
+        ), {"name": REVIEW_GATE_FUNCTION}) == 1
+        trigger = connection.execute(text("""
+            SELECT t.tgname, t.tgisinternal, t.tgenabled, c.relname,
+                   pg_get_triggerdef(t.oid), p.proname
+            FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+            JOIN pg_proc p ON p.oid=t.tgfoid WHERE t.tgname=:name
+        """), {"name": REVIEW_GATE_TRIGGER}).one()
+        before_insert = connection.execute(text("""
+            SELECT tgname FROM pg_trigger
+            WHERE tgrelid='normative_activations'::regclass
+              AND NOT tgisinternal
+              AND (tgtype & 2) = 2 AND (tgtype & 4) = 4
+            ORDER BY tgname
+        """)).scalars().all()
+        append_only = connection.execute(text("""
+            SELECT tgname, tgenabled FROM pg_trigger
+            WHERE tgrelid='normative_activations'::regclass AND tgname IN (
+              'trg_normative_activations_append_only_mutation',
+              'trg_normative_activations_append_only_truncate') ORDER BY tgname
+        """)).all()
+    assert trigger[:4] == (REVIEW_GATE_TRIGGER, False, "O",
+                           "normative_activations")
+    assert "BEFORE INSERT" in trigger[4] and "FOR EACH ROW" in trigger[4]
+    assert trigger[5] == REVIEW_GATE_FUNCTION
+    assert before_insert.index(SUBJECT_GATE_TRIGGER) < before_insert.index(
+        REVIEW_GATE_TRIGGER,
+    )
     assert append_only == [
         ("trg_normative_activations_append_only_mutation", "O"),
         ("trg_normative_activations_append_only_truncate", "O"),
