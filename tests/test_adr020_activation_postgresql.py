@@ -9,6 +9,7 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -2840,7 +2841,7 @@ def test_real_postgresql_revision_functions_and_both_triggers(postgresql_0029):
 
 def test_real_postgresql_downgrade_is_irreversible_and_preserves_objects(postgresql_0029):
     result = subprocess.run(
-        ["python", "-m", "alembic", "downgrade", "0027_adr020_calc_replay"],
+        [sys.executable, "-m", "alembic", "downgrade", "0027_adr020_calc_replay"],
         cwd=ROOT, env=postgresql_0029["env"], text=True, capture_output=True,
     )
     assert result.returncode != 0
