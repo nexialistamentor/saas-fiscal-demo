@@ -1,0 +1,14 @@
+tests/test_adr020_acquisition_foundation.py
+tests/test_adr020_activation_foundation.py
+tests/test_adr020_activation_postgresql.py
+tests/test_adr020_activation_trigger_postgresql.py
+tests/test_adr020_binding_contract.py
+tests/test_adr020_calculation_replay.py
+tests/test_adr020_consumption_foundation.py
+tests/test_adr020_coverage_foundation.py
+tests/test_adr020_credential_sanitization.py
+tests/test_adr020_extraction_foundation.py
+tests/test_adr020_integrated_pipeline.py
+tests/test_adr020_policy_foundation.py
+tests/test_adr020_relation_foundation.py
+tests/test_adr020_rule_foundation.py

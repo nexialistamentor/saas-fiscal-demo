@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_adr020_activation_postgresql.py",
+    "-q"
+  ],
+  "cwd": "C:\\dev\\saas-fiscal-demo",
+  "duration_monotonic_seconds": 500.0272683,
+  "end_utc": "2026-08-05T22:46:54.519807Z",
+  "exit_code": 0,
+  "gate": "Gate 1 - PostgreSQL",
+  "powershell": "'C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe' '-m' 'pytest' 'tests/test_adr020_activation_postgresql.py' '-q'",
+  "start_utc": "2026-08-05T22:38:34.492483Z",
+  "stderr": {
+    "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "size_bytes": 0
+  },
+  "stdout": {
+    "sha256": "520FF9C642D0DE1BF6456AF8186DC3DCF6D5E1F52C12D1CF274B0A0E80E652B4",
+    "size_bytes": 771
+  }
+}

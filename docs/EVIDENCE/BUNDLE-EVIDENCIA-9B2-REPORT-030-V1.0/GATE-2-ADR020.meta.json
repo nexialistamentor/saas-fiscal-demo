@@ -1,0 +1,37 @@
+{
+  "argv": [
+    "C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "tests/test_adr020_acquisition_foundation.py",
+    "tests/test_adr020_activation_foundation.py",
+    "tests/test_adr020_activation_postgresql.py",
+    "tests/test_adr020_activation_trigger_postgresql.py",
+    "tests/test_adr020_binding_contract.py",
+    "tests/test_adr020_calculation_replay.py",
+    "tests/test_adr020_consumption_foundation.py",
+    "tests/test_adr020_coverage_foundation.py",
+    "tests/test_adr020_credential_sanitization.py",
+    "tests/test_adr020_extraction_foundation.py",
+    "tests/test_adr020_integrated_pipeline.py",
+    "tests/test_adr020_policy_foundation.py",
+    "tests/test_adr020_relation_foundation.py",
+    "tests/test_adr020_rule_foundation.py",
+    "-q"
+  ],
+  "cwd": "C:\\dev\\saas-fiscal-demo",
+  "duration_monotonic_seconds": 470.4208446,
+  "end_utc": "2026-08-05T22:54:44.948387Z",
+  "exit_code": 0,
+  "gate": "Gate 2 - ADR-020",
+  "powershell": "'C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe' '-m' 'pytest' 'tests/test_adr020_acquisition_foundation.py' 'tests/test_adr020_activation_foundation.py' 'tests/test_adr020_activation_postgresql.py' 'tests/test_adr020_activation_trigger_postgresql.py' 'tests/test_adr020_binding_contract.py' 'tests/test_adr020_calculation_replay.py' 'tests/test_adr020_consumption_foundation.py' 'tests/test_adr020_coverage_foundation.py' 'tests/test_adr020_credential_sanitization.py' 'tests/test_adr020_extraction_foundation.py' 'tests/test_adr020_integrated_pipeline.py' 'tests/test_adr020_policy_foundation.py' 'tests/test_adr020_relation_foundation.py' 'tests/test_adr020_rule_foundation.py' '-q'",
+  "start_utc": "2026-08-05T22:46:54.527494Z",
+  "stderr": {
+    "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+    "size_bytes": 0
+  },
+  "stdout": {
+    "sha256": "F8FCB5FDA9F74AD7A877F50AF78BACE5246EF154171717B0F7D6D67A892B37A7",
+    "size_bytes": 1025
+  }
+}

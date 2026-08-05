@@ -1,0 +1,9 @@
+RUN SUMMARY
+
+Gate 1 - PostgreSQL: exit_code=0; duration_monotonic_seconds=500.0272683
+Gate 2 - ADR-020: exit_code=0; duration_monotonic_seconds=470.4208446
+Gate 3 - Regressao global: exit_code=0; duration_monotonic_seconds=562.8887445
+
+A prova de preservacao e a igualdade observada entre as fotografias inicial e final.
+REPORT-030 SHA-256 remained unchanged.
+EVIDENCIA_9B2_CAPTURADA_INTEGRALMENTE

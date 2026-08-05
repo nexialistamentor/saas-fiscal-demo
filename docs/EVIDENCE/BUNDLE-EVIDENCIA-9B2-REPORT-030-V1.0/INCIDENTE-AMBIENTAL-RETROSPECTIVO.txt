@@ -1,0 +1,18 @@
+INCIDENTE AMBIENTAL - RECONSTRUCAO RETROSPECTIVA
+
+Este registo e uma transcricao retrospectiva da sessao interactiva. Nao e uma
+captura bruta contemporanea produzida por este script e nao deve ser usado como
+prova das novas gates.
+
+- Tentativa directa anterior da Gate 1: 66 passed, 29 warnings, 1 error in
+  307.49s (0:05:07).
+- Causa observada: Docker Desktop sem conseguir iniciar PostgreSQL isolado por
+  disco cheio.
+- Foram removidos 18 containers efemeros `mission-009a-*`.
+- `docker volume prune` reportou: Total reclaimed space: 160.5GB.
+- `docker_data.vhdx` foi compactado de 148.15 GB para 11.70 GB.
+- O disco C: ficou com 141.68 GB livres.
+- Docker foi reiniciado e confirmado operacional.
+
+Todos os numeros acima sao transcricao retrospectiva da sessao, nao stdout bruto
+capturado por este script. Este ficheiro nao constitui prova das novas gates.
