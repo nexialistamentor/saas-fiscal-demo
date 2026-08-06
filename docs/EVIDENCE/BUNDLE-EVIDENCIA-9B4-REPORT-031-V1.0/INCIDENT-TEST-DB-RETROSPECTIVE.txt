@@ -1,0 +1,16 @@
+INCIDENTE TEST.DB RETROSPECTIVO — NÃO É STDOUT BRUTO
+
+- Uma suite global anterior teve: 2762 passed, 15 skipped, 1 failed.
+- Falha: tests/test_ops11_h4_l2_m4_contract.py::test_h4_analise_st_periodo_empresa_de_outro_usuario_bloqueia.
+- Erro: UNIQUE constraint failed: usuarios.cpf.
+- CPF em colisão: 76240319147.
+- O test.db persistente continha 55.030 utilizadores.
+- O CPF já existia no utilizador id 45092.
+- O teste isolado passou.
+- O ficheiro completo passou com 10 passed.
+- Conclusão: colisão aleatória contra base SQLite persistente acumulada, não defeito da implementação 9B4.
+- Banco antigo arquivado fora do repositório.
+- Tamanho do banco antigo: 38985728 bytes.
+- SHA-256 do banco antigo: FE4E1ECEE8A4B1BDBD7D220081688BEAED719D9B024B7069CD6A13CC78884DC8.
+
+Este registo não inclui email, credenciais ou dados adicionais e não constitui stdout bruto.

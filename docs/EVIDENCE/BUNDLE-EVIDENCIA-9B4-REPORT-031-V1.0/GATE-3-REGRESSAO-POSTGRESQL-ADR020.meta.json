@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=short",
+    "tests/test_adr020_activation_postgresql.py"
+  ],
+  "command": "'C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe' '-m' 'pytest' '-q' '--tb=short' 'tests/test_adr020_activation_postgresql.py'",
+  "cwd": "C:\\dev\\saas-fiscal-demo",
+  "database_url": "sqlite temporário isolado",
+  "duration_seconds": 481.1217575,
+  "exit_code": 0,
+  "expected_result": "179 passed",
+  "finished_utc": "2026-08-06T07:09:16.335155Z",
+  "gate": "GATE-3-REGRESSAO-POSTGRESQL-ADR020",
+  "observed_result": "179 passed, 29 warnings in 476.31s (0:07:56)",
+  "started_utc": "2026-08-06T07:01:15.213372Z",
+  "stderr_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+  "stdout_sha256": "733965A08853066A0C3108FE2924D497698EFBBDFE42215B4C24BDF6A92741B2",
+  "temporary_sqlite_removed": true
+}

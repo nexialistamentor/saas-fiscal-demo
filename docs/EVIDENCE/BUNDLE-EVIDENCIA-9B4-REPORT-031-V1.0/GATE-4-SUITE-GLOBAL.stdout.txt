@@ -1,0 +1,385 @@
+.......................................sssssss.......................... [  2%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [ 10%]
+........................................................................ [ 12%]
+........................................................................ [ 15%]
+........................................................................ [ 18%]
+........................................................................ [ 20%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 28%]
+........................................................................ [ 31%]
+........................................................................ [ 33%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 41%]
+........................................................................ [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 51%]
+........................................................................ [ 54%]
+.............................................sss........................ [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 72%]
+........................................................................ [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 80%]
+........................................................................ [ 82%]
+........................................................................ [ 85%]
+.............ssss....................................................... [ 88%]
+........................................................................ [ 90%]
+........................................................................ [ 93%]
+........................................................................ [ 95%]
+...............................s........................................ [ 98%]
+..........................................                               [100%]
+============================== warnings summary ===============================
+venv\Lib\site-packages\slowapi\extension.py:717: 29 warnings
+  C:\dev\saas-fiscal-demo\venv\Lib\site-packages\slowapi\extension.py:717: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    if asyncio.iscoroutinefunction(func):
+
+tests/test_acesso_cruzado_bloco9.py: 9 warnings
+tests/test_assistente_contribuinte_desconhecido.py: 1 warning
+tests/test_assistente_faturamento_ausente.py: 1 warning
+tests/test_assistente_faturamento_ausente_cpf.py: 1 warning
+tests/test_assistente_perguntar_contract.py: 10 warnings
+tests/test_b10_empresa_contador_vinculado_01.py: 6 warnings
+tests/test_b13_ops_13a_bloqueio_tempo_normativo.py: 12 warnings
+tests/test_b13_p0_formalizacao.py: 5 warnings
+tests/test_dt_contador_01_fluxo_soberano.py: 5 warnings
+tests/test_dt_perfil_contador_admin_01.py: 15 warnings
+tests/test_dt_perfil_contador_portal_01.py: 8 warnings
+tests/test_dt_vinculo_admin_01.py: 25 warnings
+tests/test_dt_vinculo_admin_02.py: 19 warnings
+tests/test_e2e_bloco2_memorial.py: 6 warnings
+tests/test_imposto_router_contract.py: 10 warnings
+tests/test_isolamento_empresa_id_bloco9.py: 8 warnings
+tests/test_isolamento_inteligencia_insights_bloco9.py: 4 warnings
+tests/test_lgpd.py: 2 warnings
+tests/test_logout_and_revogacao_jti.py: 1 warning
+tests/test_ops11_a2_health_ready_contract.py: 2 warnings
+tests/test_ops11_a3_root_contract.py: 2 warnings
+tests/test_ops11_a4_system_metrics_contract.py: 3 warnings
+tests/test_ops11_e3_status_job_contract.py: 5 warnings
+tests/test_ops11_e4_cancelar_job_contract.py: 6 warnings
+tests/test_ops11_e5_analisar_lote_contract.py: 5 warnings
+tests/test_ops11_e6_lote_job_contract.py: 6 warnings
+tests/test_ops11_h4_l2_m4_contract.py: 10 warnings
+tests/test_ops11_j10_j11_silenciar_restaurar_contract.py: 8 warnings
+tests/test_ops11_j12_grafico_alertas_contract.py: 3 warnings
+tests/test_ops11_j8_timeline_alertas_contract.py: 3 warnings
+tests/test_ops11_j9_alertas_por_agente_contract.py: 3 warnings
+tests/test_ops11_n2_estoque_divergencias_contract.py: 3 warnings
+tests/test_ops12_d1_recomendar_cnae_contract.py: 5 warnings
+tests/test_ops12_d2_comparar_regimes_contract.py: 5 warnings
+tests/test_ops12_d3_simular_empresa_contract.py: 6 warnings
+tests/test_ops12_e2_analisar_xml_contract.py: 5 warnings
+tests/test_ops12_f10_mei_tax_contract.py: 12 warnings
+tests/test_ops12_f2_gerar_relatorio_contract.py: 5 warnings
+tests/test_ops12_f3_gerar_relatorio_contract.py: 3 warnings
+tests/test_ops12_f8_relatorio_id_contract.py: 9 warnings
+tests/test_ops12_i10_score_tributario_contract.py: 4 warnings
+tests/test_ops12_i11_radar_tributario_contract.py: 3 warnings
+tests/test_ops12_i12_benchmark_empresas_contract.py: 3 warnings
+tests/test_ops12_i13_anomalias_tributarias_contract.py: 4 warnings
+tests/test_ops12_i14_prioridade_auditoria_contract.py: 4 warnings
+tests/test_ops12_i15_projecao_recuperacao_contract.py: 4 warnings
+tests/test_ops12_i16_risco_tributario_contract.py: 3 warnings
+tests/test_ops12_i17_eficiencia_tributaria_contract.py: 4 warnings
+tests/test_ops12_i18_complexidade_tributaria_contract.py: 4 warnings
+tests/test_ops12_i1_oportunidades_recuperacao_contract.py: 4 warnings
+tests/test_ops12_i2_ranking_restituicao_contract.py: 4 warnings
+tests/test_ops12_i3_mapa_oportunidades_contract.py: 4 warnings
+tests/test_ops12_i4_creditos_contract.py: 4 warnings
+tests/test_ops12_i5_distorcoes_contract.py: 4 warnings
+tests/test_ops12_i6_oportunidades_preditivas_contract.py: 4 warnings
+tests/test_ops12_i7_ranking_estrategico_contract.py: 4 warnings
+tests/test_ops12_i8_impacto_financeiro_contract.py: 4 warnings
+tests/test_ops12_i9_indice_inteligencia_contract.py: 3 warnings
+tests/test_ops12_j1_dashboard_analises_contract.py: 3 warnings
+tests/test_ops12_j2_dashboard_relatorio_contract.py: 4 warnings
+tests/test_ops12_j3_dashboard_relatorio_alertas_contract.py: 4 warnings
+tests/test_ops12_j4_dashboard_relatorio_oportunidades_contract.py: 5 warnings
+tests/test_ops12_j5_dashboard_risco_contract.py: 6 warnings
+tests/test_ops12_j6_dashboard_resumo_contract.py: 5 warnings
+tests/test_ops12_j7_dashboard_alertas_contract.py: 4 warnings
+tests/test_ops12_l2_ingestao_documentos_contract.py: 8 warnings
+tests/test_terms.py: 2 warnings
+  C:\dev\saas-fiscal-demo\app\services\request_log_retention.py:25: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    cutoff = datetime.utcnow() - timedelta(days=dias)
+
+tests/test_acesso_cruzado_bloco9.py: 9 warnings
+tests/test_b10_empresa_contador_vinculado_01.py: 9 warnings
+tests/test_dt_contador_01_fluxo_soberano.py: 5 warnings
+tests/test_dt_perfil_contador_admin_01.py: 16 warnings
+tests/test_dt_perfil_contador_portal_01.py: 8 warnings
+tests/test_dt_vinculo_admin_01.py: 24 warnings
+tests/test_dt_vinculo_admin_02.py: 21 warnings
+tests/test_e2e_bloco2_memorial.py: 7 warnings
+tests/test_isolamento_empresa_id_bloco9.py: 8 warnings
+tests/test_isolamento_inteligencia_insights_bloco9.py: 4 warnings
+tests/test_lgpd.py: 2 warnings
+tests/test_logout_and_revogacao_jti.py: 1 warning
+tests/test_ops11_h4_l2_m4_contract.py: 11 warnings
+tests/test_rate_limit_chave_user.py: 2 warnings
+tests/test_terms.py: 2 warnings
+  C:\dev\saas-fiscal-demo\app\security.py:66: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    agora = datetime.utcnow()
+
+tests/test_acesso_cruzado_bloco9.py: 2 warnings
+tests/test_b10_empresa_contador_vinculado_01.py: 9 warnings
+tests/test_dt_contador_01_fluxo_soberano.py: 5 warnings
+tests/test_e2e_bloco2_memorial.py: 7 warnings
+tests/test_isolamento_empresa_id_bloco9.py: 8 warnings
+tests/test_isolamento_inteligencia_insights_bloco9.py: 4 warnings
+tests/test_ops11_h4_l2_m4_contract.py: 11 warnings
+tests/test_terms.py: 1 warning
+  C:\dev\saas-fiscal-demo\app\auth_router.py:150: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    aceite_em=datetime.utcnow(),
+
+tests/test_acesso_cruzado_bloco9.py: 7 warnings
+tests/test_assistente_perguntar_contract.py: 1 warning
+tests/test_b10_empresa_contador_vinculado_01.py: 8 warnings
+tests/test_dt_contador_01_fluxo_soberano.py: 18 warnings
+tests/test_dt_perfil_contador_admin_01.py: 19 warnings
+tests/test_dt_perfil_contador_portal_01.py: 10 warnings
+tests/test_dt_vinculo_admin_01.py: 50 warnings
+tests/test_dt_vinculo_admin_02.py: 26 warnings
+tests/test_e2e_bloco2_memorial.py: 18 warnings
+tests/test_isolamento_inteligencia_insights_bloco9.py: 2 warnings
+tests/test_normative_watchdog_agent.py: 4 warnings
+tests/test_ops11_h4_l2_m4_contract.py: 12 warnings
+tests/test_pipeline_xml_canonico.py: 2 warnings
+tests/test_pipeline_xml_concorrencia.py: 2 warnings
+  C:\dev\saas-fiscal-demo\venv\Lib\site-packages\sqlalchemy\sql\schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/test_acesso_cruzado_bloco9.py::TestPoolAbertoCaracterizacao::test_mt08_contador_aprovado_nao_deve_assumir_documento_alheio
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p1_com_vinculo_activo_assumir_retorna_201
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p2_atribuicao_criada_com_campos_correctos
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p3_homologacao_documental_criada_pendente
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Negativo::test_dt01_n1_vinculo_suspenso_bloqueado
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Negativo::test_dt01_n2_vinculo_para_empresa_errada_bloqueado
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_aprovado_retorna_contrato
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_rejeitado_retorna_contrato
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_parecer_vazio_retorna_422
+  C:\dev\saas-fiscal-demo\app\services\vinculo_service.py:136: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    agora = datetime.utcnow()
+
+tests/test_agent_contract_architecture.py::test_production_creates_agent_mission_only_in_factory
+  C:\dev\saas-fiscal-demo\app\services\document_ingestion\danfe_pdf_adapter.py:11: SyntaxWarning: "\s" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\s"? A raw string is also an option.
+    - Chave fragmentada: "3526 0504 8312 ... 4607" (11 grupos × 4, separados por \s+)
+
+tests/test_document_audit.py: 12 warnings
+tests/test_ingestion_campos_estruturados.py: 1 warning
+  C:\dev\saas-fiscal-demo\app\services\document_ingestion\audit.py:71: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.utcnow(),
+
+tests/test_document_audit.py::test_evidencia_timestamp_recente
+  C:\dev\saas-fiscal-demo\tests\test_document_audit.py:83: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    antes = datetime.utcnow()
+
+tests/test_document_audit.py::test_evidencia_timestamp_recente
+  C:\dev\saas-fiscal-demo\tests\test_document_audit.py:91: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    depois = datetime.utcnow()
+
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p1_com_vinculo_activo_assumir_retorna_201
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p2_atribuicao_criada_com_campos_correctos
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p3_homologacao_documental_criada_pendente
+  C:\dev\saas-fiscal-demo\tests\test_dt_contador_01_fluxo_soberano.py:161: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    criado_em=datetime.utcnow(),
+
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p1_com_vinculo_activo_assumir_retorna_201
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p2_atribuicao_criada_com_campos_correctos
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Positivo::test_dt01_p3_homologacao_documental_criada_pendente
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_aprovado_retorna_contrato
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_rejeitado_retorna_contrato
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_parecer_vazio_retorna_422
+  C:\dev\saas-fiscal-demo\app\services\vinculo_service.py:213: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    agora = datetime.utcnow()
+
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Negativo::test_dt01_n1_vinculo_suspenso_bloqueado
+  C:\dev\saas-fiscal-demo\tests\test_dt_contador_01_fluxo_soberano.py:279: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    criado_em=datetime.utcnow(),
+
+tests/test_dt_contador_01_fluxo_soberano.py::TestDtContador01Negativo::test_dt01_n2_vinculo_para_empresa_errada_bloqueado
+  C:\dev\saas-fiscal-demo\tests\test_dt_contador_01_fluxo_soberano.py:332: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    criado_em=datetime.utcnow(),
+
+tests/test_dt_perfil_contador_admin_01.py::test_p4_admin_aprova_perfil
+tests/test_dt_perfil_contador_admin_01.py::test_p5_contador_aprovado_passa_guard
+tests/test_dt_perfil_contador_admin_01.py::test_n7_aprovar_ja_aprovado
+  C:\dev\saas-fiscal-demo\app\services\perfil_contador_admin_service.py:205: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    perfil.aprovado_em = datetime.utcnow()
+
+tests/test_dt_vinculo_admin_01.py: 7 warnings
+tests/test_dt_vinculo_admin_02.py: 12 warnings
+  C:\dev\saas-fiscal-demo\app\services\vinculo_admin_service.py:223: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    criado_em=datetime.utcnow(),
+
+tests/test_dt_vinculo_admin_01.py::TestDtVinculoAdmin01Positivo::test_va01_p3_validade_futura_persiste
+  C:\dev\saas-fiscal-demo\tests\test_dt_vinculo_admin_01.py:240: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    futuro = (datetime.utcnow() + timedelta(days=90)).isoformat()
+
+tests/test_dt_vinculo_admin_01.py::TestDtVinculoAdmin01Positivo::test_va01_p3_validade_futura_persiste
+tests/test_dt_vinculo_admin_01.py::TestDtVinculoAdmin01Negativo::test_va01_n7_validade_no_passado_retorna_422
+  C:\dev\saas-fiscal-demo\app\services\vinculo_admin_service.py:171: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    if validade is not None and validade <= datetime.utcnow():
+
+tests/test_dt_vinculo_admin_01.py::TestDtVinculoAdmin01Positivo::test_va01_p5_vinculo_revogado_permite_novo_activo
+  C:\dev\saas-fiscal-demo\tests\test_dt_vinculo_admin_01.py:293: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    criado_em=datetime.utcnow(),
+
+tests/test_dt_vinculo_admin_01.py::TestDtVinculoAdmin01Positivo::test_va01_p5_vinculo_revogado_permite_novo_activo
+  C:\dev\saas-fiscal-demo\tests\test_dt_vinculo_admin_01.py:294: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    revogado_em=datetime.utcnow(),
+
+tests/test_dt_vinculo_admin_01.py::TestDtVinculoAdmin01Negativo::test_va01_n7_validade_no_passado_retorna_422
+  C:\dev\saas-fiscal-demo\tests\test_dt_vinculo_admin_01.py:371: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    passado = (datetime.utcnow() - timedelta(days=1)).isoformat()
+
+tests/test_dt_vinculo_admin_01.py::TestDtVinculoAdmin01Negativo::test_va01_n12_vinculo_suspenso_bloqueia_novo_activo
+  C:\dev\saas-fiscal-demo\tests\test_dt_vinculo_admin_01.py:453: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    criado_em=datetime.utcnow(),
+
+tests/test_dt_vinculo_admin_02.py::TestDtVinculoAdmin02Suspender::test_va02_n2_suspender_revogado_retorna_409
+tests/test_dt_vinculo_admin_02.py::TestDtVinculoAdmin02Revogar::test_va02_p7_admin_revoga_activo
+tests/test_dt_vinculo_admin_02.py::TestDtVinculoAdmin02Revogar::test_va02_p8_admin_revoga_suspenso
+tests/test_dt_vinculo_admin_02.py::TestDtVinculoAdmin02Revogar::test_va02_n5_revogar_ja_revogado_retorna_409
+  C:\dev\saas-fiscal-demo\app\services\vinculo_admin_service.py:359: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    vinculo.revogado_em = datetime.utcnow()
+
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p1_upload_xml_retorna_relatorio_id
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p2_relatorio_persiste_score_e_alertas
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n1_memorial_sem_pagamento_retorna_402
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p3_memorial_com_pagamento_retorna_200
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p4_memorial_pdf_bytes_validos
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n2_actor_alheio_nao_obtem_pdf
+tests/test_pipeline_xml_canonico.py::test_executar_e_registrar_analise_xml_persiste_ciclo_completo
+tests/test_pipeline_xml_concorrencia.py::test_chamadas_sequenciais_nao_duplicam_relatorio
+tests/test_pipeline_xml_concorrencia.py::test_chamadas_sequenciais_nao_duplicam_relatorio
+  C:\dev\saas-fiscal-demo\app\services\usage_service.py:29: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    agora = datetime.utcnow()
+
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p1_upload_xml_retorna_relatorio_id
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p2_relatorio_persiste_score_e_alertas
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n1_memorial_sem_pagamento_retorna_402
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p3_memorial_com_pagamento_retorna_200
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p4_memorial_pdf_bytes_validos
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n2_actor_alheio_nao_obtem_pdf
+tests/test_isolamento_inteligencia_insights_bloco9.py::TestIsolamentoInsights::test_mt15_insights_acesso_cruzado
+tests/test_pipeline_xml_canonico.py::test_executar_e_registrar_analise_xml_persiste_ciclo_completo
+tests/test_pipeline_xml_concorrencia.py::test_chamadas_sequenciais_nao_duplicam_relatorio
+  C:\dev\saas-fiscal-demo\app\services\insights_engine.py:131: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    inicio = datetime.utcnow()
+
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p1_upload_xml_retorna_relatorio_id
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p2_relatorio_persiste_score_e_alertas
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n1_memorial_sem_pagamento_retorna_402
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p3_memorial_com_pagamento_retorna_200
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p4_memorial_pdf_bytes_validos
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n2_actor_alheio_nao_obtem_pdf
+tests/test_isolamento_inteligencia_insights_bloco9.py::TestIsolamentoInsights::test_mt15_insights_acesso_cruzado
+tests/test_pipeline_xml_canonico.py::test_executar_e_registrar_analise_xml_persiste_ciclo_completo
+tests/test_pipeline_xml_concorrencia.py::test_chamadas_sequenciais_nao_duplicam_relatorio
+  C:\dev\saas-fiscal-demo\app\services\memoria_estrategica_service.py:54: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "criado_em": datetime.utcnow()
+
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p1_upload_xml_retorna_relatorio_id
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p2_relatorio_persiste_score_e_alertas
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n1_memorial_sem_pagamento_retorna_402
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p3_memorial_com_pagamento_retorna_200
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p4_memorial_pdf_bytes_validos
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n2_actor_alheio_nao_obtem_pdf
+tests/test_isolamento_inteligencia_insights_bloco9.py::TestIsolamentoInsights::test_mt15_insights_acesso_cruzado
+tests/test_pipeline_xml_canonico.py::test_executar_e_registrar_analise_xml_persiste_ciclo_completo
+tests/test_pipeline_xml_concorrencia.py::test_chamadas_sequenciais_nao_duplicam_relatorio
+  C:\dev\saas-fiscal-demo\venv\Lib\site-packages\sqlalchemy\engine\default.py:952: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes
+    cursor.execute(statement, parameters)
+
+tests/test_e2e_bloco2_memorial.py: 54 warnings
+tests/test_isolamento_inteligencia_insights_bloco9.py: 9 warnings
+tests/test_pipeline_xml_canonico.py: 9 warnings
+tests/test_pipeline_xml_concorrencia.py: 9 warnings
+  C:\dev\saas-fiscal-demo\app\services\insights_engine.py:351: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    criado_em=datetime.utcnow()
+
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p1_upload_xml_retorna_relatorio_id
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2Upload::test_e2e_b2_p2_relatorio_persiste_score_e_alertas
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n1_memorial_sem_pagamento_retorna_402
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p3_memorial_com_pagamento_retorna_200
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p4_memorial_pdf_bytes_validos
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_n2_actor_alheio_nao_obtem_pdf
+tests/test_pipeline_xml_canonico.py::test_executar_e_registrar_analise_xml_persiste_ciclo_completo
+tests/test_pipeline_xml_concorrencia.py::test_chamadas_sequenciais_nao_duplicam_relatorio
+  C:\dev\saas-fiscal-demo\app\services\usage_service.py:49: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    agora = datetime.utcnow()
+
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p3_memorial_com_pagamento_retorna_200
+tests/test_e2e_bloco2_memorial.py::TestE2EBloco2MemorialPDF::test_e2e_b2_p4_memorial_pdf_bytes_validos
+  C:\dev\saas-fiscal-demo\app\services\pdf_report_service.py:221: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts_geracao = datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC")
+
+tests/test_homologacao_service.py::test_registar_decisao_rejeitado
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_aprovado_retorna_contrato
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_rejeitado_retorna_contrato
+  C:\dev\saas-fiscal-demo\app\services\homologacao_service.py:168: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    decidido_em = datetime.utcnow()
+
+tests/test_isolamento_inteligencia_insights_bloco9.py::TestIsolamentoInsights::test_mt15_insights_acesso_cruzado
+  C:\dev\saas-fiscal-demo\app\services\insights_engine.py:358: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    relatorio.tempo_execucao = (datetime.utcnow() - inicio).total_seconds()
+
+tests/test_normative_validation_agent.py::test_promove_mva_candidata_valida
+  C:\dev\saas-fiscal-demo\app\agents\normative_validation_agent.py:133: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    _suffix = f"AG-VALIDACAO {datetime.utcnow().strftime('%Y-%m-%d')}"
+
+tests/test_normative_watchdog_agent.py::test_ufs_sem_cobertura_detectadas
+tests/test_normative_watchdog_agent.py::test_vigencia_expirada_sem_substituto
+tests/test_normative_watchdog_agent.py::test_sem_fonte_legal_alerta_alto
+  C:\dev\saas-fiscal-demo\app\agents\normative_watchdog_agent.py:47: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return (datetime.utcnow() - timedelta(days=30)).strftime("%d-%m-%Y")
+
+tests/test_normative_watchdog_agent.py::test_ufs_sem_cobertura_detectadas
+tests/test_normative_watchdog_agent.py::test_vigencia_expirada_sem_substituto
+tests/test_normative_watchdog_agent.py::test_vigencia_expirada_sem_substituto
+tests/test_normative_watchdog_agent.py::test_sem_fonte_legal_alerta_alto
+tests/test_normative_watchdog_agent.py::test_sem_fonte_legal_alerta_alto
+  C:\dev\saas-fiscal-demo\app\agents\normative_watchdog_agent.py:131: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    AlertaFiscalModel.criado_em >= datetime.utcnow() - timedelta(hours=24),
+
+tests/test_ops11_h4_l2_m4_contract.py::test_l2_ingerir_documento_pdf_rejeitado_por_classificador_retorna_422
+tests/test_ops12_l2_ingestao_documentos_contract.py::test_l2_ingerir_documento_unknown_retorna_422
+  C:\dev\saas-fiscal-demo\venv\Lib\site-packages\slowapi\extension.py:734: DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    response = await func(*args, **kwargs)  # type: ignore
+
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_aprovado_retorna_contrato
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_rejeitado_retorna_contrato
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_parecer_vazio_retorna_422
+  C:\dev\saas-fiscal-demo\tests\test_ops11_h4_l2_m4_contract.py:367: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    criado_em=datetime.utcnow(),
+
+tests/test_ops11_h4_l2_m4_contract.py::test_m4_decidir_parecer_vazio_retorna_422
+tests/test_ops12_d3_simular_empresa_contract.py::test_d3_simular_empresa_cnae_nao_identificado_retorna_422
+  C:\dev\saas-fiscal-demo\venv\Lib\site-packages\anyio\_backends\_asyncio.py:986: DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
+    result = context.run(func, *args)
+
+tests/test_pagamento_service.py::test_rejeitar_pagamento_regista_tentativa
+  C:\dev\saas-fiscal-demo\app\services\pagamento_service.py:318: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    finished_at=datetime.utcnow(),
+
+tests/test_pagamento_service.py::test_rejeitar_pagamento_regista_tentativa
+  C:\dev\saas-fiscal-demo\app\services\pagamento_service.py:210: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    started_at=datetime.utcnow(),
+
+tests/test_parsers_fase1.py::test_orquestrador_dry_run_nao_grava
+tests/test_parsers_fase1.py::test_orquestrador_dou_dados_abertos_aguarda_configuracao_sem_zip_base
+  C:\dev\saas-fiscal-demo\app\services\parsers\orquestrador_parsers.py:45: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "executado_em": datetime.utcnow().isoformat(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2763 passed, 15 skipped, 970 warnings in 518.92s (0:08:38)

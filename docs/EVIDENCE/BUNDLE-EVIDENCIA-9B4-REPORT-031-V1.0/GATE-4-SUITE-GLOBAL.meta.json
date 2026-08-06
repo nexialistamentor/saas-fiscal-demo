@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=short"
+  ],
+  "command": "'C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe' '-m' 'pytest' '-q' '--tb=short'",
+  "cwd": "C:\\dev\\saas-fiscal-demo",
+  "database_url": "sqlite temporário isolado",
+  "duration_seconds": 524.9844052,
+  "exit_code": 0,
+  "expected_result": "2763 passed, 15 skipped, 970 warnings",
+  "finished_utc": "2026-08-06T07:18:01.321840Z",
+  "gate": "GATE-4-SUITE-GLOBAL",
+  "observed_result": "2763 passed, 15 skipped, 970 warnings in 518.92s (0:08:38)",
+  "started_utc": "2026-08-06T07:09:16.337413Z",
+  "stderr_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+  "stdout_sha256": "7EB929C47126AB88BF9641B1F8BC04BAC086DCA8F6E1BED9AE7AD3B69E97E8FA",
+  "temporary_sqlite_removed": true
+}

@@ -1,0 +1,21 @@
+RUN SUMMARY
+
+1. RED retrospectivo
+Ver RED-RETROSPECTIVE.txt; não é stdout bruto.
+
+2. Incidente ambiental retrospectivo
+Ver INCIDENT-TEST-DB-RETROSPECTIVE.txt; não é stdout bruto.
+
+3. Provas brutas actuais
+GATE-1-GREEN-9B4: exit_code=0; resultado=1 passed, 29 warnings in 4.96s; duration_seconds=10.2003873
+GATE-2-PRESERVACAO-9B2-GREEN-9B4: exit_code=0; resultado=2 passed, 29 warnings in 8.12s; duration_seconds=12.587736
+GATE-3-REGRESSAO-POSTGRESQL-ADR020: exit_code=0; resultado=179 passed, 29 warnings in 476.31s (0:07:56); duration_seconds=481.1217575
+GATE-4-SUITE-GLOBAL: exit_code=0; resultado=2763 passed, 15 skipped, 970 warnings in 518.92s (0:08:38); duration_seconds=524.9844052
+
+4. Resultado final
+Todas as quatro gates cumpriram as contagens e exit codes vinculantes.
+EVIDENCIA_9B4_CAPTURADA_INTEGRALMENTE
+BUNDLE_EVIDENCIA_9B4_APTO_PARA_VINCULACAO_DOCUMENTAL
+
+5. Limites operacionais
+Captura local/de teste; sem Railway, Vercel, produção, deploy, credenciais externas ou autorização operacional. Cada gate usou SQLite temporário isolado, removido no fim. O RED e o incidente são retrospectivos.

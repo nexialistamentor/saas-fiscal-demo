@@ -1,0 +1,9 @@
+RED RETROSPECTIVO — NÃO É STDOUT BRUTO
+
+Registo retrospectivo baseado na evidência observada durante a execução RED anterior à implementação.
+- resultado: 1 failed;
+- falha exclusiva: assert foreign_key is not None;
+- causa: ausência da FK directa 9B4;
+- o restante contrato estrutural ainda não foi alcançado.
+
+Não foram fabricados timestamps, duração ou stdout inexistente. O teste antigo não foi reconstruído artificialmente.

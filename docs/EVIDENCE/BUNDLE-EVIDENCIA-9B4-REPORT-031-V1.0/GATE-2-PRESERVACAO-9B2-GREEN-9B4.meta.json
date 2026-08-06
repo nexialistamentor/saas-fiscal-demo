@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=short",
+    "tests/test_adr020_activation_postgresql.py::test_normative_generation_decision_fk_is_physical_and_not_valid",
+    "tests/test_adr020_activation_postgresql.py::test_normative_activation_has_direct_exact_execution_decision_fk_not_valid"
+  ],
+  "command": "'C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe' '-m' 'pytest' '-q' '--tb=short' 'tests/test_adr020_activation_postgresql.py::test_normative_generation_decision_fk_is_physical_and_not_valid' 'tests/test_adr020_activation_postgresql.py::test_normative_activation_has_direct_exact_execution_decision_fk_not_valid'",
+  "cwd": "C:\\dev\\saas-fiscal-demo",
+  "database_url": "sqlite temporário isolado",
+  "duration_seconds": 12.587736,
+  "exit_code": 0,
+  "expected_result": "2 passed",
+  "finished_utc": "2026-08-06T07:01:15.211249Z",
+  "gate": "GATE-2-PRESERVACAO-9B2-GREEN-9B4",
+  "observed_result": "2 passed, 29 warnings in 8.12s",
+  "started_utc": "2026-08-06T07:01:02.623492Z",
+  "stderr_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+  "stdout_sha256": "5C9EC04CD94757D338B49F184A156EDC422722E732557AA1D4FCB3BF5BDB9147",
+  "temporary_sqlite_removed": true
+}

@@ -1,0 +1,11 @@
+ENVIRONMENT (sem segredos)
+captured_utc=2026-08-06T07:00:51.900822Z
+cwd=C:\dev\saas-fiscal-demo
+platform=Windows-10-10.0.19045-SP0
+DATABASE_URL=sqlite temporário isolado por gate
+Railway=não acedido
+External credentials=não usadas
+Python=Python 3.14.2; exit_code=0
+pytest=pytest 9.0.3; exit_code=0
+Git=git version 2.53.0.windows.1; exit_code=0
+PostgreSQL client=comando não disponível

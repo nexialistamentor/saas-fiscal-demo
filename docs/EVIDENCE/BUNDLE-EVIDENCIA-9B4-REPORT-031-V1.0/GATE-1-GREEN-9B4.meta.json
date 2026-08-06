@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "--tb=short",
+    "tests/test_adr020_activation_postgresql.py::test_normative_activation_has_direct_exact_execution_decision_fk_not_valid"
+  ],
+  "command": "'C:\\dev\\saas-fiscal-demo\\venv\\Scripts\\python.exe' '-m' 'pytest' '-q' '--tb=short' 'tests/test_adr020_activation_postgresql.py::test_normative_activation_has_direct_exact_execution_decision_fk_not_valid'",
+  "cwd": "C:\\dev\\saas-fiscal-demo",
+  "database_url": "sqlite temporário isolado",
+  "duration_seconds": 10.2003873,
+  "exit_code": 0,
+  "expected_result": "1 passed",
+  "finished_utc": "2026-08-06T07:01:02.620956Z",
+  "gate": "GATE-1-GREEN-9B4",
+  "observed_result": "1 passed, 29 warnings in 4.96s",
+  "started_utc": "2026-08-06T07:00:52.420548Z",
+  "stderr_sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+  "stdout_sha256": "897CB1E7F705C5CDA05CFBD3E80EC2F670B1912BDA1956E9C8CE768BE9CCBD37",
+  "temporary_sqlite_removed": true
+}

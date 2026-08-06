@@ -6,3 +6,4 @@
 *.json text eol=lf
 *.ini text eol=lf
 *.yml text eol=lf
+docs/EVIDENCE/BUNDLE-EVIDENCIA-9B4-REPORT-031-V1.0/*.stdout.txt -text
