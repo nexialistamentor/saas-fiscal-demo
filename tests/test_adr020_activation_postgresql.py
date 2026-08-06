@@ -45,6 +45,7 @@ GENERATION_FK_MIGRATION = ROOT / "migrations" / "versions" / "0037_adr020_activa
 GENERATION_EXECUTION_GATE_MIGRATION = ROOT / "migrations" / "versions" / "0038_adr020_normative_activation_generation_execution_gate.py"
 GENERATION_DECISION_EXECUTION_FK_MIGRATION = ROOT / "migrations" / "versions" / "0039_adr020_activation_generation_decision_execution_fk.py"
 NORMATIVE_GENERATION_DECISION_FK_MIGRATION = ROOT / "migrations" / "versions" / "0040_adr020_norm_gen_decision_fk.py"
+NORMATIVE_EXECUTION_DECISION_FK_MIGRATION = ROOT / "migrations" / "versions" / "0041_adr020_norm_exec_dec_fk.py"
 RULE_FOUNDATION = ROOT / "migrations" / "versions" / "0020_adr020_rule_foundation.py"
 RELATION_FOUNDATION = ROOT / "migrations" / "versions" / "0021_adr020_relation_foundation.py"
 POLICY_FOUNDATION = ROOT / "migrations" / "versions" / "0022_adr020_policy_foundation.py"
@@ -64,6 +65,7 @@ GENERATION_FK_REVISION = "0037_adr020_generation_fk"
 GENERATION_EXECUTION_GATE_REVISION = "0038_adr020_generation_exec_gate"
 GENERATION_DECISION_EXECUTION_FK_REVISION = "0039_adr020_gen_exec_decision_fk"
 NORMATIVE_GENERATION_DECISION_FK_REVISION = "0040_adr020_norm_gen_decision_fk"
+NORMATIVE_EXECUTION_DECISION_FK_REVISION = "0041_adr020_norm_exec_dec_fk"
 GENERATION_DECISION_EXECUTION_UNIQUE = "uq_activation_executions_exact_decision_binding"
 GENERATION_DECISION_EXECUTION_FK = "fk_activation_generations_exact_execution_decision"
 NORMATIVE_GENERATION_DECISION_UNIQUE = "uq_activation_generations_generation_exact_decision"
@@ -716,6 +718,26 @@ def postgresql_intention_9b2():
         NORMATIVE_GENERATION_DECISION_FK_REVISION, physical_coverage=True,
         physical_rule_relation=True,
     )
+
+
+@pytest.fixture
+def postgresql_intention_9b4(postgresql_intention_9b2):
+    engine = postgresql_intention_9b2["engine"]
+    with engine.begin() as connection:
+        operations = Operations(MigrationContext.configure(connection))
+        migration_0041 = _load_migration(
+            NORMATIVE_EXECUTION_DECISION_FK_MIGRATION,
+            "test_physical_0041_intention_9b4",
+        )
+        migration_0041.op = operations
+        migration_0041.upgrade()
+        connection.execute(text("""
+            UPDATE alembic_version SET version_num=:new WHERE version_num=:old
+        """), {
+            "new": NORMATIVE_EXECUTION_DECISION_FK_REVISION,
+            "old": NORMATIVE_GENERATION_DECISION_FK_REVISION,
+        })
+    yield postgresql_intention_9b2
 
 
 @pytest.fixture
@@ -5749,6 +5771,64 @@ def test_normative_activation_rejects_generation_from_different_exact_decision_v
     with pytest.raises(DBAPIError):
         with engine.begin() as connection:
             connection.execute(insert(models.NormativeActivation), false)
+
+
+def test_normative_activation_has_direct_exact_execution_decision_fk_not_valid(
+    postgresql_intention_9b4,
+):
+    engine = postgresql_intention_9b4["engine"]
+    with engine.connect() as connection:
+        foreign_key = connection.execute(text("""
+            SELECT c.conname, c.contype, c.convalidated, c.condeferrable,
+                   c.condeferred, c.confmatchtype, c.confupdtype, c.confdeltype,
+                   local_table.relname AS local_table,
+                   referenced_table.relname AS referenced_table,
+                   referenced_key.relname AS referenced_key,
+                   ARRAY(
+                       SELECT a.attname
+                       FROM unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+                       JOIN pg_attribute a
+                         ON a.attrelid=c.conrelid AND a.attnum=k.attnum
+                       ORDER BY k.ord
+                   ) AS local_columns,
+                   ARRAY(
+                       SELECT a.attname
+                       FROM unnest(c.confkey) WITH ORDINALITY AS k(attnum, ord)
+                       JOIN pg_attribute a
+                         ON a.attrelid=c.confrelid AND a.attnum=k.attnum
+                       ORDER BY k.ord
+                   ) AS referenced_columns
+            FROM pg_constraint c
+            JOIN pg_class local_table ON local_table.oid=c.conrelid
+            JOIN pg_class referenced_table ON referenced_table.oid=c.confrelid
+            JOIN pg_class referenced_key ON referenced_key.oid=c.conindid
+            WHERE c.conname =
+                'fk_normative_activations_exact_execution_decision'
+        """)).mappings().one_or_none()
+
+    assert foreign_key is not None
+    assert foreign_key["conname"] == (
+        "fk_normative_activations_exact_execution_decision"
+    )
+    assert foreign_key["contype"] == "f"
+    assert foreign_key["local_table"] == "normative_activations"
+    assert foreign_key["referenced_table"] == "activation_executions"
+    exact_columns = [
+        "activation_execution_id",
+        "activation_decision_id",
+        "activation_decision_record_hash",
+    ]
+    assert foreign_key["local_columns"] == exact_columns
+    assert foreign_key["referenced_columns"] == exact_columns
+    assert foreign_key["confmatchtype"] == "s"
+    assert foreign_key["confupdtype"] == "r"
+    assert foreign_key["confdeltype"] == "r"
+    assert foreign_key["condeferrable"] is False
+    assert foreign_key["condeferred"] is False
+    assert foreign_key["convalidated"] is False
+    assert foreign_key["referenced_key"] == (
+        "uq_activation_executions_exact_decision_binding"
+    )
 
 
 def test_normative_generation_decision_fk_is_physical_and_not_valid(
