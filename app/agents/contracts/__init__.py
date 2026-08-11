@@ -6,6 +6,7 @@ serviços operacionais ou providers LLM.
 """
 from app.agents.contracts.canonical import (
     build_context_hash,
+    build_effect_idempotency_key,
     build_mission_idempotency_key,
     canonical_json,
     canonical_sha256,
@@ -21,6 +22,7 @@ __all__ = [
     "assert_context_sanitized",
     "assert_result_sanitized",
     "build_context_hash",
+    "build_effect_idempotency_key",
     "build_mission_idempotency_key",
     "canonical_json",
     "canonical_sha256",

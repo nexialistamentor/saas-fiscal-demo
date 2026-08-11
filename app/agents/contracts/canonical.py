@@ -218,3 +218,52 @@ def build_context_hash(context: dict) -> str:
     if not isinstance(context, dict):
         raise TypeError("context deve ser dict")
     return canonical_sha256(context)
+def build_effect_idempotency_key(
+    *,
+    mission_idempotency_key: str,
+    effect_type: str,
+    agent_id: str,
+    effect_payload: dict,
+    contract_version: str,
+) -> str:
+    """Constroi a identidade deterministica de um efeito de agente."""
+    if (
+        not isinstance(mission_idempotency_key, str)
+        or len(mission_idempotency_key) != 64
+        or any(c not in "0123456789abcdef" for c in mission_idempotency_key)
+    ):
+        raise ValueError(
+            "mission_idempotency_key deve ser SHA-256 hexadecimal de 64 caracteres"
+        )
+
+    if not isinstance(effect_type, str):
+        raise TypeError("effect_type deve ser str")
+    effect_type = effect_type.strip()
+    if not effect_type:
+        raise ValueError("effect_type nao pode ser vazio")
+
+    if not isinstance(agent_id, str):
+        raise TypeError("agent_id deve ser str")
+    agent_id = agent_id.strip()
+    if not agent_id:
+        raise ValueError("agent_id nao pode ser vazio")
+
+    if not isinstance(effect_payload, dict):
+        raise TypeError("effect_payload deve ser dict")
+
+    if not isinstance(contract_version, str):
+        raise TypeError("contract_version deve ser str")
+    contract_version = contract_version.strip()
+    if not contract_version:
+        raise ValueError("contract_version nao pode ser vazio")
+
+    return canonical_sha256(
+        {
+            "identity_kind": "agent_effect",
+            "mission_idempotency_key": mission_idempotency_key,
+            "effect_type": effect_type,
+            "agent_id": agent_id,
+            "effect_payload": effect_payload,
+            "contract_version": contract_version,
+        }
+    )

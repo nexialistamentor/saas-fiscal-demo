@@ -553,8 +553,15 @@ class InteligenciaSnapshot(Base):
 # =========================
 class AlertaFiscal(Base):
     __tablename__ = "alertas_fiscais"
+    __table_args__ = (
+        UniqueConstraint(
+            "effect_idempotency_key",
+            name="uq_alertas_fiscais_effect_idempotency_key",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
+    effect_idempotency_key = Column(String(64), nullable=True)
     agente = Column(String, index=True)
     tipo = Column(String)
     descricao = Column(String)

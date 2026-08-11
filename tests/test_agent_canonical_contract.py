@@ -15,6 +15,8 @@ from uuid import UUID, uuid4
 
 import pytest
 
+import app.agents.contracts.canonical as canonical_contract
+
 from app.agents.contracts.canonical import (
     build_context_hash,
     build_mission_idempotency_key,
@@ -332,6 +334,120 @@ class TestBuildMissionIdempotencyKey:
         ]:
             k = build_mission_idempotency_key(**{**_BASE, **extra})
             assert len(k) == 64
+
+
+
+# ---------------------------------------------------------------------------
+# build_effect_idempotency_key
+# ---------------------------------------------------------------------------
+
+_EFFECT_BASE = dict(
+    mission_idempotency_key="a" * 64,
+    effect_type="alert",
+    agent_id="normative_watchdog",
+    effect_payload={
+        "code": "TESTE_PATRULHA",
+        "severity": "baixo",
+        "message": "alerta sintetico de patrulhamento",
+        "evidence_refs": [],
+    },
+    contract_version="1.0",
+)
+
+
+class TestBuildEffectIdempotencyKey:
+    def _builder(self):
+        builder = getattr(
+            canonical_contract,
+            "build_effect_idempotency_key",
+            None,
+        )
+        assert callable(builder), (
+            "canonical.py ainda nao expoe "
+            "build_effect_idempotency_key"
+        )
+        return builder
+
+    def test_formato_64_hex(self):
+        key = self._builder()(**_EFFECT_BASE)
+        assert len(key) == 64
+        assert all(c in "0123456789abcdef" for c in key)
+
+    def test_determinismo(self):
+        builder = self._builder()
+        assert builder(**_EFFECT_BASE) == builder(**_EFFECT_BASE)
+
+    def test_ordem_do_payload_nao_altera_chave(self):
+        builder = self._builder()
+        payload_reordenado = {
+            "message": "alerta sintetico de patrulhamento",
+            "evidence_refs": [],
+            "severity": "baixo",
+            "code": "TESTE_PATRULHA",
+        }
+        assert builder(**_EFFECT_BASE) == builder(
+            **{**_EFFECT_BASE, "effect_payload": payload_reordenado}
+        )
+
+    def test_missao_logica_diferente_altera_chave(self):
+        builder = self._builder()
+        outra = builder(
+            **{
+                **_EFFECT_BASE,
+                "mission_idempotency_key": "b" * 64,
+            }
+        )
+        assert builder(**_EFFECT_BASE) != outra
+
+    def test_payload_diferente_altera_chave(self):
+        builder = self._builder()
+        outro_payload = {
+            **_EFFECT_BASE["effect_payload"],
+            "message": "outro alerta",
+        }
+        assert builder(**_EFFECT_BASE) != builder(
+            **{**_EFFECT_BASE, "effect_payload": outro_payload}
+        )
+
+    def test_agent_diferente_altera_chave(self):
+        builder = self._builder()
+        assert builder(**_EFFECT_BASE) != builder(
+            **{**_EFFECT_BASE, "agent_id": "outro_agente"}
+        )
+
+    def test_tipo_de_efeito_diferente_altera_chave(self):
+        builder = self._builder()
+        assert builder(**_EFFECT_BASE) != builder(
+            **{**_EFFECT_BASE, "effect_type": "action"}
+        )
+
+    def test_contract_version_diferente_altera_chave(self):
+        builder = self._builder()
+        assert builder(**_EFFECT_BASE) != builder(
+            **{**_EFFECT_BASE, "contract_version": "2.0"}
+        )
+
+    def test_mission_idempotency_key_invalida_e_bloqueada(self):
+        builder = self._builder()
+        with pytest.raises(ValueError):
+            builder(
+                **{
+                    **_EFFECT_BASE,
+                    "mission_idempotency_key": "invalida",
+                }
+            )
+
+    @pytest.mark.parametrize("campo", ["effect_type", "agent_id"])
+    def test_identidade_textual_vazia_e_bloqueada(self, campo):
+        builder = self._builder()
+        with pytest.raises(ValueError):
+            builder(**{**_EFFECT_BASE, campo: "   "})
+
+    def test_effect_payload_exige_dict(self):
+        builder = self._builder()
+        with pytest.raises(TypeError):
+            builder(**{**_EFFECT_BASE, "effect_payload": ["invalido"]})
+
 
 
 # ---------------------------------------------------------------------------

@@ -150,6 +150,17 @@ def _sqlite_add_missing_columns(model_cls: type) -> None:
             conn.execute(text(ddl))
 
 
+def _sqlite_ensure_alert_effect_idempotency_unique() -> None:
+    """Garante UNIQUE fisico da identidade de efeito em SQLite legado."""
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "uq_alertas_fiscais_effect_idempotency_key "
+                "ON alertas_fiscais (effect_idempotency_key)"
+            )
+        )
+
 def ensure_sqlite_schema_compat() -> None:
     """
     SQLite legado: ``create_all`` não altera tabelas já criadas.
@@ -164,6 +175,8 @@ def ensure_sqlite_schema_compat() -> None:
     _sqlite_add_missing_columns(models.TabelaMVA)
     _sqlite_add_missing_columns(models.TabelaPMPF)
     _sqlite_add_missing_columns(models.ContadorEmpresaVinculo)
+    _sqlite_add_missing_columns(models.AlertaFiscal)
+    _sqlite_ensure_alert_effect_idempotency_unique()
 
 
 if os.getenv("ALEMBIC_RUNNING") != "1":

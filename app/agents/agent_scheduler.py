@@ -1,22 +1,20 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.agents.agent_executor import AgentExecutor
-from app.agents.normative_validation_agent import normative_validation_agent
+from app.agents.adapters.patrol import execute_patrol_mission
+from app.agents.mission_factory import create_agent_mission
 from app.database import SessionLocal
 from app.models import Empresa
 from app.services.analysis_orchestrator import analysis_cache
-from app.services.engine_recovery_service import verificar_recuperacao_engines
 from app.services.insights_engine import InsightEngine
 from app.services.metrics_alert_service import (
     verificar_alertas_metricas,
     verificar_regressao_performance,
 )
 from app.services.metrics_persistence_service import salvar_snapshot_metricas
-from app.services.tabela_normativa_service import listar_base_normativa
 
 logger = logging.getLogger(__name__)
 
@@ -32,84 +30,93 @@ class AgentScheduler:
     Suporta ciclo por empresa ou ciclo multi-tenant (todas as empresas).
     """
 
-    def __init__(self):
-        self.executor = AgentExecutor()
-
-    async def _executar_agents_uma_empresa(self, empresa_id: int) -> None:
-        """Insights + agentes para uma empresa (sessão própria)."""
+    async def _executar_agents_uma_empresa(
+        self,
+        empresa_id: int,
+    ) -> None:
         db = SessionLocal()
         try:
             engine = InsightEngine(db)
-            insights = engine.gerar_insights_empresa(empresa_id)
-            context = {
-                "empresa_id": empresa_id,
-                "insights": insights.get("oportunidades", []),
-                "tabela_normativa": listar_base_normativa(db),
-            }
-            await self.executor.run_all(context)
+            engine.gerar_insights_empresa(empresa_id)
+
             logger.info(
-                "Ciclo agentes empresa_id=%s — %s",
+                "Ciclo tenant empresa_id=%s concluido - %s",
                 empresa_id,
                 datetime.utcnow().isoformat(),
             )
         finally:
             db.close()
 
-    async def _finalizar_ciclo_metricas_e_cache(self) -> None:
-        """Persistência de métricas, alertas e limpeza de cache (escopo global)."""
+    async def _finalizar_ciclo_metricas_e_cache(
+        self,
+    ) -> None:
         db = SessionLocal()
         try:
             salvar_snapshot_metricas(db)
             verificar_alertas_metricas()
             verificar_regressao_performance(db)
-            verificar_recuperacao_engines()
-            try:
-                resultado_validacao = await normative_validation_agent.run({})
-                logger.info(
-                    "AG-VALIDACAO: promovidas_mva=%d promovidas_pmpf=%d rejeitadas=%d",
-                    resultado_validacao.get("promovidas_mva", 0),
-                    resultado_validacao.get("promovidas_pmpf", 0),
-                    resultado_validacao.get("rejeitadas", 0),
-                )
-            except Exception as exc:
-                logger.error("AG-VALIDACAO falhou no ciclo global: %s", exc)
 
+            db_watchdog = SessionLocal()
             try:
-                db_watchdog = SessionLocal()
-                try:
-                    from app.models import TabelaMVA
+                from app.models import TabelaMVA
 
-                    regras = db_watchdog.query(TabelaMVA).all()
-                    tabela = [
-                        {
-                            "estado": r.estado,
-                            "ncm": r.ncm,
-                            "vigencia_fim": r.vigencia_fim.isoformat()
+                regras = db_watchdog.query(TabelaMVA).all()
+                tabela = [
+                    {
+                        "estado": r.estado,
+                        "ncm": r.ncm,
+                        "vigencia_fim": (
+                            r.vigencia_fim.isoformat()
                             if r.vigencia_fim
-                            else None,
-                            "fonte_legal": r.fonte_legal,
-                            "nivel_confianca_fonte": r.nivel_confianca_fonte,
-                        }
-                        for r in regras
-                    ]
-                finally:
-                    db_watchdog.close()
-                from app.agents.normative_watchdog_agent import normative_watchdog_agent
+                            else None
+                        ),
+                        "fonte_legal": r.fonte_legal,
+                        "nivel_confianca_fonte": (
+                            r.nivel_confianca_fonte
+                        ),
+                    }
+                    for r in regras
+                ]
+            finally:
+                db_watchdog.close()
 
-                resultado_watchdog = await normative_watchdog_agent.run(
-                    {"tabela_normativa": tabela}
+            try:
+                schedule_slot = (
+                    datetime.now(timezone.utc)
+                    .replace(second=0, microsecond=0)
+                    .isoformat()
                 )
+
+                mission = create_agent_mission(
+                    mission_type="patrulhar_base_normativa",
+                    target_agent="normative_watchdog",
+                    context={
+                        "tabela_normativa": tabela,
+                    },
+                    context_schema="normative_watchdog.context",
+                    output_schema="normative_watchdog.result",
+                    scope="global",
+                    requested_by="scheduler",
+                    authority_level="leitura",
+                    execution_mode="activo",
+                    schedule_slot=schedule_slot,
+                )
+
+                await execute_patrol_mission(mission)
+
                 logger.info(
-                    "AG-REPARADOR: total_alertas=%d",
-                    resultado_watchdog.get("total_alertas", 0),
+                    "AG-WATCHDOG: missao global concluida"
                 )
-            except Exception as exc:
-                logger.error("AG-REPARADOR falhou no ciclo global: %s", exc)
+            except Exception:
+                logger.error(
+                    "AG-WATCHDOG falhou no ciclo global"
+                )
         finally:
             db.close()
+
         analysis_cache.clear()
 
-    async def executar_ciclo(self, empresa_id: int = 1) -> None:
+    async def executar_ciclo(self, empresa_id: int) -> None:
         await self._executar_agents_uma_empresa(empresa_id)
         await self._finalizar_ciclo_metricas_e_cache()
 
@@ -121,11 +128,22 @@ class AgentScheduler:
             db.close()
 
         if not empresa_ids:
-            logger.info("Scheduler: nenhuma empresa cadastrada — ciclo ignorado.")
+            logger.info(
+                "Scheduler: nenhuma empresa cadastrada; "
+                "executando apenas patrulha global."
+            )
+            await self._finalizar_ciclo_metricas_e_cache()
             return
 
         for eid in empresa_ids:
-            await self._executar_agents_uma_empresa(eid)
+            try:
+                await self._executar_agents_uma_empresa(eid)
+            except Exception:
+                logger.error(
+                    "Scheduler: falha isolada no tenant "
+                    "empresa_id=%s",
+                    eid,
+                )
 
         await self._finalizar_ciclo_metricas_e_cache()
 
