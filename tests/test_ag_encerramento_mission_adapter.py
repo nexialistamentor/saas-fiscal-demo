@@ -13,7 +13,6 @@ Provas contratuais do canario MEI:
 from __future__ import annotations
 
 import ast
-import hashlib
 import inspect
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -23,6 +22,8 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
+
+from tests.canonical_source_hash import canonical_source_sha256
 
 from app.agents.adapters.ag_encerramento import (
     execute_ag_encerramento_mission,
@@ -83,7 +84,7 @@ REFERENCE_AT = datetime(
 )
 
 LEGACY_SHA256 = (
-    "11E76504E33480BC53BC543D25EE2F0A66EC0750B4F23D5D3A2656E78560C743"
+    "57633CB4DBF5F42B47D3F264DF76198BCA0B02F2625845EF0BA40C9D9E88AF93"
 )
 
 ACCESS_MESSAGE = (
@@ -1797,9 +1798,7 @@ def test_legacy_hash_and_no_run_mission() -> None:
         / "ag_encerramento_agent.py"
     )
 
-    digest = hashlib.sha256(
-        path.read_bytes()
-    ).hexdigest().upper()
+    digest = canonical_source_sha256(path)
 
     assert digest == LEGACY_SHA256
 

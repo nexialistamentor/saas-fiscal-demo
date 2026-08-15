@@ -19,7 +19,6 @@ import ast
 
 import copy
 
-import hashlib
 
 import os
 
@@ -30,6 +29,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 from uuid import uuid4
+
+from tests.canonical_source_hash import canonical_source_sha256
 
 
 
@@ -1855,11 +1856,9 @@ def test_hash_agente_legado_inalterado():
 
     path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "app", "agents", "ag_abertura_agent.py"))
 
-    with open(path, "rb") as f:
+    digest = canonical_source_sha256(path)
 
-        digest = hashlib.sha256(f.read()).hexdigest().upper()
-
-    assert digest == "872E849A05279FB7BF2674481E98FEA8DA7DFEF08FF3A4ADDDF3210E80911903"
+    assert digest == "D79FD888F221B676D22F350102B1136F354F70421B801DCB2D61067D5CB93BA3"
 
 
 
@@ -1961,9 +1960,11 @@ def _ficheiro_nao_referencia(caminho_modulo: str, simbolo: str) -> None:
 
 
 
-def test_registry_nao_referencia_adapter():
+def test_registry_referencia_adapter_explicitamente():
 
-    _ficheiro_nao_referencia("app.agents.agent_registry", "execute_ag_abertura_mission")
+    import app.agents.agent_registry as registry_module
+
+    assert registry_module.execute_ag_abertura_mission is execute_ag_abertura_mission
 
 
 

@@ -10,7 +10,6 @@ repositório, registry, scheduler, executor, router ou endpoint.
 from __future__ import annotations
 
 import ast
-import hashlib
 import inspect
 import json
 import operator
@@ -25,6 +24,8 @@ from uuid import UUID, uuid4
 
 import pytest
 from pydantic import ValidationError
+
+from tests.canonical_source_hash import canonical_source_sha256
 
 import app.agents.adapters.agent_erro_operacional as adapter_module
 import app.agents.engines.agent_erro_operacional as engine_module
@@ -83,7 +84,7 @@ ADAPTER_SHA256 = (
     "065AE4853339336B01390A03E2B728F6B9683C40E6BBADFB93FBEBC394A4D9FF"
 )
 LEGACY_SHA256 = (
-    "EC55FF9B606DAF319B77AF2ECB31AEC1E0B6A3966D69982F2EF316B9ECDF281A"
+    "B104441EBC8CADB5E17352B5413F2DAD3D334937C421180E74484C1CDA60A790"
 )
 
 ENGINE_MODULE = "app.agents.engines.agent_erro_operacional"
@@ -1632,9 +1633,7 @@ def test_protected_hashes_are_exact(
     relative_path: str,
     expected_hash: str,
 ) -> None:
-    digest = hashlib.sha256(
-        (ROOT / relative_path).read_bytes()
-    ).hexdigest().upper()
+    digest = canonical_source_sha256(ROOT / relative_path)
 
     assert digest == expected_hash
 
@@ -1892,7 +1891,6 @@ def test_no_exception_is_stringified() -> None:
 @pytest.mark.parametrize(
     "relative_path",
     [
-        "app/agents/agent_registry.py",
         "app/agents/agent_executor.py",
         "app/agents/agent_scheduler.py",
     ],

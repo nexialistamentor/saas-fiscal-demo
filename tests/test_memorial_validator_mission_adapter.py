@@ -14,7 +14,6 @@ Provas contratuais do MemorialValidatorAgent L3:
 from __future__ import annotations
 
 import ast
-import hashlib
 import inspect
 import json
 import operator
@@ -25,6 +24,8 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
+
+from tests.canonical_source_hash import canonical_source_sha256
 
 import app.agents.engines.memorial_validator as memorial_engine_module
 from app.agents.adapters.memorial_validator import (
@@ -73,8 +74,8 @@ CREATED_AT = datetime(
 )
 
 LEGACY_AGENT_SHA256 = (
-    "B8B5841BB5D3F85BE412421614D01212"
-    "D967C298DE4F2437A39F31FA54A546A4"
+    "1A33D23433AEE6AAAFA0A96F3736D715"
+    "F16A115DC9F73563ABE47ECC8912DA58"
 )
 
 EXECUTION_ERROR_MESSAGE = (
@@ -1429,9 +1430,7 @@ def test_legacy_agent_hash_is_preserved() -> None:
         / "memorial_validator_agent.py"
     )
 
-    digest = hashlib.sha256(
-        path.read_bytes()
-    ).hexdigest().upper()
+    digest = canonical_source_sha256(path)
 
     assert digest == LEGACY_AGENT_SHA256
 
@@ -1639,7 +1638,6 @@ def test_no_exception_is_stringified() -> None:
 @pytest.mark.parametrize(
     "relative_path",
     [
-        "app/agents/agent_registry.py",
         "app/agents/agent_executor.py",
         "app/agents/agent_scheduler.py",
     ],

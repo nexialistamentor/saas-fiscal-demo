@@ -14,7 +14,6 @@ Provas contratuais do DataSanitizationAgent L3:
 from __future__ import annotations
 
 import ast
-import hashlib
 import inspect
 import json
 from datetime import datetime, timedelta, timezone
@@ -24,6 +23,8 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
+
+from tests.canonical_source_hash import canonical_source_sha256
 
 from app.agents.adapters.data_sanitization import (
     execute_data_sanitization_mission,
@@ -65,7 +66,7 @@ CREATED_AT = datetime(
 )
 
 LEGACY_SHA256 = (
-    "F6BADD4F3F65F159453320AAA13D5ED6B41BF26394E594C76FBE593FA0BEF8EE"
+    "5C80E546E0460207CE30EBB8106E95355E083B70066AC8483ECCB47A28549EB6"
 )
 
 EXECUTION_MESSAGE = (
@@ -965,7 +966,7 @@ def test_layers_have_no_persistence_or_file_write_calls() -> None:
 def test_legacy_hash_and_no_run_mission() -> None:
     path = ROOT / "app" / "agents" / "data_sanitization_agent.py"
 
-    digest = hashlib.sha256(path.read_bytes()).hexdigest().upper()
+    digest = canonical_source_sha256(path)
     assert digest == LEGACY_SHA256
 
     tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -984,7 +985,6 @@ def test_legacy_hash_and_no_run_mission() -> None:
 @pytest.mark.parametrize(
     "relative_path",
     [
-        "app/agents/agent_registry.py",
         "app/agents/agent_executor.py",
         "app/agents/agent_scheduler.py",
     ],

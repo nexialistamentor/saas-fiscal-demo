@@ -14,7 +14,6 @@ Provas contratuais do ConsistencyAuditAgent L3:
 from __future__ import annotations
 
 import ast
-import hashlib
 import inspect
 import json
 import math
@@ -27,6 +26,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
+
+from tests.canonical_source_hash import canonical_source_sha256
 
 from app.agents.adapters.consistency_audit import (
     execute_consistency_audit_mission,
@@ -63,10 +64,10 @@ DOCUMENTO_ID = 101
 CREATED_AT = datetime(2026, 7, 17, 12, 0, 0, tzinfo=UTC)
 
 LEGACY_AGENT_SHA256 = (
-    "2BC7EEAF8F2B2EFD1B807CA7CEE4D979A2661BA61E950E00F4020C9199B0F052"
+    "6752D0C3471F46B9486F23FA9D1A6CC0CE5509AA9296E04472D7BFDFFD9AE7D1"
 )
 LEGACY_ENGINE_SHA256 = (
-    "29389DB6FEC85C25A6D28153EA108044B4951B9EA49E979A05466DD88198A774"
+    "EE426DB333DEE81948FADB2AFF1F6F3F901582F0D6E93FFFD08410328AB53D3F"
 )
 
 EXECUTION_ERROR_MESSAGE = (
@@ -1202,7 +1203,7 @@ def _imported_modules(relative_path: str) -> set[str]:
 
 def test_legacy_agent_hash() -> None:
     path = ROOT / "app" / "agents" / "consistency_audit_agent.py"
-    digest = hashlib.sha256(path.read_bytes()).hexdigest().upper()
+    digest = canonical_source_sha256(path)
     assert digest == LEGACY_AGENT_SHA256
 
 
@@ -1211,7 +1212,7 @@ def test_legacy_engine_hash() -> None:
         ROOT / "app" / "services" / "tax_consistency"
         / "tax_consistency_engine.py"
     )
-    digest = hashlib.sha256(path.read_bytes()).hexdigest().upper()
+    digest = canonical_source_sha256(path)
     assert digest == LEGACY_ENGINE_SHA256
 
 
@@ -1374,7 +1375,6 @@ def test_no_exception_is_stringified_in_adapter_or_engine() -> None:
 @pytest.mark.parametrize(
     "relative_path",
     [
-        "app/agents/agent_registry.py",
         "app/agents/agent_executor.py",
         "app/agents/agent_scheduler.py",
     ],
