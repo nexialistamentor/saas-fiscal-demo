@@ -17,7 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from app.redis_connection import get_redis_connection
 from app.constants import VERSAO_TERMOS_ATUAL, TERMOS_CACHE_TTL
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictBool
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
@@ -213,7 +213,7 @@ class ExpirarRegrasPayload(BaseModel):
 
 
 class ExecutarParsersPayload(BaseModel):
-    dry_run: bool = True
+    dry_run: StrictBool = True
 
 
 # ── L2 SOBERANA — REFORÇOS FUTUROS PARA ENDPOINTS ADMIN ─────────────────
