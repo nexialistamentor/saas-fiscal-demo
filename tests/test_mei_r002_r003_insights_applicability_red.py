@@ -4,7 +4,8 @@ import uuid
 
 from app.database import get_db
 from app.models import Empresa, User
-from app.services.tax_engines.mei_tax_engine import MEITaxEngine
+from app.services.analysis_types import ANALYSIS_TYPE_MEI_TAX
+from app.services.engine_registry import ENGINES
 
 
 def test_insights_nao_executa_mei_tax_engine_para_simples_nacional(
@@ -31,7 +32,7 @@ def test_insights_nao_executa_mei_tax_engine_para_simples_nacional(
 
     chamadas = []
 
-    def detectar_execucao_mei(self, context):
+    def detectar_execucao_mei(context):
         chamadas.append(
             {
                 "empresa_id": context.get("empresa_id"),
@@ -40,7 +41,9 @@ def test_insights_nao_executa_mei_tax_engine_para_simples_nacional(
         )
         return {}
 
-    monkeypatch.setattr(MEITaxEngine, "execute", detectar_execucao_mei)
+    monkeypatch.setattr(
+        ENGINES[ANALYSIS_TYPE_MEI_TAX], "execute", detectar_execucao_mei
+    )
 
     response = client.post(f"/insights/{empresa_id}", headers=auth_headers)
 
@@ -75,7 +78,7 @@ def test_insights_executa_mei_tax_engine_para_empresa_mei(
 
     chamadas = []
 
-    def detectar_execucao_mei(self, context):
+    def detectar_execucao_mei(context):
         chamadas.append(
             {
                 "empresa_id": context.get("empresa_id"),
@@ -84,7 +87,9 @@ def test_insights_executa_mei_tax_engine_para_empresa_mei(
         )
         return {}
 
-    monkeypatch.setattr(MEITaxEngine, "execute", detectar_execucao_mei)
+    monkeypatch.setattr(
+        ENGINES[ANALYSIS_TYPE_MEI_TAX], "execute", detectar_execucao_mei
+    )
 
     response = client.post(f"/insights/{empresa_id}", headers=auth_headers)
 
