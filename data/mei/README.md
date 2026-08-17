@@ -19,9 +19,22 @@ Bytes:
 SHA-256:
 CB3845804F3C14CB9CB1320AEE19BF14498CF15988CD9263FD4618D8FAAAB8B6
 
+Dataset derivado:
+anexo_xi_ocupacoes_v1.json
+
+SHA-256 do dataset:
+59C6F251ABA3894A38F580CB74733C49E8F6AA2D2C24C2772076D94352E89C41
+
+source_sha256:
+CB3845804F3C14CB9CB1320AEE19BF14498CF15988CD9263FD4618D8FAAAB8B6
+
 - o PDF preservado é a fonte física desta internalização;
-- nenhum CSV/JSON derivado existe ainda;
-- qualquer derivado futuro deve declarar este SHA-256 como source_sha256;
-- alteração do PDF oficial exige novo snapshot + novo hash, nunca sobrescrever silenciosamente;
-- o motor fiscal ainda NÃO pode consumir este PDF diretamente;
-- elegibilidade/aplicabilidade MEI continua fail-closed até existir derivado estruturado validado.
+- o dataset é derivado mecanicamente do snapshot oficial;
+- contém 471 registros: Tabela A = 467 e Tabela B = 4;
+- foi gerado sem OCR, rede ou LLM;
+- não adiciona interpretação fiscal além dos campos do Anexo XI;
+- ISS e ICMS são apenas a representação booleana dos valores S/N da fonte;
+- o dataset ainda NÃO está autorizado para consumo por motor fiscal;
+- qualquer regeneração deve manter vínculo verificável ao `source_sha256`;
+- alteração da fonte exige novo snapshot, novo hash, reextração e revalidação;
+- elegibilidade/aplicabilidade MEI continua fail-closed até que o dataset seja autorizado para consumo por motor fiscal.
