@@ -69,6 +69,12 @@ def test_source_authority_guard_accepts_structurally_valid_dataset_binding(
         "jurisdicao": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
+        "alvos_normativos_autorizados": [
+            {
+                "tipo": "dataset",
+                "id": "MEI_ANEXO_XI_OCUPACOES_V1",
+            }
+        ],
     }
 
     monkeypatch.setattr(
@@ -127,6 +133,12 @@ def test_source_authority_guard_rejects_binding_with_constant_and_dataset_target
         "jurisdicao": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
+        "alvos_normativos_autorizados": [
+            {
+                "tipo": "dataset",
+                "id": "MEI_ANEXO_XI_OCUPACOES_V1",
+            }
+        ],
     }
 
     monkeypatch.setattr(
@@ -188,6 +200,12 @@ def test_source_authority_guard_rejects_binding_without_normative_target(
         "jurisdicao": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
+        "alvos_normativos_autorizados": [
+            {
+                "tipo": "dataset",
+                "id": "MEI_ANEXO_XI_OCUPACOES_V1",
+            }
+        ],
     }
 
     monkeypatch.setattr(
@@ -226,3 +244,329 @@ def test_source_authority_guard_rejects_binding_without_normative_target(
         ("ALVO_NORMATIVO_AUSENTE", 0, "constante_id|dataset_id"),
     ]
     assert result.bindings_validados == 0
+
+
+
+def test_source_authority_guard_rejects_dataset_outside_source_scope(
+    monkeypatch,
+):
+    import app.services.source_authority_guard as guard
+
+    source = {
+        "id": "CGSN-ANEXO-XI-001",
+        "tipo": "normativa_oficial",
+        "nome": "Anexo XI da Resolucao CGSN 140/2018",
+        "pode_fundamentar_decisao": True,
+        "pode_validar_fato_operacional": False,
+        "pode_ser_usada_por_llm": False,
+        "versao": "CGSN140-ANEXOXI-R182",
+        "vigencia_inicio": "2025-10-01",
+        "vigencia_fim": None,
+        "jurisdicao": "BR",
+        "risco_se_desatualizada": "critico",
+        "hash_referencia": "a" * 64,
+        "alvos_normativos_autorizados": [
+            {
+                "tipo": "dataset",
+                "id": "MEI_ANEXO_XI_OCUPACOES_V1",
+            }
+        ],
+    }
+
+    monkeypatch.setattr(
+        guard,
+        "_carregar_manifest",
+        lambda: {source["id"]: source},
+    )
+
+    payload = {
+        "contexto": {
+            "data_referencia": "2026-08-17",
+            "jurisdicao_codigo": "BR",
+            "uso_solicitado": "decisao_definitiva",
+        },
+        "bindings": [
+            {
+                "dataset_id": "OUTRO_DATASET_NORMATIVO",
+                "fonte_id": "CGSN-ANEXO-XI-001",
+                "versao_fonte": "CGSN140-ANEXOXI-R182",
+                "vigencia_inicio": "2025-10-01",
+                "vigencia_fim": None,
+                "jurisdicao_codigo": "BR",
+                "risco": "critico",
+                "invariantes": ["INV_DATASET_NORMATIVO_001"],
+            }
+        ],
+    }
+
+    result = guard.validar_bindings_normativos(payload)
+
+    assert result.status == schema.NormativeBindingStatus.invalido
+    assert result.autorizado_fundamentar_decisao is False
+    assert [
+        (reason.code.value, reason.binding_index, reason.field)
+        for reason in result.reasons
+    ] == [
+        ("ALVO_FORA_DO_ESCOPO_DA_FONTE", 0, "dataset_id"),
+    ]
+    assert result.bindings_validados == 0
+
+
+
+def test_decision_source_without_authorized_normative_targets_is_incomplete(
+    monkeypatch,
+):
+    import app.services.source_authority_guard as guard
+
+    source = {
+        "id": "CGSN-ANEXO-XI-001",
+        "tipo": "normativa_oficial",
+        "nome": "Anexo XI da Resolucao CGSN 140/2018",
+        "pode_fundamentar_decisao": True,
+        "pode_validar_fato_operacional": False,
+        "pode_ser_usada_por_llm": False,
+        "versao": "CGSN140-ANEXOXI-R182",
+        "vigencia_inicio": "2025-10-01",
+        "vigencia_fim": None,
+        "jurisdicao": "BR",
+        "risco_se_desatualizada": "critico",
+        "hash_referencia": "a" * 64,
+    }
+
+    monkeypatch.setattr(
+        guard,
+        "_carregar_manifest",
+        lambda: {source["id"]: source},
+    )
+
+    payload = {
+        "contexto": {
+            "data_referencia": "2026-08-17",
+            "jurisdicao_codigo": "BR",
+            "uso_solicitado": "decisao_definitiva",
+        },
+        "bindings": [
+            {
+                "dataset_id": "MEI_ANEXO_XI_OCUPACOES_V1",
+                "fonte_id": "CGSN-ANEXO-XI-001",
+                "versao_fonte": "CGSN140-ANEXOXI-R182",
+                "vigencia_inicio": "2025-10-01",
+                "vigencia_fim": None,
+                "jurisdicao_codigo": "BR",
+                "risco": "critico",
+                "invariantes": ["INV_DATASET_NORMATIVO_001"],
+            }
+        ],
+    }
+
+    result = guard.validar_bindings_normativos(payload)
+
+    assert result.status == schema.NormativeBindingStatus.invalido
+    assert result.autorizado_fundamentar_decisao is False
+    assert [
+        (reason.code.value, reason.binding_index, reason.field)
+        for reason in result.reasons
+    ] == [
+        ("FONTE_INCOMPLETA", 0, "fonte_id"),
+    ]
+    assert result.bindings_validados == 0
+
+
+
+def test_decision_source_with_empty_authorized_targets_is_incomplete(
+    monkeypatch,
+):
+    import app.services.source_authority_guard as guard
+
+    source = {
+        "id": "CGSN-ANEXO-XI-001",
+        "tipo": "normativa_oficial",
+        "nome": "Anexo XI da Resolucao CGSN 140/2018",
+        "pode_fundamentar_decisao": True,
+        "pode_validar_fato_operacional": False,
+        "pode_ser_usada_por_llm": False,
+        "versao": "CGSN140-ANEXOXI-R182",
+        "vigencia_inicio": "2025-10-01",
+        "vigencia_fim": None,
+        "jurisdicao": "BR",
+        "risco_se_desatualizada": "critico",
+        "hash_referencia": "a" * 64,
+        "alvos_normativos_autorizados": [],
+    }
+
+    monkeypatch.setattr(
+        guard,
+        "_carregar_manifest",
+        lambda: {source["id"]: source},
+    )
+
+    payload = {
+        "contexto": {
+            "data_referencia": "2026-08-17",
+            "jurisdicao_codigo": "BR",
+            "uso_solicitado": "decisao_definitiva",
+        },
+        "bindings": [
+            {
+                "dataset_id": "MEI_ANEXO_XI_OCUPACOES_V1",
+                "fonte_id": "CGSN-ANEXO-XI-001",
+                "versao_fonte": "CGSN140-ANEXOXI-R182",
+                "vigencia_inicio": "2025-10-01",
+                "vigencia_fim": None,
+                "jurisdicao_codigo": "BR",
+                "risco": "critico",
+                "invariantes": ["INV_DATASET_NORMATIVO_001"],
+            }
+        ],
+    }
+
+    result = guard.validar_bindings_normativos(payload)
+
+    assert result.status == schema.NormativeBindingStatus.invalido
+    assert result.autorizado_fundamentar_decisao is False
+    assert [
+        (reason.code.value, reason.binding_index, reason.field)
+        for reason in result.reasons
+    ] == [
+        ("FONTE_INCOMPLETA", 0, "fonte_id"),
+    ]
+    assert result.bindings_validados == 0
+
+
+
+def test_source_authority_guard_rejects_constant_outside_source_scope(
+    monkeypatch,
+):
+    import app.services.source_authority_guard as guard
+
+    source = {
+        "id": "SYNTH-001",
+        "tipo": "normativa_oficial",
+        "nome": "Fonte sintetica autorizada",
+        "pode_fundamentar_decisao": True,
+        "pode_validar_fato_operacional": False,
+        "pode_ser_usada_por_llm": False,
+        "versao": "1.0.0",
+        "vigencia_inicio": "2025-01-01",
+        "vigencia_fim": "2026-12-31",
+        "jurisdicao": "BR",
+        "risco_se_desatualizada": "alto",
+        "hash_referencia": "a" * 64,
+        "alvos_normativos_autorizados": [
+            {
+                "tipo": "constante",
+                "id": "CONST_001",
+            }
+        ],
+    }
+
+    monkeypatch.setattr(
+        guard,
+        "_carregar_manifest",
+        lambda: {source["id"]: source},
+    )
+
+    payload = {
+        "contexto": {
+            "data_referencia": "2026-01-01",
+            "jurisdicao_codigo": "BR",
+            "uso_solicitado": "decisao_definitiva",
+        },
+        "bindings": [
+            {
+                "constante_id": "OUTRA_CONST_001",
+                "fonte_id": "SYNTH-001",
+                "versao_fonte": "1.0.0",
+                "vigencia_inicio": "2025-01-01",
+                "vigencia_fim": "2026-12-31",
+                "jurisdicao_codigo": "BR",
+                "risco": "alto",
+                "invariantes": ["INV_001"],
+            }
+        ],
+    }
+
+    result = guard.validar_bindings_normativos(payload)
+
+    assert result.status == schema.NormativeBindingStatus.invalido
+    assert result.autorizado_fundamentar_decisao is False
+    assert [
+        (reason.code.value, reason.binding_index, reason.field)
+        for reason in result.reasons
+    ] == [
+        ("ALVO_FORA_DO_ESCOPO_DA_FONTE", 0, "constante_id"),
+    ]
+    assert result.bindings_validados == 0
+
+
+
+def test_decision_source_with_malformed_authorized_targets_is_incomplete(
+    monkeypatch,
+):
+    import app.services.source_authority_guard as guard
+
+    malformed_values = (
+        "MEI_ANEXO_XI_OCUPACOES_V1",
+        [{"tipo": "dataset"}],
+        [
+            {
+                "tipo": "desconhecido",
+                "id": "MEI_ANEXO_XI_OCUPACOES_V1",
+            }
+        ],
+    )
+
+    for malformed_value in malformed_values:
+        source = {
+            "id": "CGSN-ANEXO-XI-001",
+            "tipo": "normativa_oficial",
+            "nome": "Anexo XI da Resolucao CGSN 140/2018",
+            "pode_fundamentar_decisao": True,
+            "pode_validar_fato_operacional": False,
+            "pode_ser_usada_por_llm": False,
+            "versao": "CGSN140-ANEXOXI-R182",
+            "vigencia_inicio": "2025-10-01",
+            "vigencia_fim": None,
+            "jurisdicao": "BR",
+            "risco_se_desatualizada": "critico",
+            "hash_referencia": "a" * 64,
+            "alvos_normativos_autorizados": malformed_value,
+        }
+
+        monkeypatch.setattr(
+            guard,
+            "_carregar_manifest",
+            lambda source=source: {source["id"]: source},
+        )
+
+        payload = {
+            "contexto": {
+                "data_referencia": "2026-08-17",
+                "jurisdicao_codigo": "BR",
+                "uso_solicitado": "decisao_definitiva",
+            },
+            "bindings": [
+                {
+                    "dataset_id": "MEI_ANEXO_XI_OCUPACOES_V1",
+                    "fonte_id": "CGSN-ANEXO-XI-001",
+                    "versao_fonte": "CGSN140-ANEXOXI-R182",
+                    "vigencia_inicio": "2025-10-01",
+                    "vigencia_fim": None,
+                    "jurisdicao_codigo": "BR",
+                    "risco": "critico",
+                    "invariantes": ["INV_DATASET_NORMATIVO_001"],
+                }
+            ],
+        }
+
+        result = guard.validar_bindings_normativos(payload)
+
+        assert result.status == schema.NormativeBindingStatus.invalido
+        assert result.autorizado_fundamentar_decisao is False
+        assert [
+            (reason.code.value, reason.binding_index, reason.field)
+            for reason in result.reasons
+        ] == [
+            ("FONTE_INCOMPLETA", 0, "fonte_id"),
+        ]
+        assert result.bindings_validados == 0

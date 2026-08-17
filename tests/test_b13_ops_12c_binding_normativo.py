@@ -162,6 +162,12 @@ S_AUTH = {
     "jurisdicao": "BR",
     "risco_se_desatualizada": "alto",
     "hash_referencia": "a" * 64,
+    "alvos_normativos_autorizados": [
+        {
+            "tipo": "constante",
+            "id": "CONST_001",
+        }
+    ],
 }
 
 

@@ -224,6 +224,46 @@ def _parse_iso_date(value: Any) -> date | None:
 
 
 
+def _alvos_normativos_autorizados(
+    fonte: Mapping[str, Any],
+) -> frozenset[tuple[str, str]] | None:
+    raw = fonte.get("alvos_normativos_autorizados")
+
+    if not isinstance(raw, list) or not raw:
+        return None
+
+    alvos: set[tuple[str, str]] = set()
+
+    for item in raw:
+        if not isinstance(item, Mapping):
+            return None
+
+        if set(item) != {"tipo", "id"}:
+            return None
+
+        tipo = item.get("tipo")
+        alvo_id = item.get("id")
+
+        if tipo == "constante":
+            pattern = _CONSTANTE_ID_PATTERN
+        elif tipo == "dataset":
+            pattern = _DATASET_ID_PATTERN
+        else:
+            return None
+
+        if not _identificador_valido(alvo_id, pattern):
+            return None
+
+        alvo = (tipo, alvo_id)
+
+        if alvo in alvos:
+            return None
+
+        alvos.add(alvo)
+
+    return frozenset(alvos)
+
+
 _NORMATIVE_BINDING_COMMON_FIELDS = frozenset(
     {
         "fonte_id",
@@ -755,6 +795,10 @@ def validar_bindings_normativos(
                     for field in source_required_present_fields
                 )
                 or fonte_temporal_invalida
+                or (
+                    fonte.get("pode_fundamentar_decisao") is True
+                    and _alvos_normativos_autorizados(fonte) is None
+                )
             )
 
             if fonte_incompleta:
@@ -767,6 +811,73 @@ def validar_bindings_normativos(
                 )
 
         reasons_list.extend(incomplete_source_reasons)
+
+        source_scope_reasons = []
+
+        for index, binding in enumerate(bindings):
+            if not isinstance(binding, Mapping):
+                continue
+
+            if _has_binding_reason(
+                index,
+                NormativeBindingReasonCode.FONTE_INCOMPLETA,
+                "fonte_id",
+            ):
+                continue
+
+            fonte_id = binding.get("fonte_id")
+            fonte = (
+                _fonte_ou_none(fonte_id)
+                if isinstance(fonte_id, str)
+                else None
+            )
+
+            if (
+                not isinstance(fonte, Mapping)
+                or fonte.get("pode_fundamentar_decisao") is not True
+            ):
+                continue
+
+            alvos_autorizados = _alvos_normativos_autorizados(fonte)
+
+            if alvos_autorizados is None:
+                continue
+
+            target_fields_present = [
+                field
+                for field in _NORMATIVE_BINDING_TARGET_FIELDS
+                if field in binding
+            ]
+
+            if len(target_fields_present) != 1:
+                continue
+
+            target_field = target_fields_present[0]
+            target_id = binding.get(target_field)
+
+            if target_field == "constante_id":
+                target_type = "constante"
+                pattern = _CONSTANTE_ID_PATTERN
+            else:
+                target_type = "dataset"
+                pattern = _DATASET_ID_PATTERN
+
+            if not _identificador_valido(target_id, pattern):
+                continue
+
+            if (target_type, target_id) not in alvos_autorizados:
+                source_scope_reasons.append(
+                    NormativeBindingReason(
+                        code=(
+                            NormativeBindingReasonCode
+                            .ALVO_FORA_DO_ESCOPO_DA_FONTE
+                        ),
+                        binding_index=index,
+                        field=target_field,
+                    )
+                )
+
+        reasons_list.extend(source_scope_reasons)
 
         _source_version_reasons = []
 
