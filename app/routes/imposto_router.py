@@ -98,40 +98,28 @@ def calcular_imposto(dados: DadosImposto):
                     "estado_l3": "bloqueado",
                 },
             )
-        ctx_mei = {"faturamento": dados.faturamento_mensal}
-        if dados.atividade:
-            ctx_mei["atividade"] = dados.atividade
-        if dados.ano_referencia is not None:
-            ctx_mei["ano_referencia"] = dados.ano_referencia
-        try:
-            resultado = executar_analise(
-                "mei_tax",
-                ctx_mei,
-            )
-        except TempoNormativoAusenteError as e:
+        if dados.ano_referencia is None:
             raise HTTPException(
                 status_code=422,
                 detail={
                     "bloqueado": True,
                     "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
                     "estado_l3": "bloqueado",
-                    "erro": str(e),
                 },
             )
 
-        if resultado.get("erro"):
-            raise HTTPException(status_code=503, detail=resultado)
-
-        das = resultado["tributos"]["das"]
-
-        return {
-            "tipo": "mei",
-            "imposto_mensal": das,
-            "imposto_anual": das * 12,
-            "alertas": resultado.get("alertas", []),
-            "_ano_referencia": resultado.get("_ano_referencia"),
-            "_estado_temporal": resultado.get("_estado_temporal"),
-        }
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL",
+                "estado_l3": "bloqueado",
+                "erro": (
+                    "O DAS fiscal final do MEI nao pode ser publicado sem "
+                    "autoridade operacional oficial."
+                ),
+            },
+        )
 
     return {
         "erro": "tipo_nao_suportado"

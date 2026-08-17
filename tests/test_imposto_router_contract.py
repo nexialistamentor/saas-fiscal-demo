@@ -54,7 +54,7 @@ def test_g1_calcular_cpf_sem_ano_bloqueia_422(client_auth):
     _payload_bloqueio_valido(res.json()["detail"])
 
 
-def test_g1_calcular_mei_com_ano_retorna_200(client_auth):
+def test_g1_calcular_mei_com_ano_bloqueia_sem_autoridade_oficial(client_auth):
     res = client_auth.post(
         "/imposto/calcular",
         json={
@@ -64,13 +64,12 @@ def test_g1_calcular_mei_com_ano_retorna_200(client_auth):
             "ano_referencia": 2026,
         },
     )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["tipo"] == "mei"
-    assert "imposto_mensal" in body
-    assert body["imposto_anual"] == body["imposto_mensal"] * 12
-    assert body["_ano_referencia"] == 2026
-    assert body["_estado_temporal"] == "resolvido"
+    assert res.status_code == 503
+    body = res.json()["detail"]
+    assert body["bloqueado"] is True
+    assert body["tipo_bloqueio"] == "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL"
+    assert "imposto_mensal" not in body
+    assert "imposto_anual" not in body
 
 
 def test_mei_r001_atividade_ausente_bloqueia_sem_produzir_das(client_auth):
