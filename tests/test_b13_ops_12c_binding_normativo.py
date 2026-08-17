@@ -160,6 +160,7 @@ S_AUTH = {
     "vigencia_inicio": "2025-01-01",
     "vigencia_fim": "2026-12-31",
     "jurisdicao": "BR",
+    "jurisdicao_codigo": "BR",
     "risco_se_desatualizada": "alto",
     "hash_referencia": "a" * 64,
     "alvos_normativos_autorizados": [
@@ -1986,6 +1987,101 @@ def test_invalid_source_temporal_contract_is_incomplete(
         result = validar_bindings_normativos(deepcopy(P0))
 
     source_authority_guard._carregar_manifest.cache_clear()
+
+    assert result.status == NormativeBindingStatus.invalido
+    assert result.autorizado_fundamentar_decisao is False
+    assert [
+        (reason.code, reason.binding_index, reason.field)
+        for reason in result.reasons
+    ] == [
+        (
+            NormativeBindingReasonCode.FONTE_INCOMPLETA,
+            0,
+            "fonte_id",
+        )
+    ]
+    assert result.bindings_validados == 0
+
+
+
+def test_source_jurisdiction_code_mismatch_is_rejected(monkeypatch):
+    import app.services.source_authority_guard as guard
+
+    source = deepcopy(S_AUTH)
+    source["jurisdicao_codigo"] = "BR-SP"
+
+    monkeypatch.setattr(
+        guard,
+        "_carregar_manifest",
+        lambda: {source["id"]: source},
+    )
+
+    payload = deepcopy(P0)
+    result = validar_bindings_normativos(payload)
+
+    assert result.status == NormativeBindingStatus.invalido
+    assert result.autorizado_fundamentar_decisao is False
+    assert [
+        (reason.code, reason.binding_index, reason.field)
+        for reason in result.reasons
+    ] == [
+        (
+            NormativeBindingReasonCode.JURISDICAO_INCOMPATIVEL,
+            0,
+            "jurisdicao_codigo",
+        )
+    ]
+    assert result.bindings_validados == 0
+
+
+
+def test_decision_source_without_jurisdiction_code_is_incomplete(monkeypatch):
+    import app.services.source_authority_guard as guard
+
+    source = deepcopy(S_AUTH)
+    source.pop("jurisdicao_codigo")
+
+    monkeypatch.setattr(
+        guard,
+        "_carregar_manifest",
+        lambda: {source["id"]: source},
+    )
+
+    payload = deepcopy(P0)
+    result = validar_bindings_normativos(payload)
+
+    assert result.status == NormativeBindingStatus.invalido
+    assert result.autorizado_fundamentar_decisao is False
+    assert [
+        (reason.code, reason.binding_index, reason.field)
+        for reason in result.reasons
+    ] == [
+        (
+            NormativeBindingReasonCode.FONTE_INCOMPLETA,
+            0,
+            "fonte_id",
+        )
+    ]
+    assert result.bindings_validados == 0
+
+
+
+def test_decision_source_with_invalid_jurisdiction_code_is_incomplete(
+    monkeypatch,
+):
+    import app.services.source_authority_guard as guard
+
+    source = deepcopy(S_AUTH)
+    source["jurisdicao_codigo"] = "br"
+
+    monkeypatch.setattr(
+        guard,
+        "_carregar_manifest",
+        lambda: {source["id"]: source},
+    )
+
+    payload = deepcopy(P0)
+    result = validar_bindings_normativos(payload)
 
     assert result.status == NormativeBindingStatus.invalido
     assert result.autorizado_fundamentar_decisao is False

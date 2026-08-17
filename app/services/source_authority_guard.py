@@ -797,6 +797,13 @@ def validar_bindings_normativos(
                 or fonte_temporal_invalida
                 or (
                     fonte.get("pode_fundamentar_decisao") is True
+                    and not _identificador_valido(
+                        fonte.get("jurisdicao_codigo"),
+                        _JURISDICAO_PATTERN,
+                    )
+                )
+                or (
+                    fonte.get("pode_fundamentar_decisao") is True
                     and _alvos_normativos_autorizados(fonte) is None
                 )
             )
@@ -811,6 +818,60 @@ def validar_bindings_normativos(
                 )
 
         reasons_list.extend(incomplete_source_reasons)
+
+        source_jurisdiction_reasons = []
+
+        for index, binding in enumerate(bindings):
+            if not isinstance(binding, Mapping):
+                continue
+
+            if _has_binding_reason(
+                index,
+                NormativeBindingReasonCode.JURISDICAO_INVALIDA,
+                "jurisdicao_codigo",
+            ):
+                continue
+
+            if _has_binding_reason(
+                index,
+                NormativeBindingReasonCode.FONTE_INCOMPLETA,
+                "fonte_id",
+            ):
+                continue
+
+            fonte_id = binding.get("fonte_id")
+            fonte = (
+                _fonte_ou_none(fonte_id)
+                if isinstance(fonte_id, str)
+                else None
+            )
+
+            if (
+                not isinstance(fonte, Mapping)
+                or fonte.get("pode_fundamentar_decisao") is not True
+            ):
+                continue
+
+            fonte_jurisdicao = fonte.get("jurisdicao_codigo")
+            binding_jurisdicao = binding.get("jurisdicao_codigo")
+
+            if (
+                isinstance(fonte_jurisdicao, str)
+                and isinstance(binding_jurisdicao, str)
+                and fonte_jurisdicao != binding_jurisdicao
+            ):
+                source_jurisdiction_reasons.append(
+                    NormativeBindingReason(
+                        code=(
+                            NormativeBindingReasonCode
+                            .JURISDICAO_INCOMPATIVEL
+                        ),
+                        binding_index=index,
+                        field="jurisdicao_codigo",
+                    )
+                )
+
+        reasons_list.extend(source_jurisdiction_reasons)
 
         source_scope_reasons = []
 

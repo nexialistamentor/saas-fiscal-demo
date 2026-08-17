@@ -67,6 +67,7 @@ def test_source_authority_guard_accepts_structurally_valid_dataset_binding(
         "vigencia_inicio": "2025-10-01",
         "vigencia_fim": None,
         "jurisdicao": "BR",
+        "jurisdicao_codigo": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
         "alvos_normativos_autorizados": [
@@ -131,6 +132,7 @@ def test_source_authority_guard_rejects_binding_with_constant_and_dataset_target
         "vigencia_inicio": "2025-10-01",
         "vigencia_fim": None,
         "jurisdicao": "BR",
+        "jurisdicao_codigo": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
         "alvos_normativos_autorizados": [
@@ -198,6 +200,7 @@ def test_source_authority_guard_rejects_binding_without_normative_target(
         "vigencia_inicio": "2025-10-01",
         "vigencia_fim": None,
         "jurisdicao": "BR",
+        "jurisdicao_codigo": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
         "alvos_normativos_autorizados": [
@@ -263,6 +266,7 @@ def test_source_authority_guard_rejects_dataset_outside_source_scope(
         "vigencia_inicio": "2025-10-01",
         "vigencia_fim": None,
         "jurisdicao": "BR",
+        "jurisdicao_codigo": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
         "alvos_normativos_autorizados": [
@@ -329,6 +333,7 @@ def test_decision_source_without_authorized_normative_targets_is_incomplete(
         "vigencia_inicio": "2025-10-01",
         "vigencia_fim": None,
         "jurisdicao": "BR",
+        "jurisdicao_codigo": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
     }
@@ -389,6 +394,7 @@ def test_decision_source_with_empty_authorized_targets_is_incomplete(
         "vigencia_inicio": "2025-10-01",
         "vigencia_fim": None,
         "jurisdicao": "BR",
+        "jurisdicao_codigo": "BR",
         "risco_se_desatualizada": "critico",
         "hash_referencia": "a" * 64,
         "alvos_normativos_autorizados": [],
@@ -450,6 +456,7 @@ def test_source_authority_guard_rejects_constant_outside_source_scope(
         "vigencia_inicio": "2025-01-01",
         "vigencia_fim": "2026-12-31",
         "jurisdicao": "BR",
+        "jurisdicao_codigo": "BR",
         "risco_se_desatualizada": "alto",
         "hash_referencia": "a" * 64,
         "alvos_normativos_autorizados": [
@@ -528,6 +535,7 @@ def test_decision_source_with_malformed_authorized_targets_is_incomplete(
             "vigencia_inicio": "2025-10-01",
             "vigencia_fim": None,
             "jurisdicao": "BR",
+        "jurisdicao_codigo": "BR",
             "risco_se_desatualizada": "critico",
             "hash_referencia": "a" * 64,
             "alvos_normativos_autorizados": malformed_value,
