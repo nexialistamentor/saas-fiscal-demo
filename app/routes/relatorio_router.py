@@ -585,6 +585,13 @@ async def imposto_pdf(
     Gera PDF com cálculo detalhado de imposto (MEI ou CPF/autônomo).
     Fluxo: /imposto/calcular → preview → pagamento → /relatorio/imposto-pdf.
     """
+    if dados.tipo_usuario.upper() == "MEI":
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "tipo_bloqueio": "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL",
+            },
+        )
     try:
         resultado = calcular_imposto_simples(
             faturamento=dados.faturamento_mensal,

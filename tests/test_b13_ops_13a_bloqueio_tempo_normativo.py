@@ -94,8 +94,13 @@ def test_relatorio_imposto_pdf_sem_ano_referencia_bloqueia(client_auth):
             "faturamento_mensal": 5000.0,
         },
     )
-    assert res.status_code == 422
-    _payload_bloqueio_valido(res.json()["detail"])
+    assert res.status_code == 503
+    assert (
+        res.json()["detail"]["tipo_bloqueio"]
+        == "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL"
+    )
+    assert res.headers.get("content-type") != "application/pdf"
+    assert not res.content.startswith(b"%PDF-")
 
 
 # ---------------------------------------------------------------------------
