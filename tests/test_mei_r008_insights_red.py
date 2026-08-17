@@ -32,7 +32,7 @@ def test_insights_mei_sem_faturamento_entrega_ausencia_ao_mei_tax_engine(
 
     contextos_recebidos = []
 
-    def capturar_contexto(context):
+    def capturar_contexto(_self, context):
         contextos_recebidos.append(dict(context))
         return {}
 

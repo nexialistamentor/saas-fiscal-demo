@@ -32,7 +32,7 @@ def test_insights_nao_executa_mei_tax_engine_para_simples_nacional(
 
     chamadas = []
 
-    def detectar_execucao_mei(context):
+    def detectar_execucao_mei(_self, context):
         chamadas.append(
             {
                 "empresa_id": context.get("empresa_id"),
@@ -78,7 +78,7 @@ def test_insights_executa_mei_tax_engine_para_empresa_mei(
 
     chamadas = []
 
-    def detectar_execucao_mei(context):
+    def detectar_execucao_mei(_self, context):
         chamadas.append(
             {
                 "empresa_id": context.get("empresa_id"),

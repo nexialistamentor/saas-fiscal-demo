@@ -11,7 +11,8 @@ context = {
 
 print("\nTESTE DE EXECUÇÃO DAS ENGINES\n")
 
-for nome, engine in ENGINES.items():
+for nome, engine_class in ENGINES.items():
+    engine = engine_class()
     try:
         resultado = engine.execute(context)
         print(f"{nome}: OK -> {resultado}")

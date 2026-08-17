@@ -39,10 +39,11 @@ def executar_engines(context: dict) -> dict:
     """Executa todas as engines fiscais registradas e retorna os resultados."""
     resultados = {}
     faturamento_mei = context.pop("_faturamento_material_mei", context.get("faturamento"))
-    for nome, engine in ENGINES.items():
+    for nome, engine_class in ENGINES.items():
         if nome == ANALYSIS_TYPE_MEI_TAX and context.get("regime") != "mei":
             continue
         try:
+            engine = engine_class()
             if nome == "pis_cofins":
                 dados = dict(context)
                 if dados.get("icms") is None:
@@ -351,10 +352,9 @@ class InsightEngine:
         resultados_engines_enriquecidos = {}
         for nome, resultado in resultados_engines.items():
             res = dict(resultado)
-            eng = ENGINES.get(nome)
-            if eng is not None:
-                cls = type(eng)
-                res["_versao_engine"] = getattr(cls, "versao", None)
+            engine_class = ENGINES.get(nome)
+            if engine_class is not None:
+                res["_versao_engine"] = getattr(engine_class, "versao", None)
             resultados_engines_enriquecidos[nome] = res
 
             registro = EngineResultado(

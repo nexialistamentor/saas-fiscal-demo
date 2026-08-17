@@ -25,7 +25,7 @@ def client_auth():
 def test_falha_do_mei_tax_engine_nao_pode_ser_publicada_como_imposto_zero(
     client_auth, monkeypatch
 ):
-    def mei_tax_engine_com_falha(_dados):
+    def mei_tax_engine_com_falha(_self, _dados):
         raise RuntimeError("falha realista no cálculo do MEITaxEngine")
 
     monkeypatch.setattr(ENGINES["mei_tax"], "execute", mei_tax_engine_com_falha)

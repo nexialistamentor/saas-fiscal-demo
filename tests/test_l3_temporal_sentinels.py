@@ -97,8 +97,8 @@ def _ler_source(caminho: str | Path) -> str:
 def _ficheiros_tax_engines_registry() -> list[Path]:
     """Ficheiros .py das engines registadas em engine_registry.ENGINES."""
     caminhos: set[Path] = set()
-    for engine in ENGINES.values():
-        mod = inspect.getmodule(engine.__class__)
+    for engine_class in ENGINES.values():
+        mod = inspect.getmodule(engine_class)
         if mod and mod.__file__:
             caminhos.add(Path(mod.__file__))
     return sorted(caminhos)
@@ -157,10 +157,10 @@ def test_sentinela_01_engine_registry_usa_resolver_ano_referencia(caminho: Path)
     )
 
 
-@pytest.mark.parametrize("nome, engine", list(ENGINES.items()))
-def test_sentinela_01_execute_bloqueia_sem_contexto_temporal(nome, engine):
+@pytest.mark.parametrize("nome, engine_class", list(ENGINES.items()))
+def test_sentinela_01_execute_bloqueia_sem_contexto_temporal(nome, engine_class):
     with pytest.raises(TempoNormativoAusenteError):
-        engine.execute({})
+        engine_class().execute({})
 
 
 # ---------------------------------------------------------------------------
