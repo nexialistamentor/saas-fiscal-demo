@@ -23,9 +23,9 @@ class MEITaxEngine(BaseTaxEngine):
         ano_referencia = self.resolver_ano_referencia(context)
         faturamento_mensal = float(context.get("faturamento", 0))
         faturamento_anual = faturamento_mensal * 12
-        atividade = context.get("atividade") or context.get(
-            "atividade_mei", "comercio"
-        )
+        atividade = context.get("atividade")
+        if atividade is None:
+            atividade = context.get("atividade_mei")
 
         sal_min = obter_salario_minimo(ano_referencia)
         imposto = calcular_das_mei(sal_min, atividade)

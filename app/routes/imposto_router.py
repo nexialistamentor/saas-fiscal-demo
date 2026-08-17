@@ -9,7 +9,10 @@ from app.services.tax_engines.base_tax_engine import (
     LimiteSimplesNacionalExcedidoError,
     TempoNormativoAusenteError,
 )
-from app.services.tax_engines.mei_constants import MEI_LIMITE_ANUAL_FATURAMENTO
+from app.services.tax_engines.mei_constants import (
+    MEI_LIMITE_ANUAL_FATURAMENTO,
+    atividade_mei_reconhecida,
+)
 
 router = APIRouter()
 
@@ -73,6 +76,28 @@ def calcular_imposto(dados: DadosImposto):
         }
 
     if tipo == "mei":
+        if (dados.atividade is None or dados.atividade == "") and dados.ano_referencia is not None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "bloqueado": True,
+                    "tipo_bloqueio": "ATIVIDADE_MEI_AUSENTE",
+                    "estado_l3": "bloqueado",
+                },
+            )
+        if (
+            dados.atividade is not None
+            and dados.atividade != ""
+            and not atividade_mei_reconhecida(dados.atividade)
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "bloqueado": True,
+                    "tipo_bloqueio": "ATIVIDADE_MEI_INVALIDA",
+                    "estado_l3": "bloqueado",
+                },
+            )
         ctx_mei = {"faturamento": dados.faturamento_mensal}
         if dados.atividade:
             ctx_mei["atividade"] = dados.atividade

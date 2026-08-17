@@ -92,6 +92,7 @@ def test_simples_aliquota_entre_0_e_100():
 def test_mei_elegivel_abaixo_limite():
     r = comparar_regimes(
         faturamento_anual=Decimal("60000"),
+        atividade="comercio",
         regimes_permitidos=["mei"],
         ano_referencia=_ANO_REF,
     )
@@ -102,6 +103,7 @@ def test_mei_elegivel_abaixo_limite():
 def test_mei_inelegivel_acima_limite():
     r = comparar_regimes(
         faturamento_anual=Decimal(str(MEI_LIMITE_ANUAL_FATURAMENTO)) + Decimal("1"),
+        atividade="comercio",
         regimes_permitidos=["mei"],
         ano_referencia=_ANO_REF,
     )
@@ -112,13 +114,27 @@ def test_mei_carga_fixa():
     """DAS MEI calculado via fonte canónica — não hardcoded."""
     r = comparar_regimes(
         faturamento_anual=Decimal("60000"),
+        atividade="comercio",
         regimes_permitidos=["mei"],
         ano_referencia=_ANO_REF,
     )
-    das_mensal_esperado = Decimal(str(calcular_das_mei(obter_salario_minimo(_ANO_REF))))
+    das_mensal_esperado = Decimal(
+        str(calcular_das_mei(obter_salario_minimo(_ANO_REF), "comercio"))
+    )
     das_anual_esperado = Decimal(str(round(float(das_mensal_esperado) * 12, 2)))
     assert r.resultados["mei"].carga_mensal == das_mensal_esperado
     assert r.resultados["mei"].carga_anual == das_anual_esperado
+
+
+@pytest.mark.parametrize("atividade", [None, "", "desconhecida"])
+def test_mei_r001_comparar_regimes_bloqueia_atividade_invalida(atividade):
+    with pytest.raises(ValueError, match="Atividade MEI"):
+        comparar_regimes(
+            faturamento_anual=Decimal("60000"),
+            atividade=atividade,
+            regimes_permitidos=["mei"],
+            ano_referencia=_ANO_REF,
+        )
 
 
 # ---------------------------------------------------------------------------

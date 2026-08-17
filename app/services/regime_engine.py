@@ -215,7 +215,7 @@ def comparar_regimes(
     folha_anual: Decimal = Decimal("0"),
     lucro_contabil: Optional[Decimal] = None,
     secao_cnae: str = "J",
-    atividade: str = "servicos",
+    atividade: Optional[str] = None,
     regimes_permitidos: Optional[list[str]] = None,
     ano_referencia: Optional[int] = None,
 ) -> ResultadoComparacao:
@@ -254,7 +254,9 @@ def comparar_regimes(
                 f"R$ {_limite_mei:,.2f}"
             )
         else:
-            _das_mensal = calcular_das_mei(obter_salario_minimo(ano_referencia))
+            _das_mensal = calcular_das_mei(
+                obter_salario_minimo(ano_referencia), atividade
+            )
             _das_anual = round(_das_mensal * 12, 2)
             resultados["mei"] = ResultadoRegime(
                 regime="mei",

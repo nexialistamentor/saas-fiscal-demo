@@ -7,11 +7,10 @@ from app.services.tax_engines.mei_constants import normalizar_atividade_mei
 from app.services.tax_engines.mei_tax_engine import MEITaxEngine
 
 
-def _assert_parity(faturamento_mensal: float, atividade: str | None = None):
+def _assert_parity(faturamento_mensal: float, atividade: str):
     engine = MEITaxEngine()
     ctx = {"faturamento": faturamento_mensal, "ano_referencia": 2026}
-    if atividade is not None:
-        ctx["atividade"] = atividade
+    ctx["atividade"] = atividade
     l2 = engine.execute(ctx)
     legado = calcular_imposto_simples(
         faturamento_mensal,
@@ -37,8 +36,8 @@ def _assert_parity(faturamento_mensal: float, atividade: str | None = None):
         7000.0,
     ],
 )
-def test_mei_engine_paridade_legado_sem_atividade_explicita(faturamento_mensal: float):
-    _assert_parity(faturamento_mensal)
+def test_mei_engine_paridade_comercio(faturamento_mensal: float):
+    _assert_parity(faturamento_mensal, atividade="comercio")
 
 
 @pytest.mark.parametrize(
@@ -47,3 +46,22 @@ def test_mei_engine_paridade_legado_sem_atividade_explicita(faturamento_mensal: 
 )
 def test_mei_engine_paridade_legado_servicos(faturamento_mensal: float):
     _assert_parity(faturamento_mensal, atividade="servicos")
+
+
+@pytest.mark.parametrize("atividade", [None, "", "desconhecida"])
+def test_mei_r001_engine_e_servico_bloqueiam_atividade_invalida(atividade):
+    with pytest.raises(ValueError, match="Atividade MEI"):
+        MEITaxEngine().execute(
+            {
+                "faturamento": 5000.0,
+                "atividade": atividade,
+                "ano_referencia": 2026,
+            }
+        )
+    with pytest.raises(ValueError, match="Atividade MEI"):
+        calcular_imposto_simples(
+            5000.0,
+            tipo="MEI",
+            atividade=atividade,
+            ano_referencia=2026,
+        )

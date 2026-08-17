@@ -57,7 +57,12 @@ def test_g1_calcular_cpf_sem_ano_bloqueia_422(client_auth):
 def test_g1_calcular_mei_com_ano_retorna_200(client_auth):
     res = client_auth.post(
         "/imposto/calcular",
-        json={"tipo_usuario": "MEI", "faturamento_mensal": 5000.0, "ano_referencia": 2026},
+        json={
+            "tipo_usuario": "MEI",
+            "faturamento_mensal": 5000.0,
+            "atividade": "comercio",
+            "ano_referencia": 2026,
+        },
     )
     assert res.status_code == 200
     body = res.json()
@@ -66,6 +71,55 @@ def test_g1_calcular_mei_com_ano_retorna_200(client_auth):
     assert body["imposto_anual"] == body["imposto_mensal"] * 12
     assert body["_ano_referencia"] == 2026
     assert body["_estado_temporal"] == "resolvido"
+
+
+def test_mei_r001_atividade_ausente_bloqueia_sem_produzir_das(client_auth):
+    res = client_auth.post(
+        "/imposto/calcular",
+        json={"tipo_usuario": "MEI", "faturamento_mensal": 5000.0, "ano_referencia": 2026},
+    )
+
+    assert res.status_code == 422
+    body = res.json()
+    assert body["detail"]["bloqueado"] is True
+    assert body["detail"]["tipo_bloqueio"] == "ATIVIDADE_MEI_AUSENTE"
+    assert "imposto_mensal" not in body
+
+
+def test_mei_r001_atividade_vazia_bloqueia_sem_produzir_das(client_auth):
+    res = client_auth.post(
+        "/imposto/calcular",
+        json={
+            "tipo_usuario": "MEI",
+            "faturamento_mensal": 5000.0,
+            "ano_referencia": 2026,
+            "atividade": "",
+        },
+    )
+
+    assert res.status_code == 422
+    body = res.json()
+    assert body["detail"]["bloqueado"] is True
+    assert body["detail"]["tipo_bloqueio"] == "ATIVIDADE_MEI_AUSENTE"
+    assert "imposto_mensal" not in body
+
+
+def test_mei_r001_atividade_desconhecida_bloqueia_sem_produzir_das(client_auth):
+    res = client_auth.post(
+        "/imposto/calcular",
+        json={
+            "tipo_usuario": "MEI",
+            "faturamento_mensal": 5000.0,
+            "ano_referencia": 2026,
+            "atividade": "atividade_inexistente",
+        },
+    )
+
+    assert res.status_code == 422
+    body = res.json()
+    assert body["detail"]["bloqueado"] is True
+    assert body["detail"]["tipo_bloqueio"] == "ATIVIDADE_MEI_INVALIDA"
+    assert "imposto_mensal" not in body
 
 
 def test_g1_calcular_mei_sem_ano_bloqueia_422(client_auth):
@@ -84,7 +138,12 @@ def test_g1_calcular_mei_sem_ano_bloqueia_422(client_auth):
 def test_g2_simular_ano_mei_com_ano_retorna_200(client_auth):
     res = client_auth.post(
         "/imposto/simular-ano",
-        json={"tipo_usuario": "MEI", "faturamento_mensal": 5000.0, "ano_referencia": 2026},
+        json={
+            "tipo_usuario": "MEI",
+            "faturamento_mensal": 5000.0,
+            "atividade": "comercio",
+            "ano_referencia": 2026,
+        },
     )
     assert res.status_code == 200
     body = res.json()
@@ -109,7 +168,12 @@ def test_g2_simular_ano_mei_sem_ano_bloqueia_422(client_auth):
 def test_g2_simular_ano_mei_acima_limite_gera_alerta(client_auth):
     res = client_auth.post(
         "/imposto/simular-ano",
-        json={"tipo_usuario": "MEI", "faturamento_mensal": 10000.0, "ano_referencia": 2026},
+        json={
+            "tipo_usuario": "MEI",
+            "faturamento_mensal": 10000.0,
+            "atividade": "comercio",
+            "ano_referencia": 2026,
+        },
     )
     assert res.status_code == 200
     body = res.json()

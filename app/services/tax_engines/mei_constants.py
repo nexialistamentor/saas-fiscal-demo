@@ -21,6 +21,19 @@ PARCELA_FIXA_POR_ATIVIDADE = {
     MEI_ATIVIDADE_SERVICOS: 5.00,
 }
 
+ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS = {
+    "servicos": MEI_ATIVIDADE_SERVICOS,
+    "serviços": MEI_ATIVIDADE_SERVICOS,
+    "servico": MEI_ATIVIDADE_SERVICOS,
+    "serviço": MEI_ATIVIDADE_SERVICOS,
+    "comercio_industria": MEI_ATIVIDADE_COMERCIO_INDUSTRIA,
+    "comércio_indústria": MEI_ATIVIDADE_COMERCIO_INDUSTRIA,
+    "comercio": MEI_ATIVIDADE_COMERCIO_INDUSTRIA,
+    "comércio": MEI_ATIVIDADE_COMERCIO_INDUSTRIA,
+    "industria": MEI_ATIVIDADE_COMERCIO_INDUSTRIA,
+    "indústria": MEI_ATIVIDADE_COMERCIO_INDUSTRIA,
+}
+
 # Retrocompatível com código que só referenciava ICMS.
 MEI_DAS_VALOR_FIXO_ICMS = PARCELA_FIXA_POR_ATIVIDADE[MEI_ATIVIDADE_COMERCIO_INDUSTRIA]
 
@@ -52,21 +65,20 @@ def normalizar_atividade_mei(valor: Optional[str]) -> str:
     Devolve chave em PARCELA_FIXA_POR_ATIVIDADE.
     Comércio e indústria compartilham a mesma parcela fixa (ICMS).
     """
-    if not valor:
-        return MEI_ATIVIDADE_COMERCIO_INDUSTRIA
+    if valor is None or not str(valor).strip():
+        raise ValueError("Atividade MEI ausente; cálculo bloqueado.")
     v = str(valor).strip().lower()
-    if v in ("servicos", "serviços", "servico", "serviço"):
-        return MEI_ATIVIDADE_SERVICOS
-    if v in (
-        "comercio_industria",
-        "comércio_indústria",
-        "comercio",
-        "comércio",
-        "industria",
-        "indústria",
-    ):
-        return MEI_ATIVIDADE_COMERCIO_INDUSTRIA
-    return MEI_ATIVIDADE_COMERCIO_INDUSTRIA
+    try:
+        return ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS[v]
+    except KeyError as exc:
+        raise ValueError(f"Atividade MEI desconhecida: {valor!r}; cálculo bloqueado.") from exc
+
+
+def atividade_mei_reconhecida(valor: Optional[str]) -> bool:
+    """Indica se o valor informado possui normalização MEI reconhecida."""
+    if not valor:
+        return False
+    return str(valor).strip().lower() in ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS
 
 
 def calcular_das_mei(salario_minimo: float, atividade: Optional[str] = None) -> float:
