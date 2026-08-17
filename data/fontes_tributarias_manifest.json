@@ -68,6 +68,27 @@
       "observacoes": "Jurisdição federativa — envolve União, Estados e DF. MVA hoje vem de JSON legado (DT-MVA-01). Sem internalização formal."
     },
     {
+      "id": "PGMEI-001",
+      "nome": "PGMEI — Programa Gerador do DAS para o MEI",
+      "tipo": "operacional_oficial",
+      "autoridade": "Receita Federal do Brasil / Comitê Gestor do Simples Nacional",
+      "url_base": "https://www.gov.br/pt-br/servicos/emitir-das-para-pagamento-de-tributos-do-mei",
+      "escopo": "Apuração e geração oficial do DAS-MEI; consulta operacional relacionada ao PGMEI; não afirma a existência de API automática.",
+      "jurisdicao": "federal",
+      "confianca": "alta",
+      "pode_fundamentar_decisao": false,
+      "pode_validar_fato_operacional": false,
+      "pode_ser_usada_por_llm": false,
+      "status": "em_revisao",
+      "vigencia_inicio": null,
+      "vigencia_fim": null,
+      "forma_internalizacao": "manual_curada",
+      "risco_se_desatualizada": "critico",
+      "hash_referencia": null,
+      "ultima_verificacao": "2026-08-17",
+      "observacoes": "Autoridade operacional oficial identificada. Contrato/API automática do DAS mensal ainda UNRESOLVED. Enquanto não houver adapter + contrato + provenance provados, esta fonte NÃO pode validar facto operacional para publicação fiscal."
+    },
+    {
       "id": "RFB-001",
       "nome": "Receita Federal do Brasil — Consulta CNPJ",
       "tipo": "operacional_oficial",

@@ -42,6 +42,12 @@ def test_operacional_pode_validar_fato():
     assert r.pode_validar_fato_operacional is True
 
 
+def test_pgmei_001_bloqueia_validar_fato_operacional():
+    r = verificar(_req("PGMEI-001", "validar_fato_operacional"))
+    assert not r.permitido
+    assert r.pode_validar_fato_operacional is False
+
+
 def test_informativa_nao_fundamenta_decisao():
     r = verificar(_req("GOVBR-MEI-001", "fundamentar_decisao"))
     assert not r.permitido
