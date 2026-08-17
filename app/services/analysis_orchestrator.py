@@ -123,6 +123,8 @@ def executar_analise(tipo: str, dados: dict, empresa=None):
     Fluxo: assistente → analysis_orchestrator → motor específico
     """
     t = _canonical_analysis_type(tipo)
+    if t == ANALYSIS_TYPE_EMPRESA_TAX and getattr(empresa, "regime_tributario", None) == "mei":
+        t = ANALYSIS_TYPE_MEI_TAX
     inicio_execucao = time.time()
 
     cache_input = {
