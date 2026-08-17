@@ -511,6 +511,13 @@ async def gerar_relatorio_mei_tax(
             status_code=402,
             detail="Libere a análise fiscal para acessar o relatório.",
         )
+    if dados.tipo_usuario.upper() == "MEI":
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "tipo_bloqueio": "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL",
+            },
+        )
     try:
         resultado = calcular_imposto_simples(
             faturamento=dados.faturamento_mensal,

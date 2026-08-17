@@ -50,7 +50,7 @@ def test_imposto_calcular_mei_sem_ano_referencia_bloqueia(client_auth):
     _payload_bloqueio_valido(res.json()["detail"])
 
 
-def test_imposto_calcular_mei_com_ano_referencia_calcula(client_auth):
+def test_imposto_calcular_mei_com_ano_sem_atividade_bloqueia(client_auth):
     res = client_auth.post(
         "/imposto/calcular",
         json={
@@ -59,14 +59,15 @@ def test_imposto_calcular_mei_com_ano_referencia_calcula(client_auth):
             "ano_referencia": 2026,
         },
     )
-    assert res.status_code == 200
+    assert res.status_code == 422
+    assert res.json()["detail"]["tipo_bloqueio"] == "ATIVIDADE_MEI_AUSENTE"
 
 
 # ---------------------------------------------------------------------------
 # 3 — /relatorio/mei_tax
 # ---------------------------------------------------------------------------
 
-def test_relatorio_mei_tax_sem_ano_referencia_bloqueia(client_auth):
+def test_relatorio_mei_tax_sem_autoridade_oficial_bloqueia(client_auth):
     res = client_auth.post(
         "/relatorio/mei_tax",
         json={
@@ -74,8 +75,11 @@ def test_relatorio_mei_tax_sem_ano_referencia_bloqueia(client_auth):
             "faturamento_mensal": 5000.0,
         },
     )
-    assert res.status_code == 422
-    _payload_bloqueio_valido(res.json()["detail"])
+    assert res.status_code == 503
+    assert (
+        res.json()["detail"]["tipo_bloqueio"]
+        == "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL"
+    )
 
 
 # ---------------------------------------------------------------------------

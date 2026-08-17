@@ -60,10 +60,10 @@ _resultado_motor = {"das": 71.60, "tributos": {"das": 71.60}}
 
 
 # ---------------------------------------------------------------------------
-# F10.1 — 200 MEI com pagamento e ano_referencia
+# F10.1 — 503 MEI sem autoridade operacional oficial
 # ---------------------------------------------------------------------------
 
-def test_f10_mei_tax_retorna_200_com_id(monkeypatch):
+def test_f10_mei_tax_sem_autoridade_retorna_503_sem_resultado(monkeypatch):
     global _db_state
     _db_state = None
     calls = []
@@ -82,22 +82,16 @@ def test_f10_mei_tax_retorna_200_com_id(monkeypatch):
     finally:
         app.dependency_overrides.clear()
 
-    assert res.status_code == 200
-    assert res.json() == {"id": 42}
-    assert calls == [{
-        "faturamento": 5000.0,
-        "despesas": 0.0,
-        "tipo": "MEI",
-        "atividade": "comercio",
-        "ano_referencia": 2026,
-    }]
-    assert _db_state.committed is True
-    assert len(_db_state.added) == 1
-    assert isinstance(_db_state.added[0], RelatorioAnalise)
-    assert _db_state.added[0].analysis_type == relatorio_router.ANALYSIS_TYPE_MEI_TAX
-    assert _db_state.added[0].status == "ok"
-    assert _db_state.added[0].resultado_json == _resultado_motor
-    assert _db_state.refreshed == [_db_state.added[0]]
+    assert res.status_code == 503
+    assert (
+        res.json()["detail"]["tipo_bloqueio"]
+        == "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL"
+    )
+    assert "id" not in res.json()
+    assert calls == []
+    assert _db_state.committed is False
+    assert _db_state.added == []
+    assert _db_state.refreshed == []
 
 
 # ---------------------------------------------------------------------------
@@ -132,10 +126,10 @@ def test_f10_mei_tax_sem_pagamento_retorna_402(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# F10.3 — 422 TempoNormativoAusenteError
+# F10.3 — autoridade oficial indisponivel precede o motor interno
 # ---------------------------------------------------------------------------
 
-def test_f10_mei_tax_sem_ano_retorna_422_bloqueado(monkeypatch):
+def test_f10_mei_tax_sem_ano_retorna_503_sem_resultado(monkeypatch):
     global _db_state
     _db_state = None
 
@@ -156,15 +150,12 @@ def test_f10_mei_tax_sem_ano_retorna_422_bloqueado(monkeypatch):
     finally:
         app.dependency_overrides.clear()
 
-    assert res.status_code == 422
-    assert res.json() == {
-        "detail": {
-            "bloqueado": True,
-            "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
-            "estado_l3": "bloqueado",
-            "erro": "Ano normativo ausente",
-        }
-    }
+    assert res.status_code == 503
+    assert (
+        res.json()["detail"]["tipo_bloqueio"]
+        == "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL"
+    )
+    assert "id" not in res.json()
     assert _db_state.added == []
     assert _db_state.committed is False
     assert _db_state.refreshed == []
