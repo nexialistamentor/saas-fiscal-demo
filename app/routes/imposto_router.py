@@ -128,6 +128,16 @@ def calcular_imposto(dados: DadosImposto):
 
 @router.post("/simular-ano")
 def simular_ano(dados: SimulacaoAnual):
+    if dados.tipo_usuario.upper() == "MEI":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "APLICABILIDADE_MEI_INSUFICIENTE",
+                "estado_l3": "bloqueado",
+            },
+        )
+
     try:
         mensal = calcular_imposto_simples(
             faturamento=dados.faturamento_mensal,

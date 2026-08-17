@@ -144,15 +144,31 @@ def test_g2_simular_ano_mei_com_ano_retorna_200(client_auth):
             "ano_referencia": 2026,
         },
     )
-    assert res.status_code == 200
+    assert res.status_code == 422
     body = res.json()
-    assert body["tipo_usuario"] == "MEI"
-    assert body["faturamento_anual"] == 5000.0 * 12
-    assert "imposto_anual_estimado" in body
-    assert "percentual_limite_mei" in body
-    assert "valor_restante_limite" in body
-    assert body["_ano_referencia"] == 2026
-    assert body["_estado_temporal"] == "resolvido"
+    assert body["detail"]["bloqueado"] is True
+    assert body["detail"]["tipo_bloqueio"] == "APLICABILIDADE_MEI_INSUFICIENTE"
+    assert body["detail"]["estado_l3"] == "bloqueado"
+    assert "imposto_anual_estimado" not in body
+    assert "alertas" not in body
+
+
+def test_g2_simular_ano_mei_sem_aplicabilidade_normativa_bloqueia(client_auth):
+    res = client_auth.post(
+        "/imposto/simular-ano",
+        json={
+            "tipo_usuario": "MEI",
+            "atividade": "servicos",
+            "faturamento_mensal": 5000.0,
+            "ano_referencia": 2026,
+        },
+    )
+
+    assert res.status_code == 422
+    body = res.json()
+    assert body["detail"]["bloqueado"] is True
+    assert body["detail"]["tipo_bloqueio"] == "APLICABILIDADE_MEI_INSUFICIENTE"
+    assert "imposto_anual_estimado" not in body
 
 
 def test_g2_simular_ano_mei_sem_ano_bloqueia_422(client_auth):
@@ -161,7 +177,12 @@ def test_g2_simular_ano_mei_sem_ano_bloqueia_422(client_auth):
         json={"tipo_usuario": "MEI", "faturamento_mensal": 5000.0},
     )
     assert res.status_code == 422
-    _payload_bloqueio_valido(res.json()["detail"])
+    body = res.json()
+    assert body["detail"]["bloqueado"] is True
+    assert body["detail"]["tipo_bloqueio"] == "APLICABILIDADE_MEI_INSUFICIENTE"
+    assert body["detail"]["estado_l3"] == "bloqueado"
+    assert "imposto_anual_estimado" not in body
+    assert "alertas" not in body
 
 
 def test_g2_simular_ano_mei_acima_limite_gera_alerta(client_auth):
@@ -174,9 +195,13 @@ def test_g2_simular_ano_mei_acima_limite_gera_alerta(client_auth):
             "ano_referencia": 2026,
         },
     )
-    assert res.status_code == 200
+    assert res.status_code == 422
     body = res.json()
-    assert any("limite do MEI" in a for a in body["alertas"])
+    assert body["detail"]["bloqueado"] is True
+    assert body["detail"]["tipo_bloqueio"] == "APLICABILIDADE_MEI_INSUFICIENTE"
+    assert body["detail"]["estado_l3"] == "bloqueado"
+    assert "imposto_anual_estimado" not in body
+    assert "alertas" not in body
 
 
 # ---------------------------------------------------------------------------
