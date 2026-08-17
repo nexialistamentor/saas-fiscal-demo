@@ -94,7 +94,10 @@ def calcular_imposto(dados: DadosImposto):
                 },
             )
 
-        das = resultado.get("tributos", {}).get("das", 0)
+        if resultado.get("erro"):
+            raise HTTPException(status_code=503, detail=resultado)
+
+        das = resultado["tributos"]["das"]
 
         return {
             "tipo": "mei",
