@@ -37,6 +37,7 @@ from app.schemas.source_authority_schema import (
     SourceAuthorityRequest,
     SourceAuthorityResult,
     _CONSTANTE_ID_PATTERN,
+    _DATASET_ID_PATTERN,
     _FONTE_ID_PATTERN,
     _INVARIANTE_PATTERN,
     _JURISDICAO_PATTERN,
@@ -223,9 +224,8 @@ def _parse_iso_date(value: Any) -> date | None:
 
 
 
-_NORMATIVE_BINDING_ITEM_FIELDS = frozenset(
+_NORMATIVE_BINDING_COMMON_FIELDS = frozenset(
     {
-        "constante_id",
         "fonte_id",
         "versao_fonte",
         "vigencia_inicio",
@@ -234,6 +234,18 @@ _NORMATIVE_BINDING_ITEM_FIELDS = frozenset(
         "risco",
         "invariantes",
     }
+)
+
+_NORMATIVE_BINDING_TARGET_FIELDS = frozenset(
+    {
+        "constante_id",
+        "dataset_id",
+    }
+)
+
+_NORMATIVE_BINDING_ITEM_FIELDS = (
+    _NORMATIVE_BINDING_COMMON_FIELDS
+    | _NORMATIVE_BINDING_TARGET_FIELDS
 )
 
 
@@ -251,13 +263,36 @@ def validar_bindings_normativos(
                 continue
 
             for field in sorted(
-                _NORMATIVE_BINDING_ITEM_FIELDS.difference(binding)
+                _NORMATIVE_BINDING_COMMON_FIELDS.difference(binding)
             ):
                 reasons_list.append(
                     NormativeBindingReason(
                         code=NormativeBindingReasonCode.CAMPO_OBRIGATORIO_AUSENTE,
                         binding_index=index,
                         field=field,
+                    )
+                )
+
+            target_fields_present = [
+                field
+                for field in _NORMATIVE_BINDING_TARGET_FIELDS
+                if field in binding
+            ]
+
+            if len(target_fields_present) == 0:
+                reasons_list.append(
+                    NormativeBindingReason(
+                        code=NormativeBindingReasonCode.ALVO_NORMATIVO_AUSENTE,
+                        binding_index=index,
+                        field="constante_id|dataset_id",
+                    )
+                )
+            elif len(target_fields_present) > 1:
+                reasons_list.append(
+                    NormativeBindingReason(
+                        code=NormativeBindingReasonCode.ALVO_NORMATIVO_AMBIGUO,
+                        binding_index=index,
+                        field="constante_id|dataset_id",
                     )
                 )
 
@@ -277,6 +312,7 @@ def validar_bindings_normativos(
 
             for field, pattern in (
                 ("constante_id", _CONSTANTE_ID_PATTERN),
+                ("dataset_id", _DATASET_ID_PATTERN),
                 ("fonte_id", _FONTE_ID_PATTERN),
             ):
                 if field in binding and not _identificador_valido(
@@ -425,6 +461,8 @@ def validar_bindings_normativos(
         pairwise_structural_codes = {
             NormativeBindingReasonCode.CAMPO_OBRIGATORIO_AUSENTE,
             NormativeBindingReasonCode.CAMPO_DESCONHECIDO,
+            NormativeBindingReasonCode.ALVO_NORMATIVO_AUSENTE,
+            NormativeBindingReasonCode.ALVO_NORMATIVO_AMBIGUO,
             NormativeBindingReasonCode.IDENTIFICADOR_INVALIDO,
             NormativeBindingReasonCode.VERSAO_INVALIDA,
             NormativeBindingReasonCode.VIGENCIA_INVALIDA,
@@ -539,9 +577,19 @@ def validar_bindings_normativos(
                 previous_inicio,
                 previous_fim,
             ) in previous_candidates:
+                binding_target = (
+                    ("constante_id", binding.get("constante_id"))
+                    if "constante_id" in binding
+                    else ("dataset_id", binding.get("dataset_id"))
+                )
+                previous_target = (
+                    ("constante_id", previous.get("constante_id"))
+                    if "constante_id" in previous
+                    else ("dataset_id", previous.get("dataset_id"))
+                )
+
                 mesma_chave = (
-                    binding.get("constante_id")
-                    == previous.get("constante_id")
+                    binding_target == previous_target
                     and binding.get("jurisdicao_codigo")
                     == previous.get("jurisdicao_codigo")
                 )

@@ -41,6 +41,10 @@ _CONSTANTE_ID_PATTERN = re.compile(
     r"^[A-Z][A-Z0-9_]{2,127}$",
     re.ASCII,
 )
+_DATASET_ID_PATTERN = re.compile(
+    r"^[A-Z][A-Z0-9_]{2,127}$",
+    re.ASCII,
+)
 _FONTE_ID_PATTERN = re.compile(
     r"^[A-Z0-9][A-Z0-9-]{2,127}$",
     re.ASCII,
@@ -97,6 +101,8 @@ class NormativeBindingStatus(str, Enum):
 class NormativeBindingReasonCode(str, Enum):
     CAMPO_OBRIGATORIO_AUSENTE = "CAMPO_OBRIGATORIO_AUSENTE"
     CAMPO_DESCONHECIDO = "CAMPO_DESCONHECIDO"
+    ALVO_NORMATIVO_AUSENTE = "ALVO_NORMATIVO_AUSENTE"
+    ALVO_NORMATIVO_AMBIGUO = "ALVO_NORMATIVO_AMBIGUO"
     CONTEXTO_INVALIDO = "CONTEXTO_INVALIDO"
     IDENTIFICADOR_INVALIDO = "IDENTIFICADOR_INVALIDO"
     VERSAO_INVALIDA = "VERSAO_INVALIDA"
@@ -208,6 +214,97 @@ class NormativeBindingItem(BaseModel):
         return value
 
 
+class NormativeDatasetBindingItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset_id: str
+    fonte_id: str
+    versao_fonte: str
+    vigencia_inicio: date
+    vigencia_fim: date | None
+    jurisdicao_codigo: str
+    risco: Literal["alto", "baixo", "critico", "medio"]
+    invariantes: Annotated[
+        tuple[str, ...], Field(min_length=1)
+    ]
+
+    @field_validator("dataset_id")
+    @classmethod
+    def _validate_dataset_id(cls, value: str) -> str:
+        return _validate_normative_identifier(
+            value, _DATASET_ID_PATTERN
+        )
+
+    @field_validator("fonte_id")
+    @classmethod
+    def _validate_fonte_id(cls, value: str) -> str:
+        return _validate_normative_identifier(
+            value, _FONTE_ID_PATTERN
+        )
+
+    @field_validator("versao_fonte")
+    @classmethod
+    def _validate_versao_fonte(cls, value: str) -> str:
+        return _validate_normative_identifier(
+            value, _VERSAO_FONTE_PATTERN
+        )
+
+    @field_validator("jurisdicao_codigo")
+    @classmethod
+    def _validate_jurisdicao_codigo(cls, value: str) -> str:
+        return _validate_normative_identifier(
+            value, _JURISDICAO_PATTERN
+        )
+
+    @field_validator("invariantes")
+    @classmethod
+    def _validate_invariantes_representation(
+        cls,
+        value: tuple[str, ...],
+    ) -> tuple[str, ...]:
+        for item in value:
+            _validate_normative_identifier(
+                item, _INVARIANTE_PATTERN
+            )
+        if len(set(value)) != len(value):
+            raise ValueError("invariantes devem ser unicos")
+        if value != tuple(sorted(value)):
+            raise ValueError("invariantes devem estar ordenados")
+        return value
+
+    @field_validator("vigencia_inicio", mode="before")
+    @classmethod
+    def _validate_vigencia_inicio_iso_string(
+        cls,
+        value: object,
+    ) -> object:
+        if isinstance(value, datetime):
+            raise ValueError("vigencia_inicio nao aceita datetime")
+        if isinstance(value, str) and (
+            len(value) != 10
+            or value[4] != "-"
+            or value[7] != "-"
+        ):
+            raise ValueError("vigencia_inicio deve usar YYYY-MM-DD")
+        return value
+
+    @field_validator("vigencia_fim", mode="before")
+    @classmethod
+    def _validate_vigencia_fim_iso_string(
+        cls,
+        value: object,
+    ) -> object:
+        if isinstance(value, datetime):
+            raise ValueError("vigencia_fim nao aceita datetime")
+        if isinstance(value, str) and (
+            len(value) != 10
+            or value[4] != "-"
+            or value[7] != "-"
+        ):
+            raise ValueError("vigencia_fim deve usar YYYY-MM-DD")
+        return value
+
+
 class NormativeBindingContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -247,7 +344,11 @@ class NormativeBindingBatchRequest(BaseModel):
 
     contexto: NormativeBindingContext
     bindings: Annotated[
-        tuple[NormativeBindingItem, ...], Field(min_length=1)
+        tuple[
+            NormativeBindingItem | NormativeDatasetBindingItem,
+            ...,
+        ],
+        Field(min_length=1),
     ]
 
 
