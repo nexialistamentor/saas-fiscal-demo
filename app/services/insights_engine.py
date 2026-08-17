@@ -25,6 +25,7 @@ from app.services.score_global_tributario_service import calcular_score_global_t
 from app.services.risco_tributario_service import calcular_risco_tributario
 from app.services.maturidade_tributaria_service import calcular_maturidade_tributaria
 from app.services.engine_registry import ENGINES
+from app.services.analysis_types import ANALYSIS_TYPE_MEI_TAX
 from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
 from app.services.context_flags_service import (
@@ -38,6 +39,8 @@ def executar_engines(context: dict) -> dict:
     """Executa todas as engines fiscais registradas e retorna os resultados."""
     resultados = {}
     for nome, engine in ENGINES.items():
+        if nome == ANALYSIS_TYPE_MEI_TAX and context.get("regime") != "mei":
+            continue
         try:
             if nome == "pis_cofins":
                 dados = dict(context)
