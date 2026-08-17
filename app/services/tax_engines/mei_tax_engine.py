@@ -21,7 +21,10 @@ class MEITaxEngine(BaseTaxEngine):
 
     def execute(self, context: dict):
         ano_referencia = self.resolver_ano_referencia(context)
-        faturamento_mensal = float(context.get("faturamento", 0))
+        faturamento = context.get("faturamento")
+        if faturamento is None:
+            raise ValueError("faturamento ausente")
+        faturamento_mensal = float(faturamento)
         faturamento_anual = faturamento_mensal * 12
         atividade = context.get("atividade")
         if atividade is None:

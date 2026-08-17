@@ -38,6 +38,7 @@ from app.services.context_flags_service import (
 def executar_engines(context: dict) -> dict:
     """Executa todas as engines fiscais registradas e retorna os resultados."""
     resultados = {}
+    faturamento_mei = context.pop("_faturamento_material_mei", context.get("faturamento"))
     for nome, engine in ENGINES.items():
         if nome == ANALYSIS_TYPE_MEI_TAX and context.get("regime") != "mei":
             continue
@@ -50,6 +51,10 @@ def executar_engines(context: dict) -> dict:
                     )
                 regime = context.get("regime") or "presumido"
                 resultados[nome] = calcular_pis_cofins(dados, regime=regime)
+            elif nome == ANALYSIS_TYPE_MEI_TAX:
+                contexto_mei = dict(context)
+                contexto_mei["faturamento"] = faturamento_mei
+                resultados[nome] = engine.execute(contexto_mei)
             else:
                 resultados[nome] = engine.execute(context)
         except TempoNormativoAusenteError as e:
@@ -70,13 +75,14 @@ class InsightEngine:
 
     def _montar_contexto_engines(self, empresa_id: int) -> dict:
         """Monta o contexto fiscal para execução das engines."""
-        faturamento = (
-            self.db.query(func.coalesce(func.sum(NotaFiscalItem.valor_produto), 0))
+        faturamento_material_mei = (
+            self.db.query(func.sum(NotaFiscalItem.valor_produto))
             .join(NotaFiscalItem.documento)
             .filter(DocumentoFiscal.empresa_id == empresa_id)
             .filter(DocumentoFiscal.tipo == "saida")
             .scalar()
-        ) or 0
+        )
+        faturamento = faturamento_material_mei or 0
         custos = (
             self.db.query(func.coalesce(func.sum(NotaFiscalItem.valor_produto), 0))
             .join(NotaFiscalItem.documento)
@@ -113,6 +119,11 @@ class InsightEngine:
             "db": self.db,
             "data_referencia": data_referencia,
             "faturamento": float(faturamento),
+            "_faturamento_material_mei": (
+                float(faturamento_material_mei)
+                if faturamento_material_mei is not None
+                else None
+            ),
             "custos": float(custos),
             "custo_fiscal_entradas": float(custos),
             "lucro_contabil": float(max(0, lucro)),
