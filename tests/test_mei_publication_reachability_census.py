@@ -207,3 +207,28 @@ def test_dynamic_import_of_mei_module_fails_closed_red(tmp_path, monkeypatch):
 
     with pytest.raises(RuntimeError, match="MEI_REACHABILITY_DYNAMIC_IMPORT"):
         census_module._parse_app()
+
+
+def test_local_homonym_is_not_canonical_mei_producer(tmp_path, monkeypatch):
+    import app.scripts.mei_publication_reachability_census as census_module
+
+    app_root = tmp_path / "app"
+    app_root.mkdir()
+    (app_root / "consumer.py").write_text(
+        "def calcular_das_mei(salario, atividade):\n"
+        "    return 0\n"
+        "\n"
+        "def executar():\n"
+        "    return calcular_das_mei(1621, 'servicos')\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(census_module, "ROOT", tmp_path)
+
+    modules = census_module._parse_app()
+    module = modules["app.consumer"]
+    node = module.functions["executar"]
+    callees = census_module._direct_callees(module, node)
+
+    assert "app.consumer.calcular_das_mei" in callees
+    assert census_module.PRODUCER_ID not in callees
