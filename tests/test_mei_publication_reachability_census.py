@@ -275,3 +275,22 @@ def test_real_formalizacao_comparar_regimes_is_reachable_mei_decision_red():
     assert "app.routers.formalizacao_router.comparar_regimes_endpoint" in trace
     assert "app.services.regime_engine.comparar_regimes" in trace
     assert "app.services.tax_engines.mei_constants.calcular_das_mei" in trace
+
+
+def test_real_formalizacao_simular_empresa_is_reachable_mei_decision_red():
+    census = _build_census()
+
+    path = _entry(census, "/formalizacao/simular-empresa")
+
+    assert path["mei_reachability"] == "REACHABLE_MEI"
+    assert path["blocked_before_producer"] is False
+    assert "DECISION" in path["sink_kinds"]
+    assert (
+        "app.services.tax_engines.mei_constants.calcular_das_mei"
+        in path["producer_ids"]
+    )
+
+    trace = path["trace"]
+    assert "app.routers.formalizacao_router.simular_empresa" in trace
+    assert "app.services.regime_engine.comparar_regimes" in trace
+    assert "app.services.tax_engines.mei_constants.calcular_das_mei" in trace
