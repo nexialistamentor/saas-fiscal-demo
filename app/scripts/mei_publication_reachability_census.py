@@ -790,7 +790,8 @@ def _value_provenance_trace(
 
     Supported here, and only here:
     1. producer → dict literal → return → wrapper → literal subscript → return;
-    2. producer → direct return → wrapper → f-string → return.
+    2. producer → direct return → wrapper → f-string → return;
+    3. producer → direct return → wrapper → static cache write/read → return.
 
     Ambiguity, duplicate candidate edges, dynamic keys, or structural changes
     fail closed rather than being guessed.
@@ -958,42 +959,123 @@ def _value_provenance_trace(
             ]
             if formatted_names == [wrapper_name]:
                 fstring_assignments.append(item)
-        if len(fstring_assignments) != 1:
-            raise RuntimeError(
-                "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:fstring_assignment"
-            )
-        fstring_assignment = fstring_assignments[0]
-        message_name = fstring_assignment.targets[0].id
 
-        sink_returns = [
-            item
-            for item in ast.walk(sink_node)
-            if isinstance(item, ast.Return)
-            and isinstance(item.value, ast.Name)
-            and item.value.id == message_name
-        ]
-        if len(sink_returns) != 1:
-            raise RuntimeError(
-                "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:sink_return"
-            )
-        sink_return = sink_returns[0]
+        cache_writes: list[tuple[ast.Assign, str, str]] = []
+        for item in ast.walk(sink_node):
+            if not (
+                isinstance(item, ast.Assign)
+                and len(item.targets) == 1
+                and isinstance(item.targets[0], ast.Subscript)
+                and isinstance(item.targets[0].value, ast.Name)
+                and isinstance(item.value, ast.Name)
+                and item.value.id == wrapper_name
+            ):
+                continue
+            cache_name = item.targets[0].value.id
+            cache_key = _literal_string(item.targets[0].slice)
+            if cache_key is None:
+                continue
+            module_value = _module_assignments(sink_module).get(cache_name)
+            if not isinstance(module_value, ast.Dict):
+                continue
+            if "cache" not in cache_name.lower():
+                continue
+            cache_writes.append((item, cache_name, cache_key))
 
-        if not (
-            producer_assignment.lineno < source_return.lineno
-            and wrapper_assignment.lineno < fstring_assignment.lineno < sink_return.lineno
-        ):
-            raise RuntimeError(
-                "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:ordering"
-            )
+        if len(fstring_assignments) == 1 and not cache_writes:
+            fstring_assignment = fstring_assignments[0]
+            message_name = fstring_assignment.targets[0].id
 
-        return [
-            producer_id,
-            f"{source_function_id}:{producer_name}",
-            f"{source_function_id}:return",
-            f"{sink_function_id}:{wrapper_name}",
-            f"{sink_function_id}:{message_name}:f-string",
-            f"{sink_function_id}:return",
-        ]
+            sink_returns = [
+                item
+                for item in ast.walk(sink_node)
+                if isinstance(item, ast.Return)
+                and isinstance(item.value, ast.Name)
+                and item.value.id == message_name
+            ]
+            if len(sink_returns) != 1:
+                raise RuntimeError(
+                    "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:sink_return"
+                )
+            sink_return = sink_returns[0]
+
+            if not (
+                producer_assignment.lineno < source_return.lineno
+                and wrapper_assignment.lineno < fstring_assignment.lineno < sink_return.lineno
+            ):
+                raise RuntimeError(
+                    "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:ordering"
+                )
+
+            return [
+                producer_id,
+                f"{source_function_id}:{producer_name}",
+                f"{source_function_id}:return",
+                f"{sink_function_id}:{wrapper_name}",
+                f"{sink_function_id}:{message_name}:f-string",
+                f"{sink_function_id}:return",
+            ]
+
+        if not fstring_assignments and len(cache_writes) == 1:
+            cache_write, cache_name, cache_key = cache_writes[0]
+            cache_reads: list[ast.Assign] = []
+            for item in ast.walk(sink_node):
+                if not (
+                    isinstance(item, ast.Assign)
+                    and len(item.targets) == 1
+                    and isinstance(item.targets[0], ast.Name)
+                    and isinstance(item.value, ast.Subscript)
+                    and isinstance(item.value.value, ast.Name)
+                    and item.value.value.id == cache_name
+                    and _literal_string(item.value.slice) == cache_key
+                ):
+                    continue
+                cache_reads.append(item)
+            if len(cache_reads) != 1:
+                raise RuntimeError(
+                    "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:cache_read"
+                )
+            cache_read = cache_reads[0]
+            cached_name = cache_read.targets[0].id
+
+            sink_returns = [
+                item
+                for item in ast.walk(sink_node)
+                if isinstance(item, ast.Return)
+                and isinstance(item.value, ast.Name)
+                and item.value.id == cached_name
+            ]
+            if len(sink_returns) != 1:
+                raise RuntimeError(
+                    "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:sink_return"
+                )
+            sink_return = sink_returns[0]
+
+            if not (
+                producer_assignment.lineno < source_return.lineno
+                and wrapper_assignment.lineno
+                < cache_write.lineno
+                < cache_read.lineno
+                < sink_return.lineno
+            ):
+                raise RuntimeError(
+                    "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:ordering"
+                )
+
+            return [
+                producer_id,
+                f"{source_function_id}:{producer_name}",
+                f"{source_function_id}:return",
+                f"{sink_function_id}:{wrapper_name}",
+                f"{sink_function_id}:{cache_name}[{cache_key!r}]:cache",
+                f"{sink_function_id}:{cached_name}",
+                f"{sink_function_id}:return",
+            ]
+
+        if fstring_assignments or cache_writes:
+            raise RuntimeError(
+                "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:sink_shape_ambiguous"
+            )
 
     raise RuntimeError(
         "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:source_shape"
