@@ -106,3 +106,37 @@ def test_module_alias_call_to_mei_producer_is_resolved_red(tmp_path, monkeypatch
     callees = census_module._direct_callees(module, node)
 
     assert census_module.PRODUCER_ID in callees
+
+
+def test_reexport_chain_to_mei_producer_is_resolved_red(tmp_path, monkeypatch):
+    import app.scripts.mei_publication_reachability_census as census_module
+
+    app_root = tmp_path / "app"
+    services_root = app_root / "services" / "tax_engines"
+    services_root.mkdir(parents=True)
+
+    (services_root / "mei_constants.py").write_text(
+        "def calcular_das_mei(salario, atividade):\n"
+        "    return salario\n",
+        encoding="utf-8",
+    )
+    (app_root / "bridge.py").write_text(
+        "from app.services.tax_engines.mei_constants import calcular_das_mei\n",
+        encoding="utf-8",
+    )
+    (app_root / "consumer.py").write_text(
+        "from app.bridge import calcular_das_mei\n"
+        "\n"
+        "def executar():\n"
+        "    return calcular_das_mei(1621, 'servicos')\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(census_module, "ROOT", tmp_path)
+
+    modules = census_module._parse_app()
+    module = modules["app.consumer"]
+    node = module.functions["executar"]
+    callees = census_module._direct_callees(module, node)
+
+    assert census_module.PRODUCER_ID in callees
