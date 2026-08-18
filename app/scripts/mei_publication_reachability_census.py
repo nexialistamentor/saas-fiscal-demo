@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_VERSION = "MEI_PUBLICATION_REACHABILITY_CENSUS_V1"
 PRODUCER_ID = "app.services.tax_engines.mei_constants.calcular_das_mei"
+PRODUCER_MODULE_ID = PRODUCER_ID.rsplit(".", 1)[0]
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,28 @@ def _fail_on_import_rebinding(
         raise RuntimeError(
             f"MEI_REACHABILITY_REBINDING:{module}:{','.join(collisions)}"
         )
+
+
+def _fail_on_dynamic_mei_access(module_info: ModuleInfo) -> None:
+    """Fail closed on dynamic attribute access to the canonical MEI producer module."""
+    for node in ast.walk(module_info.tree):
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "getattr"
+            and node.args
+            and isinstance(node.args[0], ast.Name)
+        ):
+            continue
+
+        local_name = node.args[0].id
+        target = module_info.imports.get(local_name)
+        if target is None:
+            continue
+        if target == PRODUCER_MODULE_ID or target.startswith(PRODUCER_MODULE_ID + "."):
+            raise RuntimeError(
+                f"MEI_REACHABILITY_DYNAMIC_ACCESS:{module_info.name}:{local_name}"
+            )
 
 
 def _resolve_reexport_target(
@@ -142,6 +165,9 @@ def _parse_app() -> dict[str, ModuleInfo]:
     for module in modules.values():
         for local_name, target in list(module.imports.items()):
             module.imports[local_name] = _resolve_reexport_target(modules, target)
+
+    for module in modules.values():
+        _fail_on_dynamic_mei_access(module)
 
     return modules
 
