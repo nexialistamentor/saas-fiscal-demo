@@ -36,6 +36,46 @@ def _module_name(path: Path) -> str:
     return ".".join(parts)
 
 
+def _bound_names(target: ast.AST) -> set[str]:
+    """Return statically bound names from a Python assignment/delete target."""
+    if isinstance(target, ast.Name):
+        return {target.id}
+    if isinstance(target, (ast.Tuple, ast.List)):
+        names: set[str] = set()
+        for item in target.elts:
+            names.update(_bound_names(item))
+        return names
+    if isinstance(target, ast.Starred):
+        return _bound_names(target.value)
+    return set()
+
+
+def _fail_on_import_rebinding(
+    node: ast.AST,
+    imports: dict[str, str],
+    *,
+    module: str,
+) -> None:
+    """Fail closed when a previously imported local name is rebound."""
+    rebound: set[str] = set()
+    if isinstance(node, ast.Assign):
+        for target in node.targets:
+            rebound.update(_bound_names(target))
+    elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+        rebound.update(_bound_names(node.target))
+    elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        rebound.add(node.name)
+    elif isinstance(node, ast.Delete):
+        for target in node.targets:
+            rebound.update(_bound_names(target))
+
+    collisions = sorted(rebound.intersection(imports))
+    if collisions:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_REBINDING:{module}:{','.join(collisions)}"
+        )
+
+
 def _resolve_reexport_target(
     modules: dict[str, ModuleInfo],
     target: str,
@@ -88,12 +128,14 @@ def _parse_app() -> dict[str, ModuleInfo]:
             elif isinstance(node, ast.Import):
                 for alias in node.names:
                     imports[alias.asname or alias.name.split(".")[-1]] = alias.name
-            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                functions[node.name] = node
-            elif isinstance(node, ast.ClassDef):
-                for member in node.body:
-                    if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        functions[f"{node.name}.{member.name}"] = member
+            else:
+                _fail_on_import_rebinding(node, imports, module=module)
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    functions[node.name] = node
+                elif isinstance(node, ast.ClassDef):
+                    for member in node.body:
+                        if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                            functions[f"{node.name}.{member.name}"] = member
 
         modules[module] = ModuleInfo(module, path, tree, imports, functions)
 
