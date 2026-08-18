@@ -256,3 +256,22 @@ def test_only_main_mounted_router_is_public_root(tmp_path, monkeypatch):
 
     assert mounted == {"app.mounted": ("router", "/api")}
     assert "app.orphan" not in mounted
+
+
+def test_real_formalizacao_comparar_regimes_is_reachable_mei_decision_red():
+    census = _build_census()
+
+    path = _entry(census, "/formalizacao/comparar-regimes")
+
+    assert path["mei_reachability"] == "REACHABLE_MEI"
+    assert path["blocked_before_producer"] is False
+    assert "DECISION" in path["sink_kinds"]
+    assert (
+        "app.services.tax_engines.mei_constants.calcular_das_mei"
+        in path["producer_ids"]
+    )
+
+    trace = path["trace"]
+    assert "app.routers.formalizacao_router.comparar_regimes_endpoint" in trace
+    assert "app.services.regime_engine.comparar_regimes" in trace
+    assert "app.services.tax_engines.mei_constants.calcular_das_mei" in trace
