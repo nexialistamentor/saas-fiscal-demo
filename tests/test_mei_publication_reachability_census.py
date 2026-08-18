@@ -186,3 +186,24 @@ def test_dynamic_getattr_on_mei_module_fails_closed_red(tmp_path, monkeypatch):
 
     with pytest.raises(RuntimeError, match="MEI_REACHABILITY_DYNAMIC_ACCESS"):
         census_module._parse_app()
+
+
+def test_dynamic_import_of_mei_module_fails_closed_red(tmp_path, monkeypatch):
+    import pytest
+    import app.scripts.mei_publication_reachability_census as census_module
+
+    app_root = tmp_path / "app"
+    app_root.mkdir()
+    (app_root / "consumer.py").write_text(
+        "import importlib\n"
+        "\n"
+        "def executar():\n"
+        "    mc = importlib.import_module('app.services.tax_engines.mei_constants')\n"
+        "    return mc.calcular_das_mei(1621, 'servicos')\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(census_module, "ROOT", tmp_path)
+
+    with pytest.raises(RuntimeError, match="MEI_REACHABILITY_DYNAMIC_IMPORT"):
+        census_module._parse_app()
