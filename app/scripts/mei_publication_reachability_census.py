@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_VERSION = "MEI_PUBLICATION_REACHABILITY_CENSUS_V1"
 PRODUCER_ID = "app.services.tax_engines.mei_constants.calcular_das_mei"
 PRODUCER_MODULE_ID = PRODUCER_ID.rsplit(".", 1)[0]
+FORMALIZACAO_COMPARE_ID = "app.services.regime_engine.comparar_regimes"
 
 
 @dataclass(frozen=True)
@@ -419,6 +420,32 @@ def _assistant_trace(
     return trace
 
 
+def _formalizacao_compare_trace(
+    modules: dict[str, ModuleInfo],
+    route_function_id: str,
+) -> list[str]:
+    """Prove the mounted formalizacao comparison route reaches the MEI producer."""
+    route = _function_node(modules, route_function_id)
+    if route is None:
+        raise RuntimeError(f"MEI_REACHABILITY_UNRESOLVED_FUNCTION:{route_function_id}")
+    route_module, route_node = route
+    if FORMALIZACAO_COMPARE_ID not in _direct_callees(route_module, route_node):
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_EDGE:{route_function_id}->{FORMALIZACAO_COMPARE_ID}"
+        )
+
+    compare = _function_node(modules, FORMALIZACAO_COMPARE_ID)
+    if compare is None:
+        raise RuntimeError(f"MEI_REACHABILITY_UNRESOLVED_FUNCTION:{FORMALIZACAO_COMPARE_ID}")
+    compare_module, compare_node = compare
+    if PRODUCER_ID not in _direct_callees(compare_module, compare_node):
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_EDGE:{FORMALIZACAO_COMPARE_ID}->{PRODUCER_ID}"
+        )
+
+    return [route_function_id, FORMALIZACAO_COMPARE_ID, PRODUCER_ID]
+
+
 def build_census() -> dict:
     modules = _parse_app()
     mounted = _mounted_routers(modules)
@@ -468,12 +495,28 @@ def build_census() -> dict:
                         "trace": trace,
                     }
                 )
+                continue
+
+            if entrypoint == "/formalizacao/comparar-regimes":
+                trace = _formalizacao_compare_trace(modules, function_id)
+                paths.append(
+                    {
+                        "entrypoint": entrypoint,
+                        "function_id": function_id,
+                        "mei_reachability": "REACHABLE_MEI",
+                        "blocked_before_producer": False,
+                        "blocker_code": None,
+                        "producer_ids": [PRODUCER_ID],
+                        "sink_kinds": ["DECISION"],
+                        "trace": trace,
+                    }
+                )
 
     paths.sort(key=lambda item: item["entrypoint"])
     blocked = any(
         item["mei_reachability"] == "REACHABLE_MEI"
         and item["producer_ids"]
-        and "PUBLICATION" in item["sink_kinds"]
+        and any(kind in {"PUBLICATION", "DECISION"} for kind in item["sink_kinds"])
         for item in paths
     )
 
