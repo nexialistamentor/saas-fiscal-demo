@@ -99,6 +99,35 @@ def _fail_on_dynamic_mei_access(module_info: ModuleInfo) -> None:
             )
 
 
+def _fail_on_dynamic_mei_import(module_info: ModuleInfo) -> None:
+    """Fail closed when importlib dynamically loads the canonical MEI module."""
+    for node in ast.walk(module_info.tree):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+
+        target: str | None = None
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr == "import_module"
+            and isinstance(node.func.value, ast.Name)
+            and module_info.imports.get(node.func.value.id) == "importlib"
+        ):
+            target = "importlib.import_module"
+        elif isinstance(node.func, ast.Name):
+            target = module_info.imports.get(node.func.id)
+
+        if target != "importlib.import_module":
+            continue
+
+        module_name = _literal_string(node.args[0])
+        if module_name is None:
+            continue
+        if module_name == PRODUCER_MODULE_ID or module_name.startswith(PRODUCER_MODULE_ID + "."):
+            raise RuntimeError(
+                f"MEI_REACHABILITY_DYNAMIC_IMPORT:{module_info.name}:{module_name}"
+            )
+
+
 def _resolve_reexport_target(
     modules: dict[str, ModuleInfo],
     target: str,
@@ -168,6 +197,7 @@ def _parse_app() -> dict[str, ModuleInfo]:
 
     for module in modules.values():
         _fail_on_dynamic_mei_access(module)
+        _fail_on_dynamic_mei_import(module)
 
     return modules
 
