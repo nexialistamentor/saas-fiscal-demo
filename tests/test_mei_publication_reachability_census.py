@@ -232,3 +232,27 @@ def test_local_homonym_is_not_canonical_mei_producer(tmp_path, monkeypatch):
 
     assert "app.consumer.calcular_das_mei" in callees
     assert census_module.PRODUCER_ID not in callees
+
+
+def test_only_main_mounted_router_is_public_root(tmp_path, monkeypatch):
+    import app.scripts.mei_publication_reachability_census as census_module
+
+    app_root = tmp_path / "app"
+    app_root.mkdir()
+    (app_root / "main.py").write_text(
+        "from app.mounted import router as mounted_router\n"
+        "from app.orphan import router as orphan_router\n"
+        "\n"
+        "app.include_router(mounted_router, prefix='/api')\n",
+        encoding="utf-8",
+    )
+    (app_root / "mounted.py").write_text("router = object()\n", encoding="utf-8")
+    (app_root / "orphan.py").write_text("router = object()\n", encoding="utf-8")
+
+    monkeypatch.setattr(census_module, "ROOT", tmp_path)
+
+    modules = census_module._parse_app()
+    mounted = census_module._mounted_routers(modules)
+
+    assert mounted == {"app.mounted": ("router", "/api")}
+    assert "app.orphan" not in mounted
