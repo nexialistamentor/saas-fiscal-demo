@@ -315,3 +315,23 @@ def test_unparseable_python_file_fails_closed_red(tmp_path, monkeypatch):
         match=r"MEI_REACHABILITY_SCAN_FAILED:app/broken\.py:SyntaxError",
     ):
         census_module._parse_app()
+
+
+def test_real_regime_engine_mei_value_reaches_recommended_regime_decision_red():
+    census = _build_census()
+
+    path = _entry(census, "/formalizacao/comparar-regimes")
+    provenance = path["decision_provenance"]
+
+    assert provenance["producer_id"] == (
+        "app.services.tax_engines.mei_constants.calcular_das_mei"
+    )
+    assert provenance["function_id"] == "app.services.regime_engine.comparar_regimes"
+    assert provenance["steps"] == [
+        "_das_mensal",
+        "_das_anual",
+        "ResultadoRegime.carga_anual",
+        "sorted:key:carga_anual",
+        "regime_melhor",
+        "ResultadoComparacao.regime_recomendado",
+    ]
