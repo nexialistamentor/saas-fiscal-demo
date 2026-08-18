@@ -452,7 +452,7 @@ def _formalizacao_compare_trace(
     modules: dict[str, ModuleInfo],
     route_function_id: str,
 ) -> list[str]:
-    """Prove the mounted formalizacao comparison route reaches the MEI producer."""
+    """Prove a mounted formalizacao route reaches the MEI comparison producer."""
     route = _function_node(modules, route_function_id)
     if route is None:
         raise RuntimeError(f"MEI_REACHABILITY_UNRESOLVED_FUNCTION:{route_function_id}")
@@ -526,7 +526,10 @@ def build_census() -> dict:
                 )
                 continue
 
-            if entrypoint == "/formalizacao/comparar-regimes":
+            if entrypoint in {
+                "/formalizacao/comparar-regimes",
+                "/formalizacao/simular-empresa",
+            }:
                 trace = _formalizacao_compare_trace(modules, function_id)
                 paths.append(
                     {
