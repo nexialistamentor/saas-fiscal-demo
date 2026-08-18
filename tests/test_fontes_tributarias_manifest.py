@@ -189,3 +189,84 @@ def test_source_authority_guard_bloqueia_irpf_fundamentar():
         uso_pretendido="fundamentar_decisao",
     ))
     assert not r.permitido
+
+
+
+def test_decision_source_manifest_contract_rejects_missing_sovereign_fields():
+    from app.services.source_authority_guard import (
+        validar_fonte_decisoria_manifest,
+    )
+
+    fonte = {
+        "id": "CGSN-ANEXO-XI-001",
+        "tipo": "normativa_oficial",
+        "nome": "Anexo XI da Resolucao CGSN 140/2018",
+        "pode_fundamentar_decisao": True,
+        "pode_validar_fato_operacional": False,
+        "pode_ser_usada_por_llm": False,
+        "versao": "CGSN140-ANEXOXI-R182",
+        "vigencia_inicio": "2025-10-01",
+        "vigencia_fim": None,
+        "jurisdicao": "federal",
+        "risco_se_desatualizada": "critico",
+        "hash_referencia": "a" * 64,
+    }
+
+    result = validar_fonte_decisoria_manifest(fonte)
+
+    assert result == (
+        False,
+        (
+            "alvos_normativos_autorizados",
+            "jurisdicao_codigo",
+        ),
+    )
+
+
+
+def test_decision_source_manifest_contract_rejects_invalid_sovereign_fields():
+    from app.services.source_authority_guard import (
+        validar_fonte_decisoria_manifest,
+    )
+
+    fonte = {
+        "id": "CGSN-ANEXO-XI-001",
+        "tipo": "normativa_oficial",
+        "nome": "Anexo XI da Resolucao CGSN 140/2018",
+        "pode_fundamentar_decisao": True,
+        "pode_validar_fato_operacional": False,
+        "pode_ser_usada_por_llm": False,
+        "versao": "CGSN140-ANEXOXI-R182",
+        "vigencia_inicio": "2025-10-01",
+        "vigencia_fim": None,
+        "jurisdicao": "federal",
+        "jurisdicao_codigo": "br",
+        "risco_se_desatualizada": "critico",
+        "hash_referencia": "a" * 64,
+        "alvos_normativos_autorizados": [],
+    }
+
+    result = validar_fonte_decisoria_manifest(fonte)
+
+    assert result == (
+        False,
+        (
+            "alvos_normativos_autorizados",
+            "jurisdicao_codigo",
+        ),
+    )
+
+
+
+def test_fontes_decisorias_cumprem_contrato_soberano(fontes):
+    from app.services.source_authority_guard import (
+        validar_fonte_decisoria_manifest,
+    )
+
+    for fonte in fontes:
+        valido, campos_invalidos = validar_fonte_decisoria_manifest(fonte)
+
+        assert valido, (
+            f"[{fonte['id']}] fonte decisoria viola contrato soberano: "
+            f"{campos_invalidos}"
+        )

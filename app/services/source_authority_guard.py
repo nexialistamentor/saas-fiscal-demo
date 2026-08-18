@@ -264,6 +264,28 @@ def _alvos_normativos_autorizados(
     return frozenset(alvos)
 
 
+def validar_fonte_decisoria_manifest(
+    fonte: Mapping[str, Any],
+) -> tuple[bool, tuple[str, ...]]:
+    """Valida os campos soberanos adicionais de uma fonte decis?ria."""
+    invalid_fields: set[str] = set()
+
+    if fonte.get("pode_fundamentar_decisao") is not True:
+        return True, ()
+
+    if not _identificador_valido(
+        fonte.get("jurisdicao_codigo"),
+        _JURISDICAO_PATTERN,
+    ):
+        invalid_fields.add("jurisdicao_codigo")
+
+    if _alvos_normativos_autorizados(fonte) is None:
+        invalid_fields.add("alvos_normativos_autorizados")
+
+    fields = tuple(sorted(invalid_fields))
+    return not fields, fields
+
+
 _NORMATIVE_BINDING_COMMON_FIELDS = frozenset(
     {
         "fonte_id",
