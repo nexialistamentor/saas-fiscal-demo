@@ -82,3 +82,27 @@ def test_real_simular_ano_mei_is_blocked_despite_later_service_call_red():
     # to calcular_imposto_simples later in its body, but MEI execution raises
     # before that call. A call-graph-only census would classify this wrongly.
     assert "app.services.imposto_service.calcular_imposto_simples" not in path["trace"]
+
+
+def test_module_alias_call_to_mei_producer_is_resolved_red(tmp_path, monkeypatch):
+    import app.scripts.mei_publication_reachability_census as census_module
+
+    app_root = tmp_path / "app"
+    app_root.mkdir()
+    consumer = app_root / "consumer.py"
+    consumer.write_text(
+        "import app.services.tax_engines.mei_constants as mc\n"
+        "\n"
+        "def executar():\n"
+        "    return mc.calcular_das_mei(1621, 'servicos')\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(census_module, "ROOT", tmp_path)
+
+    modules = census_module._parse_app()
+    module = modules["app.consumer"]
+    node = module.functions["executar"]
+    callees = census_module._direct_callees(module, node)
+
+    assert census_module.PRODUCER_ID in callees
