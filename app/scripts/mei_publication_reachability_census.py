@@ -445,6 +445,77 @@ def _class_reachability_inventory(
     }
 
 
+def _background_root_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> dict:
+    """Keep a background function as inventory until root reachability is proven.
+
+    This first contract proves only the negative boundary: physical presence and
+    even a MEI producer call inside the function do not make it a root. Any
+    external static call or module-level reference is left unresolved until a
+    specific registration/call-root shape is separately qualified.
+    """
+    found = _function_node(modules, function_id)
+    if found is None:
+        return {
+            "function_id": function_id,
+            "present": False,
+            "registration_ids": [],
+            "is_root": False,
+            "reachability": "NOT_PRESENT",
+        }
+
+    references: set[str] = set()
+    for module in modules.values():
+        for local_name, function_node in module.functions.items():
+            candidate_id = f"{module.name}.{local_name}"
+            if candidate_id == function_id:
+                continue
+            for call in (
+                item for item in ast.walk(function_node) if isinstance(item, ast.Call)
+            ):
+                call_name = _call_name(call)
+                if call_name is not None and _resolve_name(module, call_name) == function_id:
+                    references.add(candidate_id)
+
+        for statement in module.tree.body:
+            if isinstance(
+                statement,
+                (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
+            ):
+                continue
+            for call in (
+                item for item in ast.walk(statement) if isinstance(item, ast.Call)
+            ):
+                call_name = _call_name(call)
+                if call_name is not None and _resolve_name(module, call_name) == function_id:
+                    references.add(f"{module.name}:<module>")
+                for argument in call.args:
+                    if not isinstance(argument, ast.Name):
+                        continue
+                    target = module.imports.get(argument.id)
+                    if target is None and argument.id in module.functions:
+                        target = f"{module.name}.{argument.id}"
+                    if target == function_id:
+                        references.add(f"{module.name}:<module>")
+
+    if references:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_BACKGROUND_ROOT:"
+            f"{function_id}:{','.join(sorted(references))}"
+        )
+
+    return {
+        "function_id": function_id,
+        "present": True,
+        "registration_ids": [],
+        "is_root": False,
+        "reachability": "INVENTORY_ONLY",
+    }
+
+
 def _mei_specific_statements(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> list[ast.stmt]:
