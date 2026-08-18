@@ -140,3 +140,28 @@ def test_reexport_chain_to_mei_producer_is_resolved_red(tmp_path, monkeypatch):
     callees = census_module._direct_callees(module, node)
 
     assert census_module.PRODUCER_ID in callees
+
+
+def test_imported_mei_producer_rebinding_fails_closed_red(tmp_path, monkeypatch):
+    import pytest
+    import app.scripts.mei_publication_reachability_census as census_module
+
+    app_root = tmp_path / "app"
+    app_root.mkdir()
+    (app_root / "consumer.py").write_text(
+        "from app.services.tax_engines.mei_constants import calcular_das_mei\n"
+        "\n"
+        "def substituto(salario, atividade):\n"
+        "    return 0\n"
+        "\n"
+        "calcular_das_mei = substituto\n"
+        "\n"
+        "def executar():\n"
+        "    return calcular_das_mei(1621, 'servicos')\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(census_module, "ROOT", tmp_path)
+
+    with pytest.raises(RuntimeError, match="MEI_REACHABILITY_REBINDING"):
+        census_module._parse_app()
