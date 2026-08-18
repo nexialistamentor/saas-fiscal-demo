@@ -578,3 +578,39 @@ def test_decision_source_with_malformed_authorized_targets_is_incomplete(
             ("FONTE_INCOMPLETA", 0, "fonte_id"),
         ]
         assert result.bindings_validados == 0
+
+
+
+def test_real_anexo_xi_source_authorizes_real_dataset_binding():
+    import app.schemas.source_authority_schema as schema
+    import app.services.source_authority_guard as guard
+
+    payload = {
+        "contexto": {
+            "data_referencia": "2026-08-17",
+            "jurisdicao_codigo": "BR",
+            "uso_solicitado": "decisao_definitiva",
+        },
+        "bindings": [
+            {
+                "dataset_id": "MEI_ANEXO_XI_OCUPACOES_V1",
+                "fonte_id": "CGSN-ANEXO-XI-001",
+                "versao_fonte": "CGSN140-ANEXOXI-R182",
+                "vigencia_inicio": "2025-10-01",
+                "vigencia_fim": None,
+                "jurisdicao_codigo": "BR",
+                "risco": "critico",
+                "invariantes": ["INV_MEI_ANEXO_XI_001"],
+            }
+        ],
+    }
+
+    result = guard.validar_bindings_normativos(payload)
+
+    assert (
+        result.status
+        == schema.NormativeBindingStatus.valido_com_autoridade_decisoria
+    )
+    assert result.autorizado_fundamentar_decisao is True
+    assert result.bindings_validados == 1
+    assert result.reasons == ()

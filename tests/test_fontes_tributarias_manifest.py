@@ -270,3 +270,39 @@ def test_fontes_decisorias_cumprem_contrato_soberano(fontes):
             f"[{fonte['id']}] fonte decisoria viola contrato soberano: "
             f"{campos_invalidos}"
         )
+
+
+
+def test_cgsn_anexo_xi_source_is_narrow_and_decision_authorized(fontes):
+    fonte = next(
+        (
+            item
+            for item in fontes
+            if item["id"] == "CGSN-ANEXO-XI-001"
+        ),
+        None,
+    )
+
+    assert fonte is not None
+
+    assert fonte["tipo"] == "normativa_oficial"
+    assert fonte["jurisdicao"] == "federal"
+    assert fonte["jurisdicao_codigo"] == "BR"
+    assert fonte["pode_fundamentar_decisao"] is True
+    assert fonte["pode_validar_fato_operacional"] is False
+    assert fonte["status"] == "activa"
+    assert fonte["vigencia_inicio"] == "2025-10-01"
+    assert fonte["vigencia_fim"] is None
+    assert fonte["forma_internalizacao"] == "tabela_versionada"
+    assert fonte["risco_se_desatualizada"] == "critico"
+    assert fonte["versao"] == "CGSN140-ANEXOXI-R182"
+    assert (
+        fonte["hash_referencia"]
+        == "CB3845804F3C14CB9CB1320AEE19BF14498CF15988CD9263FD4618D8FAAAB8B6"
+    )
+    assert fonte["alvos_normativos_autorizados"] == [
+        {
+            "tipo": "dataset",
+            "id": "MEI_ANEXO_XI_OCUPACOES_V1",
+        }
+    ]

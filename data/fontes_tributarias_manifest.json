@@ -383,6 +383,35 @@
       "observacoes": "Terceiro tributo da reforma (junto com IBS e CBS), instituído pela LC 214/2025. Zero implementação no codebase. Sem hash formal — pode_fundamentar_decisao=false até internalização versionada. B13-OPS-13B."
     },
     {
+      "id": "CGSN-ANEXO-XI-001",
+      "nome": "Anexo XI da Resolucao CGSN 140/2018 - Ocupacoes Permitidas ao MEI",
+      "tipo": "normativa_oficial",
+      "autoridade": "CGSN / Receita Federal",
+      "url_base": "https://www8.receita.fazenda.gov.br/SimplesNacional/Arquivos/manual/Anexo_XI.pdf",
+      "escopo": "Exclusivamente ocupacoes permitidas ao MEI constantes do Anexo XI, incluindo CNAE e incidencias ISS/ICMS materializadas no dataset MEI_ANEXO_XI_OCUPACOES_V1",
+      "jurisdicao": "federal",
+      "jurisdicao_codigo": "BR",
+      "confianca": "absoluta",
+      "pode_fundamentar_decisao": true,
+      "pode_validar_fato_operacional": false,
+      "pode_ser_usada_por_llm": false,
+      "status": "activa",
+      "vigencia_inicio": "2025-10-01",
+      "vigencia_fim": null,
+      "forma_internalizacao": "tabela_versionada",
+      "risco_se_desatualizada": "critico",
+      "hash_referencia": "CB3845804F3C14CB9CB1320AEE19BF14498CF15988CD9263FD4618D8FAAAB8B6",
+      "ultima_verificacao": "2026-08-17",
+      "observacoes": "Fonte normativa estreita do Anexo XI. Nao autoriza DAS, limites MEI, Fator R ou qualquer outro dominio coberto pelo CGSN-001.",
+      "versao": "CGSN140-ANEXOXI-R182",
+      "alvos_normativos_autorizados": [
+        {
+          "tipo": "dataset",
+          "id": "MEI_ANEXO_XI_OCUPACOES_V1"
+        }
+      ]
+    },
+    {
       "id": "VEDACAO-LLM-001",
       "nome": "LLM como fonte fiscal — vedação institucional",
       "tipo": "proibida_para_decisao",
