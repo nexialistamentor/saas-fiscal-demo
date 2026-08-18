@@ -526,8 +526,25 @@ def _alternative_producer_inventory(
     V1 accepts only one simple-name assignment from the canonical producer and a
     later return expression that statically contains that same name. Mere calls
     are not enough: callers that consume the value without returning it are not
-    promoted to alternative producers.
+    promoted to alternative producers. Nested function/class scopes are not
+    traversed as part of the outer candidate.
     """
+
+    def scope_nodes(roots: list[ast.AST]) -> list[ast.AST]:
+        nodes: list[ast.AST] = []
+        stack = list(reversed(roots))
+        while stack:
+            item = stack.pop()
+            nodes.append(item)
+            if isinstance(
+                item,
+                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda),
+            ):
+                continue
+            children = list(ast.iter_child_nodes(item))
+            stack.extend(reversed(children))
+        return nodes
+
     inventory: dict[str, list[str]] = {}
 
     for module_name in sorted(modules):
@@ -537,8 +554,9 @@ def _alternative_producer_inventory(
             if function_id == canonical_producer_id:
                 continue
 
+            function_scope = scope_nodes(list(function_node.body))
             assignments: list[ast.Assign] = []
-            for item in ast.walk(function_node):
+            for item in function_scope:
                 if not (
                     isinstance(item, ast.Assign)
                     and len(item.targets) == 1
@@ -560,12 +578,12 @@ def _alternative_producer_inventory(
             value_name = assignment.targets[0].id
             returns = [
                 item
-                for item in ast.walk(function_node)
+                for item in function_scope
                 if isinstance(item, ast.Return)
                 and item.value is not None
                 and any(
                     isinstance(child, ast.Name) and child.id == value_name
-                    for child in ast.walk(item.value)
+                    for child in scope_nodes([item.value])
                 )
                 and item.lineno > assignment.lineno
             ]
