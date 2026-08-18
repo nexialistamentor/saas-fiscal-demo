@@ -375,6 +375,76 @@ def _function_node(
     return None
 
 
+def _class_reachability_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    class_id: str,
+) -> dict:
+    """Separate physical class presence from proven static caller reachability.
+
+    V1 only recognizes direct static class-constructor calls that resolve through
+    the existing import table (or a same-module class name). Presence by itself
+    is inventory and must not be promoted to reachability.
+    """
+    class_module: ModuleInfo | None = None
+    class_name: str | None = None
+    for module_name in sorted(modules, key=len, reverse=True):
+        prefix = module_name + "."
+        if class_id.startswith(prefix):
+            class_module = modules[module_name]
+            class_name = class_id[len(prefix):]
+            break
+
+    if class_module is None or class_name is None or "." in class_name:
+        return {
+            "class_id": class_id,
+            "present": False,
+            "caller_ids": [],
+            "reachability": "NOT_PRESENT",
+        }
+
+    definitions = [
+        node
+        for node in class_module.tree.body
+        if isinstance(node, ast.ClassDef) and node.name == class_name
+    ]
+    if len(definitions) > 1:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_CLASS_INVENTORY:{class_id}:duplicate_definition"
+        )
+    if not definitions:
+        return {
+            "class_id": class_id,
+            "present": False,
+            "caller_ids": [],
+            "reachability": "NOT_PRESENT",
+        }
+
+    caller_ids: set[str] = set()
+    for module in modules.values():
+        for local_name, function_node in module.functions.items():
+            function_id = f"{module.name}.{local_name}"
+            for call in (
+                item for item in ast.walk(function_node) if isinstance(item, ast.Call)
+            ):
+                call_name = _call_name(call)
+                if call_name is None:
+                    continue
+                resolved = _resolve_name(module, call_name)
+                if resolved is None and module.name == class_module.name and call_name == class_name:
+                    resolved = class_id
+                if resolved == class_id:
+                    caller_ids.add(function_id)
+
+    callers = sorted(caller_ids)
+    return {
+        "class_id": class_id,
+        "present": True,
+        "caller_ids": callers,
+        "reachability": "STATIC_CALLER" if callers else "INVENTORY_ONLY",
+    }
+
+
 def _mei_specific_statements(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> list[ast.stmt]:
