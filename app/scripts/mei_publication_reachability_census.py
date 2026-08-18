@@ -36,6 +36,32 @@ def _module_name(path: Path) -> str:
     return ".".join(parts)
 
 
+def _resolve_reexport_target(
+    modules: dict[str, ModuleInfo],
+    target: str,
+    *,
+    seen: frozenset[str] = frozenset(),
+) -> str:
+    """Collapse a static import/reexport chain to its original target."""
+    if target in seen:
+        raise RuntimeError(f"MEI_REACHABILITY_REEXPORT_CYCLE:{target}")
+
+    for module_name in sorted(modules, key=len, reverse=True):
+        prefix = module_name + "."
+        if not target.startswith(prefix):
+            continue
+        symbol = target[len(prefix):]
+        next_target = modules[module_name].imports.get(symbol)
+        if next_target is None:
+            return target
+        return _resolve_reexport_target(
+            modules,
+            next_target,
+            seen=seen | {target},
+        )
+    return target
+
+
 def _parse_app() -> dict[str, ModuleInfo]:
     app_root = ROOT / "app"
     if not app_root.is_dir():
@@ -70,6 +96,10 @@ def _parse_app() -> dict[str, ModuleInfo]:
                         functions[f"{node.name}.{member.name}"] = member
 
         modules[module] = ModuleInfo(module, path, tree, imports, functions)
+
+    for module in modules.values():
+        for local_name, target in list(module.imports.items()):
+            module.imports[local_name] = _resolve_reexport_target(modules, target)
 
     return modules
 
