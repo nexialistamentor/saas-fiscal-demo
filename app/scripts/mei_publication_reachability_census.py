@@ -791,7 +791,8 @@ def _value_provenance_trace(
     Supported here, and only here:
     1. producer → dict literal → return → wrapper → literal subscript → return;
     2. producer → direct return → wrapper → f-string → return;
-    3. producer → direct return → wrapper → static cache write/read → return.
+    3. producer → direct return → wrapper → static cache write/read → return;
+    4. producer → direct return → wrapper → static persistence call → return.
 
     Ambiguity, duplicate candidate edges, dynamic keys, or structural changes
     fail closed rather than being guessed.
@@ -982,7 +983,51 @@ def _value_provenance_trace(
                 continue
             cache_writes.append((item, cache_name, cache_key))
 
-        if len(fstring_assignments) == 1 and not cache_writes:
+        persistence_assignments: list[tuple[ast.Assign, str]] = []
+        for item in ast.walk(sink_node):
+            if not (
+                isinstance(item, ast.Assign)
+                and len(item.targets) == 1
+                and isinstance(item.targets[0], ast.Name)
+                and isinstance(item.value, ast.Call)
+                and len(item.value.args) == 1
+                and not item.value.keywords
+                and isinstance(item.value.args[0], ast.Name)
+                and item.value.args[0].id == wrapper_name
+            ):
+                continue
+            call_name = _call_name(item.value)
+            if call_name is None:
+                continue
+            resolved = _resolve_name(sink_module, call_name)
+            if resolved is None:
+                continue
+            persistence_name = resolved.rsplit(".", 1)[-1]
+            if "persist" not in persistence_name.lower():
+                continue
+            persistence_function = _function_node(modules, resolved)
+            if persistence_function is None:
+                continue
+            _, persistence_node = persistence_function
+            if len(persistence_node.args.args) != 1:
+                continue
+            parameter_name = persistence_node.args.args[0].arg
+            persistence_returns = [
+                returned
+                for returned in ast.walk(persistence_node)
+                if isinstance(returned, ast.Return)
+                and isinstance(returned.value, ast.Name)
+                and returned.value.id == parameter_name
+            ]
+            if len(persistence_returns) != 1:
+                continue
+            persistence_assignments.append((item, persistence_name))
+
+        if (
+            len(fstring_assignments) == 1
+            and not cache_writes
+            and not persistence_assignments
+        ):
             fstring_assignment = fstring_assignments[0]
             message_name = fstring_assignment.targets[0].id
 
@@ -1016,7 +1061,11 @@ def _value_provenance_trace(
                 f"{sink_function_id}:return",
             ]
 
-        if not fstring_assignments and len(cache_writes) == 1:
+        if (
+            not fstring_assignments
+            and len(cache_writes) == 1
+            and not persistence_assignments
+        ):
             cache_write, cache_name, cache_key = cache_writes[0]
             cache_reads: list[ast.Assign] = []
             for item in ast.walk(sink_node):
@@ -1072,7 +1121,47 @@ def _value_provenance_trace(
                 f"{sink_function_id}:return",
             ]
 
-        if fstring_assignments or cache_writes:
+        if (
+            not fstring_assignments
+            and not cache_writes
+            and len(persistence_assignments) == 1
+        ):
+            persistence_assignment, persistence_name = persistence_assignments[0]
+            persisted_name = persistence_assignment.targets[0].id
+            sink_returns = [
+                item
+                for item in ast.walk(sink_node)
+                if isinstance(item, ast.Return)
+                and isinstance(item.value, ast.Name)
+                and item.value.id == persisted_name
+            ]
+            if len(sink_returns) != 1:
+                raise RuntimeError(
+                    "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:sink_return"
+                )
+            sink_return = sink_returns[0]
+
+            if not (
+                producer_assignment.lineno < source_return.lineno
+                and wrapper_assignment.lineno
+                < persistence_assignment.lineno
+                < sink_return.lineno
+            ):
+                raise RuntimeError(
+                    "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:ordering"
+                )
+
+            return [
+                producer_id,
+                f"{source_function_id}:{producer_name}",
+                f"{source_function_id}:return",
+                f"{sink_function_id}:{wrapper_name}",
+                f"{sink_function_id}:{persistence_name}:persistence",
+                f"{sink_function_id}:{persisted_name}",
+                f"{sink_function_id}:return",
+            ]
+
+        if fstring_assignments or cache_writes or persistence_assignments:
             raise RuntimeError(
                 "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:sink_shape_ambiguous"
             )
