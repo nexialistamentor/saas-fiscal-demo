@@ -618,6 +618,167 @@ def _formalizacao_compare_trace(
     return [route_function_id, FORMALIZACAO_COMPARE_ID, PRODUCER_ID]
 
 
+def _contains_name(node: ast.AST, name: str) -> bool:
+    return any(isinstance(item, ast.Name) and item.id == name for item in ast.walk(node))
+
+
+def _single_name_assignment(
+    function_node: ast.FunctionDef | ast.AsyncFunctionDef,
+    name: str,
+) -> ast.Assign:
+    matches = [
+        item
+        for item in ast.walk(function_node)
+        if isinstance(item, ast.Assign)
+        and len(item.targets) == 1
+        and isinstance(item.targets[0], ast.Name)
+        and item.targets[0].id == name
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:{name}"
+        )
+    return matches[0]
+
+
+def _regime_decision_provenance(modules: dict[str, ModuleInfo]) -> dict:
+    """Prove the real MEI DAS value reaches the recommended-regime decision."""
+    compare = _function_node(modules, FORMALIZACAO_COMPARE_ID)
+    if compare is None:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:{FORMALIZACAO_COMPARE_ID}"
+        )
+    module, node = compare
+
+    monthly = _single_name_assignment(node, "_das_mensal")
+    if not isinstance(monthly.value, ast.Call):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:_das_mensal"
+        )
+    monthly_call = _call_name(monthly.value)
+    if monthly_call is None or _resolve_name(module, monthly_call) != PRODUCER_ID:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:_das_mensal"
+        )
+
+    annual = _single_name_assignment(node, "_das_anual")
+    if not (
+        isinstance(annual.value, ast.Call)
+        and _call_name(annual.value) == "round"
+        and annual.value.args
+        and _contains_name(annual.value.args[0], "_das_mensal")
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:_das_anual"
+        )
+
+    result_assignments = [
+        item
+        for item in ast.walk(node)
+        if isinstance(item, ast.Assign)
+        and len(item.targets) == 1
+        and isinstance(item.targets[0], ast.Subscript)
+        and isinstance(item.targets[0].value, ast.Name)
+        and item.targets[0].value.id == "resultados"
+        and _literal_string(item.targets[0].slice) == "mei"
+    ]
+    if len(result_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:ResultadoRegime.carga_anual"
+        )
+    result_assignment = result_assignments[0]
+    if not isinstance(result_assignment.value, ast.Call):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:ResultadoRegime.carga_anual"
+        )
+    result_call_name = _call_name(result_assignment.value)
+    if result_call_name is None or not result_call_name.endswith("ResultadoRegime"):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:ResultadoRegime.carga_anual"
+        )
+    carga_keyword = next(
+        (kw for kw in result_assignment.value.keywords if kw.arg == "carga_anual"),
+        None,
+    )
+    if carga_keyword is None or not _contains_name(carga_keyword.value, "_das_anual"):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:ResultadoRegime.carga_anual"
+        )
+
+    ordered = _single_name_assignment(node, "ordenados")
+    if not (
+        isinstance(ordered.value, ast.Call)
+        and _call_name(ordered.value) == "sorted"
+        and ordered.value.args
+        and _contains_name(ordered.value.args[0], "resultados")
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:sorted:key:carga_anual"
+        )
+    key_keyword = next((kw for kw in ordered.value.keywords if kw.arg == "key"), None)
+    if not (
+        key_keyword is not None
+        and isinstance(key_keyword.value, ast.Lambda)
+        and any(
+            isinstance(item, ast.Attribute) and item.attr == "carga_anual"
+            for item in ast.walk(key_keyword.value.body)
+        )
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:sorted:key:carga_anual"
+        )
+
+    best = _single_name_assignment(node, "regime_melhor")
+    if not _contains_name(best.value, "ordenados"):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:regime_melhor"
+        )
+
+    decision_returns = []
+    for item in ast.walk(node):
+        if not isinstance(item, ast.Return) or not isinstance(item.value, ast.Call):
+            continue
+        call_name = _call_name(item.value)
+        if call_name is None or not call_name.endswith("ResultadoComparacao"):
+            continue
+        keyword = next(
+            (kw for kw in item.value.keywords if kw.arg == "regime_recomendado"),
+            None,
+        )
+        if keyword is not None and _contains_name(keyword.value, "regime_melhor"):
+            decision_returns.append(item)
+    if len(decision_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:ResultadoComparacao.regime_recomendado"
+        )
+
+    ordered_nodes = [
+        monthly,
+        annual,
+        result_assignment,
+        ordered,
+        best,
+        decision_returns[0],
+    ]
+    if [item.lineno for item in ordered_nodes] != sorted(item.lineno for item in ordered_nodes):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:ordering"
+        )
+
+    return {
+        "producer_id": PRODUCER_ID,
+        "function_id": FORMALIZACAO_COMPARE_ID,
+        "steps": [
+            "_das_mensal",
+            "_das_anual",
+            "ResultadoRegime.carga_anual",
+            "sorted:key:carga_anual",
+            "regime_melhor",
+            "ResultadoComparacao.regime_recomendado",
+        ],
+    }
+
+
 def build_census() -> dict:
     modules = _parse_app()
     mounted = _mounted_routers(modules)
@@ -675,6 +836,7 @@ def build_census() -> dict:
                 "/formalizacao/simular-empresa",
             }:
                 trace = _formalizacao_compare_trace(modules, function_id)
+                decision_provenance = _regime_decision_provenance(modules)
                 paths.append(
                     {
                         "entrypoint": entrypoint,
@@ -685,6 +847,7 @@ def build_census() -> dict:
                         "producer_ids": [PRODUCER_ID],
                         "sink_kinds": ["DECISION"],
                         "trace": trace,
+                        "decision_provenance": decision_provenance,
                     }
                 )
 
