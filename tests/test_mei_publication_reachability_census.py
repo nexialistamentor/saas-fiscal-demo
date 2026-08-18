@@ -294,3 +294,24 @@ def test_real_formalizacao_simular_empresa_is_reachable_mei_decision_red():
     assert "app.routers.formalizacao_router.simular_empresa" in trace
     assert "app.services.regime_engine.comparar_regimes" in trace
     assert "app.services.tax_engines.mei_constants.calcular_das_mei" in trace
+
+
+def test_unparseable_python_file_fails_closed_red(tmp_path, monkeypatch):
+    import pytest
+    import app.scripts.mei_publication_reachability_census as census_module
+
+    app_root = tmp_path / "app"
+    app_root.mkdir()
+    (app_root / "broken.py").write_text(
+        "def quebrado(:\n"
+        "    pass\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(census_module, "ROOT", tmp_path)
+
+    with pytest.raises(
+        RuntimeError,
+        match=r"MEI_REACHABILITY_SCAN_FAILED:app/broken\.py:SyntaxError",
+    ):
+        census_module._parse_app()
