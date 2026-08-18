@@ -779,6 +779,157 @@ def _regime_decision_provenance(modules: dict[str, ModuleInfo]) -> dict:
     }
 
 
+def _value_provenance_trace(
+    modules: dict[str, ModuleInfo],
+    *,
+    producer_id: str,
+    source_function_id: str,
+    sink_function_id: str,
+) -> list[str]:
+    """Trace one proven wrapper→dict→return→subscript value path.
+
+    This V1 slice is deliberately narrow: ambiguity, duplicate candidate edges,
+    dynamic keys, or structural changes fail closed rather than being guessed.
+    """
+    source = _function_node(modules, source_function_id)
+    sink = _function_node(modules, sink_function_id)
+    if source is None:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:{source_function_id}"
+        )
+    if sink is None:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:{sink_function_id}"
+        )
+
+    source_module, source_node = source
+    sink_module, sink_node = sink
+
+    producer_assignments: list[ast.Assign] = []
+    for item in ast.walk(source_node):
+        if not (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and isinstance(item.value, ast.Call)
+        ):
+            continue
+        call_name = _call_name(item.value)
+        if call_name is not None and _resolve_name(source_module, call_name) == producer_id:
+            producer_assignments.append(item)
+    if len(producer_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:producer_assignment"
+        )
+    producer_assignment = producer_assignments[0]
+    producer_name = producer_assignment.targets[0].id
+
+    dict_candidates: list[tuple[ast.Assign, str]] = []
+    for item in ast.walk(source_node):
+        if not (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and isinstance(item.value, ast.Dict)
+        ):
+            continue
+        for key_node, value_node in zip(item.value.keys, item.value.values):
+            key = _literal_string(key_node)
+            if key is None:
+                continue
+            if isinstance(value_node, ast.Name) and value_node.id == producer_name:
+                dict_candidates.append((item, key))
+    if len(dict_candidates) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:dict_assignment"
+        )
+    dict_assignment, dict_key = dict_candidates[0]
+    envelope_name = dict_assignment.targets[0].id
+
+    source_returns = [
+        item
+        for item in ast.walk(source_node)
+        if isinstance(item, ast.Return)
+        and isinstance(item.value, ast.Name)
+        and item.value.id == envelope_name
+    ]
+    if len(source_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:source_return"
+        )
+    source_return = source_returns[0]
+
+    wrapper_assignments: list[ast.Assign] = []
+    for item in ast.walk(sink_node):
+        if not (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and isinstance(item.value, ast.Call)
+        ):
+            continue
+        call_name = _call_name(item.value)
+        if call_name is not None and _resolve_name(sink_module, call_name) == source_function_id:
+            wrapper_assignments.append(item)
+    if len(wrapper_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:wrapper_assignment"
+        )
+    wrapper_assignment = wrapper_assignments[0]
+    package_name = wrapper_assignment.targets[0].id
+
+    subscript_assignments: list[ast.Assign] = []
+    for item in ast.walk(sink_node):
+        if not (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and isinstance(item.value, ast.Subscript)
+            and isinstance(item.value.value, ast.Name)
+            and item.value.value.id == package_name
+            and _literal_string(item.value.slice) == dict_key
+        ):
+            continue
+        subscript_assignments.append(item)
+    if len(subscript_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:subscript_assignment"
+        )
+    subscript_assignment = subscript_assignments[0]
+    value_name = subscript_assignment.targets[0].id
+
+    sink_returns = [
+        item
+        for item in ast.walk(sink_node)
+        if isinstance(item, ast.Return)
+        and isinstance(item.value, ast.Name)
+        and item.value.id == value_name
+    ]
+    if len(sink_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:sink_return"
+        )
+    sink_return = sink_returns[0]
+
+    if not (
+        producer_assignment.lineno < dict_assignment.lineno < source_return.lineno
+        and wrapper_assignment.lineno < subscript_assignment.lineno < sink_return.lineno
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_VALUE_PROVENANCE:ordering"
+        )
+
+    return [
+        producer_id,
+        f"{source_function_id}:{producer_name}",
+        f"{source_function_id}:{envelope_name}[{dict_key!r}]",
+        f"{source_function_id}:return",
+        f"{sink_function_id}:{package_name}",
+        f"{sink_function_id}:{value_name}",
+        f"{sink_function_id}:return",
+    ]
+
+
 def build_census() -> dict:
     modules = _parse_app()
     mounted = _mounted_routers(modules)
