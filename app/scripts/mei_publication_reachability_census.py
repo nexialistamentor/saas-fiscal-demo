@@ -224,6 +224,34 @@ def _call_name(node: ast.Call) -> str | None:
     return None
 
 
+def _router_intrinsic_prefix(module: ModuleInfo, router_object: str) -> str:
+    """Resolve a literal prefix declared on the router's APIRouter constructor."""
+    for statement in module.tree.body:
+        if not isinstance(statement, ast.Assign):
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == router_object
+            for target in statement.targets
+        ):
+            continue
+        if not isinstance(statement.value, ast.Call):
+            continue
+        call_name = _call_name(statement.value)
+        if call_name is None or not call_name.endswith("APIRouter"):
+            continue
+        for keyword in statement.value.keywords:
+            if keyword.arg != "prefix":
+                continue
+            prefix = _literal_string(keyword.value)
+            if prefix is None:
+                raise RuntimeError(
+                    f"MEI_REACHABILITY_DYNAMIC_ROUTER_PREFIX:{module.name}:{router_object}"
+                )
+            return prefix
+        return ""
+    return ""
+
+
 def _mounted_routers(modules: dict[str, ModuleInfo]) -> dict[str, tuple[str, str]]:
     main = modules["app.main"]
     mounted: dict[str, tuple[str, str]] = {}
@@ -455,6 +483,7 @@ def build_census() -> dict:
         module = modules.get(module_name)
         if module is None:
             raise RuntimeError(f"MEI_REACHABILITY_ROUTER_MODULE_MISSING:{module_name}")
+        router_prefix = _router_intrinsic_prefix(module, router_object)
 
         for local_name, node in sorted(module.functions.items()):
             if "." in local_name:
@@ -462,7 +491,7 @@ def build_census() -> dict:
             route_path = _route_decorator(node, router_object=router_object)
             if route_path is None:
                 continue
-            entrypoint = f"{prefix}{route_path}" or "/"
+            entrypoint = f"{prefix}{router_prefix}{route_path}" or "/"
             function_id = f"{module_name}.{local_name}"
 
             blocker = _mei_blocker(node)
