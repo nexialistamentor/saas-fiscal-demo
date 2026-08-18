@@ -194,6 +194,11 @@ def _mei_blocker(
 def _resolve_name(module: ModuleInfo, name: str) -> str | None:
     if name in module.functions:
         return f"{module.name}.{name}"
+    if "." in name:
+        root_name, remainder = name.split(".", 1)
+        imported_module = module.imports.get(root_name)
+        if imported_module is not None:
+            return f"{imported_module}.{remainder}"
     return module.imports.get(name)
 
 
@@ -230,7 +235,7 @@ def _direct_callees(
     for statement in _mei_specific_statements(node):
         for call in [item for item in ast.walk(statement) if isinstance(item, ast.Call)]:
             name = _call_name(call)
-            if name is None or "." in name:
+            if name is None:
                 continue
             resolved = _resolve_name(module, name)
             if resolved is not None:
