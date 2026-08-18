@@ -516,6 +516,67 @@ def _background_root_inventory(
     }
 
 
+def _alternative_producer_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    canonical_producer_id: str,
+) -> dict[str, list[str]]:
+    """Inventory wrappers that provably return a canonical producer value.
+
+    V1 accepts only one simple-name assignment from the canonical producer and a
+    later return expression that statically contains that same name. Mere calls
+    are not enough: callers that consume the value without returning it are not
+    promoted to alternative producers.
+    """
+    inventory: dict[str, list[str]] = {}
+
+    for module_name in sorted(modules):
+        module = modules[module_name]
+        for local_name, function_node in sorted(module.functions.items()):
+            function_id = f"{module.name}.{local_name}"
+            if function_id == canonical_producer_id:
+                continue
+
+            assignments: list[ast.Assign] = []
+            for item in ast.walk(function_node):
+                if not (
+                    isinstance(item, ast.Assign)
+                    and len(item.targets) == 1
+                    and isinstance(item.targets[0], ast.Name)
+                    and isinstance(item.value, ast.Call)
+                ):
+                    continue
+                call_name = _call_name(item.value)
+                if (
+                    call_name is not None
+                    and _resolve_name(module, call_name) == canonical_producer_id
+                ):
+                    assignments.append(item)
+
+            if len(assignments) != 1:
+                continue
+
+            assignment = assignments[0]
+            value_name = assignment.targets[0].id
+            returns = [
+                item
+                for item in ast.walk(function_node)
+                if isinstance(item, ast.Return)
+                and item.value is not None
+                and any(
+                    isinstance(child, ast.Name) and child.id == value_name
+                    for child in ast.walk(item.value)
+                )
+                and item.lineno > assignment.lineno
+            ]
+            if len(returns) != 1:
+                continue
+
+            inventory[function_id] = [canonical_producer_id]
+
+    return inventory
+
+
 def _mei_specific_statements(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> list[ast.stmt]:
