@@ -19,6 +19,7 @@ SCHEMA_VERSION = "MEI_PUBLICATION_REACHABILITY_CENSUS_V1"
 PRODUCER_ID = "app.services.tax_engines.mei_constants.calcular_das_mei"
 PRODUCER_MODULE_ID = PRODUCER_ID.rsplit(".", 1)[0]
 FORMALIZACAO_COMPARE_ID = "app.services.regime_engine.comparar_regimes"
+MEI_ENGINE_EXECUTE_ID = "app.services.tax_engines.mei_tax_engine.MEITaxEngine.execute"
 
 
 @dataclass(frozen=True)
@@ -400,16 +401,157 @@ def _direct_callees(
     return sorted(set(callees))
 
 
+def _module_assignments(module: ModuleInfo) -> dict[str, ast.AST]:
+    assignments: dict[str, ast.AST] = {}
+    for statement in module.tree.body:
+        if not isinstance(statement, ast.Assign) or len(statement.targets) != 1:
+            continue
+        target = statement.targets[0]
+        if isinstance(target, ast.Name):
+            assignments[target.id] = statement.value
+    return assignments
+
+
+def _split_imported_symbol(
+    modules: dict[str, ModuleInfo],
+    target: str,
+) -> tuple[ModuleInfo, str] | None:
+    for module_name in sorted(modules, key=len, reverse=True):
+        prefix = module_name + "."
+        if target.startswith(prefix):
+            return modules[module_name], target[len(prefix):]
+    return None
+
+
+def _static_string_value(
+    modules: dict[str, ModuleInfo],
+    module: ModuleInfo,
+    node: ast.AST,
+    *,
+    seen: frozenset[str] = frozenset(),
+) -> str | None:
+    literal = _literal_string(node)
+    if literal is not None:
+        return literal
+    if not isinstance(node, ast.Name):
+        return None
+
+    marker = f"{module.name}:{node.id}"
+    if marker in seen:
+        return None
+    next_seen = seen | {marker}
+
+    local_value = _module_assignments(module).get(node.id)
+    if local_value is not None:
+        return _static_string_value(
+            modules,
+            module,
+            local_value,
+            seen=next_seen,
+        )
+
+    imported = module.imports.get(node.id)
+    if imported is None:
+        return None
+    split = _split_imported_symbol(modules, imported)
+    if split is None:
+        return None
+    imported_module, symbol = split
+    imported_value = _module_assignments(imported_module).get(symbol)
+    if imported_value is None:
+        return None
+    return _static_string_value(
+        modules,
+        imported_module,
+        imported_value,
+        seen=next_seen,
+    )
+
+
+def _dict_value_for_string_key(
+    modules: dict[str, ModuleInfo],
+    module: ModuleInfo,
+    node: ast.AST,
+    key: str,
+) -> ast.AST | None:
+    if not isinstance(node, ast.Dict):
+        return None
+    for key_node, value_node in zip(node.keys, node.values):
+        if key_node is None:
+            continue
+        if _static_string_value(modules, module, key_node) == key:
+            return value_node
+    return None
+
+
+def _resolve_symbol_reference(module: ModuleInfo, node: ast.AST) -> str | None:
+    if not isinstance(node, ast.Name):
+        return None
+    imported = module.imports.get(node.id)
+    if imported is not None:
+        return imported
+    if node.id in module.functions:
+        return f"{module.name}.{node.id}"
+    return None
+
+
+def _resolve_mei_registry_engine(modules: dict[str, ModuleInfo]) -> str | None:
+    """Resolve the static MEI v1 registry target without executing application code."""
+    registry = modules.get("app.services.engine_registry")
+    if registry is None:
+        return None
+    assignments = _module_assignments(registry)
+
+    registry_raw = assignments.get("_ENGINE_REGISTRY_RAW")
+    if registry_raw is None:
+        registry_raw = assignments.get("ENGINE_REGISTRY")
+    if registry_raw is None:
+        return None
+
+    mei_entry = _dict_value_for_string_key(modules, registry, registry_raw, "mei_tax")
+    if mei_entry is None:
+        return None
+    v1_entry = _dict_value_for_string_key(modules, registry, mei_entry, "v1")
+    if v1_entry is None:
+        return None
+
+    direct_target = _resolve_symbol_reference(registry, v1_entry)
+    if direct_target is not None:
+        return direct_target
+
+    if not isinstance(v1_entry, ast.Call) or not v1_entry.args:
+        return None
+    call_name = _call_name(v1_entry)
+    if call_name is None:
+        return None
+    resolved_factory = _resolve_name(registry, call_name)
+    if resolved_factory != "app.services.engine_registry._execute_engine_v1":
+        return None
+    if _static_string_value(modules, registry, v1_entry.args[0]) != "mei_tax":
+        return None
+
+    engines_raw = assignments.get("_ENGINES_RAW")
+    if engines_raw is None:
+        return None
+    engine_class_node = _dict_value_for_string_key(
+        modules,
+        registry,
+        engines_raw,
+        "mei_tax",
+    )
+    if engine_class_node is None:
+        return None
+    engine_class = _resolve_symbol_reference(registry, engine_class_node)
+    if engine_class is None:
+        return None
+    return f"{engine_class}.execute"
+
+
 def _assistant_trace(
     modules: dict[str, ModuleInfo],
     route_function_id: str,
 ) -> list[str]:
-    """Follow the currently proven Assistant MEI lineage.
-
-    Generic direct Python calls are resolved from AST imports/local functions.
-    The orchestrator→registry dispatch is one explicit V1 semantic edge because
-    the runtime call is indirect through ``ENGINE_REGISTRY``.
-    """
+    """Follow the currently proven Assistant MEI lineage."""
     target_sequence = [
         "app.services.assistente_service.responder_pergunta",
         "app.services.assistente_service._resposta_assistente_mei",
@@ -431,10 +573,12 @@ def _assistant_trace(
         trace.append(expected)
         current = expected
 
-    # The current repository dispatches mei_tax indirectly through
-    # ENGINE_REGISTRY. Keep that indirection explicit rather than pretending it
-    # is a normal direct call.
-    engine_id = "app.services.tax_engines.mei_tax_engine.MEITaxEngine.execute"
+    engine_id = _resolve_mei_registry_engine(modules)
+    if engine_id != MEI_ENGINE_EXECUTE_ID:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_REGISTRY:{engine_id or 'unknown'}"
+        )
+
     engine = _function_node(modules, engine_id)
     if engine is None:
         raise RuntimeError(f"MEI_REACHABILITY_UNRESOLVED_FUNCTION:{engine_id}")
