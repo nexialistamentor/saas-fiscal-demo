@@ -779,6 +779,133 @@ def _regime_decision_provenance(modules: dict[str, ModuleInfo]) -> dict:
     }
 
 
+def _argument_provenance_trace(
+    modules: dict[str, ModuleInfo],
+    *,
+    producer_id: str,
+    caller_function_id: str,
+    callee_function_id: str,
+) -> list[str]:
+    """Trace one static producer→argument→parameter→return edge.
+
+    This primitive deliberately accepts only a single regular positional
+    parameter, a single producer assignment in the caller, one direct call with
+    that value as its sole argument, a direct callee return of the parameter,
+    and a direct caller return of the call result. Ambiguity fails closed.
+    """
+    caller = _function_node(modules, caller_function_id)
+    callee = _function_node(modules, callee_function_id)
+    if caller is None:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_ARGUMENT_PROVENANCE:{caller_function_id}"
+        )
+    if callee is None:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_ARGUMENT_PROVENANCE:{callee_function_id}"
+        )
+
+    caller_module, caller_node = caller
+    _, callee_node = callee
+
+    producer_assignments = []
+    for item in caller_node.body:
+        if not (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and isinstance(item.value, ast.Call)
+        ):
+            continue
+        call_name = _call_name(item.value)
+        if call_name is not None and _resolve_name(caller_module, call_name) == producer_id:
+            producer_assignments.append(item)
+    if len(producer_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ARGUMENT_PROVENANCE:producer_assignment"
+        )
+    producer_assignment = producer_assignments[0]
+    producer_name = producer_assignment.targets[0].id
+
+    signature = callee_node.args
+    if (
+        len(signature.args) != 1
+        or signature.posonlyargs
+        or signature.kwonlyargs
+        or signature.vararg is not None
+        or signature.kwarg is not None
+        or signature.defaults
+        or any(default is not None for default in signature.kw_defaults)
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ARGUMENT_PROVENANCE:callee_signature"
+        )
+    parameter_name = signature.args[0].arg
+
+    callee_returns = [
+        item
+        for item in callee_node.body
+        if isinstance(item, ast.Return)
+        and isinstance(item.value, ast.Name)
+        and item.value.id == parameter_name
+    ]
+    if len(callee_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ARGUMENT_PROVENANCE:callee_return"
+        )
+
+    call_assignments = []
+    for item in caller_node.body:
+        if not (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and isinstance(item.value, ast.Call)
+            and len(item.value.args) == 1
+            and not item.value.keywords
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == producer_name
+        ):
+            continue
+        call_name = _call_name(item.value)
+        if call_name is not None and _resolve_name(caller_module, call_name) == callee_function_id:
+            call_assignments.append(item)
+    if len(call_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ARGUMENT_PROVENANCE:callee_call"
+        )
+    call_assignment = call_assignments[0]
+    result_name = call_assignment.targets[0].id
+
+    caller_returns = [
+        item
+        for item in caller_node.body
+        if isinstance(item, ast.Return)
+        and isinstance(item.value, ast.Name)
+        and item.value.id == result_name
+    ]
+    if len(caller_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ARGUMENT_PROVENANCE:caller_return"
+        )
+    caller_return = caller_returns[0]
+
+    if not (
+        producer_assignment.lineno < call_assignment.lineno < caller_return.lineno
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ARGUMENT_PROVENANCE:ordering"
+        )
+
+    return [
+        producer_id,
+        f"{caller_function_id}:{producer_name}",
+        f"{callee_function_id}:{parameter_name}",
+        f"{callee_function_id}:return",
+        f"{caller_function_id}:{result_name}",
+        f"{caller_function_id}:return",
+    ]
+
+
 def _value_provenance_trace(
     modules: dict[str, ModuleInfo],
     *,
