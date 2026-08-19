@@ -632,6 +632,18 @@ def _alternative_producer_inventory(
             if len(returns) != 1:
                 continue
 
+            return_node = returns[0]
+            rebound_assignments = [
+                item
+                for item in function_scope
+                if isinstance(item, ast.Assign)
+                and item is not assignment
+                and assignment.lineno < item.lineno < return_node.lineno
+                and any(value_name in _bound_names(target) for target in item.targets)
+            ]
+            if rebound_assignments:
+                continue
+
             inventory[function_id] = [canonical_producer_id]
 
     return inventory
