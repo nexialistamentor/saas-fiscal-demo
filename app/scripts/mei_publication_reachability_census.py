@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -820,6 +821,48 @@ def _mei_specific_statements(
     return specific or list(node.body)
 
 
+@lru_cache(maxsize=None)
+def _app_class_defines_method(class_id: str, method_name: str) -> bool:
+    """Prove one direct method exists on one statically resolved app class."""
+    if not class_id.startswith("app.") or "." not in class_id or "." in method_name:
+        return False
+
+    module_name, class_name = class_id.rsplit(".", 1)
+    module_path = ROOT.joinpath(*module_name.split("."))
+    candidates = (
+        module_path.with_suffix(".py"),
+        module_path / "__init__.py",
+    )
+    path = next((candidate for candidate in candidates if candidate.is_file()), None)
+    if path is None:
+        return False
+
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, UnicodeDecodeError, SyntaxError) as exc:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_CLASS_SCAN_FAILED:{class_id}:{type(exc).__name__}:{exc}"
+        ) from exc
+
+    definitions = [
+        item
+        for item in tree.body
+        if isinstance(item, ast.ClassDef) and item.name == class_name
+    ]
+    if len(definitions) > 1:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_CLASS_INVENTORY:{class_id}:duplicate_definition"
+        )
+    if not definitions:
+        return False
+
+    return any(
+        isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and member.name == method_name
+        for member in definitions[0].body
+    )
+
+
 def _direct_callees(
     module: ModuleInfo,
     node: ast.FunctionDef | ast.AsyncFunctionDef,
@@ -831,7 +874,40 @@ def _direct_callees(
             owner_class = local_name.rsplit(".", 1)[0]
             break
 
-    for statement in _mei_specific_statements(node):
+    statements = _mei_specific_statements(node)
+
+    binding_counts: dict[str, int] = {}
+    stack: list[ast.AST] = list(reversed(statements))
+    while stack:
+        item = stack.pop()
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        if isinstance(item, ast.Name) and isinstance(item.ctx, (ast.Store, ast.Del)):
+            binding_counts[item.id] = binding_counts.get(item.id, 0) + 1
+        stack.extend(reversed(list(ast.iter_child_nodes(item))))
+
+    local_instances: dict[str, str] = {}
+    for statement in statements:
+        if not (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and isinstance(statement.value, ast.Call)
+        ):
+            continue
+        constructor_name = _call_name(statement.value)
+        if constructor_name is None:
+            continue
+        constructor_id = _resolve_name(module, constructor_name)
+        local_name = statement.targets[0].id
+        if (
+            constructor_id is not None
+            and constructor_id.startswith("app.")
+            and binding_counts.get(local_name) == 1
+        ):
+            local_instances[local_name] = constructor_id
+
+    for statement in statements:
         for call in [item for item in ast.walk(statement) if isinstance(item, ast.Call)]:
             name = _call_name(call)
             if name is None:
@@ -842,6 +918,11 @@ def _direct_callees(
                 local_target = f"{owner_class}.{method_name}"
                 if local_target in module.functions:
                     resolved = f"{module.name}.{local_target}"
+            if resolved is None and "." in name:
+                local_name, method_name = name.split(".", 1)
+                class_id = local_instances.get(local_name)
+                if class_id is not None and _app_class_defines_method(class_id, method_name):
+                    resolved = f"{class_id}.{method_name}"
             if resolved is not None:
                 callees.append(resolved)
     return sorted(set(callees))
