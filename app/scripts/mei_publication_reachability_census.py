@@ -697,6 +697,42 @@ def _alternative_producer_inventory(
     return inventory
 
 
+def _direct_returned_alternative_producer(
+    module: ModuleInfo,
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    alternative_producers: dict[str, list[str]],
+    *,
+    function_id: str,
+) -> str | None:
+    """Resolve one directly returned proven alternative producer.
+
+    V1 accepts only top-level ``return alternative_producer(...)``. Calls that
+    are merely consumed or assigned are not publication proof. Multiple direct
+    alternative returns are ambiguous and fail closed.
+    """
+    matches: list[str] = []
+    for statement in node.body:
+        if not (
+            isinstance(statement, ast.Return)
+            and isinstance(statement.value, ast.Call)
+        ):
+            continue
+        call_name = _call_name(statement.value)
+        if call_name is None:
+            continue
+        resolved = _resolve_name(module, call_name)
+        if resolved in alternative_producers:
+            matches.append(resolved)
+
+    unique = sorted(set(matches))
+    if len(unique) > 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ALTERNATIVE_PUBLICATION:"
+            f"{function_id}:{','.join(unique)}"
+        )
+    return unique[0] if unique else None
+
+
 def _mei_specific_statements(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> list[ast.stmt]:
@@ -1656,6 +1692,28 @@ def build_census() -> dict:
                         "producer_ids": [],
                         "sink_kinds": [],
                         "trace": [function_id],
+                    }
+                )
+                continue
+
+            alternative_producer_id = _direct_returned_alternative_producer(
+                module,
+                node,
+                alternative_producers,
+                function_id=function_id,
+            )
+            if alternative_producer_id is not None:
+                canonical_ids = alternative_producers[alternative_producer_id]
+                paths.append(
+                    {
+                        "entrypoint": entrypoint,
+                        "function_id": function_id,
+                        "mei_reachability": "REACHABLE_MEI",
+                        "blocked_before_producer": False,
+                        "blocker_code": None,
+                        "producer_ids": canonical_ids,
+                        "sink_kinds": ["PUBLICATION"],
+                        "trace": [function_id, alternative_producer_id, *canonical_ids],
                     }
                 )
                 continue
