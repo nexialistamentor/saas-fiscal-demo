@@ -587,6 +587,52 @@ def _alternative_producer_inventory(
             stack.extend(reversed(children))
         return nodes
 
+    def branch_path(
+        roots: list[ast.AST],
+        target: ast.AST,
+    ) -> tuple[tuple[int, str], ...]:
+        found: tuple[tuple[int, str], ...] | None = None
+
+        def visit(item: ast.AST, path: tuple[tuple[int, str], ...]) -> None:
+            nonlocal found
+            if found is not None:
+                return
+            if item is target:
+                found = path
+                return
+            if isinstance(
+                item,
+                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda),
+            ):
+                return
+            if isinstance(item, ast.If):
+                visit(item.test, path)
+                for child in item.body:
+                    visit(child, path + ((id(item), "body"),))
+                for child in item.orelse:
+                    visit(child, path + ((id(item), "orelse"),))
+                return
+            for child in ast.iter_child_nodes(item):
+                visit(child, path)
+
+        for root in roots:
+            visit(root, ())
+            if found is not None:
+                break
+        return found or ()
+
+    def same_executable_branch(
+        roots: list[ast.AST],
+        left: ast.AST,
+        right: ast.AST,
+    ) -> bool:
+        left_path = dict(branch_path(roots, left))
+        right_path = dict(branch_path(roots, right))
+        return not any(
+            if_id in right_path and right_path[if_id] != branch
+            for if_id, branch in left_path.items()
+        )
+
     inventory: dict[str, list[str]] = {}
 
     for module_name in sorted(modules):
@@ -596,7 +642,8 @@ def _alternative_producer_inventory(
             if function_id == canonical_producer_id:
                 continue
 
-            function_scope = scope_nodes(list(function_node.body))
+            function_roots = list(function_node.body)
+            function_scope = scope_nodes(function_roots)
             assignments: list[ast.Assign] = []
             for item in function_scope:
                 if not (
@@ -640,6 +687,7 @@ def _alternative_producer_inventory(
                 and item is not assignment
                 and assignment.lineno < item.lineno < return_node.lineno
                 and any(value_name in _bound_names(target) for target in item.targets)
+                and same_executable_branch(function_roots, assignment, item)
             ]
             if rebound_assignments:
                 continue
