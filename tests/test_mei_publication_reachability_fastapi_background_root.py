@@ -1,4 +1,4 @@
-"""RED: build_census must detect real FastAPI BackgroundTasks registrations."""
+"""RED: build_census must detect and qualify real FastAPI BackgroundTasks roots."""
 
 from __future__ import annotations
 
@@ -19,3 +19,6 @@ def test_build_census_detects_real_lote_background_registration_red():
     assert lote_root["registration_ids"] == [
         "app.routes.lote_router.analisar_lote:BackgroundTasks.add_task"
     ]
+    assert lote_root["producer_ids"] == []
+    assert lote_root["unresolved_app_callees"] == []
+    assert lote_root["downstream_scan_complete"] is True
