@@ -1201,6 +1201,146 @@ def _is_sqlalchemy_column_descriptor_helper(
     return _resolve_name(models_module, call_name) == "sqlalchemy.Column"
 
 
+
+def _is_inert_sqlalchemy_sessionmaker_factory(
+    modules: dict[str, ModuleInfo],
+    target_id: str,
+) -> bool:
+    """Qualify only the proven inert app.database.SessionLocal factory."""
+    if target_id != "app.database.SessionLocal":
+        return False
+
+    database_module = modules.get("app.database")
+    if database_module is None:
+        return False
+    if (
+        database_module.imports.get("sessionmaker")
+        != "sqlalchemy.orm.sessionmaker"
+    ):
+        return False
+    if database_module.imports.get("create_engine") != "sqlalchemy.create_engine":
+        return False
+
+    session_assignments = [
+        statement
+        for statement in database_module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == "SessionLocal"
+        )
+    ]
+    if len(session_assignments) != 1:
+        return False
+
+    session_value = session_assignments[0].value
+    if not isinstance(session_value, ast.Call):
+        return False
+
+    session_call_name = _call_name(session_value)
+    if session_call_name is None:
+        return False
+    if (
+        _resolve_name(database_module, session_call_name)
+        != "sqlalchemy.orm.sessionmaker"
+    ):
+        return False
+    if session_value.args:
+        return False
+    if any(keyword.arg is None for keyword in session_value.keywords):
+        return False
+
+    session_keywords = {
+        keyword.arg: keyword.value
+        for keyword in session_value.keywords
+    }
+    if set(session_keywords) != {"autocommit", "autoflush", "bind"}:
+        return False
+    if not (
+        isinstance(session_keywords["autocommit"], ast.Constant)
+        and session_keywords["autocommit"].value is False
+    ):
+        return False
+    if not (
+        isinstance(session_keywords["autoflush"], ast.Constant)
+        and session_keywords["autoflush"].value is False
+    ):
+        return False
+    if not (
+        isinstance(session_keywords["bind"], ast.Name)
+        and session_keywords["bind"].id == "engine"
+    ):
+        return False
+
+    engine_assignments = [
+        statement
+        for statement in database_module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == "engine"
+        )
+    ]
+    if len(engine_assignments) != 1:
+        return False
+
+    engine_value = engine_assignments[0].value
+    if not isinstance(engine_value, ast.Call):
+        return False
+    engine_call_name = _call_name(engine_value)
+    if engine_call_name is None:
+        return False
+    if _resolve_name(database_module, engine_call_name) != "sqlalchemy.create_engine":
+        return False
+
+    sqlalchemy_events: list[tuple[str, ast.Call]] = []
+    for module in modules.values():
+        for call in ast.walk(module.tree):
+            if not isinstance(call, ast.Call):
+                continue
+            call_name = _call_name(call)
+            if call_name is None:
+                continue
+            resolved = _resolve_name(module, call_name)
+            if resolved in {
+                "sqlalchemy.event.listen",
+                "sqlalchemy.event.listens_for",
+            }:
+                sqlalchemy_events.append((module.name, call))
+
+    if len(sqlalchemy_events) != 3:
+        return False
+
+    event_names: set[str] = set()
+    for module_name, call in sqlalchemy_events:
+        if module_name != "app.models":
+            return False
+        call_name = _call_name(call)
+        if call_name is None:
+            return False
+        if _resolve_name(modules[module_name], call_name) != "sqlalchemy.event.listen":
+            return False
+        if len(call.args) < 2:
+            return False
+        if not (
+            isinstance(call.args[0], ast.Name)
+            and call.args[0].id == "_adr020_append_only_model"
+        ):
+            return False
+        if not (
+            isinstance(call.args[1], ast.Constant)
+            and isinstance(call.args[1].value, str)
+        ):
+            return False
+        event_names.add(call.args[1].value)
+
+    if event_names != {"before_insert", "before_update", "before_delete"}:
+        return False
+
+    return True
+
 def _background_downstream_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -1229,6 +1369,7 @@ def _background_downstream_inventory(
                 or _is_plain_builtin_exception_constructor(modules, current)
                 or _is_inert_declarative_model_constructor(modules, current)
                 or _is_sqlalchemy_column_descriptor_helper(modules, current)
+                or _is_inert_sqlalchemy_sessionmaker_factory(modules, current)
             ):
                 continue
             if current.startswith("app."):
@@ -1248,6 +1389,7 @@ def _background_downstream_inventory(
                     or _is_plain_builtin_exception_constructor(modules, callee)
                     or _is_inert_declarative_model_constructor(modules, callee)
                     or _is_sqlalchemy_column_descriptor_helper(modules, callee)
+                    or _is_inert_sqlalchemy_sessionmaker_factory(modules, callee)
                 ):
                     continue
                 unresolved_app_callees.add(callee)

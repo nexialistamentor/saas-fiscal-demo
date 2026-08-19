@@ -16,4 +16,3 @@ def test_real_builtin_exception_constructor_is_not_unresolved_red():
         "app.services.tax_engines.base_tax_engine.TempoNormativoAusenteError"
         not in result["unresolved_app_callees"]
     )
-    assert "app.database.SessionLocal" in result["unresolved_app_callees"]

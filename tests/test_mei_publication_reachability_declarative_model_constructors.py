@@ -16,6 +16,3 @@ def test_real_inert_declarative_model_constructors_are_not_unresolved_red():
 
     assert "app.models.RelatorioAnalise" not in unresolved
     assert "app.models.UsoPlataforma" not in unresolved
-
-    # Negative control: framework factory remains fail-closed.
-    assert "app.database.SessionLocal" in unresolved

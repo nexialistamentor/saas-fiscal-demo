@@ -22,4 +22,3 @@ def test_real_sqlalchemy_column_descriptor_helpers_are_not_unresolved_red():
     }
 
     assert unresolved.isdisjoint(descriptor_targets)
-    assert "app.database.SessionLocal" in unresolved
