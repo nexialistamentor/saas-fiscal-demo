@@ -966,6 +966,47 @@ def _is_plain_app_class_constructor(
     return False
 
 
+def _is_plain_builtin_exception_constructor(
+    modules: dict[str, ModuleInfo],
+    target_id: str,
+) -> bool:
+    """Return True only for a direct ``Exception`` subclass with no custom constructor."""
+    for module_name in sorted(modules, key=len, reverse=True):
+        prefix = module_name + "."
+        if not target_id.startswith(prefix):
+            continue
+
+        class_name = target_id[len(prefix):]
+        if "." in class_name:
+            return False
+
+        definitions = [
+            item
+            for item in modules[module_name].tree.body
+            if isinstance(item, ast.ClassDef) and item.name == class_name
+        ]
+        if len(definitions) != 1:
+            return False
+
+        class_node = definitions[0]
+        if (
+            len(class_node.bases) != 1
+            or not isinstance(class_node.bases[0], ast.Name)
+            or class_node.bases[0].id != "Exception"
+            or class_node.keywords
+            or class_node.decorator_list
+        ):
+            return False
+
+        return not any(
+            isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and member.name in {"__init__", "__new__"}
+            for member in class_node.body
+        )
+
+    return False
+
+
 def _background_downstream_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -989,7 +1030,10 @@ def _background_downstream_inventory(
 
         found = _function_node(modules, current)
         if found is None:
-            if _is_plain_app_class_constructor(modules, current):
+            if (
+                _is_plain_app_class_constructor(modules, current)
+                or _is_plain_builtin_exception_constructor(modules, current)
+            ):
                 continue
             if current.startswith("app."):
                 unresolved_app_callees.add(current)
@@ -1003,7 +1047,10 @@ def _background_downstream_inventory(
             if not callee.startswith("app."):
                 continue
             if _function_node(modules, callee) is None:
-                if _is_plain_app_class_constructor(modules, callee):
+                if (
+                    _is_plain_app_class_constructor(modules, callee)
+                    or _is_plain_builtin_exception_constructor(modules, callee)
+                ):
                     continue
                 unresolved_app_callees.add(callee)
                 continue
