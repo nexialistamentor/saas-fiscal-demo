@@ -1146,6 +1146,61 @@ def _is_inert_declarative_model_constructor(
     return True
 
 
+def _is_sqlalchemy_column_descriptor_helper(
+    modules: dict[str, ModuleInfo],
+    target_id: str,
+) -> bool:
+    """Qualify only proven SQLAlchemy Column ``desc``/``is_`` helpers."""
+    prefix = "app.models."
+    if not target_id.startswith(prefix):
+        return False
+
+    parts = target_id[len(prefix):].split(".")
+    if len(parts) != 3:
+        return False
+
+    class_name, attribute_name, method_name = parts
+    if method_name not in {"desc", "is_"}:
+        return False
+
+    models_module = modules.get("app.models")
+    if models_module is None:
+        return False
+    if models_module.imports.get("Column") != "sqlalchemy.Column":
+        return False
+
+    definitions = [
+        item
+        for item in models_module.tree.body
+        if isinstance(item, ast.ClassDef) and item.name == class_name
+    ]
+    if len(definitions) != 1:
+        return False
+
+    assignments = [
+        member
+        for member in definitions[0].body
+        if (
+            isinstance(member, ast.Assign)
+            and len(member.targets) == 1
+            and isinstance(member.targets[0], ast.Name)
+            and member.targets[0].id == attribute_name
+        )
+    ]
+    if len(assignments) != 1:
+        return False
+
+    value = assignments[0].value
+    if not isinstance(value, ast.Call):
+        return False
+
+    call_name = _call_name(value)
+    if call_name is None:
+        return False
+
+    return _resolve_name(models_module, call_name) == "sqlalchemy.Column"
+
+
 def _background_downstream_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -1173,6 +1228,7 @@ def _background_downstream_inventory(
                 _is_plain_app_class_constructor(modules, current)
                 or _is_plain_builtin_exception_constructor(modules, current)
                 or _is_inert_declarative_model_constructor(modules, current)
+                or _is_sqlalchemy_column_descriptor_helper(modules, current)
             ):
                 continue
             if current.startswith("app."):
@@ -1191,6 +1247,7 @@ def _background_downstream_inventory(
                     _is_plain_app_class_constructor(modules, callee)
                     or _is_plain_builtin_exception_constructor(modules, callee)
                     or _is_inert_declarative_model_constructor(modules, callee)
+                    or _is_sqlalchemy_column_descriptor_helper(modules, callee)
                 ):
                     continue
                 unresolved_app_callees.add(callee)
