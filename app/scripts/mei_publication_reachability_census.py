@@ -825,12 +825,23 @@ def _direct_callees(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> list[str]:
     callees: list[str] = []
+    owner_class: str | None = None
+    for local_name, function_node in module.functions.items():
+        if function_node is node and "." in local_name:
+            owner_class = local_name.rsplit(".", 1)[0]
+            break
+
     for statement in _mei_specific_statements(node):
         for call in [item for item in ast.walk(statement) if isinstance(item, ast.Call)]:
             name = _call_name(call)
             if name is None:
                 continue
             resolved = _resolve_name(module, name)
+            if resolved is None and owner_class is not None and name.startswith("self."):
+                method_name = name.split(".", 1)[1]
+                local_target = f"{owner_class}.{method_name}"
+                if local_target in module.functions:
+                    resolved = f"{module.name}.{local_target}"
             if resolved is not None:
                 callees.append(resolved)
     return sorted(set(callees))
