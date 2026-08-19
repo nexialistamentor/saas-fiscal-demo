@@ -1007,6 +1007,145 @@ def _is_plain_builtin_exception_constructor(
     return False
 
 
+def _is_inert_declarative_model_constructor(
+    modules: dict[str, ModuleInfo],
+    target_id: str,
+) -> bool:
+    """Qualify only the proven local SQLAlchemy declarative-model topology."""
+    prefix = "app.models."
+    if not target_id.startswith(prefix):
+        return False
+
+    class_name = target_id[len(prefix):]
+    if not class_name or "." in class_name:
+        return False
+
+    models_module = modules.get("app.models")
+    database_module = modules.get("app.database")
+    if models_module is None or database_module is None:
+        return False
+
+    if models_module.imports.get("Base") != "app.database.Base":
+        return False
+    if database_module.imports.get("declarative_base") != "sqlalchemy.orm.declarative_base":
+        return False
+
+    base_assignments = [
+        statement
+        for statement in database_module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == "Base"
+        )
+    ]
+    if len(base_assignments) != 1:
+        return False
+
+    base_value = base_assignments[0].value
+    if not isinstance(base_value, ast.Call):
+        return False
+    base_call_name = _call_name(base_value)
+    if (
+        base_call_name is None
+        or _resolve_name(database_module, base_call_name)
+        != "sqlalchemy.orm.declarative_base"
+        or base_value.args
+        or base_value.keywords
+    ):
+        return False
+
+    definitions = [
+        item
+        for item in models_module.tree.body
+        if isinstance(item, ast.ClassDef) and item.name == class_name
+    ]
+    if len(definitions) != 1:
+        return False
+
+    class_node = definitions[0]
+    if (
+        len(class_node.bases) != 1
+        or not isinstance(class_node.bases[0], ast.Name)
+        or class_node.bases[0].id != "Base"
+        or class_node.keywords
+        or class_node.decorator_list
+    ):
+        return False
+
+    for member in class_node.body:
+        if not isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if member.name in {"__init__", "__new__"} or member.decorator_list:
+            return False
+
+    validator_maps: list[ast.Dict] = []
+    for statement in models_module.tree.body:
+        value = None
+        if (
+            isinstance(statement, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "_ADR020_INSERT_VALIDATORS"
+                for target in statement.targets
+            )
+        ):
+            value = statement.value
+        elif (
+            isinstance(statement, ast.AnnAssign)
+            and isinstance(statement.target, ast.Name)
+            and statement.target.id == "_ADR020_INSERT_VALIDATORS"
+        ):
+            value = statement.value
+
+        if isinstance(value, ast.Dict):
+            validator_maps.append(value)
+
+    if len(validator_maps) != 1:
+        return False
+
+    validator_keys = {
+        key.id
+        for key in validator_maps[0].keys
+        if isinstance(key, ast.Name)
+    }
+    if class_name in validator_keys:
+        return False
+
+    for module in modules.values():
+        for call in [
+            item
+            for item in ast.walk(module.tree)
+            if isinstance(item, ast.Call)
+        ]:
+            call_name = _call_name(call)
+            if call_name is None:
+                continue
+            resolved = _resolve_name(module, call_name)
+            if resolved not in {
+                "sqlalchemy.event.listen",
+                "sqlalchemy.event.listens_for",
+            }:
+                continue
+            if not call.args:
+                return False
+
+            target = call.args[0]
+            if isinstance(target, ast.Name):
+                if target.id in {class_name, "Base"}:
+                    return False
+                if (
+                    module.name == "app.models"
+                    and target.id == "_adr020_append_only_model"
+                ):
+                    continue
+
+            return False
+
+    return True
+
+
 def _background_downstream_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -1033,6 +1172,7 @@ def _background_downstream_inventory(
             if (
                 _is_plain_app_class_constructor(modules, current)
                 or _is_plain_builtin_exception_constructor(modules, current)
+                or _is_inert_declarative_model_constructor(modules, current)
             ):
                 continue
             if current.startswith("app."):
@@ -1050,6 +1190,7 @@ def _background_downstream_inventory(
                 if (
                     _is_plain_app_class_constructor(modules, callee)
                     or _is_plain_builtin_exception_constructor(modules, callee)
+                    or _is_inert_declarative_model_constructor(modules, callee)
                 ):
                     continue
                 unresolved_app_callees.add(callee)
