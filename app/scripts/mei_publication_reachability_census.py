@@ -1662,6 +1662,12 @@ def build_census() -> dict:
         modules,
         canonical_producer_id=PRODUCER_ID,
     )
+    background_roots = [
+        _background_root_inventory(
+            modules,
+            function_id="app.agents.agent_scheduler.AgentScheduler.iniciar_loop",
+        )
+    ]
     mounted = _mounted_routers(modules)
     paths: list[dict] = []
 
@@ -1767,5 +1773,6 @@ def build_census() -> dict:
         "scan_complete": True,
         "status": "BLOCKED" if blocked else "UNRESOLVED",
         "alternative_producers": alternative_producers,
+        "background_roots": background_roots,
         "paths": paths,
     }
