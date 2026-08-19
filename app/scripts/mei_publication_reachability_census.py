@@ -1520,6 +1520,10 @@ def _value_provenance_trace(
 
 def build_census() -> dict:
     modules = _parse_app()
+    alternative_producers = _alternative_producer_inventory(
+        modules,
+        canonical_producer_id=PRODUCER_ID,
+    )
     mounted = _mounted_routers(modules)
     paths: list[dict] = []
 
@@ -1602,5 +1606,6 @@ def build_census() -> dict:
         "schema_version": SCHEMA_VERSION,
         "scan_complete": True,
         "status": "BLOCKED" if blocked else "UNRESOLVED",
+        "alternative_producers": alternative_producers,
         "paths": paths,
     }
