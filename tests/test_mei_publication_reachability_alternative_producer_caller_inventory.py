@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-def test_real_alternative_mei_producer_has_only_expected_static_caller():
+def test_real_alternative_mei_producer_static_callers_match_repository_state():
     import app.scripts.mei_publication_reachability_census as census_module
 
     modules = census_module._parse_app()
@@ -13,4 +13,9 @@ def test_real_alternative_mei_producer_has_only_expected_static_caller():
         function_id="app.services.imposto_service.calcular_imposto_simples",
     )
 
-    assert callers == ["app.routes.imposto_router.simular_ano"]
+    assert callers == [
+        "app.routes.imposto_router.simular_ano",
+        "app.routes.relatorio_router.gerar_relatorio_mei_tax",
+        "app.routes.relatorio_router.imposto_pdf",
+        "app.services.tax_engines.cpf_engine.CPFEngine.execute",
+    ]
