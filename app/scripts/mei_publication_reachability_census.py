@@ -636,6 +636,183 @@ def _fastapi_background_root_inventory(
     ]
 
 
+def _rq_background_root_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    mounted: dict[str, tuple[str, str]],
+) -> list[dict]:
+    """Discover proven RQ Queue.enqueue roots reachable from mounted routes."""
+
+    def scoped_nodes(
+        function_node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> list[ast.AST]:
+        nodes: list[ast.AST] = []
+        stack: list[ast.AST] = list(reversed(function_node.body))
+        while stack:
+            item = stack.pop()
+            if isinstance(
+                item,
+                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda),
+            ):
+                continue
+            nodes.append(item)
+            stack.extend(reversed(list(ast.iter_child_nodes(item))))
+        return nodes
+
+    def local_imports(
+        function_node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> dict[str, str]:
+        imports: dict[str, str] = {}
+        for item in scoped_nodes(function_node):
+            if not (
+                isinstance(item, ast.ImportFrom)
+                and item.level == 0
+                and item.module
+            ):
+                continue
+            for alias in item.names:
+                local_name = alias.asname or alias.name
+                target = f"{item.module}.{alias.name}"
+                previous = imports.get(local_name)
+                if previous is not None and previous != target:
+                    raise RuntimeError(
+                        "MEI_REACHABILITY_UNRESOLVED_RQ_IMPORT_REBINDING:"
+                        f"{local_name}:{previous}:{target}"
+                    )
+                imports[local_name] = target
+        return imports
+
+    def proven_rq_queue_symbol(target: str) -> bool:
+        if target != "app.queue.redis_queue.analysis_queue":
+            return False
+
+        queue_module = modules.get("app.queue.redis_queue")
+        if queue_module is None:
+            return False
+        if queue_module.imports.get("Queue") != "rq.Queue":
+            return False
+
+        assignments = [
+            statement
+            for statement in queue_module.tree.body
+            if (
+                isinstance(statement, ast.Assign)
+                and len(statement.targets) == 1
+                and isinstance(statement.targets[0], ast.Name)
+                and statement.targets[0].id == "analysis_queue"
+            )
+        ]
+        if len(assignments) != 1:
+            return False
+
+        value = assignments[0].value
+        if not isinstance(value, ast.Call):
+            return False
+
+        call_name = _call_name(value)
+        if call_name is None or _resolve_name(queue_module, call_name) != "rq.Queue":
+            return False
+
+        if len(value.args) != 1 or _literal_string(value.args[0]) != "analysis":
+            return False
+        if any(keyword.arg is None for keyword in value.keywords):
+            return False
+
+        keywords = {keyword.arg: keyword.value for keyword in value.keywords}
+        if set(keywords) != {"connection"}:
+            return False
+        return (
+            isinstance(keywords["connection"], ast.Name)
+            and keywords["connection"].id == "redis_conn"
+        )
+
+    registrations: dict[str, set[str]] = {}
+
+    for module_name, (router_object, _) in sorted(mounted.items()):
+        module = modules.get(module_name)
+        if module is None:
+            raise RuntimeError(
+                f"MEI_REACHABILITY_ROUTER_MODULE_MISSING:{module_name}"
+            )
+
+        for local_name, route_node in sorted(module.functions.items()):
+            if "." in local_name:
+                continue
+            if _route_decorator(route_node, router_object=router_object) is None:
+                continue
+
+            route_function_id = f"{module_name}.{local_name}"
+
+            helper_ids = [
+                callee
+                for callee in _direct_callees(module, route_node)
+                if (
+                    callee.startswith(module_name + ".")
+                    and _function_node(modules, callee) is not None
+                )
+            ]
+
+            for helper_id in sorted(set(helper_ids)):
+                found = _function_node(modules, helper_id)
+                if found is None:
+                    continue
+                helper_module, helper_node = found
+                imports = local_imports(helper_node)
+
+                for call in (
+                    item
+                    for item in scoped_nodes(helper_node)
+                    if isinstance(item, ast.Call)
+                ):
+                    if not (
+                        isinstance(call.func, ast.Attribute)
+                        and call.func.attr == "enqueue"
+                        and isinstance(call.func.value, ast.Name)
+                    ):
+                        continue
+
+                    queue_local_name = call.func.value.id
+                    queue_target = imports.get(queue_local_name)
+                    if queue_target is None:
+                        continue
+                    if not queue_target.startswith("app.queue.redis_queue."):
+                        continue
+                    if not proven_rq_queue_symbol(queue_target):
+                        raise RuntimeError(
+                            "MEI_REACHABILITY_UNRESOLVED_RQ_REGISTRATION:"
+                            f"{helper_id}:{queue_local_name}:unproven_queue"
+                        )
+
+                    if not call.args:
+                        raise RuntimeError(
+                            "MEI_REACHABILITY_UNRESOLVED_RQ_REGISTRATION:"
+                            f"{helper_id}:RQ.Queue.enqueue:no_target"
+                        )
+
+                    target = _resolve_symbol_reference(helper_module, call.args[0])
+                    if target is None or _function_node(modules, target) is None:
+                        raise RuntimeError(
+                            "MEI_REACHABILITY_UNRESOLVED_RQ_REGISTRATION:"
+                            f"{helper_id}:RQ.Queue.enqueue:unresolved_target"
+                        )
+
+                    registration_id = (
+                        f"{route_function_id}->{helper_id}:RQ.Queue.enqueue"
+                    )
+                    registrations.setdefault(target, set()).add(registration_id)
+
+    return [
+        {
+            "function_id": function_id,
+            "present": True,
+            "registration_ids": sorted(registration_ids),
+            "is_root": True,
+            "reachability": "REGISTERED_BACKGROUND_ROOT",
+        }
+        for function_id, registration_ids in sorted(registrations.items())
+    ]
+
+
 def _alternative_producer_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -2318,6 +2495,12 @@ def build_census() -> dict:
     registered_background_roots = _fastapi_background_root_inventory(
         modules,
         mounted=mounted,
+    )
+    registered_background_roots.extend(
+        _rq_background_root_inventory(
+            modules,
+            mounted=mounted,
+        )
     )
     for root in registered_background_roots:
         root.update(
