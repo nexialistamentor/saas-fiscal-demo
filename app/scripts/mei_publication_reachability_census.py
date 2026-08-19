@@ -558,6 +558,83 @@ def _background_root_inventory(
     }
 
 
+def _fastapi_background_root_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    mounted: dict[str, tuple[str, str]],
+) -> list[dict]:
+    """Discover statically registered FastAPI BackgroundTasks roots on mounted routes."""
+    registrations: dict[str, set[str]] = {}
+
+    for module_name, (router_object, _) in sorted(mounted.items()):
+        module = modules.get(module_name)
+        if module is None:
+            raise RuntimeError(f"MEI_REACHABILITY_ROUTER_MODULE_MISSING:{module_name}")
+
+        for local_name, function_node in sorted(module.functions.items()):
+            if "." in local_name:
+                continue
+            if _route_decorator(function_node, router_object=router_object) is None:
+                continue
+
+            background_parameters: set[str] = set()
+            parameters = [
+                *function_node.args.posonlyargs,
+                *function_node.args.args,
+                *function_node.args.kwonlyargs,
+            ]
+            for parameter in parameters:
+                annotation = parameter.annotation
+                if not isinstance(annotation, ast.Name):
+                    continue
+                if module.imports.get(annotation.id) == "fastapi.BackgroundTasks":
+                    background_parameters.add(parameter.arg)
+
+            if not background_parameters:
+                continue
+
+            route_function_id = f"{module_name}.{local_name}"
+            for call in (
+                item for item in ast.walk(function_node) if isinstance(item, ast.Call)
+            ):
+                if not (
+                    isinstance(call.func, ast.Attribute)
+                    and call.func.attr == "add_task"
+                    and isinstance(call.func.value, ast.Name)
+                    and call.func.value.id in background_parameters
+                ):
+                    continue
+
+                if not call.args:
+                    raise RuntimeError(
+                        "MEI_REACHABILITY_UNRESOLVED_BACKGROUND_REGISTRATION:"
+                        f"{route_function_id}:BackgroundTasks.add_task:no_target"
+                    )
+
+                target = _resolve_symbol_reference(module, call.args[0])
+                if target is None or _function_node(modules, target) is None:
+                    raise RuntimeError(
+                        "MEI_REACHABILITY_UNRESOLVED_BACKGROUND_REGISTRATION:"
+                        f"{route_function_id}:BackgroundTasks.add_task:unresolved_target"
+                    )
+
+                registration_id = (
+                    f"{route_function_id}:BackgroundTasks.add_task"
+                )
+                registrations.setdefault(target, set()).add(registration_id)
+
+    return [
+        {
+            "function_id": function_id,
+            "present": True,
+            "registration_ids": sorted(registration_ids),
+            "is_root": True,
+            "reachability": "REGISTERED_BACKGROUND_ROOT",
+        }
+        for function_id, registration_ids in sorted(registrations.items())
+    ]
+
+
 def _alternative_producer_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -1662,13 +1739,23 @@ def build_census() -> dict:
         modules,
         canonical_producer_id=PRODUCER_ID,
     )
+    mounted = _mounted_routers(modules)
     background_roots = [
         _background_root_inventory(
             modules,
             function_id="app.agents.agent_scheduler.AgentScheduler.iniciar_loop",
         )
     ]
-    mounted = _mounted_routers(modules)
+    background_roots.extend(
+        _fastapi_background_root_inventory(modules, mounted=mounted)
+    )
+    background_root_ids = [item["function_id"] for item in background_roots]
+    if len(background_root_ids) != len(set(background_root_ids)):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_BACKGROUND_ROOT_DUPLICATE:"
+            f"{','.join(sorted(background_root_ids))}"
+        )
+    background_roots.sort(key=lambda item: item["function_id"])
     paths: list[dict] = []
 
     for module_name, (router_object, prefix) in sorted(mounted.items()):
