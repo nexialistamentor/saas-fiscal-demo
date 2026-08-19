@@ -836,6 +836,54 @@ def _direct_callees(
     return sorted(set(callees))
 
 
+def _background_downstream_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> dict:
+    """Qualify one registered background root through the resolved app call graph."""
+    pending = [function_id]
+    seen: set[str] = set()
+    producer_ids: set[str] = set()
+    unresolved_app_callees: set[str] = set()
+
+    while pending:
+        current = pending.pop(0)
+        if current in seen:
+            continue
+        seen.add(current)
+
+        if current == PRODUCER_ID:
+            producer_ids.add(PRODUCER_ID)
+            continue
+
+        found = _function_node(modules, current)
+        if found is None:
+            if current.startswith("app."):
+                unresolved_app_callees.add(current)
+            continue
+
+        module, node = found
+        for callee in _direct_callees(module, node):
+            if callee == PRODUCER_ID:
+                producer_ids.add(PRODUCER_ID)
+                continue
+            if not callee.startswith("app."):
+                continue
+            if _function_node(modules, callee) is None:
+                unresolved_app_callees.add(callee)
+                continue
+            if callee not in seen:
+                pending.append(callee)
+
+    unresolved = sorted(unresolved_app_callees)
+    return {
+        "producer_ids": sorted(producer_ids),
+        "unresolved_app_callees": unresolved,
+        "downstream_scan_complete": not unresolved,
+    }
+
+
 def _module_assignments(module: ModuleInfo) -> dict[str, ast.AST]:
     assignments: dict[str, ast.AST] = {}
     for statement in module.tree.body:
@@ -1746,9 +1794,18 @@ def build_census() -> dict:
             function_id="app.agents.agent_scheduler.AgentScheduler.iniciar_loop",
         )
     ]
-    background_roots.extend(
-        _fastapi_background_root_inventory(modules, mounted=mounted)
+    registered_background_roots = _fastapi_background_root_inventory(
+        modules,
+        mounted=mounted,
     )
+    for root in registered_background_roots:
+        root.update(
+            _background_downstream_inventory(
+                modules,
+                function_id=root["function_id"],
+            )
+        )
+    background_roots.extend(registered_background_roots)
     background_root_ids = [item["function_id"] for item in background_roots]
     if len(background_root_ids) != len(set(background_root_ids)):
         raise RuntimeError(
