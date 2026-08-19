@@ -375,6 +375,48 @@ def _function_node(
     return None
 
 
+def _static_function_callers(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> list[str]:
+    """Return direct statically resolved function callers, scope-local only.
+
+    V1 follows ordinary call syntax through the existing static import/name
+    resolver. Nested functions, classes, and lambdas are separate scopes and are
+    not attributed to their outer function. Dynamic dispatch is intentionally
+    outside this primitive.
+    """
+
+    def scope_calls(function_node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.Call]:
+        calls: list[ast.Call] = []
+        stack: list[ast.AST] = list(reversed(function_node.body))
+        while stack:
+            item = stack.pop()
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                continue
+            if isinstance(item, ast.Call):
+                calls.append(item)
+            children = list(ast.iter_child_nodes(item))
+            stack.extend(reversed(children))
+        return calls
+
+    callers: set[str] = set()
+    for module_name in sorted(modules):
+        module = modules[module_name]
+        for local_name, function_node in sorted(module.functions.items()):
+            caller_id = f"{module.name}.{local_name}"
+            for call in scope_calls(function_node):
+                call_name = _call_name(call)
+                if call_name is None:
+                    continue
+                if _resolve_name(module, call_name) == function_id:
+                    callers.add(caller_id)
+                    break
+
+    return sorted(callers)
+
+
 def _class_reachability_inventory(
     modules: dict[str, ModuleInfo],
     *,
