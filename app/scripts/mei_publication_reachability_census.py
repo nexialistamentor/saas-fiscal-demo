@@ -2864,6 +2864,13 @@ def build_census() -> dict:
 
             if entrypoint == "/perguntar":
                 trace = _assistant_trace(modules, function_id)
+                persistence = _assistant_orm_persistence_inventory(
+                    modules,
+                    route_function_id=function_id,
+                )
+                sink_kinds = _assistant_sink_kinds(modules)
+                if persistence["sink_operations"]:
+                    sink_kinds = [*sink_kinds, "PERSISTENCE"]
                 paths.append(
                     {
                         "entrypoint": entrypoint,
@@ -2872,8 +2879,9 @@ def build_census() -> dict:
                         "blocked_before_producer": False,
                         "blocker_code": None,
                         "producer_ids": [PRODUCER_ID],
-                        "sink_kinds": _assistant_sink_kinds(modules),
+                        "sink_kinds": sink_kinds,
                         "trace": trace,
+                        "persistence_inventory": persistence,
                     }
                 )
                 continue
