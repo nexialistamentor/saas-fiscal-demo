@@ -354,6 +354,12 @@ def _mei_blocker(
     for statement in node.body:
         if not isinstance(statement, ast.If) or not _condition_mentions_mei(statement.test):
             continue
+        if (
+            isinstance(statement.test, ast.Compare)
+            and len(statement.test.ops) == 1
+            and isinstance(statement.test.ops[0], ast.NotEq)
+        ):
+            continue
         for child in reversed(statement.body):
             if isinstance(child, ast.Raise):
                 blocker = _extract_blocker_code(child)
