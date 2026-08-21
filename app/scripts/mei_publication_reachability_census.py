@@ -1006,6 +1006,12 @@ def _mei_specific_statements(
     specific: list[ast.stmt] = []
     for statement in node.body:
         if isinstance(statement, ast.If) and _condition_mentions_mei(statement.test):
+            if (
+                isinstance(statement.test, ast.Compare)
+                and len(statement.test.ops) == 1
+                and isinstance(statement.test.ops[0], ast.NotEq)
+            ):
+                return list(node.body)
             specific.extend(statement.body)
     return specific or list(node.body)
 
