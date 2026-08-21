@@ -189,6 +189,14 @@ def _parse_app() -> dict[str, ModuleInfo]:
                     imports[alias.asname or alias.name.split(".")[-1]] = alias.name
             else:
                 _fail_on_import_rebinding(node, imports, module=module)
+                if (
+                    isinstance(node, ast.Assign)
+                    and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)
+                    and isinstance(node.value, ast.Name)
+                    and node.value.id in imports
+                ):
+                    imports[node.targets[0].id] = imports[node.value.id]
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     functions[node.name] = node
                 elif isinstance(node, ast.ClassDef):
