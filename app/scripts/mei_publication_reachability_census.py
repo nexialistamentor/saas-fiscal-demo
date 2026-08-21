@@ -2919,11 +2919,15 @@ def build_census() -> dict:
 
     paths.sort(key=lambda item: item["entrypoint"])
     blocked = _gate_a_blocked_by_paths(paths)
+    scan_complete = all(
+        item.get("persistence_inventory", {}).get("scan_complete", True)
+        for item in paths
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
-        "scan_complete": True,
-        "status": "BLOCKED" if blocked else "UNRESOLVED",
+        "scan_complete": scan_complete,
+        "status": "UNRESOLVED" if not scan_complete else ("BLOCKED" if blocked else "UNRESOLVED"),
         "alternative_producers": alternative_producers,
         "background_roots": background_roots,
         "paths": paths,
