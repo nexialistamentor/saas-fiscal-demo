@@ -447,6 +447,19 @@ def _orm_session_operations(
     return [operation for _, _, operation in operations]
 
 
+def _orm_persistence_operations(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> list[str]:
+    """Return ORM session operations relevant to persistence writes."""
+    return [
+        operation
+        for operation in _orm_session_operations(modules, function_id=function_id)
+        if operation in {"add", "commit"}
+    ]
+
+
 def _static_function_callers(
     modules: dict[str, ModuleInfo],
     *,
