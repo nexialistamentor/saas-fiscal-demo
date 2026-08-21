@@ -355,6 +355,11 @@ def _mei_blocker(
         if not isinstance(statement, ast.If) or not _condition_mentions_mei(statement.test):
             continue
         if (
+            isinstance(statement.test, ast.UnaryOp)
+            and isinstance(statement.test.op, ast.Not)
+        ):
+            continue
+        if (
             isinstance(statement.test, ast.Compare)
             and len(statement.test.ops) == 1
             and isinstance(statement.test.ops[0], ast.NotEq)
