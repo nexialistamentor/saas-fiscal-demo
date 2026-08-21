@@ -1015,6 +1015,11 @@ def _mei_specific_statements(
             if isinstance(statement.test, ast.BoolOp):
                 return list(node.body)
             if (
+                isinstance(statement.test, ast.UnaryOp)
+                and isinstance(statement.test.op, ast.Not)
+            ):
+                return list(node.body)
+            if (
                 isinstance(statement.test, ast.Compare)
                 and len(statement.test.ops) == 1
                 and isinstance(statement.test.ops[0], ast.NotEq)
