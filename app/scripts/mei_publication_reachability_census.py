@@ -1137,6 +1137,58 @@ def _app_class_defines_method(class_id: str, method_name: str) -> bool:
     )
 
 
+def _direct_app_base_method(
+    module: ModuleInfo,
+    *,
+    class_name: str,
+    method_name: str,
+) -> str | None:
+    """Resolve a method on one direct statically known app base class."""
+    definitions = [
+        item
+        for item in module.tree.body
+        if isinstance(item, ast.ClassDef) and item.name == class_name
+    ]
+    if len(definitions) != 1:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_INHERITANCE:{module.name}.{class_name}:owner"
+        )
+
+    class_node = definitions[0]
+    resolved_bases: list[str] = []
+    for base in class_node.bases:
+        if isinstance(base, ast.Name):
+            base_name = base.id
+        elif isinstance(base, ast.Attribute):
+            base_name = ast.unparse(base)
+        else:
+            continue
+
+        base_id = _resolve_name(module, base_name)
+        if base_id is None and isinstance(base, ast.Name):
+            if any(
+                isinstance(item, ast.ClassDef) and item.name == base.id
+                for item in module.tree.body
+            ):
+                base_id = f"{module.name}.{base.id}"
+        if base_id is not None and base_id.startswith("app."):
+            resolved_bases.append(base_id)
+
+    if not resolved_bases:
+        return None
+    if len(class_node.bases) != 1 or len(resolved_bases) != 1:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_INHERITANCE:"
+            f"{module.name}.{class_name}:{method_name}:ambiguous_bases"
+        )
+
+    base_id = resolved_bases[0]
+    if _app_class_defines_method(base_id, method_name):
+        return f"{base_id}.{method_name}"
+    return None
+
+
+
 def _direct_callees(
     module: ModuleInfo,
     node: ast.FunctionDef | ast.AsyncFunctionDef,
@@ -1192,6 +1244,12 @@ def _direct_callees(
                 local_target = f"{owner_class}.{method_name}"
                 if local_target in module.functions:
                     resolved = f"{module.name}.{local_target}"
+                else:
+                    resolved = _direct_app_base_method(
+                        module,
+                        class_name=owner_class,
+                        method_name=method_name,
+                    )
             if resolved is None and "." in name:
                 local_name, method_name = name.split(".", 1)
                 class_id = local_instances.get(local_name)
@@ -1963,6 +2021,46 @@ def _assistant_sink_kinds(modules: dict[str, ModuleInfo]) -> list[str]:
     ):
         raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_CACHE:assistant_mei")
     return ["CACHE", "PUBLICATION"]
+
+
+def _assistant_orm_persistence_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    route_function_id: str,
+) -> dict:
+    """Prove Assistant MEI ORM persistence only after the qualified registry trace."""
+    qualified_trace = _assistant_trace(modules, route_function_id)
+    sink_operations: dict[str, list[str]] = {}
+
+    for function_id in qualified_trace:
+        if _function_node(modules, function_id) is None:
+            raise RuntimeError(
+                f"MEI_REACHABILITY_UNRESOLVED_ORM_FUNCTION:{function_id}"
+            )
+        operations = _orm_persistence_operations(
+            modules,
+            function_id=function_id,
+        )
+        if operations:
+            sink_operations[function_id] = operations
+
+    engine_scan = _reachable_orm_persistence_sinks(
+        modules,
+        function_id=MEI_ENGINE_EXECUTE_ID,
+    )
+    for sink_id, operations in engine_scan["sink_operations"].items():
+        sink_operations[sink_id] = operations
+
+    unresolved = list(engine_scan["unresolved_app_callees"])
+    return {
+        "qualified_trace": qualified_trace,
+        "sink_operations": {
+            sink_id: sink_operations[sink_id]
+            for sink_id in sorted(sink_operations)
+        },
+        "unresolved_app_callees": unresolved,
+        "scan_complete": not unresolved,
+    }
 
 
 def _formalizacao_compare_trace(
