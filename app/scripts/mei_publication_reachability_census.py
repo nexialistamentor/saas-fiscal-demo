@@ -177,6 +177,10 @@ def _parse_app() -> dict[str, ModuleInfo]:
         module = _module_name(path)
 
         for node in tree.body:
+            if isinstance(node, ast.ImportFrom) and node.level > 0:
+                raise RuntimeError(
+                    f"MEI_REACHABILITY_UNRESOLVED_RELATIVE_IMPORT:{module}:{node.lineno}"
+                )
             if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
                 for alias in node.names:
                     imports[alias.asname or alias.name] = f"{node.module}.{alias.name}"
