@@ -401,6 +401,52 @@ def _function_node(
     return None
 
 
+def _orm_session_operations(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> list[str]:
+    """Return direct ORM-like session operations invoked on function parameters."""
+    found = _function_node(modules, function_id)
+    if found is None:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_ORM_FUNCTION:{function_id}"
+        )
+
+    _, node = found
+    parameter_names = {
+        arg.arg
+        for arg in (
+            *node.args.posonlyargs,
+            *node.args.args,
+            *node.args.kwonlyargs,
+        )
+    }
+    recognized = {"add", "commit", "refresh"}
+    operations: list[tuple[int, int, str]] = []
+    stack: list[ast.AST] = list(reversed(node.body))
+
+    while stack:
+        item = stack.pop()
+        if isinstance(
+            item,
+            (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda),
+        ):
+            continue
+        if (
+            isinstance(item, ast.Call)
+            and isinstance(item.func, ast.Attribute)
+            and isinstance(item.func.value, ast.Name)
+            and item.func.value.id in parameter_names
+            and item.func.attr in recognized
+        ):
+            operations.append((item.lineno, item.col_offset, item.func.attr))
+        stack.extend(reversed(list(ast.iter_child_nodes(item))))
+
+    operations.sort()
+    return [operation for _, _, operation in operations]
+
+
 def _static_function_callers(
     modules: dict[str, ModuleInfo],
     *,
