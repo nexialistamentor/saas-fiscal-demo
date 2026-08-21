@@ -147,6 +147,28 @@ def _resolve_reexport_target(
             continue
         symbol = target[len(prefix):]
         next_target = modules[module_name].imports.get(symbol)
+        if next_target is None and "." not in symbol:
+            assignments = [
+                statement
+                for statement in modules[module_name].tree.body
+                if (
+                    isinstance(statement, ast.Assign)
+                    and len(statement.targets) == 1
+                    and isinstance(statement.targets[0], ast.Name)
+                    and statement.targets[0].id == symbol
+                    and isinstance(statement.value, ast.Call)
+                )
+            ]
+            if len(assignments) == 1:
+                constructor_name = _call_name(assignments[0].value)
+                definitions = [
+                    item
+                    for item in modules[module_name].tree.body
+                    if isinstance(item, ast.ClassDef)
+                    and item.name == constructor_name
+                ]
+                if constructor_name is not None and len(definitions) == 1:
+                    return f"{module_name}.{constructor_name}"
         if next_target is None:
             return target
         return _resolve_reexport_target(
@@ -1189,11 +1211,47 @@ def _direct_app_base_method(
 
 
 
+def _fastapi_dependency_callees(
+    module: ModuleInfo,
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[str]:
+    """Return app callables executed through FastAPI Depends defaults."""
+    defaults = [
+        *node.args.defaults,
+        *(default for default in node.args.kw_defaults if default is not None),
+    ]
+    callees: list[str] = []
+
+    for default in defaults:
+        for item in ast.walk(default):
+            if not isinstance(item, ast.Call):
+                continue
+            call_name = _call_name(item)
+            if call_name is None or _resolve_name(module, call_name) != "fastapi.Depends":
+                continue
+            if len(item.args) != 1:
+                continue
+
+            dependency = item.args[0]
+            if isinstance(dependency, ast.Name):
+                dependency_name = dependency.id
+            elif isinstance(dependency, ast.Attribute):
+                dependency_name = ast.unparse(dependency)
+            else:
+                continue
+
+            resolved = _resolve_name(module, dependency_name)
+            if resolved is not None and resolved.startswith("app."):
+                callees.append(resolved)
+
+    return sorted(set(callees))
+
+
 def _direct_callees(
     module: ModuleInfo,
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> list[str]:
-    callees: list[str] = []
+    callees: list[str] = _fastapi_dependency_callees(module, node)
     owner_class: str | None = None
     for local_name, function_node in module.functions.items():
         if function_node is node and "." in local_name:
