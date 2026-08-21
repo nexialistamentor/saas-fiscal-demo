@@ -422,7 +422,7 @@ def _orm_session_operations(
             *node.args.kwonlyargs,
         )
     }
-    recognized = {"add", "commit", "refresh"}
+    recognized = {"add", "commit", "flush", "refresh", "rollback"}
     operations: list[tuple[int, int, str]] = []
     stack: list[ast.AST] = list(reversed(node.body))
 
@@ -456,7 +456,7 @@ def _orm_persistence_operations(
     return [
         operation
         for operation in _orm_session_operations(modules, function_id=function_id)
-        if operation in {"add", "commit"}
+        if operation in {"add", "commit", "flush"}
     ]
 
 
