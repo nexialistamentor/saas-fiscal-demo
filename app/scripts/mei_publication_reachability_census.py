@@ -2769,6 +2769,17 @@ def _value_provenance_trace(
     )
 
 
+def _gate_a_blocked_by_paths(paths: list[dict]) -> bool:
+    """Return whether a qualified MEI producer reaches a Gate A sink."""
+    gate_a_sinks = {"PUBLICATION", "DECISION", "CACHE", "PERSISTENCE"}
+    return any(
+        item["mei_reachability"] == "REACHABLE_MEI"
+        and item["producer_ids"]
+        and any(kind in gate_a_sinks for kind in item["sink_kinds"])
+        for item in paths
+    )
+
+
 def build_census() -> dict:
     modules = _parse_app()
     alternative_producers = _alternative_producer_inventory(
@@ -2907,12 +2918,7 @@ def build_census() -> dict:
                 )
 
     paths.sort(key=lambda item: item["entrypoint"])
-    blocked = any(
-        item["mei_reachability"] == "REACHABLE_MEI"
-        and item["producer_ids"]
-        and any(kind in {"PUBLICATION", "DECISION"} for kind in item["sink_kinds"])
-        for item in paths
-    )
+    blocked = _gate_a_blocked_by_paths(paths)
 
     return {
         "schema_version": SCHEMA_VERSION,
