@@ -1811,6 +1811,37 @@ def _assistant_trace(
     return trace
 
 
+def _assistant_sink_kinds(modules: dict[str, ModuleInfo]) -> list[str]:
+    """Prove the real Assistant MEI path crosses the orchestrator cache."""
+    function_id = "app.services.analysis_orchestrator.executar_analise"
+    found = _function_node(modules, function_id)
+    if found is None:
+        raise RuntimeError(f"MEI_REACHABILITY_UNRESOLVED_FUNCTION:{function_id}")
+    module, node = found
+    branches = [
+        statement
+        for statement in node.body
+        if isinstance(statement, ast.If)
+        and ast.unparse(statement.test) == "t == ANALYSIS_TYPE_MEI_TAX"
+    ]
+    cache_hits = [
+        statement
+        for statement in node.body
+        if isinstance(statement, ast.If)
+        and ast.unparse(statement.test) == "cache_key in analysis_cache"
+        and "return analysis_cache[cache_key]" in ast.unparse(statement)
+    ]
+    if (
+        not isinstance(_module_assignments(module).get("analysis_cache"), ast.Dict)
+        or len(cache_hits) != 1
+        or len(branches) != 1
+        or cache_hits[0].lineno >= branches[0].lineno
+        or "analysis_cache[cache_key] = resultado" not in ast.unparse(branches[0])
+    ):
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_CACHE:assistant_mei")
+    return ["CACHE", "PUBLICATION"]
+
+
 def _formalizacao_compare_trace(
     modules: dict[str, ModuleInfo],
     route_function_id: str,
@@ -2620,7 +2651,7 @@ def build_census() -> dict:
                         "blocked_before_producer": False,
                         "blocker_code": None,
                         "producer_ids": [PRODUCER_ID],
-                        "sink_kinds": ["PUBLICATION"],
+                        "sink_kinds": _assistant_sink_kinds(modules),
                         "trace": trace,
                     }
                 )
