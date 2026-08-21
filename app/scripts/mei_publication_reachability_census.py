@@ -1615,6 +1615,70 @@ def _is_inert_sqlalchemy_sessionmaker_factory(
 
     return True
 
+def _reachable_orm_persistence_sinks(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> dict:
+    """Return ORM persistence sinks reachable through the resolved app call graph."""
+    pending = [function_id]
+    seen: set[str] = set()
+    sink_operations: dict[str, list[str]] = {}
+    unresolved_app_callees: set[str] = set()
+
+    def inert_app_target(target: str) -> bool:
+        return (
+            _is_plain_app_class_constructor(modules, target)
+            or _is_plain_builtin_exception_constructor(modules, target)
+            or _is_inert_declarative_model_constructor(modules, target)
+            or _is_sqlalchemy_column_descriptor_helper(modules, target)
+            or _is_inert_sqlalchemy_sessionmaker_factory(modules, target)
+        )
+
+    while pending:
+        current = pending.pop(0)
+        if current in seen:
+            continue
+        seen.add(current)
+
+        found = _function_node(modules, current)
+        if found is None:
+            if inert_app_target(current):
+                continue
+            if current.startswith("app."):
+                unresolved_app_callees.add(current)
+            continue
+
+        module, node = found
+        operations = _orm_persistence_operations(
+            modules,
+            function_id=current,
+        )
+        if operations:
+            sink_operations[current] = operations
+
+        for callee in _direct_callees(module, node):
+            if not callee.startswith("app."):
+                continue
+            if _function_node(modules, callee) is None:
+                if inert_app_target(callee):
+                    continue
+                unresolved_app_callees.add(callee)
+                continue
+            if callee not in seen:
+                pending.append(callee)
+
+    unresolved = sorted(unresolved_app_callees)
+    return {
+        "sink_operations": {
+            sink_id: sink_operations[sink_id]
+            for sink_id in sorted(sink_operations)
+        },
+        "unresolved_app_callees": unresolved,
+        "scan_complete": not unresolved,
+    }
+
+
 def _background_downstream_inventory(
     modules: dict[str, ModuleInfo],
     *,
