@@ -2089,6 +2089,25 @@ def _formalizacao_compare_trace(
     return [route_function_id, FORMALIZACAO_COMPARE_ID, PRODUCER_ID]
 
 
+def _formalizacao_orm_persistence_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    route_function_id: str,
+) -> dict:
+    """Prove ORM persistence across the qualified formalizacao MEI decision path."""
+    qualified_trace = _formalizacao_compare_trace(modules, route_function_id)
+    route_scan = _reachable_orm_persistence_sinks(
+        modules,
+        function_id=route_function_id,
+    )
+    return {
+        "qualified_trace": qualified_trace,
+        "sink_operations": route_scan["sink_operations"],
+        "unresolved_app_callees": route_scan["unresolved_app_callees"],
+        "scan_complete": route_scan["scan_complete"],
+    }
+
+
 def _contains_name(node: ast.AST, name: str) -> bool:
     return any(isinstance(item, ast.Name) and item.id == name for item in ast.walk(node))
 
@@ -2902,7 +2921,14 @@ def build_census() -> dict:
                 "/formalizacao/simular-empresa",
             }:
                 trace = _formalizacao_compare_trace(modules, function_id)
+                persistence = _formalizacao_orm_persistence_inventory(
+                    modules,
+                    route_function_id=function_id,
+                )
                 decision_provenance = _regime_decision_provenance(modules)
+                sink_kinds = ["DECISION"]
+                if persistence["sink_operations"]:
+                    sink_kinds = [*sink_kinds, "PERSISTENCE"]
                 paths.append(
                     {
                         "entrypoint": entrypoint,
@@ -2911,9 +2937,10 @@ def build_census() -> dict:
                         "blocked_before_producer": False,
                         "blocker_code": None,
                         "producer_ids": [PRODUCER_ID],
-                        "sink_kinds": ["DECISION"],
+                        "sink_kinds": sink_kinds,
                         "trace": trace,
                         "decision_provenance": decision_provenance,
+                        "persistence_inventory": persistence,
                     }
                 )
 
