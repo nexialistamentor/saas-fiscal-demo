@@ -3007,6 +3007,9 @@ def build_census() -> dict:
     scan_complete = all(
         item.get("persistence_inventory", {}).get("scan_complete", True)
         for item in paths
+    ) and all(
+        item.get("downstream_scan_complete", True)
+        for item in background_roots
     )
 
     return {
