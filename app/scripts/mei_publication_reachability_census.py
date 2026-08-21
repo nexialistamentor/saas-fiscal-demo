@@ -354,6 +354,8 @@ def _mei_blocker(
     for statement in node.body:
         if not isinstance(statement, ast.If) or not _condition_mentions_mei(statement.test):
             continue
+        if isinstance(statement.test, ast.BoolOp):
+            continue
         if (
             isinstance(statement.test, ast.UnaryOp)
             and isinstance(statement.test.op, ast.Not)
