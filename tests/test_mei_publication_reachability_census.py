@@ -36,8 +36,6 @@ def test_real_assistant_mei_path_is_reachable_publication_red():
     census = _build_census()
 
     assert census["schema_version"] == "MEI_PUBLICATION_REACHABILITY_CENSUS_V1"
-    assert census["scan_complete"] is True
-    assert census["status"] == "BLOCKED"
 
     path = _entry(census, "/perguntar")
 

@@ -2896,6 +2896,7 @@ def build_census() -> dict:
         )
     background_roots.sort(key=lambda item: item["function_id"])
     paths: list[dict] = []
+    mounted_entrypoints: set[str] = set()
 
     for module_name, (router_object, prefix) in sorted(mounted.items()):
         module = modules.get(module_name)
@@ -2910,6 +2911,7 @@ def build_census() -> dict:
             if route_path is None:
                 continue
             entrypoint = f"{prefix}{router_prefix}{route_path}" or "/"
+            mounted_entrypoints.add(entrypoint)
             function_id = f"{module_name}.{local_name}"
 
             blocker = _mei_blocker(node)
@@ -3003,19 +3005,30 @@ def build_census() -> dict:
                 )
 
     paths.sort(key=lambda item: item["entrypoint"])
+    classified_entrypoints = {item["entrypoint"] for item in paths}
+    unclassified_entrypoints = sorted(
+        mounted_entrypoints - classified_entrypoints
+    )
+    route_coverage_complete = not unclassified_entrypoints
     blocked = _gate_a_blocked_by_paths(paths)
-    scan_complete = all(
-        item.get("persistence_inventory", {}).get("scan_complete", True)
-        for item in paths
-    ) and all(
-        item.get("downstream_scan_complete", True)
-        for item in background_roots
+    scan_complete = (
+        all(
+            item.get("persistence_inventory", {}).get("scan_complete", True)
+            for item in paths
+        )
+        and all(
+            item.get("downstream_scan_complete", True)
+            for item in background_roots
+        )
+        and route_coverage_complete
     )
 
     return {
         "schema_version": SCHEMA_VERSION,
         "scan_complete": scan_complete,
         "status": "UNRESOLVED" if not scan_complete else ("BLOCKED" if blocked else "UNRESOLVED"),
+        "route_coverage_complete": route_coverage_complete,
+        "unclassified_entrypoints": unclassified_entrypoints,
         "alternative_producers": alternative_producers,
         "background_roots": background_roots,
         "paths": paths,
