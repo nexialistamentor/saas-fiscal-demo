@@ -2846,6 +2846,63 @@ def _value_provenance_trace(
     )
 
 
+def _persisted_mei_report_publication_source(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> dict | None:
+    """Return persistence evidence when a route publishes stored MEI-capable results."""
+    has_relatorio_model = any(
+        (
+            isinstance(item, ast.Name)
+            and item.id == "RelatorioAnalise"
+        )
+        or (
+            isinstance(item, ast.Attribute)
+            and item.attr == "RelatorioAnalise"
+        )
+        for item in ast.walk(node)
+    )
+    has_resultado_json = any(
+        isinstance(item, ast.Attribute) and item.attr == "resultado_json"
+        for item in ast.walk(node)
+    )
+    if not (has_relatorio_model and has_resultado_json):
+        return None
+
+    mei_filter = any(
+        isinstance(item, ast.Compare)
+        and isinstance(item.left, ast.Attribute)
+        and item.left.attr == "analysis_type"
+        and any(
+            (
+                isinstance(comparator, ast.Name)
+                and comparator.id == "ANALYSIS_TYPE_MEI_TAX"
+            )
+            or (
+                isinstance(comparator, ast.Constant)
+                and comparator.value == "mei_tax"
+            )
+            for comparator in item.comparators
+        )
+        for item in ast.walk(node)
+    )
+
+    source = {
+        "model": "app.models.RelatorioAnalise",
+        "field": "resultado_json",
+        "lineage_proven": False,
+    }
+    if mei_filter:
+        return {
+            **source,
+            "analysis_type": "mei_tax",
+        }
+    return {
+        **source,
+        "analysis_type_filter": None,
+        "may_include_analysis_type": "mei_tax",
+    }
+
+
 def _gate_a_blocked_by_paths(paths: list[dict]) -> bool:
     """Return whether a qualified MEI producer reaches a Gate A sink."""
     gate_a_sinks = {"PUBLICATION", "DECISION", "CACHE", "PERSISTENCE"}
@@ -3005,7 +3062,8 @@ def build_census() -> dict:
                 )
                 continue
 
-            if entrypoint == "/relatorio/mei_tax/{relatorio_id}":
+            persistence_source = _persisted_mei_report_publication_source(node)
+            if persistence_source is not None:
                 paths.append(
                     {
                         "entrypoint": entrypoint,
@@ -3016,12 +3074,7 @@ def build_census() -> dict:
                         "producer_ids": [],
                         "sink_kinds": ["PUBLICATION"],
                         "trace": [function_id],
-                        "persistence_source": {
-                            "model": "app.models.RelatorioAnalise",
-                            "analysis_type": "mei_tax",
-                            "field": "resultado_json",
-                            "lineage_proven": False,
-                        },
+                        "persistence_source": persistence_source,
                     }
                 )
                 continue
