@@ -1211,6 +1211,67 @@ def _direct_app_base_method(
 
 
 
+@lru_cache(maxsize=None)
+def _static_returned_fastapi_dependency_callees(factory_id: str, _root_key: str) -> tuple[str, ...]:
+    """Resolve a simple app dependency factory using the qualified app inventory."""
+    if not factory_id.startswith("app.") or "." not in factory_id:
+        return ()
+
+    modules = _parse_app()
+    found = _function_node(modules, factory_id)
+    if found is None:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_FASTAPI_DEPENDENCY_FACTORY:{factory_id}:function"
+        )
+
+    factory_module, factory = found
+    nested = {
+        statement.name: statement
+        for statement in factory.body
+        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+    returns: list[ast.Return] = []
+    stack: list[ast.AST] = list(reversed(factory.body))
+    while stack:
+        item = stack.pop()
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        if isinstance(item, ast.Return):
+            returns.append(item)
+            continue
+        stack.extend(reversed(list(ast.iter_child_nodes(item))))
+
+    returned_names: list[str] = []
+    for return_node in returns:
+        if not (
+            isinstance(return_node.value, ast.Name)
+            and return_node.value.id in nested
+        ):
+            raise RuntimeError(
+                f"MEI_REACHABILITY_UNRESOLVED_FASTAPI_DEPENDENCY_FACTORY:"
+                f"{factory_id}:returned_dependency"
+            )
+        returned_names.append(return_node.value.id)
+
+    if not returned_names or len(set(returned_names)) != 1:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_FASTAPI_DEPENDENCY_FACTORY:"
+            f"{factory_id}:returned_dependency"
+        )
+
+    returned_name = returned_names[0]
+    returned_node = nested[returned_name]
+    qualified_module = ModuleInfo(
+        factory_module.name,
+        factory_module.path,
+        factory_module.tree,
+        factory_module.imports,
+        {**factory_module.functions, **nested},
+    )
+    return tuple(_direct_callees(qualified_module, returned_node))
+
+
 def _fastapi_dependency_callees(
     module: ModuleInfo,
     node: ast.FunctionDef | ast.AsyncFunctionDef,
@@ -1235,14 +1296,31 @@ def _fastapi_dependency_callees(
             dependency = item.args[0]
             if isinstance(dependency, ast.Name):
                 dependency_name = dependency.id
-            elif isinstance(dependency, ast.Attribute):
-                dependency_name = ast.unparse(dependency)
-            else:
+                resolved = _resolve_name(module, dependency_name)
+                if resolved is not None and resolved.startswith("app."):
+                    callees.append(resolved)
                 continue
 
-            resolved = _resolve_name(module, dependency_name)
-            if resolved is not None and resolved.startswith("app."):
-                callees.append(resolved)
+            if isinstance(dependency, ast.Attribute):
+                dependency_name = ast.unparse(dependency)
+                resolved = _resolve_name(module, dependency_name)
+                if resolved is not None and resolved.startswith("app."):
+                    callees.append(resolved)
+                continue
+
+            if isinstance(dependency, ast.Call):
+                factory_name = _call_name(dependency)
+                if factory_name is None:
+                    continue
+                factory_id = _resolve_name(module, factory_name)
+                if factory_id is None or not factory_id.startswith("app."):
+                    continue
+                callees.append(factory_id)
+                callees.extend(
+                    _static_returned_fastapi_dependency_callees(
+                        factory_id, str(ROOT.resolve())
+                    )
+                )
 
     return sorted(set(callees))
 
