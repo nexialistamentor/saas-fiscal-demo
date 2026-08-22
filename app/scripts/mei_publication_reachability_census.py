@@ -3003,6 +3003,28 @@ def build_census() -> dict:
                         "persistence_inventory": persistence,
                     }
                 )
+                continue
+
+            if entrypoint == "/relatorio/mei_tax/{relatorio_id}":
+                paths.append(
+                    {
+                        "entrypoint": entrypoint,
+                        "function_id": function_id,
+                        "mei_reachability": "UNRESOLVED_MEI",
+                        "blocked_before_producer": False,
+                        "blocker_code": "PERSISTED_MEI_PROVENANCE_UNPROVEN",
+                        "producer_ids": [],
+                        "sink_kinds": ["PUBLICATION"],
+                        "trace": [function_id],
+                        "persistence_source": {
+                            "model": "app.models.RelatorioAnalise",
+                            "analysis_type": "mei_tax",
+                            "field": "resultado_json",
+                            "lineage_proven": False,
+                        },
+                    }
+                )
+                continue
 
     paths.sort(key=lambda item: item["entrypoint"])
     classified_entrypoints = {item["entrypoint"] for item in paths}
@@ -3019,6 +3041,10 @@ def build_census() -> dict:
         and all(
             item.get("downstream_scan_complete", True)
             for item in background_roots
+        )
+        and all(
+            item.get("mei_reachability") != "UNRESOLVED_MEI"
+            for item in paths
         )
         and route_coverage_complete
     )
