@@ -156,19 +156,29 @@ def _resolve_reexport_target(
                     and len(statement.targets) == 1
                     and isinstance(statement.targets[0], ast.Name)
                     and statement.targets[0].id == symbol
-                    and isinstance(statement.value, ast.Call)
                 )
             ]
             if len(assignments) == 1:
-                constructor_name = _call_name(assignments[0].value)
-                definitions = [
-                    item
-                    for item in modules[module_name].tree.body
-                    if isinstance(item, ast.ClassDef)
-                    and item.name == constructor_name
-                ]
-                if constructor_name is not None and len(definitions) == 1:
-                    return f"{module_name}.{constructor_name}"
+                value = assignments[0].value
+                if isinstance(value, ast.Name):
+                    definitions = [
+                        item
+                        for item in modules[module_name].tree.body
+                        if isinstance(item, ast.ClassDef)
+                        and item.name == value.id
+                    ]
+                    if len(definitions) == 1:
+                        return f"{module_name}.{value.id}"
+                if isinstance(value, ast.Call):
+                    constructor_name = _call_name(value)
+                    definitions = [
+                        item
+                        for item in modules[module_name].tree.body
+                        if isinstance(item, ast.ClassDef)
+                        and item.name == constructor_name
+                    ]
+                    if constructor_name is not None and len(definitions) == 1:
+                        return f"{module_name}.{constructor_name}"
         if next_target is None:
             return target
         return _resolve_reexport_target(
@@ -1338,30 +1348,114 @@ def _direct_callees(
 
     statements = _mei_specific_statements(node)
 
-    binding_counts: dict[str, int] = {}
-    stack: list[ast.AST] = list(reversed(statements))
-    while stack:
-        item = stack.pop()
+    local_imports: dict[str, str] = {}
+    import_stack: list[ast.AST] = list(reversed(node.body))
+    while import_stack:
+        item = import_stack.pop()
         if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
             continue
+        if isinstance(item, ast.ImportFrom):
+            if item.level != 0:
+                raise RuntimeError(
+                    f"MEI_REACHABILITY_UNRESOLVED_LOCAL_RELATIVE_IMPORT:"
+                    f"{module.name}.{node.name}:{item.lineno}"
+                )
+            if item.module:
+                for alias in item.names:
+                    target = f"{item.module}.{alias.name}"
+                    if not target.startswith("app."):
+                        continue
+                    local_name = alias.asname or alias.name
+                    previous = local_imports.get(local_name)
+                    if previous is not None and previous != target:
+                        raise RuntimeError(
+                            f"MEI_REACHABILITY_UNRESOLVED_LOCAL_IMPORT:"
+                            f"{module.name}.{node.name}:{local_name}:ambiguous"
+                        )
+                    local_imports[local_name] = target
+            continue
+        if isinstance(item, ast.Import):
+            for alias in item.names:
+                if alias.name != "app" and not alias.name.startswith("app."):
+                    continue
+                if alias.asname:
+                    local_name = alias.asname
+                    target = alias.name
+                else:
+                    local_name = alias.name.split(".", 1)[0]
+                    target = local_name
+                previous = local_imports.get(local_name)
+                if previous is not None and previous != target:
+                    raise RuntimeError(
+                        f"MEI_REACHABILITY_UNRESOLVED_LOCAL_IMPORT:"
+                        f"{module.name}.{node.name}:{local_name}:ambiguous"
+                    )
+                local_imports[local_name] = target
+            continue
+        import_stack.extend(reversed(list(ast.iter_child_nodes(item))))
+
+    resolution_module = ModuleInfo(
+        module.name,
+        module.path,
+        module.tree,
+        {**module.imports, **local_imports},
+        module.functions,
+    )
+
+    scoped_nodes: list[ast.AST] = []
+    scope_stack: list[ast.AST] = list(reversed(statements))
+    while scope_stack:
+        item = scope_stack.pop()
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        scoped_nodes.append(item)
+        scope_stack.extend(reversed(list(ast.iter_child_nodes(item))))
+
+    binding_counts: dict[str, int] = {}
+    for item in scoped_nodes:
+        if isinstance(item, ast.ExceptHandler) and item.name:
+            binding_counts[item.name] = binding_counts.get(item.name, 0) + 1
         if isinstance(item, ast.Name) and isinstance(item.ctx, (ast.Store, ast.Del)):
             binding_counts[item.id] = binding_counts.get(item.id, 0) + 1
-        stack.extend(reversed(list(ast.iter_child_nodes(item))))
+
+    parameter_names = {
+        arg.arg
+        for arg in (
+            *node.args.posonlyargs,
+            *node.args.args,
+            *node.args.kwonlyargs,
+        )
+    }
+    if node.args.vararg is not None:
+        parameter_names.add(node.args.vararg.arg)
+    if node.args.kwarg is not None:
+        parameter_names.add(node.args.kwarg.arg)
+
+    rebound_local_imports = sorted(
+        name
+        for name in local_imports
+        if binding_counts.get(name, 0) or name in parameter_names
+    )
+    if rebound_local_imports:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_LOCAL_IMPORT_REBINDING:"
+            f"{module.name}.{node.name}:{','.join(rebound_local_imports)}"
+        )
 
     local_instances: dict[str, str] = {}
-    for statement in statements:
+    for item in scoped_nodes:
         if not (
-            isinstance(statement, ast.Assign)
-            and len(statement.targets) == 1
-            and isinstance(statement.targets[0], ast.Name)
-            and isinstance(statement.value, ast.Call)
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and isinstance(item.value, ast.Call)
         ):
             continue
-        constructor_name = _call_name(statement.value)
+        constructor_name = _call_name(item.value)
         if constructor_name is None:
             continue
-        constructor_id = _resolve_name(module, constructor_name)
-        local_name = statement.targets[0].id
+        constructor_id = _resolve_name(resolution_module, constructor_name)
+        local_name = item.targets[0].id
         if (
             constructor_id is not None
             and constructor_id.startswith("app.")
@@ -1369,31 +1463,38 @@ def _direct_callees(
         ):
             local_instances[local_name] = constructor_id
 
-    for statement in statements:
-        for call in [item for item in ast.walk(statement) if isinstance(item, ast.Call)]:
-            name = _call_name(call)
-            if name is None:
-                continue
-            resolved = _resolve_name(module, name)
-            if resolved is None and owner_class is not None and name.startswith("self."):
-                method_name = name.split(".", 1)[1]
-                local_target = f"{owner_class}.{method_name}"
-                if local_target in module.functions:
-                    resolved = f"{module.name}.{local_target}"
-                else:
-                    resolved = _direct_app_base_method(
-                        module,
-                        class_name=owner_class,
-                        method_name=method_name,
-                    )
-            if resolved is None and "." in name:
-                local_name, method_name = name.split(".", 1)
-                class_id = local_instances.get(local_name)
-                if class_id is not None and _app_class_defines_method(class_id, method_name):
-                    resolved = f"{class_id}.{method_name}"
-            if resolved is not None:
-                callees.append(resolved)
+    for call in (item for item in scoped_nodes if isinstance(item, ast.Call)):
+        name = _call_name(call)
+        if name is None:
+            continue
+        resolved = _resolve_name(resolution_module, name)
+        if resolved is None and owner_class is not None and name.startswith("self."):
+            method_name = name.split(".", 1)[1]
+            local_target = f"{owner_class}.{method_name}"
+            if local_target in module.functions:
+                resolved = f"{module.name}.{local_target}"
+            else:
+                resolved = _direct_app_base_method(
+                    module,
+                    class_name=owner_class,
+                    method_name=method_name,
+                )
+        if resolved is None and "." in name:
+            local_name, method_name = name.split(".", 1)
+            class_id = local_instances.get(local_name)
+            if class_id is not None and _app_class_defines_method(class_id, method_name):
+                resolved = f"{class_id}.{method_name}"
+
+        if resolved is None:
+            continue
+
+        if resolved.startswith("app.") and _app_class_defines_method(resolved, "__init__"):
+            callees.append(f"{resolved}.__init__")
+        else:
+            callees.append(resolved)
+
     return sorted(set(callees))
+
 
 
 def _is_plain_app_class_constructor(
@@ -1873,6 +1974,173 @@ def _reachable_orm_persistence_sinks(
     }
 
 
+def _insights_engine_registry_dispatch_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> dict:
+    # Qualify the central immutable ENGINES dispatcher without executing app code.
+    if function_id != "app.services.insights_engine.executar_engines":
+        return {"producer_ids": [], "qualified_accessors": []}
+
+    found = _function_node(modules, function_id)
+    registry = modules.get("app.services.engine_registry")
+    if found is None or registry is None:
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:inventory")
+
+    module, node = found
+    if module.imports.get("ENGINES") != "app.services.engine_registry.ENGINES":
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:ENGINES_import")
+
+    assignments = _module_assignments(registry)
+    engines_raw = assignments.get("_ENGINES_RAW")
+    engines_view = assignments.get("ENGINES")
+    if not isinstance(engines_raw, ast.Dict) or not isinstance(engines_view, ast.Call):
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:registry_shape")
+
+    view_name = _call_name(engines_view)
+    if (
+        view_name is None
+        or _resolve_name(registry, view_name) != "types.MappingProxyType"
+        or len(engines_view.args) != 1
+        or not isinstance(engines_view.args[0], ast.Name)
+        or engines_view.args[0].id != "_ENGINES_RAW"
+        or engines_view.keywords
+    ):
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:immutable_view")
+
+    mei_class_node = _dict_value_for_string_key(modules, registry, engines_raw, "mei_tax")
+    if mei_class_node is None:
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:mei_entry")
+
+    mei_class = _resolve_symbol_reference(registry, mei_class_node)
+    if mei_class != "app.services.tax_engines.mei_tax_engine.MEITaxEngine":
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:mei_class:{mei_class}"
+        )
+
+    source = ast.unparse(node)
+    required = (
+        "for nome, engine_class in ENGINES.items():",
+        "engine = engine_class()",
+        "elif nome == ANALYSIS_TYPE_MEI_TAX:",
+        "resultados[nome] = engine.execute(contexto_mei)",
+    )
+    if any(fragment not in source for fragment in required):
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:shape")
+
+    engine_id = _resolve_mei_registry_engine(modules)
+    if engine_id != MEI_ENGINE_EXECUTE_ID:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:engine:{engine_id}"
+        )
+    engine_found = _function_node(modules, engine_id)
+    if engine_found is None:
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:engine_function")
+    engine_module, engine_node = engine_found
+    if PRODUCER_ID not in _direct_callees(engine_module, engine_node):
+        raise RuntimeError("MEI_REACHABILITY_UNRESOLVED_ENGINE_DISPATCH:producer_edge")
+
+    return {
+        "producer_ids": [PRODUCER_ID],
+        "qualified_accessors": [
+            "app.services.engine_registry.ENGINES.items",
+        ],
+    }
+
+
+def _insights_engine_registry_metadata_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> dict:
+    """Qualify the separate ENGINES.get metadata read without hiding execution."""
+    target_function = (
+        "app.services.insights_engine.InsightEngine.gerar_insights_empresa"
+    )
+    if function_id != target_function:
+        return {"qualified_accessors": []}
+
+    found = _function_node(modules, function_id)
+    if found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ENGINE_METADATA:inventory"
+        )
+
+    module, node = found
+    if module.imports.get("ENGINES") != "app.services.engine_registry.ENGINES":
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ENGINE_METADATA:ENGINES_import"
+        )
+
+    assignments = [
+        item
+        for item in ast.walk(node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "engine_class"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) == "ENGINES.get"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "nome"
+            and not item.value.keywords
+        )
+    ]
+    if len(assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_ENGINE_METADATA:get_shape"
+        )
+
+    parents = {
+        child: parent
+        for parent in ast.walk(node)
+        for child in ast.iter_child_nodes(parent)
+    }
+    for name_node in ast.walk(node):
+        if not (
+            isinstance(name_node, ast.Name)
+            and name_node.id == "engine_class"
+            and isinstance(name_node.ctx, ast.Load)
+        ):
+            continue
+
+        parent = parents.get(name_node)
+        safe_compare = (
+            isinstance(parent, ast.Compare)
+            and parent.left is name_node
+            and len(parent.ops) == 1
+            and isinstance(parent.ops[0], (ast.Is, ast.IsNot))
+            and len(parent.comparators) == 1
+            and isinstance(parent.comparators[0], ast.Constant)
+            and parent.comparators[0].value is None
+        )
+        safe_getattr = (
+            isinstance(parent, ast.Call)
+            and isinstance(parent.func, ast.Name)
+            and parent.func.id == "getattr"
+            and len(parent.args) == 3
+            and parent.args[0] is name_node
+            and isinstance(parent.args[1], ast.Constant)
+            and parent.args[1].value == "versao"
+            and isinstance(parent.args[2], ast.Constant)
+            and parent.args[2].value is None
+            and not parent.keywords
+        )
+        if not (safe_compare or safe_getattr):
+            raise RuntimeError(
+                "MEI_REACHABILITY_UNRESOLVED_ENGINE_METADATA:unsafe_use"
+            )
+
+    return {
+        "qualified_accessors": [
+            "app.services.engine_registry.ENGINES.get",
+        ],
+    }
+
+
 def _background_downstream_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -1909,7 +2177,22 @@ def _background_downstream_inventory(
             continue
 
         module, node = found
+        dispatch = _insights_engine_registry_dispatch_inventory(
+            modules,
+            function_id=current,
+        )
+        metadata = _insights_engine_registry_metadata_inventory(
+            modules,
+            function_id=current,
+        )
+        qualified_accessors = set(
+            dispatch["qualified_accessors"] + metadata["qualified_accessors"]
+        )
+        producer_ids.update(dispatch["producer_ids"])
+
         for callee in _direct_callees(module, node):
+            if callee in qualified_accessors:
+                continue
             if callee == PRODUCER_ID:
                 producer_ids.add(PRODUCER_ID)
                 continue

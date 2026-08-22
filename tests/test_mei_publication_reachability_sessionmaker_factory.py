@@ -15,5 +15,5 @@ def test_real_sessionmaker_factory_is_not_unresolved_red():
     unresolved = set(result["unresolved_app_callees"])
 
     assert "app.database.SessionLocal" not in unresolved
-    assert result["producer_ids"] == []
+    assert result["producer_ids"] == [census_module.PRODUCER_ID]
     assert result["downstream_scan_complete"] is True

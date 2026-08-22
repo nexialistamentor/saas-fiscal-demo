@@ -21,6 +21,6 @@ def test_build_census_detects_real_fiscal_rq_registration_red():
         "app.routes.fiscal_router.analisar_xml_fiscal"
         "->app.routes.fiscal_router._enqueue_or_run_sync:RQ.Queue.enqueue"
     ]
-    assert rq_root["producer_ids"] == []
+    assert rq_root["producer_ids"] == [census_module.PRODUCER_ID]
     assert rq_root["unresolved_app_callees"] == []
     assert rq_root["downstream_scan_complete"] is True
