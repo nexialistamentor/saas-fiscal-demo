@@ -2298,6 +2298,181 @@ def _background_downstream_inventory(
     }
 
 
+def _system_metrics_no_canonical_mei_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    route_function_id: str,
+) -> dict:
+    """Qualify only the proven module-literal-dict reads of /system/metrics."""
+    expected_route = "app.routes.metrics_router.obter_metricas"
+    orchestrator_id = "app.services.analysis_orchestrator"
+
+    mapping_names = (
+        "degraded_engines",
+        "engine_ab_testing",
+        "engine_blocked_until",
+        "engine_failures",
+        "engine_versions",
+    )
+    expected_unresolved = sorted(
+        f"{orchestrator_id}.{name}.get"
+        for name in mapping_names
+    )
+
+    if route_function_id != expected_route:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:route"
+        )
+
+    route_found = _function_node(modules, route_function_id)
+    metrics_module = modules.get("app.routes.metrics_router")
+    orchestrator = modules.get(orchestrator_id)
+
+    if (
+        route_found is None
+        or metrics_module is None
+        or orchestrator is None
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:modules"
+        )
+
+    _, route_node = route_found
+
+    # First preserve the ordinary scanner evidence. This exception is allowed
+    # only for the exact five unresolved mapping reads already measured.
+    downstream = _background_downstream_inventory(
+        modules,
+        function_id=route_function_id,
+    )
+
+    if downstream["producer_ids"]:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:"
+            "producer_present"
+        )
+
+    if sorted(downstream["unresolved_app_callees"]) != expected_unresolved:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:"
+            "unexpected_downstream"
+        )
+
+    # Route topology must still call the two local read-only assembly helpers.
+    route_calls = {
+        _call_name(call)
+        for call in ast.walk(route_node)
+        if isinstance(call, ast.Call)
+    }
+    if not {"_status_engines", "_calcular_alertas"}.issubset(route_calls):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:"
+            "route_helpers"
+        )
+
+    status_node = metrics_module.functions.get("_status_engines")
+    alertas_node = metrics_module.functions.get("_calcular_alertas")
+
+    if status_node is None or alertas_node is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:"
+            "helper_functions"
+        )
+
+    # Each imported mapping must resolve to the exact orchestrator symbol.
+    for name in mapping_names:
+        if (
+            metrics_module.imports.get(name)
+            != f"{orchestrator_id}.{name}"
+        ):
+            raise RuntimeError(
+                "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:"
+                f"import:{name}"
+            )
+
+    # _status_engines must perform exactly one .get() on each qualified map,
+    # and no other method call on those mapping objects.
+    mapping_method_calls = []
+    for call in (
+        node
+        for node in ast.walk(status_node)
+        if isinstance(node, ast.Call)
+    ):
+        call_name = _call_name(call)
+        if call_name is None or "." not in call_name:
+            continue
+
+        root, method = call_name.split(".", 1)
+        if root not in mapping_names:
+            continue
+
+        mapping_method_calls.append((root, method))
+
+    if sorted(mapping_method_calls) != sorted(
+        (name, "get") for name in mapping_names
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:"
+            "mapping_operations"
+        )
+
+    # Each mapping must have exactly one module-level binding and that binding
+    # must be an AST dict literal. Any later rebinding invalidates the proof.
+    for name in mapping_names:
+        bindings = []
+
+        for statement in orchestrator.tree.body:
+            if isinstance(statement, ast.Assign):
+                if any(
+                    isinstance(target, ast.Name)
+                    and target.id == name
+                    for target in statement.targets
+                ):
+                    bindings.append(statement)
+
+            elif (
+                isinstance(statement, ast.AnnAssign)
+                and isinstance(statement.target, ast.Name)
+                and statement.target.id == name
+            ):
+                bindings.append(statement)
+
+        if len(bindings) != 1:
+            raise RuntimeError(
+                "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:"
+                f"binding_count:{name}"
+            )
+
+        binding = bindings[0]
+        value = (
+            binding.value
+            if isinstance(binding, (ast.Assign, ast.AnnAssign))
+            else None
+        )
+
+        if not isinstance(value, ast.Dict):
+            raise RuntimeError(
+                "MEI_REACHABILITY_UNRESOLVED_SYSTEM_METRICS:"
+                f"non_literal_mapping:{name}"
+            )
+
+    return {
+        "mei_reachability": "NO_CANONICAL_MEI_PRODUCER",
+        "producer_ids": [],
+        "sink_kinds": [],
+        "trace": [
+            route_function_id,
+            "app.routes.metrics_router._status_engines",
+            "app.routes.metrics_router._calcular_alertas",
+        ],
+        "qualified_mapping_reads": [
+            f"{orchestrator_id}.{name}.get"
+            for name in mapping_names
+        ],
+        "unresolved_app_callees": [],
+        "downstream_scan_complete": True,
+    }
+
 def _default_route_reachability_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -3525,6 +3700,19 @@ def build_census() -> dict:
                 )
                 continue
 
+            if function_id == "app.routes.metrics_router.obter_metricas":
+                system_metrics_inventory = _system_metrics_no_canonical_mei_inventory(
+                    modules,
+                    route_function_id=function_id,
+                )
+                paths.append({
+                    "entrypoint": entrypoint,
+                    "function_id": function_id,
+                    "blocked_before_producer": False,
+                    "blocker_code": None,
+                    **system_metrics_inventory,
+                })
+                continue
             persistence_source = _persisted_mei_report_publication_source(node)
             if persistence_source is not None:
                 paths.append(
