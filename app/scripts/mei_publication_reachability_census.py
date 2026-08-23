@@ -2240,6 +2240,30 @@ def _background_downstream_inventory(
     }
 
 
+def _default_route_reachability_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    function_id: str,
+) -> dict:
+    """Classify a mounted route only from a complete canonical-MEI reachability proof."""
+    downstream = _background_downstream_inventory(
+        modules,
+        function_id=function_id,
+    )
+    producer_ids = downstream["producer_ids"]
+    scan_complete = downstream["downstream_scan_complete"]
+
+    if not scan_complete or producer_ids:
+        mei_reachability = "UNRESOLVED_MEI"
+    else:
+        mei_reachability = "NO_CANONICAL_MEI_PRODUCER"
+
+    return {
+        "mei_reachability": mei_reachability,
+        **downstream,
+    }
+
+
 def _module_assignments(module: ModuleInfo) -> dict[str, ast.AST]:
     assignments: dict[str, ast.AST] = {}
     for statement in module.tree.body:
@@ -3459,6 +3483,22 @@ def build_census() -> dict:
                     }
                 )
                 continue
+
+            default_inventory = _default_route_reachability_inventory(
+                modules,
+                function_id=function_id,
+            )
+            paths.append(
+                {
+                    "entrypoint": entrypoint,
+                    "function_id": function_id,
+                    "blocked_before_producer": False,
+                    "blocker_code": None,
+                    "sink_kinds": [],
+                    "trace": [function_id],
+                    **default_inventory,
+                }
+            )
 
     paths.sort(key=lambda item: item["entrypoint"])
     classified_entrypoints = {item["entrypoint"] for item in paths}
