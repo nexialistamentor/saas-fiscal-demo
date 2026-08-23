@@ -1010,6 +1010,19 @@ def _alternative_producer_inventory(
         module = modules[module_name]
         for local_name, function_node in sorted(module.functions.items()):
             function_id = f"{module.name}.{local_name}"
+            if function_id == "app.auth_router.register_user":
+                auth_inventory = _auth_register_no_canonical_mei_inventory(
+                    modules,
+                    route_function_id=function_id,
+                )
+                paths.append({
+                    "entrypoint": entrypoint,
+                    "function_id": function_id,
+                    "blocked_before_producer": False,
+                    "blocker_code": None,
+                    **auth_inventory,
+                })
+                continue
             if function_id == canonical_producer_id:
                 continue
 
@@ -2297,6 +2310,258 @@ def _background_downstream_inventory(
         "downstream_scan_complete": not unresolved,
     }
 
+
+def _auth_register_no_canonical_mei_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    route_function_id: str,
+) -> dict:
+    """Qualify only the exact constructor topology used by /auth/register."""
+    expected_route = "app.auth_router.register_user"
+    user_id = "app.models.User"
+    response_id = "app.schemas.user_schema.UserResponse"
+
+    if route_function_id != expected_route:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:route"
+        )
+
+    found = _function_node(modules, route_function_id)
+    models_module = modules.get("app.models")
+    database_module = modules.get("app.database")
+    schema_module = modules.get("app.schemas.user_schema")
+
+    if (
+        found is None
+        or models_module is None
+        or database_module is None
+        or schema_module is None
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:modules"
+        )
+
+    route_module, route_node = found
+
+    downstream = _background_downstream_inventory(
+        modules,
+        function_id=route_function_id,
+    )
+
+    if downstream["producer_ids"]:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:producer"
+        )
+
+    if sorted(downstream["unresolved_app_callees"]) != sorted(
+        [user_id, response_id]
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:unexpected_downstream"
+        )
+
+    if (
+        route_module.imports.get("models") != "app.models"
+        or route_module.imports.get("UserResponse") != response_id
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:imports"
+        )
+
+    # Exact SQLAlchemy User construction used by the route.
+    user_calls = [
+        node
+        for node in ast.walk(route_node)
+        if isinstance(node, ast.Call)
+        and _call_name(node) == "models.User"
+    ]
+    if len(user_calls) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:user_call"
+        )
+
+    if (
+        models_module.imports.get("Base") != "app.database.Base"
+        or database_module.imports.get("declarative_base")
+        != "sqlalchemy.orm.declarative_base"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:base"
+        )
+
+    user_defs = [
+        node
+        for node in models_module.tree.body
+        if isinstance(node, ast.ClassDef)
+        and node.name == "User"
+    ]
+    if len(user_defs) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:user_def"
+        )
+
+    user_class = user_defs[0]
+
+    if not (
+        len(user_class.bases) == 1
+        and isinstance(user_class.bases[0], ast.Name)
+        and user_class.bases[0].id == "Base"
+        and not user_class.keywords
+        and not user_class.decorator_list
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:user_inheritance"
+        )
+
+    methods = [
+        node
+        for node in user_class.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+
+    # User may contain only the proven non-constructor property is_admin.
+    if len(methods) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:user_methods"
+        )
+
+    method = methods[0]
+    if not (
+        method.name == "is_admin"
+        and len(method.decorator_list) == 1
+        and isinstance(method.decorator_list[0], ast.Name)
+        and method.decorator_list[0].id == "property"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:user_property"
+        )
+
+    # Explicitly forbid custom constructor hooks.
+    if any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name in {"__init__", "__new__"}
+        for node in user_class.body
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:user_constructor"
+        )
+
+    # Preserve the existing ADR-020 insert-validator boundary.
+    validator_maps = []
+    for statement in models_module.tree.body:
+        value = None
+
+        if (
+            isinstance(statement, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "_ADR020_INSERT_VALIDATORS"
+                for target in statement.targets
+            )
+        ):
+            value = statement.value
+
+        elif (
+            isinstance(statement, ast.AnnAssign)
+            and isinstance(statement.target, ast.Name)
+            and statement.target.id == "_ADR020_INSERT_VALIDATORS"
+        ):
+            value = statement.value
+
+        if isinstance(value, ast.Dict):
+            validator_maps.append(value)
+
+    if len(validator_maps) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:validator_map"
+        )
+
+    validator_keys = {
+        key.id
+        for key in validator_maps[0].keys
+        if isinstance(key, ast.Name)
+    }
+
+    if "User" in validator_keys:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:user_validator"
+        )
+
+    # Exact UserResponse topology: direct BaseModel, fields/config only.
+    if schema_module.imports.get("BaseModel") != "pydantic.BaseModel":
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:basemodel"
+        )
+
+    response_defs = [
+        node
+        for node in schema_module.tree.body
+        if isinstance(node, ast.ClassDef)
+        and node.name == "UserResponse"
+    ]
+    if len(response_defs) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:response_def"
+        )
+
+    response_class = response_defs[0]
+
+    if not (
+        len(response_class.bases) == 1
+        and isinstance(response_class.bases[0], ast.Name)
+        and response_class.bases[0].id == "BaseModel"
+        and not response_class.keywords
+        and not response_class.decorator_list
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:response_inheritance"
+        )
+
+    # Any method/validator means this special qualification no longer applies.
+    if any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        for node in response_class.body
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:response_methods"
+        )
+
+    fields = [
+        node.target.id
+        for node in response_class.body
+        if isinstance(node, ast.AnnAssign)
+        and isinstance(node.target, ast.Name)
+    ]
+
+    if fields != ["id", "email", "empresa_id", "role"]:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:response_fields"
+        )
+
+    # The route must directly return UserResponse.
+    response_returns = [
+        node
+        for node in ast.walk(route_node)
+        if (
+            isinstance(node, ast.Return)
+            and isinstance(node.value, ast.Call)
+            and _call_name(node.value) == "UserResponse"
+        )
+    ]
+
+    if len(response_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_AUTH_REGISTER:response_return"
+        )
+
+    return {
+        "mei_reachability": "NO_CANONICAL_MEI_PRODUCER",
+        "producer_ids": [],
+        "sink_kinds": [],
+        "trace": [route_function_id],
+        "unresolved_app_callees": [],
+        "downstream_scan_complete": True,
+    }
 
 def _system_metrics_no_canonical_mei_inventory(
     modules: dict[str, ModuleInfo],
