@@ -2230,6 +2230,663 @@ def _insights_engine_registry_metadata_inventory(
     }
 
 
+def _insights_engine_mei_component_inventory(
+    modules: dict[str, ModuleInfo],
+) -> dict:
+    """Prove the reusable canonical-MEI lineage inside InsightEngine itself."""
+    engine_method_id = (
+        "app.services.insights_engine.InsightEngine.gerar_insights_empresa"
+    )
+    dispatcher_id = "app.services.insights_engine.executar_engines"
+    flags_helper_id = (
+        "app.services.context_flags_service.anexar_flags_nos_resultados_engines"
+    )
+
+    method_found = _function_node(modules, engine_method_id)
+    init_found = _function_node(
+        modules,
+        "app.services.insights_engine.InsightEngine.__init__",
+    )
+    flags_found = _function_node(modules, flags_helper_id)
+
+    if method_found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_COMPONENT:engine_method"
+        )
+    if init_found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_COMPONENT:engine_init"
+        )
+    if flags_found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_COMPONENT:flags_helper"
+        )
+
+    method_module, method_node = method_found
+    _, init_node = init_found
+    _, flags_node = flags_found
+
+    # Prove self.db is exactly the db constructor parameter, without making
+    # self.<anything> a generic ORM-session rule.
+    init_args = [
+        arg.arg
+        for arg in (
+            *init_node.args.posonlyargs,
+            *init_node.args.args,
+            *init_node.args.kwonlyargs,
+        )
+    ]
+    if init_args != ["self", "db"]:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:init_signature"
+        )
+
+    db_bindings = [
+        item
+        for item in ast.walk(init_node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Attribute)
+            and isinstance(item.targets[0].value, ast.Name)
+            and item.targets[0].value.id == "self"
+            and item.targets[0].attr == "db"
+            and isinstance(item.value, ast.Name)
+            and item.value.id == "db"
+        )
+    ]
+    if len(db_bindings) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:self_db_binding"
+        )
+
+    # Reuse the already-qualified immutable ENGINES dispatcher proof.
+    dispatch = _insights_engine_registry_dispatch_inventory(
+        modules,
+        function_id=dispatcher_id,
+    )
+    if dispatch["producer_ids"] != [PRODUCER_ID]:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:dispatcher_producer"
+        )
+
+    # The method must receive the dispatcher mapping in resultados_engines.
+    dispatcher_assignments = [
+        item
+        for item in ast.walk(method_node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "resultados_engines"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) is not None
+            and _resolve_name(
+                method_module,
+                _call_name(item.value),
+            )
+            == dispatcher_id
+        )
+    ]
+    if len(dispatcher_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:dispatcher_assignment"
+        )
+    dispatcher_assignment = dispatcher_assignments[0]
+
+    # Prove the context-flags helper structurally. Quoting/style emitted by
+    # ast.unparse() is not evidence; the AST topology itself is the contract.
+    flags_args = [
+        arg.arg
+        for arg in (
+            *flags_node.args.posonlyargs,
+            *flags_node.args.args,
+            *flags_node.args.kwonlyargs,
+        )
+    ]
+    if (
+        flags_args != ["resultados", "context_flags"]
+        or flags_node.args.vararg is not None
+        or flags_node.args.kwarg is not None
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_signature"
+        )
+
+    flags_body = list(flags_node.body)
+    if (
+        flags_body
+        and isinstance(flags_body[0], ast.Expr)
+        and isinstance(flags_body[0].value, ast.Constant)
+        and isinstance(flags_body[0].value.value, str)
+    ):
+        flags_body = flags_body[1:]
+
+    if len(flags_body) != 4:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_preservation"
+        )
+
+    base_statement, out_statement, flags_loop, flags_return = flags_body
+
+    if not (
+        isinstance(base_statement, ast.Assign)
+        and len(base_statement.targets) == 1
+        and isinstance(base_statement.targets[0], ast.Name)
+        and base_statement.targets[0].id == "base"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_base"
+        )
+
+    if not (
+        isinstance(out_statement, ast.Assign)
+        and len(out_statement.targets) == 1
+        and isinstance(out_statement.targets[0], ast.Name)
+        and out_statement.targets[0].id == "out"
+        and isinstance(out_statement.value, ast.Dict)
+        and not out_statement.value.keys
+        and not out_statement.value.values
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_output_init"
+        )
+
+    if not (
+        isinstance(flags_loop, ast.For)
+        and isinstance(flags_loop.target, ast.Tuple)
+        and len(flags_loop.target.elts) == 2
+        and all(isinstance(elt, ast.Name) for elt in flags_loop.target.elts)
+        and [elt.id for elt in flags_loop.target.elts] == ["nome", "res"]
+        and isinstance(flags_loop.iter, ast.Call)
+        and _call_name(flags_loop.iter) == "resultados.items"
+        and not flags_loop.iter.args
+        and not flags_loop.iter.keywords
+        and len(flags_loop.body) == 1
+        and isinstance(flags_loop.body[0], ast.If)
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_loop"
+        )
+
+    flags_if = flags_loop.body[0]
+    if not (
+        isinstance(flags_if.test, ast.Call)
+        and _call_name(flags_if.test) == "isinstance"
+        and len(flags_if.test.args) == 2
+        and isinstance(flags_if.test.args[0], ast.Name)
+        and flags_if.test.args[0].id == "res"
+        and isinstance(flags_if.test.args[1], ast.Name)
+        and flags_if.test.args[1].id == "dict"
+        and not flags_if.test.keywords
+        and len(flags_if.body) == 3
+        and len(flags_if.orelse) == 1
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_branch"
+        )
+
+    copy_statement, context_statement, merged_statement = flags_if.body
+
+    if not (
+        isinstance(copy_statement, ast.Assign)
+        and len(copy_statement.targets) == 1
+        and isinstance(copy_statement.targets[0], ast.Name)
+        and copy_statement.targets[0].id == "merged"
+        and isinstance(copy_statement.value, ast.Call)
+        and _call_name(copy_statement.value) == "dict"
+        and len(copy_statement.value.args) == 1
+        and isinstance(copy_statement.value.args[0], ast.Name)
+        and copy_statement.value.args[0].id == "res"
+        and not copy_statement.value.keywords
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_copy"
+        )
+
+    if not (
+        isinstance(context_statement, ast.Assign)
+        and len(context_statement.targets) == 1
+        and isinstance(context_statement.targets[0], ast.Subscript)
+        and isinstance(context_statement.targets[0].value, ast.Name)
+        and context_statement.targets[0].value.id == "merged"
+        and _literal_string(context_statement.targets[0].slice)
+        == "context_flags"
+        and isinstance(context_statement.value, ast.Call)
+        and _call_name(context_statement.value) == "dict"
+        and len(context_statement.value.args) == 1
+        and isinstance(context_statement.value.args[0], ast.Name)
+        and context_statement.value.args[0].id == "base"
+        and not context_statement.value.keywords
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_enrichment"
+        )
+
+    if not (
+        isinstance(merged_statement, ast.Assign)
+        and len(merged_statement.targets) == 1
+        and isinstance(merged_statement.targets[0], ast.Subscript)
+        and isinstance(merged_statement.targets[0].value, ast.Name)
+        and merged_statement.targets[0].value.id == "out"
+        and isinstance(merged_statement.targets[0].slice, ast.Name)
+        and merged_statement.targets[0].slice.id == "nome"
+        and isinstance(merged_statement.value, ast.Name)
+        and merged_statement.value.id == "merged"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_dict_result"
+        )
+
+    passthrough_statement = flags_if.orelse[0]
+    if not (
+        isinstance(passthrough_statement, ast.Assign)
+        and len(passthrough_statement.targets) == 1
+        and isinstance(passthrough_statement.targets[0], ast.Subscript)
+        and isinstance(passthrough_statement.targets[0].value, ast.Name)
+        and passthrough_statement.targets[0].value.id == "out"
+        and isinstance(passthrough_statement.targets[0].slice, ast.Name)
+        and passthrough_statement.targets[0].slice.id == "nome"
+        and isinstance(passthrough_statement.value, ast.Name)
+        and passthrough_statement.value.id == "res"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_passthrough"
+        )
+
+    if not (
+        isinstance(flags_return, ast.Return)
+        and isinstance(flags_return.value, ast.Name)
+        and flags_return.value.id == "out"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_return"
+        )
+
+    flag_assignments = [
+        item
+        for item in ast.walk(method_node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "resultados_engines"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) is not None
+            and _resolve_name(
+                method_module,
+                _call_name(item.value),
+            )
+            == flags_helper_id
+            and len(item.value.args) == 2
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "resultados_engines"
+            and not item.value.keywords
+        )
+    ]
+    if len(flag_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_assignment"
+        )
+    flags_assignment = flag_assignments[0]
+
+    if dispatcher_assignment.lineno >= flags_assignment.lineno:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:flags_ordering"
+        )
+
+    # Prove the enriched mapping preserves each dispatcher result by key.
+    enriched_initializers = [
+        item
+        for item in method_node.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "resultados_engines_enriquecidos"
+            and isinstance(item.value, ast.Dict)
+            and not item.value.keys
+            and not item.value.values
+        )
+    ]
+    if len(enriched_initializers) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:enriched_init"
+        )
+    enriched_initializer = enriched_initializers[0]
+
+    result_loops = []
+    for item in ast.walk(method_node):
+        if not isinstance(item, ast.For):
+            continue
+        if not (
+            isinstance(item.target, ast.Tuple)
+            and len(item.target.elts) == 2
+            and all(isinstance(elt, ast.Name) for elt in item.target.elts)
+            and [elt.id for elt in item.target.elts] == ["nome", "resultado"]
+            and isinstance(item.iter, ast.Call)
+            and _call_name(item.iter) == "resultados_engines.items"
+            and not item.iter.args
+            and not item.iter.keywords
+        ):
+            continue
+        result_loops.append(item)
+
+    if len(result_loops) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:result_loop"
+        )
+    result_loop = result_loops[0]
+
+    res_copies = [
+        item
+        for item in result_loop.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "res"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) == "dict"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "resultado"
+            and not item.value.keywords
+        )
+    ]
+    if len(res_copies) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:result_copy"
+        )
+
+    enriched_writes = [
+        item
+        for item in result_loop.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Subscript)
+            and isinstance(item.targets[0].value, ast.Name)
+            and item.targets[0].value.id == "resultados_engines_enriquecidos"
+            and isinstance(item.targets[0].slice, ast.Name)
+            and item.targets[0].slice.id == "nome"
+            and isinstance(item.value, ast.Name)
+            and item.value.id == "res"
+        )
+    ]
+    if len(enriched_writes) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:enriched_write"
+        )
+
+    # Persistence must be causally tied to the same copied MEI-capable result.
+    registro_assignments = [
+        item
+        for item in result_loop.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "registro"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) == "EngineResultado"
+        )
+    ]
+    if len(registro_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:engine_result_record"
+        )
+
+    registro_assignment = registro_assignments[0]
+    if (
+        method_module.imports.get("EngineResultado")
+        != "app.models.EngineResultado"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:engine_result_model"
+        )
+
+    registro_keywords = {
+        keyword.arg: keyword.value
+        for keyword in registro_assignment.value.keywords
+        if keyword.arg is not None
+    }
+    persisted_result = registro_keywords.get("resultado")
+    persisted_name = registro_keywords.get("engine_nome")
+    if not (
+        isinstance(persisted_result, ast.Name)
+        and persisted_result.id == "res"
+        and isinstance(persisted_name, ast.Name)
+        and persisted_name.id == "nome"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:engine_result_lineage"
+        )
+
+    causal_adds = [
+        item
+        for item in result_loop.body
+        if (
+            isinstance(item, ast.Expr)
+            and isinstance(item.value, ast.Call)
+            and isinstance(item.value.func, ast.Attribute)
+            and item.value.func.attr == "add"
+            and isinstance(item.value.func.value, ast.Attribute)
+            and isinstance(item.value.func.value.value, ast.Name)
+            and item.value.func.value.value.id == "self"
+            and item.value.func.value.attr == "db"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "registro"
+            and not item.value.keywords
+        )
+    ]
+    if len(causal_adds) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:causal_persistence"
+        )
+
+    # Publication must contain exactly the enriched mapping.
+    publication_returns = []
+    for item in ast.walk(method_node):
+        if not isinstance(item, ast.Return) or not isinstance(item.value, ast.Dict):
+            continue
+        matches = [
+            value
+            for key, value in zip(item.value.keys, item.value.values)
+            if _literal_string(key) == "resultados_engines"
+        ]
+        if (
+            len(matches) == 1
+            and isinstance(matches[0], ast.Name)
+            and matches[0].id == "resultados_engines_enriquecidos"
+        ):
+            publication_returns.append(item)
+
+    if len(publication_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:engine_publication"
+        )
+    publication_return = publication_returns[0]
+
+    ordered = [
+        dispatcher_assignment,
+        flags_assignment,
+        enriched_initializer,
+        result_loop,
+        publication_return,
+    ]
+    if [item.lineno for item in ordered] != sorted(
+        item.lineno for item in ordered
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:method_ordering"
+        )
+
+    downstream = _background_downstream_inventory(
+        modules,
+        function_id=engine_method_id,
+    )
+    if (
+        downstream["producer_ids"] != [PRODUCER_ID]
+        or not downstream["downstream_scan_complete"]
+        or downstream["unresolved_app_callees"]
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_COMPONENT:downstream"
+        )
+
+    # Instance-held session operations are inventoried only after the exact
+    # __init__(db) -> self.db binding above has been proven.
+    persistence_operations = []
+    for item in ast.walk(method_node):
+        if not (
+            isinstance(item, ast.Call)
+            and isinstance(item.func, ast.Attribute)
+            and item.func.attr in {"add", "flush", "commit"}
+            and isinstance(item.func.value, ast.Attribute)
+            and isinstance(item.func.value.value, ast.Name)
+            and item.func.value.value.id == "self"
+            and item.func.value.attr == "db"
+        ):
+            continue
+        persistence_operations.append(
+            (item.lineno, item.col_offset, item.func.attr)
+        )
+
+    persistence_operations.sort()
+    operations = [
+        operation for _, _, operation in persistence_operations
+    ]
+    if not {"add", "flush", "commit"}.issubset(set(operations)):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:persistence_operations"
+        )
+
+    component_trace = [
+        engine_method_id,
+        dispatcher_id,
+        MEI_ENGINE_EXECUTE_ID,
+        PRODUCER_ID,
+    ]
+
+    return {
+        "producer_ids": [PRODUCER_ID],
+        "component_trace": component_trace,
+        "lineage_provenance": {
+            "dispatcher_result": "resultados_engines[nome]",
+            "flags_transform": flags_helper_id,
+            "enriched_result": "resultados_engines_enriquecidos[nome]",
+            "persistence_model": "app.models.EngineResultado",
+            "persistence_field": "resultado",
+            "component_return_field": "resultados_engines",
+        },
+        "persistence_inventory": {
+            "qualified_trace": component_trace,
+            "sink_operations": {
+                engine_method_id: operations,
+            },
+            "unresolved_app_callees": [],
+            "scan_complete": True,
+        },
+        "unresolved_app_callees": downstream["unresolved_app_callees"],
+        "downstream_scan_complete": downstream["downstream_scan_complete"],
+    }
+
+def _insights_engine_mei_sink_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    route_function_id: str,
+) -> dict:
+    """Prove the direct /insights HTTP consumer of the reusable InsightEngine proof."""
+    expected_route = "app.routers.insights_router.obter_insights"
+    if route_function_id != expected_route:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:"
+            f"{route_function_id}"
+        )
+
+    route_found = _function_node(modules, route_function_id)
+    if route_found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:function"
+        )
+
+    route_module, route_node = route_found
+    if (
+        route_module.imports.get("InsightEngine")
+        != "app.services.insights_engine.InsightEngine"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:engine_import"
+        )
+
+    engine_assignments = [
+        item
+        for item in route_node.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "engine"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) == "InsightEngine"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "db"
+            and not item.value.keywords
+        )
+    ]
+    if len(engine_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:engine_construction"
+        )
+
+    route_returns = [
+        item
+        for item in route_node.body
+        if (
+            isinstance(item, ast.Return)
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) == "engine.gerar_insights_empresa"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Attribute)
+            and isinstance(item.value.args[0].value, ast.Name)
+            and item.value.args[0].value.id == "empresa"
+            and item.value.args[0].attr == "id"
+            and not item.value.keywords
+        )
+    ]
+    if len(route_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:publication_return"
+        )
+
+    if engine_assignments[0].lineno >= route_returns[0].lineno:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_INSIGHTS_ROUTE:route_ordering"
+        )
+
+    component = _insights_engine_mei_component_inventory(modules)
+    trace = [route_function_id, *component["component_trace"]]
+
+    persistence = dict(component["persistence_inventory"])
+    persistence["qualified_trace"] = trace
+
+    provenance = dict(component["lineage_provenance"])
+    provenance["publication_field"] = "resultados_engines"
+
+    return {
+        "mei_reachability": "REACHABLE_MEI",
+        "producer_ids": component["producer_ids"],
+        "sink_kinds": ["PUBLICATION", "PERSISTENCE"],
+        "trace": trace,
+        "lineage_provenance": provenance,
+        "persistence_inventory": persistence,
+        "unresolved_app_callees": component["unresolved_app_callees"],
+        "downstream_scan_complete": component["downstream_scan_complete"],
+    }
+
 def _background_downstream_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -3977,6 +4634,21 @@ def build_census() -> dict:
                     "blocker_code": None,
                     **system_metrics_inventory,
                 })
+                continue
+            if function_id == "app.routers.insights_router.obter_insights":
+                insights_inventory = _insights_engine_mei_sink_inventory(
+                    modules,
+                    route_function_id=function_id,
+                )
+                paths.append(
+                    {
+                        "entrypoint": entrypoint,
+                        "function_id": function_id,
+                        "blocked_before_producer": False,
+                        "blocker_code": None,
+                        **insights_inventory,
+                    }
+                )
                 continue
             persistence_source = _persisted_mei_report_publication_source(node)
             if persistence_source is not None:
