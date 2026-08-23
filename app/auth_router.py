@@ -316,8 +316,6 @@ def eliminar_meus_dados(
     """
     user_id = usuario_atual.id
 
-    # 1. Revogar todos os tokens activos
-    revogacao_jti.revogar_todos_do_user(user_id) if hasattr(revogacao_jti, "revogar_todos_do_user") else None
 
     # 2. Eliminar consentimentos e termos
     db.query(models.ConsentimentoLGPD).filter(models.ConsentimentoLGPD.user_id == user_id).delete()
