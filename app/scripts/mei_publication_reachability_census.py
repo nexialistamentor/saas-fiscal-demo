@@ -1791,6 +1791,62 @@ def _is_sqlalchemy_column_descriptor_helper(
 
 
 
+def _is_inert_fastapi_security_dependency_object(
+    modules: dict[str, ModuleInfo],
+    target_id: str,
+) -> bool:
+    """Qualify only statically constructed FastAPI security dependency objects."""
+    split = _split_imported_symbol(modules, target_id)
+    if split is None:
+        return False
+
+    module, symbol = split
+    if "." in symbol:
+        return False
+
+    assignments = [
+        statement
+        for statement in module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == symbol
+        )
+    ]
+    if len(assignments) != 1:
+        return False
+
+    value = assignments[0].value
+    if not isinstance(value, ast.Call):
+        return False
+
+    call_name = _call_name(value)
+    if call_name is None:
+        return False
+
+    if _resolve_name(module, call_name) != "fastapi.security.OAuth2PasswordBearer":
+        return False
+
+    if value.args or any(keyword.arg is None for keyword in value.keywords):
+        return False
+
+    token_url = [
+        keyword.value
+        for keyword in value.keywords
+        if keyword.arg == "tokenUrl"
+    ]
+    if len(token_url) != 1:
+        return False
+    if not (
+        isinstance(token_url[0], ast.Constant)
+        and isinstance(token_url[0].value, str)
+        and token_url[0].value
+    ):
+        return False
+
+    return True
+
 def _is_inert_sqlalchemy_sessionmaker_factory(
     modules: dict[str, ModuleInfo],
     target_id: str,
@@ -2190,6 +2246,7 @@ def _background_downstream_inventory(
                 or _is_inert_declarative_model_constructor(modules, current)
                 or _is_sqlalchemy_column_descriptor_helper(modules, current)
                 or _is_inert_sqlalchemy_sessionmaker_factory(modules, current)
+                or _is_inert_fastapi_security_dependency_object(modules, current)
             ):
                 continue
             if current.startswith("app."):
@@ -2225,6 +2282,7 @@ def _background_downstream_inventory(
                     or _is_inert_declarative_model_constructor(modules, callee)
                     or _is_sqlalchemy_column_descriptor_helper(modules, callee)
                     or _is_inert_sqlalchemy_sessionmaker_factory(modules, callee)
+                    or _is_inert_fastapi_security_dependency_object(modules, callee)
                 ):
                     continue
                 unresolved_app_callees.add(callee)
