@@ -2968,6 +2968,309 @@ def _background_downstream_inventory(
     }
 
 
+def _relatorio_analysis_type_mei_sink_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    route_function_id: str,
+) -> dict:
+    """Prove the tax_recovery /relatorio consumer of InsightEngine."""
+    expected_route = "app.routes.relatorio_router.obter_relatorio_por_tipo"
+    analysis_types_module_id = "app.services.analysis_types"
+
+    if route_function_id != expected_route:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            f"{route_function_id}"
+        )
+
+    route_found = _function_node(modules, route_function_id)
+    analysis_types_module = modules.get(analysis_types_module_id)
+
+    if route_found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:function"
+        )
+    if analysis_types_module is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "analysis_types_module"
+        )
+
+    route_module, route_node = route_found
+
+    if (
+        route_module.imports.get("InsightEngine")
+        != "app.services.insights_engine.InsightEngine"
+        or route_module.imports.get("ANALYSIS_TYPE_TAX_RECOVERY")
+        != "app.services.analysis_types.ANALYSIS_TYPE_TAX_RECOVERY"
+        or route_module.imports.get("ANALYSIS_TYPES_RELATORIO_GET")
+        != "app.services.analysis_types.ANALYSIS_TYPES_RELATORIO_GET"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:imports"
+        )
+
+    # Prove the canonical literal represented by the tax-recovery symbol.
+    tax_recovery_constants = [
+        statement
+        for statement in analysis_types_module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == "ANALYSIS_TYPE_TAX_RECOVERY"
+            and _literal_string(statement.value) == "tax_recovery"
+        )
+    ]
+    if len(tax_recovery_constants) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "tax_recovery_constant"
+        )
+
+    # The publicly accepted domain must actually contain tax_recovery.
+    allowed_domains = [
+        statement.value
+        for statement in analysis_types_module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == "ANALYSIS_TYPES_RELATORIO_GET"
+            and isinstance(statement.value, ast.Tuple)
+        )
+    ]
+    if len(allowed_domains) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "allowed_domain"
+        )
+
+    allowed_names = [
+        element.id
+        for element in allowed_domains[0].elts
+        if isinstance(element, ast.Name)
+    ]
+    if (
+        len(allowed_names) != len(allowed_domains[0].elts)
+        or "ANALYSIS_TYPE_TAX_RECOVERY" not in allowed_names
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "tax_recovery_not_allowed"
+        )
+
+    # relatorio_router must expose exactly that domain through ANALYSIS_TYPES.
+    route_domain_aliases = [
+        statement
+        for statement in route_module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == "ANALYSIS_TYPES"
+            and isinstance(statement.value, ast.Name)
+            and statement.value.id == "ANALYSIS_TYPES_RELATORIO_GET"
+        )
+    ]
+    if len(route_domain_aliases) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "route_domain_alias"
+        )
+
+    # The route must reject values outside ANALYSIS_TYPES before its branches.
+    domain_guards = [
+        statement
+        for statement in route_node.body
+        if (
+            isinstance(statement, ast.If)
+            and isinstance(statement.test, ast.Compare)
+            and isinstance(statement.test.left, ast.Name)
+            and statement.test.left.id == "analysis_type"
+            and len(statement.test.ops) == 1
+            and isinstance(statement.test.ops[0], ast.NotIn)
+            and len(statement.test.comparators) == 1
+            and isinstance(statement.test.comparators[0], ast.Name)
+            and statement.test.comparators[0].id == "ANALYSIS_TYPES"
+            and any(
+                isinstance(item, ast.Raise)
+                for item in ast.walk(statement)
+            )
+        )
+    ]
+    if len(domain_guards) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "domain_guard"
+        )
+
+    # Identify the real tax_recovery branch.
+    recovery_branches = [
+        statement
+        for statement in route_node.body
+        if (
+            isinstance(statement, ast.If)
+            and isinstance(statement.test, ast.Compare)
+            and isinstance(statement.test.left, ast.Name)
+            and statement.test.left.id == "analysis_type"
+            and len(statement.test.ops) == 1
+            and isinstance(statement.test.ops[0], ast.Eq)
+            and len(statement.test.comparators) == 1
+            and isinstance(statement.test.comparators[0], ast.Name)
+            and statement.test.comparators[0].id
+            == "ANALYSIS_TYPE_TAX_RECOVERY"
+        )
+    ]
+    if len(recovery_branches) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "tax_recovery_branch"
+        )
+    recovery_branch = recovery_branches[0]
+
+    empresa_branches = [
+        item
+        for item in recovery_branch.body
+        if (
+            isinstance(item, ast.If)
+            and isinstance(item.test, ast.Name)
+            and item.test.id == "empresa_id"
+        )
+    ]
+    if len(empresa_branches) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "empresa_branch"
+        )
+    empresa_branch = empresa_branches[0]
+
+    engine_assignments = [
+        item
+        for item in empresa_branch.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "engine"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) == "InsightEngine"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "db"
+            and not item.value.keywords
+        )
+    ]
+    if len(engine_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "engine_construction"
+        )
+
+    result_assignments = [
+        item
+        for item in empresa_branch.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "resultado"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value)
+            == "engine.gerar_insights_empresa"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "empresa_id"
+            and not item.value.keywords
+        )
+    ]
+    if len(result_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "engine_result"
+        )
+
+    publication_returns = []
+    for item in empresa_branch.body:
+        if not isinstance(item, ast.Return) or not isinstance(item.value, ast.Dict):
+            continue
+
+        pairs = {
+            _literal_string(key): value
+            for key, value in zip(item.value.keys, item.value.values)
+            if _literal_string(key) is not None
+        }
+        analysis_value = pairs.get("analysis_type")
+        relatorio_value = pairs.get("relatorio")
+
+        if (
+            isinstance(analysis_value, ast.Name)
+            and analysis_value.id == "ANALYSIS_TYPE_TAX_RECOVERY"
+            and isinstance(relatorio_value, ast.Name)
+            and relatorio_value.id == "resultado"
+        ):
+            publication_returns.append(item)
+
+    if len(publication_returns) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "publication_return"
+        )
+
+    ordered = [
+        domain_guards[0],
+        recovery_branch,
+        engine_assignments[0],
+        result_assignments[0],
+        publication_returns[0],
+    ]
+    if [item.lineno for item in ordered] != sorted(
+        item.lineno for item in ordered
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:ordering"
+        )
+
+    component = _insights_engine_mei_component_inventory(modules)
+
+    downstream = _background_downstream_inventory(
+        modules,
+        function_id=route_function_id,
+    )
+    if (
+        downstream["producer_ids"] != [PRODUCER_ID]
+        or not downstream["downstream_scan_complete"]
+        or downstream["unresolved_app_callees"]
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_ANALYSIS_TYPE:"
+            "downstream"
+        )
+
+    trace = [route_function_id, *component["component_trace"]]
+
+    persistence = dict(component["persistence_inventory"])
+    persistence["qualified_trace"] = trace
+
+    provenance = dict(component["lineage_provenance"])
+    provenance.update(
+        {
+            "analysis_type_branch": "tax_recovery",
+            "publication_field": "relatorio",
+        }
+    )
+
+    return {
+        "mei_reachability": "REACHABLE_MEI",
+        "producer_ids": component["producer_ids"],
+        "sink_kinds": ["PUBLICATION", "PERSISTENCE"],
+        "trace": trace,
+        "lineage_provenance": provenance,
+        "persistence_inventory": persistence,
+        "unresolved_app_callees": downstream["unresolved_app_callees"],
+        "downstream_scan_complete": downstream["downstream_scan_complete"],
+    }
+
 def _auth_register_no_canonical_mei_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -4649,6 +4952,19 @@ def build_census() -> dict:
                         **insights_inventory,
                     }
                 )
+                continue
+            if function_id == "app.routes.relatorio_router.obter_relatorio_por_tipo":
+                relatorio_inventory = _relatorio_analysis_type_mei_sink_inventory(
+                    modules,
+                    route_function_id=function_id,
+                )
+                paths.append({
+                    "entrypoint": entrypoint,
+                    "function_id": function_id,
+                    "blocked_before_producer": False,
+                    "blocker_code": None,
+                    **relatorio_inventory,
+                })
                 continue
             persistence_source = _persisted_mei_report_publication_source(node)
             if persistence_source is not None:
