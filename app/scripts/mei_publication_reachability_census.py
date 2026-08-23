@@ -1581,7 +1581,7 @@ def _is_plain_builtin_exception_constructor(
         if (
             len(class_node.bases) != 1
             or not isinstance(class_node.bases[0], ast.Name)
-            or class_node.bases[0].id != "Exception"
+            or class_node.bases[0].id not in {"Exception", "ValueError"}
             or class_node.keywords
             or class_node.decorator_list
         ):
