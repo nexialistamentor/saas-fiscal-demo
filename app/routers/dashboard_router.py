@@ -5,6 +5,10 @@ from app import models
 from app.database import get_db
 from app.models import AlertaFiscal, RelatorioAnalise, EngineResultado
 from app.security import get_usuario_atual, tenant_empresa, verificar_empresa_do_usuario, verificar_acesso_relatorio
+from app.services.resultado_provenance_service import (
+    ResultadoProvenanceError,
+    verificar_resultado_persistido,
+)
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -125,10 +129,19 @@ def oportunidades_por_relatorio(
     verificar_acesso_relatorio(rel, usuario_atual, db)
     oportunidades = []
     creditos = []
-    if rel.resultado_json:
-        rj = rel.resultado_json or {}
-        oportunidades = rj.get("oportunidades") or []
-        creditos = rj.get("creditos_detectados") or []
+    try:
+        rj = verificar_resultado_persistido(rel)
+    except ResultadoProvenanceError:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "RESULTADO_PERSISTIDO_PROVENIENCIA_NAO_COMPROVADA",
+                "estado_l3": "bloqueado",
+            },
+        ) from None
+    oportunidades = rj.get("oportunidades") or []
+    creditos = rj.get("creditos_detectados") or []
     engines = (
         db.query(EngineResultado)
         .filter(EngineResultado.relatorio_analise_id == relatorio_id)

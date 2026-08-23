@@ -5,8 +5,6 @@ Conecta Motor Fiscal, Engines, Agentes e Score ao container relatorios_analise.
 Cada execução vira um registro completo auditável.
 """
 
-import hashlib
-import json
 import logging
 import time
 from datetime import datetime
@@ -18,6 +16,10 @@ from app.services.analysis_orchestrator import executar_analise_xml
 from app.xml_service import DuplicataFiscalError, processar_e_persistir_xml
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.usage_service import verificar_limite_analises, incrementar_uso_analise
+from app.services.resultado_provenance_service import (
+    fingerprint_resultado_json,
+    selar_resultado_nao_mei,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +71,7 @@ def finalizar_registro_analise(
         rel.score_resultante = score_resultante
     if resultado_json is not None:
         rel.resultado_json = resultado_json
-        rel.fingerprint = hashlib.sha256(
-            json.dumps(resultado_json, sort_keys=True, ensure_ascii=False).encode()
-        ).hexdigest()
+        rel.fingerprint = fingerprint_resultado_json(resultado_json)
     db.commit()
 
 
@@ -202,6 +202,11 @@ def executar_e_registrar_analise_xml(
 
     total_alertas = contar_alertas_empresa(db, empresa_id) if empresa_id else 0
 
+    resultado_persistido = selar_resultado_nao_mei(
+        resultado,
+        producer_id="app.services.analysis_orchestrator.executar_analise_xml",
+    )
+
     finalizar_registro_analise(
         db,
         rel.id,
@@ -209,7 +214,7 @@ def executar_e_registrar_analise_xml(
         tempo_execucao=tempo,
         total_alertas=total_alertas,
         score_resultante=score_resultante,
-        resultado_json=resultado,
+        resultado_json=resultado_persistido,
     )
     incrementar_uso_analise(db, empresa_id)
     db.refresh(rel)

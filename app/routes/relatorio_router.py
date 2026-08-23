@@ -11,6 +11,12 @@ from app.security import get_usuario_atual, verificar_acesso_relatorio, verifica
 from app.services.analysis_orchestrator import executar_analise_xml
 from app.services.registro_analise_service import executar_e_registrar_analise_xml
 from app.services.usage_service import LimiteAnalisesAtingidoError
+from app.services.resultado_provenance_service import (
+    ResultadoProvenanceError,
+    fingerprint_resultado_json,
+    selar_resultado_nao_mei,
+    verificar_resultado_persistido,
+)
 from app.services.assistente_service import (
     _obter_dados_fiscais_planejamento,
     _obter_dados_fiscais_recuperacao,
@@ -431,8 +437,18 @@ def obter_relatorio(
     if not bool(rel.pago or usuario_atual.consulta_paga):
         raise HTTPException(status_code=402, detail="Pagamento necessário")
 
-    resultado = rel.resultado_json or {}
-    payload = dict(resultado) if isinstance(resultado, dict) else {"resultado": resultado}
+    try:
+        resultado = verificar_resultado_persistido(rel)
+    except ResultadoProvenanceError:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "RESULTADO_PERSISTIDO_PROVENIENCIA_NAO_COMPROVADA",
+                "estado_l3": "bloqueado",
+            },
+        ) from None
+    payload = dict(resultado)
     payload.update({
         "relatorio_id": rel.id,
         "empresa_id": rel.empresa_id,
@@ -536,11 +552,16 @@ async def gerar_relatorio_mei_tax(
                 "erro": str(e),
             },
         )
+    resultado_persistido = selar_resultado_nao_mei(
+        resultado,
+        producer_id="app.services.imposto_service.calcular_imposto_simples",
+    )
     rel = models.RelatorioAnalise(
         user_id=usuario_atual.id,
         analysis_type=ANALYSIS_TYPE_MEI_TAX,
         status="ok",
-        resultado_json=resultado,
+        resultado_json=resultado_persistido,
+        fingerprint=fingerprint_resultado_json(resultado_persistido),
     )
     db.add(rel)
     db.commit()
@@ -567,7 +588,17 @@ async def buscar_relatorio_mei_tax(
     ).first()
     if not rel:
         raise HTTPException(status_code=404, detail="Relatório não encontrado.")
-    resultado = rel.resultado_json
+    try:
+        resultado = verificar_resultado_persistido(rel)
+    except ResultadoProvenanceError:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "bloqueado": True,
+                "tipo_bloqueio": "RESULTADO_PERSISTIDO_PROVENIENCIA_NAO_COMPROVADA",
+                "estado_l3": "bloqueado",
+            },
+        ) from None
     pdf = gerar_pdf_imposto(resultado)
     return StreamingResponse(
         iter([pdf.getvalue()]),
