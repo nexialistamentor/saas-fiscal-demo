@@ -1465,10 +1465,30 @@ def _direct_callees(
 
     for call in (item for item in scoped_nodes if isinstance(item, ast.Call)):
         name = _call_name(call)
-        if name is None:
+        resolved: str | None = None
+
+        if (
+            name is None
+            and isinstance(call.func, ast.Attribute)
+            and isinstance(call.func.value, ast.Call)
+        ):
+            constructor_call = call.func.value
+            constructor_name = _call_name(constructor_call)
+            if constructor_name is not None:
+                constructor_id = _resolve_name(resolution_module, constructor_name)
+                method_name = call.func.attr
+                if (
+                    constructor_id is not None
+                    and constructor_id.startswith("app.")
+                    and _app_class_defines_method(constructor_id, method_name)
+                ):
+                    resolved = f"{constructor_id}.{method_name}"
+
+        if name is None and resolved is None:
             continue
-        resolved = _resolve_name(resolution_module, name)
-        if resolved is None and owner_class is not None and name.startswith("self."):
+        if resolved is None:
+            resolved = _resolve_name(resolution_module, name)
+        if resolved is None and owner_class is not None and name is not None and name.startswith("self."):
             method_name = name.split(".", 1)[1]
             local_target = f"{owner_class}.{method_name}"
             if local_target in module.functions:
@@ -1479,7 +1499,7 @@ def _direct_callees(
                     class_name=owner_class,
                     method_name=method_name,
                 )
-        if resolved is None and "." in name:
+        if resolved is None and name is not None and "." in name:
             local_name, method_name = name.split(".", 1)
             class_id = local_instances.get(local_name)
             if class_id is not None and _app_class_defines_method(class_id, method_name):
