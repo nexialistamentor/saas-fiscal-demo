@@ -3271,6 +3271,228 @@ def _relatorio_analysis_type_mei_sink_inventory(
         "downstream_scan_complete": downstream["downstream_scan_complete"],
     }
 
+def _relatorio_pdf_mei_persistence_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    route_function_id: str,
+) -> dict:
+    """Prove /relatorio/relatorio-pdf reaches canonical MEI persistence only."""
+    expected_route = "app.routes.relatorio_router.relatorio_pdf"
+    service_id = (
+        "app.services.registro_analise_service."
+        "executar_e_registrar_analise_xml"
+    )
+
+    if route_function_id != expected_route:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:"
+            f"{route_function_id}"
+        )
+
+    route_found = _function_node(modules, route_function_id)
+    service_found = _function_node(modules, service_id)
+
+    if route_found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:route"
+        )
+    if service_found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:service"
+        )
+
+    route_module, route_node = route_found
+    _, service_node = service_found
+
+    if (
+        route_module.imports.get("executar_e_registrar_analise_xml")
+        != service_id
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:service_import"
+        )
+
+    # Route must forward its empresa_id into the persisted-analysis service.
+    service_calls = [
+        node
+        for node in ast.walk(route_node)
+        if (
+            isinstance(node, ast.Call)
+            and _call_name(node) == "executar_e_registrar_analise_xml"
+        )
+    ]
+    if len(service_calls) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:service_call"
+        )
+
+    service_call = service_calls[0]
+    if not (
+        len(service_call.args) == 4
+        and isinstance(service_call.args[0], ast.Name)
+        and service_call.args[0].id == "db"
+        and isinstance(service_call.args[1], ast.Name)
+        and service_call.args[1].id == "xml_bytes"
+        and isinstance(service_call.args[2], ast.Name)
+        and service_call.args[2].id == "user_id"
+        and isinstance(service_call.args[3], ast.Name)
+        and service_call.args[3].id == "empresa_id"
+        and len(service_call.keywords) == 1
+        and service_call.keywords[0].arg == "limite_analises"
+        and isinstance(service_call.keywords[0].value, ast.Name)
+        and service_call.keywords[0].value.id == "limite_analises"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:"
+            "empresa_id_forwarding"
+        )
+
+    # The service must have a reachable empresa_id branch containing the
+    # InsightEngine execution. This is the causal gate for MEI persistence.
+    empresa_branches = [
+        node
+        for node in ast.walk(service_node)
+        if (
+            isinstance(node, ast.If)
+            and isinstance(node.test, ast.Name)
+            and node.test.id == "empresa_id"
+            and any(
+                isinstance(item, ast.Call)
+                and _call_name(item) == "engine.gerar_insights_empresa"
+                for item in ast.walk(node)
+            )
+        )
+    ]
+    if len(empresa_branches) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:empresa_branch"
+        )
+    empresa_branch = empresa_branches[0]
+
+    local_imports = [
+        node
+        for node in ast.walk(empresa_branch)
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module == "app.services.insights_engine"
+            and len(node.names) == 1
+            and node.names[0].name == "InsightEngine"
+            and node.names[0].asname is None
+        )
+    ]
+    if len(local_imports) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:"
+            "insightengine_import"
+        )
+
+    engine_assignments = [
+        node
+        for node in ast.walk(empresa_branch)
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "engine"
+            and isinstance(node.value, ast.Call)
+            and _call_name(node.value) == "InsightEngine"
+            and len(node.value.args) == 1
+            and isinstance(node.value.args[0], ast.Name)
+            and node.value.args[0].id == "db"
+            and not node.value.keywords
+        )
+    ]
+    if len(engine_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:"
+            "engine_construction"
+        )
+
+    engine_calls = [
+        node
+        for node in ast.walk(empresa_branch)
+        if (
+            isinstance(node, ast.Call)
+            and _call_name(node) == "engine.gerar_insights_empresa"
+        )
+    ]
+    if len(engine_calls) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:"
+            "engine_execution"
+        )
+
+    engine_call = engine_calls[0]
+    keywords = {
+        keyword.arg: keyword.value
+        for keyword in engine_call.keywords
+        if keyword.arg is not None
+    }
+    empresa_value = keywords.get("empresa_id")
+    relatorio_value = keywords.get("relatorio_analise_id")
+
+    if not (
+        not engine_call.args
+        and len(keywords) == 2
+        and isinstance(empresa_value, ast.Name)
+        and empresa_value.id == "empresa_id"
+        and isinstance(relatorio_value, ast.Attribute)
+        and isinstance(relatorio_value.value, ast.Name)
+        and relatorio_value.value.id == "rel"
+        and relatorio_value.attr == "id"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:"
+            "engine_arguments"
+        )
+
+    if engine_assignments[0].lineno >= engine_call.lineno:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:"
+            "engine_ordering"
+        )
+
+    # Reuse the already-proven component persistence. Do not infer publication:
+    # executar_analise_xml() returns the XML result separately from InsightEngine.
+    component = _insights_engine_mei_component_inventory(modules)
+
+    downstream = _background_downstream_inventory(
+        modules,
+        function_id=route_function_id,
+    )
+    if (
+        downstream["producer_ids"] != [PRODUCER_ID]
+        or not downstream["downstream_scan_complete"]
+        or downstream["unresolved_app_callees"]
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_RELATORIO_PDF:downstream"
+        )
+
+    trace = [
+        route_function_id,
+        service_id,
+        *component["component_trace"],
+    ]
+
+    persistence = dict(component["persistence_inventory"])
+    persistence["qualified_trace"] = trace
+
+    provenance = dict(component["lineage_provenance"])
+    provenance.pop("component_return_field", None)
+    provenance["persistence_guard"] = "empresa_id"
+
+    return {
+        "mei_reachability": "REACHABLE_MEI",
+        "producer_ids": component["producer_ids"],
+        "sink_kinds": ["PERSISTENCE"],
+        "trace": trace,
+        "lineage_provenance": provenance,
+        "persistence_inventory": persistence,
+        "unresolved_app_callees": downstream["unresolved_app_callees"],
+        "downstream_scan_complete": downstream["downstream_scan_complete"],
+    }
+
 def _auth_register_no_canonical_mei_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -4964,6 +5186,19 @@ def build_census() -> dict:
                     "blocked_before_producer": False,
                     "blocker_code": None,
                     **relatorio_inventory,
+                })
+                continue
+            if function_id == "app.routes.relatorio_router.relatorio_pdf":
+                relatorio_pdf_inventory = _relatorio_pdf_mei_persistence_inventory(
+                    modules,
+                    route_function_id=function_id,
+                )
+                paths.append({
+                    "entrypoint": entrypoint,
+                    "function_id": function_id,
+                    "blocked_before_producer": False,
+                    "blocker_code": None,
+                    **relatorio_pdf_inventory,
                 })
                 continue
             persistence_source = _persisted_mei_report_publication_source(node)
