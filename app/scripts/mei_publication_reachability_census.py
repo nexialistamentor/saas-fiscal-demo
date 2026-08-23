@@ -1749,7 +1749,7 @@ def _is_sqlalchemy_column_descriptor_helper(
         return False
 
     class_name, attribute_name, method_name = parts
-    if method_name not in {"desc", "is_", "isnot"}:
+    if method_name not in {"asc", "desc", "in_", "is_", "isnot"}:
         return False
 
     models_module = modules.get("app.models")
