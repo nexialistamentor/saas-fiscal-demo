@@ -1010,19 +1010,6 @@ def _alternative_producer_inventory(
         module = modules[module_name]
         for local_name, function_node in sorted(module.functions.items()):
             function_id = f"{module.name}.{local_name}"
-            if function_id == "app.auth_router.register_user":
-                auth_inventory = _auth_register_no_canonical_mei_inventory(
-                    modules,
-                    route_function_id=function_id,
-                )
-                paths.append({
-                    "entrypoint": entrypoint,
-                    "function_id": function_id,
-                    "blocked_before_producer": False,
-                    "blocker_code": None,
-                    **auth_inventory,
-                })
-                continue
             if function_id == canonical_producer_id:
                 continue
 
@@ -5147,6 +5134,19 @@ def build_census() -> dict:
                 )
                 continue
 
+            if function_id == "app.auth_router.register_user":
+                auth_inventory = _auth_register_no_canonical_mei_inventory(
+                    modules,
+                    route_function_id=function_id,
+                )
+                paths.append({
+                    "entrypoint": entrypoint,
+                    "function_id": function_id,
+                    "blocked_before_producer": False,
+                    "blocker_code": None,
+                    **auth_inventory,
+                })
+                continue
             if function_id == "app.routes.metrics_router.obter_metricas":
                 system_metrics_inventory = _system_metrics_no_canonical_mei_inventory(
                     modules,
