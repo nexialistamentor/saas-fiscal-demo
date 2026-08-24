@@ -1,10 +1,26 @@
 """Paridade MEITaxEngine (L2) vs calcular_imposto_simples (MEI) no legado."""
 
+from types import SimpleNamespace
+
 import pytest
 
+import app.services.tax_engines.mei_tax_engine as mei_tax_engine_module
 from app.services.imposto_service import calcular_imposto_simples
 from app.services.tax_engines.mei_constants import normalizar_atividade_mei
 from app.services.tax_engines.mei_tax_engine import MEITaxEngine
+
+
+@pytest.fixture
+def mei_engine_authority_permitida(monkeypatch):
+    monkeypatch.setattr(
+        mei_tax_engine_module,
+        "verificar",
+        lambda request: SimpleNamespace(
+            permitido=True,
+            fonte_id=request.fonte_id,
+            motivo="autoridade controlada exclusivamente pelo teste",
+        ),
+    )
 
 
 def _assert_parity(faturamento_mensal: float, atividade: str):
@@ -36,7 +52,10 @@ def _assert_parity(faturamento_mensal: float, atividade: str):
         7000.0,
     ],
 )
-def test_mei_engine_paridade_comercio(faturamento_mensal: float):
+def test_mei_engine_paridade_comercio(
+    faturamento_mensal: float,
+    mei_engine_authority_permitida,
+):
     _assert_parity(faturamento_mensal, atividade="comercio")
 
 
@@ -44,12 +63,18 @@ def test_mei_engine_paridade_comercio(faturamento_mensal: float):
     "faturamento_mensal",
     [4000.0, 6500.0],
 )
-def test_mei_engine_paridade_legado_servicos(faturamento_mensal: float):
+def test_mei_engine_paridade_legado_servicos(
+    faturamento_mensal: float,
+    mei_engine_authority_permitida,
+):
     _assert_parity(faturamento_mensal, atividade="servicos")
 
 
 @pytest.mark.parametrize("atividade", [None, "", "desconhecida"])
-def test_mei_r001_engine_e_servico_bloqueiam_atividade_invalida(atividade):
+def test_mei_r001_engine_e_servico_bloqueiam_atividade_invalida(
+    atividade,
+    mei_engine_authority_permitida,
+):
     with pytest.raises(ValueError, match="Atividade MEI"):
         MEITaxEngine().execute(
             {

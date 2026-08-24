@@ -1,3 +1,5 @@
+from app.schemas.source_authority_schema import SourceAuthorityRequest
+from app.services.source_authority_guard import verificar
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
 from app.services.tax_engines.mei_constants import (
     MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE,
@@ -6,6 +8,15 @@ from app.services.tax_engines.mei_constants import (
     normalizar_atividade_mei,
     obter_salario_minimo,
 )
+
+
+class AutoridadeFiscalIndisponivelError(RuntimeError):
+    codigo = "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL"
+
+    def __init__(self, *, fonte_id: str, motivo: str):
+        self.fonte_id = fonte_id
+        self.motivo = motivo
+        super().__init__(f"{self.codigo}: {fonte_id}: {motivo}")
 
 
 class MEITaxEngine(BaseTaxEngine):
@@ -29,6 +40,18 @@ class MEITaxEngine(BaseTaxEngine):
         atividade = context.get("atividade")
         if atividade is None:
             atividade = context.get("atividade_mei")
+
+        autoridade = verificar(
+            SourceAuthorityRequest(
+                fonte_id="PGMEI-001",
+                uso_pretendido="validar_fato_operacional",
+            )
+        )
+        if not autoridade.permitido:
+            raise AutoridadeFiscalIndisponivelError(
+                fonte_id=autoridade.fonte_id,
+                motivo=autoridade.motivo,
+            )
 
         sal_min = obter_salario_minimo(ano_referencia)
         imposto = calcular_das_mei(sal_min, atividade)
