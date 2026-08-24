@@ -20,14 +20,18 @@ AVISO ARQUITECTURAL V1:
     V2: projecção mensal com sazonalidade + benefícios fiscais regionais.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Optional
 
 from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine, TempoNormativoAusenteError
 from app.services.tax_engines.mei_constants import MEI_LIMITE_ANUAL_FATURAMENTO
-from app.services.tax_engines.mei_tax_engine import MEITaxEngine
+from app.services.tax_engines.mei_tax_engine import (
+    AutoridadeFiscalIndisponivelError,
+    AutoridadeNormativaMEIIndisponivelError,
+    MEITaxEngine,
+)
 
 _resolver_temporal = BaseTaxEngine()
 
@@ -82,6 +86,7 @@ class ResultadoComparacao:
     resultados: dict[str, ResultadoRegime]
     justificativa: list[str]
     regimes_inelegiveis: dict[str, str]  # regime → motivo
+    regimes_nao_avaliados: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 def _resolver_ano_referencia(ano_referencia: Optional[int]) -> int:
@@ -236,6 +241,7 @@ def comparar_regimes(
 
     resultados: dict[str, ResultadoRegime] = {}
     inelegiveis: dict[str, str] = {}
+    nao_avaliados: dict[str, dict[str, str]] = {}
     justificativa = []
 
     # Determinar elegibilidade
@@ -251,29 +257,41 @@ def comparar_regimes(
                 f"R$ {_limite_mei:,.2f}"
             )
         else:
-            _resultado_mei = MEITaxEngine().execute(
-                {
-                    "faturamento": faturamento_anual / Decimal("12"),
-                    "atividade": atividade,
-                    "ano_referencia": ano_referencia,
-                }
-            )
-            _das_mensal = Decimal(str(_resultado_mei["tributos"]["das"]))
-            _das_anual = _das_mensal * Decimal("12")
-            resultados["mei"] = ResultadoRegime(
-                regime="mei",
-                carga_anual=_das_anual,
-                carga_mensal=_das_mensal,
-                aliquota_efetiva_pct=round(
-                    float(_das_anual / faturamento_anual * 100), 2
+            try:
+                _resultado_mei = MEITaxEngine().execute(
+                    {
+                        "faturamento": faturamento_anual / Decimal("12"),
+                        "faturamento_anual": faturamento_anual,
+                        "atividade": atividade,
+                        "ano_referencia": ano_referencia,
+                    }
                 )
-                if faturamento_anual
-                else 0,
-                anexo_simples=None,
-                fator_r=None,
-                alertas=list(_resultado_mei.get("alertas", [])),
-                detalhes=_resultado_mei,
-            )
+            except (
+                AutoridadeFiscalIndisponivelError,
+                AutoridadeNormativaMEIIndisponivelError,
+            ) as exc:
+                nao_avaliados["mei"] = {
+                    "estado": "autoridade_indisponivel",
+                    "codigo": exc.codigo,
+                    "motivo": exc.motivo,
+                }
+            else:
+                _das_mensal = Decimal(str(_resultado_mei["tributos"]["das"]))
+                _das_anual = _das_mensal * Decimal("12")
+                resultados["mei"] = ResultadoRegime(
+                    regime="mei",
+                    carga_anual=_das_anual,
+                    carga_mensal=_das_mensal,
+                    aliquota_efetiva_pct=round(
+                        float(_das_anual / faturamento_anual * 100), 2
+                    )
+                    if faturamento_anual
+                    else 0,
+                    anexo_simples=None,
+                    fator_r=None,
+                    alertas=list(_resultado_mei.get("alertas", [])),
+                    detalhes=_resultado_mei,
+                )
 
     # Simples Nacional — limite de faturamento
     if "simples" in regimes_permitidos:
@@ -315,12 +333,18 @@ def comparar_regimes(
                 inelegiveis["lr"] = f"Erro no cálculo: {e}"
 
     if not resultados:
+        justificativa_sem_resultados = (
+            ["Nenhum regime pôde ser avaliado com a autoridade disponível"]
+            if nao_avaliados
+            else ["Nenhum regime elegível para os dados fornecidos"]
+        )
         return ResultadoComparacao(
             regime_recomendado="indefinido",
             economia_anual_vs_pior=Decimal("0"),
             resultados={},
-            justificativa=["Nenhum regime elegível para os dados fornecidos"],
+            justificativa=justificativa_sem_resultados,
             regimes_inelegiveis=inelegiveis,
+            regimes_nao_avaliados=nao_avaliados,
         )
 
     # Ordenar por carga anual
@@ -348,4 +372,5 @@ def comparar_regimes(
         resultados=resultados,
         justificativa=justificativa,
         regimes_inelegiveis=inelegiveis,
+        regimes_nao_avaliados=nao_avaliados,
     )
