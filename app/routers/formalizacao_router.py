@@ -146,6 +146,7 @@ def comparar_regimes_endpoint(
         "economia_anual_vs_pior": str(resultado.economia_anual_vs_pior),
         "justificativa": resultado.justificativa,
         "regimes_inelegiveis": resultado.regimes_inelegiveis,
+        "regimes_nao_avaliados": resultado.regimes_nao_avaliados,
         "resultados": {
             regime: _serializar_resultado_regime(r)
             for regime, r in resultado.resultados.items()
@@ -228,6 +229,7 @@ def simular_empresa(
         "economia_anual_vs_pior": str(resultado_regime.economia_anual_vs_pior),
         "regimes_compativeis": resultado_cnae.regimes_compativeis,
         "regimes_inelegiveis": resultado_regime.regimes_inelegiveis,
+        "regimes_nao_avaliados": resultado_regime.regimes_nao_avaliados,
         "resultados_regime": {
             regime: _serializar_resultado_regime(r)
             for regime, r in resultado_regime.resultados.items()
