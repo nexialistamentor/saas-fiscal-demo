@@ -4851,12 +4851,28 @@ def _formalizacao_compare_trace(
     if compare is None:
         raise RuntimeError(f"MEI_REACHABILITY_UNRESOLVED_FUNCTION:{FORMALIZACAO_COMPARE_ID}")
     compare_module, compare_node = compare
-    if PRODUCER_ID not in _direct_callees(compare_module, compare_node):
+    if MEI_ENGINE_EXECUTE_ID not in _direct_callees(compare_module, compare_node):
         raise RuntimeError(
-            f"MEI_REACHABILITY_UNRESOLVED_EDGE:{FORMALIZACAO_COMPARE_ID}->{PRODUCER_ID}"
+            f"MEI_REACHABILITY_UNRESOLVED_EDGE:{FORMALIZACAO_COMPARE_ID}->{MEI_ENGINE_EXECUTE_ID}"
         )
 
-    return [route_function_id, FORMALIZACAO_COMPARE_ID, PRODUCER_ID]
+    engine = _function_node(modules, MEI_ENGINE_EXECUTE_ID)
+    if engine is None:
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_FUNCTION:{MEI_ENGINE_EXECUTE_ID}"
+        )
+    engine_module, engine_node = engine
+    if PRODUCER_ID not in _direct_callees(engine_module, engine_node):
+        raise RuntimeError(
+            f"MEI_REACHABILITY_UNRESOLVED_EDGE:{MEI_ENGINE_EXECUTE_ID}->{PRODUCER_ID}"
+        )
+
+    return [
+        route_function_id,
+        FORMALIZACAO_COMPARE_ID,
+        MEI_ENGINE_EXECUTE_ID,
+        PRODUCER_ID,
+    ]
 
 
 def _formalizacao_orm_persistence_inventory(
@@ -4910,23 +4926,68 @@ def _regime_decision_provenance(modules: dict[str, ModuleInfo]) -> dict:
         )
     module, node = compare
 
+    engine_result = _single_name_assignment(node, "_resultado_mei")
+    engine_call = engine_result.value
+    if not (
+        isinstance(engine_call, ast.Call)
+        and isinstance(engine_call.func, ast.Attribute)
+        and engine_call.func.attr == "execute"
+        and isinstance(engine_call.func.value, ast.Call)
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:_resultado_mei"
+        )
+    constructor_name = _call_name(engine_call.func.value)
+    if (
+        constructor_name is None
+        or _resolve_name(module, constructor_name)
+        != MEI_ENGINE_EXECUTE_ID.rsplit(".", 1)[0]
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:_resultado_mei"
+        )
+
     monthly = _single_name_assignment(node, "_das_mensal")
-    if not isinstance(monthly.value, ast.Call):
+    monthly_call = monthly.value
+    if not (
+        isinstance(monthly_call, ast.Call)
+        and _call_name(monthly_call) == "Decimal"
+        and _resolve_name(module, "Decimal") == "decimal.Decimal"
+        and len(monthly_call.args) == 1
+        and not monthly_call.keywords
+        and isinstance(monthly_call.args[0], ast.Call)
+        and _call_name(monthly_call.args[0]) == "str"
+        and len(monthly_call.args[0].args) == 1
+        and not monthly_call.args[0].keywords
+    ):
         raise RuntimeError(
             "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:_das_mensal"
         )
-    monthly_call = _call_name(monthly.value)
-    if monthly_call is None or _resolve_name(module, monthly_call) != PRODUCER_ID:
+    das_value = monthly_call.args[0].args[0]
+    if not (
+        isinstance(das_value, ast.Subscript)
+        and _literal_string(das_value.slice) == "das"
+        and isinstance(das_value.value, ast.Subscript)
+        and _literal_string(das_value.value.slice) == "tributos"
+        and isinstance(das_value.value.value, ast.Name)
+        and das_value.value.value.id == "_resultado_mei"
+    ):
         raise RuntimeError(
             "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:_das_mensal"
         )
 
     annual = _single_name_assignment(node, "_das_anual")
     if not (
-        isinstance(annual.value, ast.Call)
-        and _call_name(annual.value) == "round"
-        and annual.value.args
-        and _contains_name(annual.value.args[0], "_das_mensal")
+        isinstance(annual.value, ast.BinOp)
+        and isinstance(annual.value.op, ast.Mult)
+        and isinstance(annual.value.left, ast.Name)
+        and annual.value.left.id == "_das_mensal"
+        and isinstance(annual.value.right, ast.Call)
+        and _call_name(annual.value.right) == "Decimal"
+        and _resolve_name(module, "Decimal") == "decimal.Decimal"
+        and len(annual.value.right.args) == 1
+        and _literal_string(annual.value.right.args[0]) == "12"
+        and not annual.value.right.keywords
     ):
         raise RuntimeError(
             "MEI_REACHABILITY_UNRESOLVED_DECISION_PROVENANCE:_das_anual"
@@ -5013,6 +5074,7 @@ def _regime_decision_provenance(modules: dict[str, ModuleInfo]) -> dict:
         )
 
     ordered_nodes = [
+        engine_result,
         monthly,
         annual,
         result_assignment,
@@ -5026,7 +5088,9 @@ def _regime_decision_provenance(modules: dict[str, ModuleInfo]) -> dict:
         )
 
     return {
+        "engine_id": MEI_ENGINE_EXECUTE_ID,
         "producer_id": PRODUCER_ID,
+        "das_source": '_resultado_mei["tributos"]["das"]',
         "function_id": FORMALIZACAO_COMPARE_ID,
         "steps": [
             "_das_mensal",
