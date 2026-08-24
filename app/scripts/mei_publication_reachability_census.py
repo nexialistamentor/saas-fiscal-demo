@@ -3907,6 +3907,646 @@ def _system_metrics_no_canonical_mei_inventory(
         "downstream_scan_complete": True,
     }
 
+def _fiscal_analisar_xml_mei_persistence_inventory(
+    modules: dict[str, ModuleInfo],
+    *,
+    mounted: dict[str, tuple[str, str]],
+    route_function_id: str,
+) -> dict:
+    # Prove canonical MEI persistence through the XML RQ/sync execution path.
+    expected_route = "app.routes.fiscal_router.analisar_xml_fiscal"
+    helper_id = "app.routes.fiscal_router._enqueue_or_run_sync"
+    job_id = "app.jobs.analysis_job.processar_xml_job"
+    service_id = (
+        "app.services.registro_analise_service."
+        "executar_e_registrar_analise_xml"
+    )
+    insight_id = (
+        "app.services.insights_engine."
+        "InsightEngine.gerar_insights_empresa"
+    )
+    queue_module_id = "app.queue.redis_queue"
+    redis_module_id = "app.redis_connection"
+    redis_factory_id = f"{redis_module_id}.criar_cliente_redis"
+    redis_getter_id = f"{redis_module_id}.get_redis_connection"
+
+    expected_unresolved = sorted(
+        [
+            f"{queue_module_id}.analysis_queue.enqueue",
+            f"{queue_module_id}.redis_conn.ping",
+        ]
+    )
+
+    if route_function_id != expected_route:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:route"
+        )
+
+    route_found = _function_node(modules, route_function_id)
+    helper_found = _function_node(modules, helper_id)
+    job_found = _function_node(modules, job_id)
+    service_found = _function_node(modules, service_id)
+    redis_factory_found = _function_node(modules, redis_factory_id)
+    redis_getter_found = _function_node(modules, redis_getter_id)
+    queue_module = modules.get(queue_module_id)
+
+    if any(
+        item is None
+        for item in (
+            route_found,
+            helper_found,
+            job_found,
+            service_found,
+            redis_factory_found,
+            redis_getter_found,
+            queue_module,
+        )
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:modules"
+        )
+
+    route_module, route_node = route_found
+    helper_module, helper_node = helper_found
+    job_module, job_node = job_found
+    _, service_node = service_found
+    _, redis_factory_node = redis_factory_found
+    _, redis_getter_node = redis_getter_found
+
+    downstream = _background_downstream_inventory(
+        modules,
+        function_id=route_function_id,
+    )
+    if sorted(downstream["unresolved_app_callees"]) != expected_unresolved:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:"
+            "unexpected_downstream"
+        )
+
+    route_calls = [
+        call
+        for call in ast.walk(route_node)
+        if (
+            isinstance(call, ast.Call)
+            and _call_name(call) == "_enqueue_or_run_sync"
+        )
+    ]
+    if len(route_calls) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:route_helper_call"
+        )
+
+    route_call = route_calls[0]
+    if not (
+        len(route_call.args) == 3
+        and not route_call.keywords
+        and isinstance(route_call.args[0], ast.Name)
+        and route_call.args[0].id == "conteudo"
+        and isinstance(route_call.args[1], ast.Name)
+        and route_call.args[1].id == "empresa_id"
+        and isinstance(route_call.args[2], ast.Attribute)
+        and isinstance(route_call.args[2].value, ast.Name)
+        and route_call.args[2].value.id == "usuario_atual"
+        and route_call.args[2].attr == "id"
+        and _resolve_name(route_module, "_enqueue_or_run_sync") == helper_id
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:route_helper_args"
+        )
+
+    rq_imports = [
+        node
+        for node in ast.walk(helper_node)
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.level == 0
+            and node.module == queue_module_id
+        )
+    ]
+    if len(rq_imports) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:rq_import"
+        )
+    rq_import = rq_imports[0]
+    rq_names = {
+        (alias.name, alias.asname)
+        for alias in rq_import.names
+    }
+    if rq_names != {
+        ("analysis_queue", None),
+        ("redis_conn", None),
+    }:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:rq_import_names"
+        )
+
+    ping_calls = [
+        call
+        for call in ast.walk(helper_node)
+        if (
+            isinstance(call, ast.Call)
+            and _call_name(call) == "redis_conn.ping"
+        )
+    ]
+    enqueue_calls = [
+        call
+        for call in ast.walk(helper_node)
+        if (
+            isinstance(call, ast.Call)
+            and _call_name(call) == "analysis_queue.enqueue"
+        )
+    ]
+    sync_job_calls = [
+        call
+        for call in ast.walk(helper_node)
+        if (
+            isinstance(call, ast.Call)
+            and _call_name(call) == "processar_xml_job"
+        )
+    ]
+
+    if (
+        len(ping_calls) != 1
+        or ping_calls[0].args
+        or ping_calls[0].keywords
+        or len(enqueue_calls) != 1
+        or len(sync_job_calls) != 2
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:execution_topology"
+        )
+
+    enqueue_call = enqueue_calls[0]
+    if not (
+        len(enqueue_call.args) == 3
+        and isinstance(enqueue_call.args[0], ast.Name)
+        and enqueue_call.args[0].id == "processar_xml_job"
+        and isinstance(enqueue_call.args[1], ast.Name)
+        and enqueue_call.args[1].id == "conteudo"
+        and isinstance(enqueue_call.args[2], ast.Name)
+        and enqueue_call.args[2].id == "empresa_id"
+        and len(enqueue_call.keywords) == 1
+        and enqueue_call.keywords[0].arg == "meta"
+        and isinstance(enqueue_call.keywords[0].value, ast.Dict)
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:enqueue_target"
+        )
+
+    meta_dict = enqueue_call.keywords[0].value
+    if not (
+        len(meta_dict.keys) == 1
+        and _literal_string(meta_dict.keys[0]) == "owner_id"
+        and isinstance(meta_dict.values[0], ast.Name)
+        and meta_dict.values[0].id == "owner_id"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:enqueue_meta"
+        )
+
+    for call in sync_job_calls:
+        if not (
+            len(call.args) == 2
+            and not call.keywords
+            and isinstance(call.args[0], ast.Name)
+            and call.args[0].id == "conteudo"
+            and isinstance(call.args[1], ast.Name)
+            and call.args[1].id == "empresa_id"
+            and _resolve_name(helper_module, "processar_xml_job") == job_id
+        ):
+            raise RuntimeError(
+                "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:sync_job_target"
+            )
+
+    transport_tries = []
+    for candidate in ast.walk(helper_node):
+        if not isinstance(candidate, ast.Try):
+            continue
+        descendants = set(ast.walk(candidate))
+        if (
+            ping_calls[0] in descendants
+            and enqueue_call in descendants
+            and rq_import in descendants
+        ):
+            transport_tries.append(candidate)
+
+    if len(transport_tries) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:transport_try"
+        )
+
+    transport_try = transport_tries[0]
+    fallback_job_calls = [
+        call
+        for handler in transport_try.handlers
+        for call in ast.walk(handler)
+        if call in sync_job_calls
+    ]
+    if len(fallback_job_calls) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:sync_fallback"
+        )
+
+    if ping_calls[0].lineno >= enqueue_call.lineno:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:probe_order"
+        )
+
+    rq_roots = _rq_background_root_inventory(
+        modules,
+        mounted=mounted,
+    )
+    job_roots = [
+        root
+        for root in rq_roots
+        if root["function_id"] == job_id
+    ]
+    if len(job_roots) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:rq_root"
+        )
+
+    expected_registration = (
+        f"{route_function_id}->{helper_id}:RQ.Queue.enqueue"
+    )
+    if job_roots[0].get("registration_ids") != [expected_registration]:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:rq_registration"
+        )
+
+    if (
+        queue_module.imports.get("Queue") != "rq.Queue"
+        or queue_module.imports.get("criar_cliente_redis")
+        != redis_factory_id
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:queue_imports"
+        )
+
+    redis_conn_bindings = [
+        statement
+        for statement in queue_module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], ast.Name)
+            and statement.targets[0].id == "redis_conn"
+        )
+    ]
+    if len(redis_conn_bindings) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:redis_binding"
+        )
+
+    redis_conn_value = redis_conn_bindings[0].value
+    if not (
+        isinstance(redis_conn_value, ast.Call)
+        and _call_name(redis_conn_value) == "criar_cliente_redis"
+        and not redis_conn_value.args
+        and not redis_conn_value.keywords
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:redis_factory_binding"
+        )
+
+    factory_getter_assignments = [
+        statement
+        for statement in ast.walk(redis_factory_node)
+        if (
+            isinstance(statement, ast.Assign)
+            and len(statement.targets) == 1
+            and isinstance(statement.targets[0], (ast.Tuple, ast.List))
+            and [
+                element.id
+                for element in statement.targets[0].elts
+                if isinstance(element, ast.Name)
+            ] == ["client", "redis_url", "err"]
+            and isinstance(statement.value, ast.Call)
+            and _call_name(statement.value) == "get_redis_connection"
+            and not statement.value.args
+            and not statement.value.keywords
+        )
+    ]
+    factory_returns = [
+        statement
+        for statement in ast.walk(redis_factory_node)
+        if isinstance(statement, ast.Return)
+    ]
+    if not (
+        len(factory_getter_assignments) == 1
+        and len(factory_returns) == 1
+        and isinstance(factory_returns[0].value, ast.Name)
+        and factory_returns[0].value.id == "client"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:redis_factory"
+        )
+
+    redis_imports = [
+        node
+        for node in ast.walk(redis_getter_node)
+        if (
+            isinstance(node, ast.Import)
+            and len(node.names) == 1
+            and node.names[0].name == "redis"
+            and node.names[0].asname == "redis_lib"
+        )
+    ]
+    from_url_assignments = [
+        node
+        for node in ast.walk(redis_getter_node)
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "client"
+            and isinstance(node.value, ast.Call)
+            and _call_name(node.value) == "redis_lib.from_url"
+        )
+    ]
+    getter_pings = [
+        node
+        for node in ast.walk(redis_getter_node)
+        if (
+            isinstance(node, ast.Call)
+            and _call_name(node) == "client.ping"
+            and not node.args
+            and not node.keywords
+        )
+    ]
+    success_returns = [
+        node
+        for node in ast.walk(redis_getter_node)
+        if (
+            isinstance(node, ast.Return)
+            and isinstance(node.value, ast.Tuple)
+            and len(node.value.elts) == 3
+            and isinstance(node.value.elts[0], ast.Name)
+            and node.value.elts[0].id == "client"
+            and isinstance(node.value.elts[1], ast.Name)
+            and node.value.elts[1].id == "redis_url"
+            and isinstance(node.value.elts[2], ast.Constant)
+            and node.value.elts[2].value is None
+        )
+    ]
+
+    if not (
+        len(redis_imports) == 1
+        and len(from_url_assignments) == 1
+        and len(getter_pings) == 1
+        and len(success_returns) == 1
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:redis_getter"
+        )
+
+    from_url_call = from_url_assignments[0].value
+    if not (
+        len(from_url_call.args) == 1
+        and isinstance(from_url_call.args[0], ast.Name)
+        and from_url_call.args[0].id == "redis_url"
+        and len(from_url_call.keywords) == 1
+        and from_url_call.keywords[0].arg == "socket_connect_timeout"
+        and isinstance(from_url_call.keywords[0].value, ast.Constant)
+        and from_url_call.keywords[0].value.value == 2
+        and from_url_assignments[0].lineno < getter_pings[0].lineno
+        < success_returns[0].lineno
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:redis_getter_lineage"
+        )
+
+    service_calls = [
+        node
+        for node in ast.walk(job_node)
+        if (
+            isinstance(node, ast.Call)
+            and _call_name(node) == "executar_e_registrar_analise_xml"
+            and _resolve_name(
+                job_module,
+                "executar_e_registrar_analise_xml",
+            )
+            == service_id
+        )
+    ]
+    if len(service_calls) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:job_service_call"
+        )
+
+    service_call = service_calls[0]
+    if service_call.args or any(
+        keyword.arg is None
+        for keyword in service_call.keywords
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:job_service_args"
+        )
+
+    service_keywords = {
+        keyword.arg: keyword.value
+        for keyword in service_call.keywords
+    }
+    if set(service_keywords) != {
+        "db",
+        "xml_bytes",
+        "user_id",
+        "empresa_id",
+    }:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:job_service_keywords"
+        )
+
+    user_id_value = service_keywords["user_id"]
+    if not (
+        isinstance(service_keywords["db"], ast.Name)
+        and service_keywords["db"].id == "db"
+        and isinstance(service_keywords["xml_bytes"], ast.Name)
+        and service_keywords["xml_bytes"].id == "xml_bytes"
+        and isinstance(user_id_value, ast.Attribute)
+        and isinstance(user_id_value.value, ast.Name)
+        and user_id_value.value.id == "emp"
+        and user_id_value.attr == "user_id"
+        and isinstance(service_keywords["empresa_id"], ast.Name)
+        and service_keywords["empresa_id"].id == "empresa_id"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:job_service_lineage"
+        )
+
+    service_assignments = [
+        node
+        for node in ast.walk(job_node)
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], (ast.Tuple, ast.List))
+            and len(node.targets[0].elts) == 2
+            and all(
+                isinstance(element, ast.Name)
+                for element in node.targets[0].elts
+            )
+            and [
+                element.id
+                for element in node.targets[0].elts
+            ] == ["rel", "analise"]
+            and node.value is service_call
+        )
+    ]
+    if len(service_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:job_service_result"
+        )
+
+    insight_imports = [
+        node
+        for node in ast.walk(service_node)
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.level == 0
+            and node.module == "app.services.insights_engine"
+            and len(node.names) == 1
+            and node.names[0].name == "InsightEngine"
+            and node.names[0].asname is None
+        )
+    ]
+    engine_assignments = [
+        node
+        for node in ast.walk(service_node)
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "engine"
+            and isinstance(node.value, ast.Call)
+            and _call_name(node.value) == "InsightEngine"
+            and len(node.value.args) == 1
+            and isinstance(node.value.args[0], ast.Name)
+            and node.value.args[0].id == "db"
+            and not node.value.keywords
+        )
+    ]
+    insight_calls = [
+        node
+        for node in ast.walk(service_node)
+        if (
+            isinstance(node, ast.Call)
+            and _call_name(node) == "engine.gerar_insights_empresa"
+        )
+    ]
+    if not (
+        len(insight_imports) == 1
+        and len(engine_assignments) == 1
+        and len(insight_calls) == 1
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:insight_call"
+        )
+
+    insight_call = insight_calls[0]
+    if insight_call.args or any(
+        keyword.arg is None
+        for keyword in insight_call.keywords
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:insight_args"
+        )
+    insight_keywords = {
+        keyword.arg: keyword.value
+        for keyword in insight_call.keywords
+    }
+    relatorio_value = insight_keywords.get("relatorio_analise_id")
+    if not (
+        set(insight_keywords) == {
+            "empresa_id",
+            "relatorio_analise_id",
+        }
+        and isinstance(insight_keywords["empresa_id"], ast.Name)
+        and insight_keywords["empresa_id"].id == "empresa_id"
+        and isinstance(relatorio_value, ast.Attribute)
+        and isinstance(relatorio_value.value, ast.Name)
+        and relatorio_value.value.id == "rel"
+        and relatorio_value.attr == "id"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:insight_lineage"
+        )
+
+    guarded_blocks = []
+    for candidate in ast.walk(service_node):
+        if not (
+            isinstance(candidate, ast.If)
+            and isinstance(candidate.test, ast.Name)
+            and candidate.test.id == "empresa_id"
+        ):
+            continue
+        descendants = set(ast.walk(candidate))
+        if (
+            engine_assignments[0] in descendants
+            and insight_call in descendants
+            and insight_imports[0] in descendants
+        ):
+            guarded_blocks.append(candidate)
+
+    if len(guarded_blocks) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:empresa_guard"
+        )
+
+    component = _insights_engine_mei_component_inventory(modules)
+    if (
+        component["producer_ids"] != [PRODUCER_ID]
+        or not component["downstream_scan_complete"]
+        or component["unresolved_app_callees"]
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:component"
+        )
+
+    component_persistence = component["persistence_inventory"]
+    if (
+        not component_persistence["scan_complete"]
+        or component_persistence["unresolved_app_callees"]
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_FISCAL_XML:persistence"
+        )
+
+    trace = [
+        route_function_id,
+        helper_id,
+        job_id,
+        service_id,
+        *component["component_trace"],
+    ]
+
+    persistence_inventory = {
+        **component_persistence,
+        "qualified_trace": trace,
+    }
+
+    return {
+        "mei_reachability": "REACHABLE_MEI",
+        "producer_ids": [PRODUCER_ID],
+        "sink_kinds": ["PERSISTENCE"],
+        "trace": trace,
+        "lineage_provenance": {
+            "execution_modes": [
+                "RQ_REGISTERED_BACKGROUND",
+                "SYNC_INLINE_OR_FALLBACK",
+            ],
+            "rq_registration": expected_registration,
+            "rq_target": job_id,
+            "redis_probe": f"{queue_module_id}.redis_conn.ping",
+            "registro_service": service_id,
+            "canonical_component": insight_id,
+            **component["lineage_provenance"],
+        },
+        "persistence_inventory": persistence_inventory,
+        "unresolved_app_callees": [],
+        "downstream_scan_complete": True,
+    }
+
 def _default_route_reachability_inventory(
     modules: dict[str, ModuleInfo],
     *,
@@ -5158,6 +5798,20 @@ def build_census() -> dict:
                     "blocked_before_producer": False,
                     "blocker_code": None,
                     **system_metrics_inventory,
+                })
+                continue
+            if function_id == "app.routes.fiscal_router.analisar_xml_fiscal":
+                fiscal_xml_inventory = _fiscal_analisar_xml_mei_persistence_inventory(
+                    modules,
+                    mounted=mounted,
+                    route_function_id=function_id,
+                )
+                paths.append({
+                    "entrypoint": entrypoint,
+                    "function_id": function_id,
+                    "blocked_before_producer": False,
+                    "blocker_code": None,
+                    **fiscal_xml_inventory,
                 })
                 continue
             if function_id == "app.routers.insights_router.obter_insights":
