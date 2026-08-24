@@ -19,6 +19,20 @@ class AutoridadeFiscalIndisponivelError(RuntimeError):
         super().__init__(f"{self.codigo}: {fonte_id}: {motivo}")
 
 
+class AutoridadeNormativaMEIIndisponivelError(RuntimeError):
+    codigo = "AUTORIDADE_NORMATIVA_MEI_INDISPONIVEL"
+
+    def __init__(self, *, motivo: str):
+        self.motivo = motivo
+        super().__init__(f"{self.codigo}: {motivo}")
+
+
+def _exigir_autoridade_normativa_mei() -> None:
+    raise AutoridadeNormativaMEIIndisponivelError(
+        motivo="BINDING_MISSING",
+    )
+
+
 class MEITaxEngine(BaseTaxEngine):
     """
     Engine MEI extraída do legado (imposto_service).
@@ -52,6 +66,8 @@ class MEITaxEngine(BaseTaxEngine):
                 fonte_id=autoridade.fonte_id,
                 motivo=autoridade.motivo,
             )
+
+        _exigir_autoridade_normativa_mei()
 
         sal_min = obter_salario_minimo(ano_referencia)
         imposto = calcular_das_mei(sal_min, atividade)

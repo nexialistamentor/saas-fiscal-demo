@@ -23,6 +23,15 @@ def mei_engine_authority_permitida(monkeypatch):
     )
 
 
+@pytest.fixture
+def mei_engine_normative_authority_permitida(monkeypatch):
+    monkeypatch.setattr(
+        mei_tax_engine_module,
+        "_exigir_autoridade_normativa_mei",
+        lambda: None,
+    )
+
+
 def _assert_parity(faturamento_mensal: float, atividade: str):
     engine = MEITaxEngine()
     ctx = {"faturamento": faturamento_mensal, "ano_referencia": 2026}
@@ -55,6 +64,7 @@ def _assert_parity(faturamento_mensal: float, atividade: str):
 def test_mei_engine_paridade_comercio(
     faturamento_mensal: float,
     mei_engine_authority_permitida,
+    mei_engine_normative_authority_permitida,
 ):
     _assert_parity(faturamento_mensal, atividade="comercio")
 
@@ -66,6 +76,7 @@ def test_mei_engine_paridade_comercio(
 def test_mei_engine_paridade_legado_servicos(
     faturamento_mensal: float,
     mei_engine_authority_permitida,
+    mei_engine_normative_authority_permitida,
 ):
     _assert_parity(faturamento_mensal, atividade="servicos")
 
@@ -74,6 +85,7 @@ def test_mei_engine_paridade_legado_servicos(
 def test_mei_r001_engine_e_servico_bloqueiam_atividade_invalida(
     atividade,
     mei_engine_authority_permitida,
+    mei_engine_normative_authority_permitida,
 ):
     with pytest.raises(ValueError, match="Atividade MEI"):
         MEITaxEngine().execute(
