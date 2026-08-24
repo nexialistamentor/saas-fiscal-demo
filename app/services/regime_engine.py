@@ -26,11 +26,8 @@ from typing import Optional
 
 from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine, TempoNormativoAusenteError
-from app.services.tax_engines.mei_constants import (
-    MEI_LIMITE_ANUAL_FATURAMENTO,
-    calcular_das_mei,
-    obter_salario_minimo,
-)
+from app.services.tax_engines.mei_constants import MEI_LIMITE_ANUAL_FATURAMENTO
+from app.services.tax_engines.mei_tax_engine import MEITaxEngine
 
 _resolver_temporal = BaseTaxEngine()
 
@@ -254,25 +251,28 @@ def comparar_regimes(
                 f"R$ {_limite_mei:,.2f}"
             )
         else:
-            _das_mensal = calcular_das_mei(
-                obter_salario_minimo(ano_referencia), atividade
+            _resultado_mei = MEITaxEngine().execute(
+                {
+                    "faturamento": faturamento_anual / Decimal("12"),
+                    "atividade": atividade,
+                    "ano_referencia": ano_referencia,
+                }
             )
-            _das_anual = round(_das_mensal * 12, 2)
+            _das_mensal = Decimal(str(_resultado_mei["tributos"]["das"]))
+            _das_anual = _das_mensal * Decimal("12")
             resultados["mei"] = ResultadoRegime(
                 regime="mei",
-                carga_anual=Decimal(str(_das_anual)),
-                carga_mensal=Decimal(str(_das_mensal)),
+                carga_anual=_das_anual,
+                carga_mensal=_das_mensal,
                 aliquota_efetiva_pct=round(
-                    float(Decimal(str(_das_anual)) / faturamento_anual * 100), 2
+                    float(_das_anual / faturamento_anual * 100), 2
                 )
                 if faturamento_anual
                 else 0,
                 anexo_simples=None,
                 fator_r=None,
-                alertas=[
-                    "DAS MEI calculado por fonte interna canónica; validação normativa L3 pendente.",
-                ],
-                detalhes={"_ano_referencia": ano_referencia},
+                alertas=list(_resultado_mei.get("alertas", [])),
+                detalhes=_resultado_mei,
             )
 
     # Simples Nacional — limite de faturamento
