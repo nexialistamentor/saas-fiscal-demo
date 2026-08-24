@@ -9,12 +9,9 @@ from app.services.tax_engines.base_tax_engine import (
 )
 from app.services.tax_engines.mei_constants import (
     MEI_ATIVIDADE_SERVICOS,
-    MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE,
-    MEI_LIMITE_ANUAL_FATURAMENTO,
-    calcular_das_mei,
     normalizar_atividade_mei,
-    obter_salario_minimo,
 )
+from app.services.tax_engines.mei_tax_engine import MEITaxEngine
 
 
 def calcular_imposto_simples(
@@ -38,14 +35,16 @@ def calcular_imposto_simples(
                 "calcular_imposto_simples() requer ano_referencia para MEI. "
                 "Bloqueado por B13-OPS-13A."
             )
-        ano_atual = ano_referencia
-        sal_min = obter_salario_minimo(ano_referencia)
-        imposto = calcular_das_mei(sal_min, atividade)
-        faturamento_anual_projetado = faturamento * 12
-        if faturamento_anual_projetado >= MEI_LIMITE_ANUAL_FATURAMENTO:
-            alertas.append("faturamento excedeu o limite anual do MEI")
-        elif faturamento_anual_projetado >= MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE:
-            alertas.append("faturamento próximo do limite anual")
+        resultado_mei = MEITaxEngine().execute(
+            {
+                "faturamento": faturamento,
+                "atividade": atividade,
+                "ano_referencia": ano_referencia,
+            }
+        )
+        ano_atual = resultado_mei["_ano_referencia"]
+        imposto = resultado_mei["tributos"]["das"]
+        alertas.extend(resultado_mei["alertas"])
     else:
         # CPF / autônomo: base real
         base = max(0, faturamento - despesas)
