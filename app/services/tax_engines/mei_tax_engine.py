@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from app.schemas.source_authority_schema import SourceAuthorityRequest
 from app.services.source_authority_guard import verificar
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
@@ -50,7 +52,17 @@ class MEITaxEngine(BaseTaxEngine):
         if faturamento is None:
             raise ValueError("faturamento ausente")
         faturamento_mensal = float(faturamento)
-        faturamento_anual = faturamento_mensal * 12
+
+        faturamento_anual_informado = context.get("faturamento_anual")
+        if faturamento_anual_informado is None:
+            # Retrocompatibilidade: callers mensais antigos mantêm a projeção existente.
+            faturamento_anual = faturamento_mensal * 12
+            faturamento_anual_para_limite = Decimal(str(faturamento_anual))
+        else:
+            # Quando o fato anual existe, ele é a autoridade para decisões anuais.
+            faturamento_anual_para_limite = Decimal(str(faturamento_anual_informado))
+            faturamento_anual = float(faturamento_anual_para_limite)
+
         atividade = context.get("atividade")
         if atividade is None:
             atividade = context.get("atividade_mei")
@@ -74,10 +86,12 @@ class MEITaxEngine(BaseTaxEngine):
 
         alertas = []
 
-        # Limite legal é anual — comparar sempre com projeção anual (12 × mensal).
-        if faturamento_anual >= MEI_LIMITE_ANUAL_FATURAMENTO:
+        # Limite legal é anual. Se o anual foi informado, ele prevalece sobre projeções.
+        limite_anual = Decimal(str(MEI_LIMITE_ANUAL_FATURAMENTO))
+        alerta_proximo_limite = Decimal(str(MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE))
+        if faturamento_anual_para_limite >= limite_anual:
             alertas.append("faturamento excedeu o limite anual do MEI")
-        elif faturamento_anual >= MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE:
+        elif faturamento_anual_para_limite >= alerta_proximo_limite:
             alertas.append("faturamento próximo do limite anual")
 
         return {
