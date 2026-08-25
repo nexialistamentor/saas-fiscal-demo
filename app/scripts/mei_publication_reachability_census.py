@@ -1596,6 +1596,135 @@ def _is_plain_builtin_exception_constructor(
     return False
 
 
+
+def _is_inert_pydantic_model_constructor(
+    modules: dict[str, ModuleInfo],
+    target_id: str,
+) -> bool:
+    """Qualify only structurally simple Pydantic model construction."""
+    for module_name in sorted(modules, key=len, reverse=True):
+        prefix = module_name + "."
+        if not target_id.startswith(prefix):
+            continue
+
+        class_name = target_id[len(prefix):]
+        if not class_name or "." in class_name:
+            return False
+
+        module = modules[module_name]
+        definitions = [
+            item
+            for item in module.tree.body
+            if isinstance(item, ast.ClassDef) and item.name == class_name
+        ]
+        if len(definitions) != 1:
+            return False
+
+        class_node = definitions[0]
+        if (
+            len(class_node.bases) != 1
+            or class_node.keywords
+            or class_node.decorator_list
+        ):
+            return False
+
+        base = class_node.bases[0]
+        if isinstance(base, ast.Name):
+            base_name = base.id
+        elif isinstance(base, ast.Attribute):
+            base_name = ast.unparse(base)
+        else:
+            return False
+
+        if _resolve_name(module, base_name) != "pydantic.BaseModel":
+            return False
+
+        # Custom methods may contain application behavior or validators.
+        if any(
+            isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+            for member in class_node.body
+        ):
+            return False
+
+        # Pydantic default_factory executes during model construction,
+        # so such a model is not an inert constructor.
+        if any(
+            isinstance(item, ast.keyword)
+            and item.arg == "default_factory"
+            for item in ast.walk(class_node)
+        ):
+            return False
+
+        return True
+
+    return False
+
+
+def _is_inert_single_app_base_constructor(
+    modules: dict[str, ModuleInfo],
+    target_id: str,
+) -> bool:
+    """Qualify one-level app inheritance only when the base constructor is plain."""
+    for module_name in sorted(modules, key=len, reverse=True):
+        prefix = module_name + "."
+        if not target_id.startswith(prefix):
+            continue
+
+        class_name = target_id[len(prefix):]
+        if not class_name or "." in class_name:
+            return False
+
+        module = modules[module_name]
+        definitions = [
+            item
+            for item in module.tree.body
+            if isinstance(item, ast.ClassDef) and item.name == class_name
+        ]
+        if len(definitions) != 1:
+            return False
+
+        class_node = definitions[0]
+        if (
+            len(class_node.bases) != 1
+            or class_node.keywords
+            or class_node.decorator_list
+        ):
+            return False
+
+        if any(
+            isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and member.name in {"__init__", "__new__"}
+            for member in class_node.body
+        ):
+            return False
+
+        base = class_node.bases[0]
+        if isinstance(base, ast.Name):
+            base_name = base.id
+        elif isinstance(base, ast.Attribute):
+            base_name = ast.unparse(base)
+        else:
+            return False
+
+        base_id = _resolve_name(module, base_name)
+        if (
+            base_id is None
+            and isinstance(base, ast.Name)
+            and any(
+                isinstance(item, ast.ClassDef) and item.name == base.id
+                for item in module.tree.body
+            )
+        ):
+            base_id = f"{module.name}.{base.id}"
+
+        if base_id is None or not base_id.startswith("app."):
+            return False
+
+        return _is_plain_app_class_constructor(modules, base_id)
+
+    return False
+
+
 def _is_inert_declarative_model_constructor(
     modules: dict[str, ModuleInfo],
     target_id: str,
@@ -2000,6 +2129,8 @@ def _reachable_orm_persistence_sinks(
     def inert_app_target(target: str) -> bool:
         return (
             _is_plain_app_class_constructor(modules, target)
+            or _is_inert_pydantic_model_constructor(modules, target)
+            or _is_inert_single_app_base_constructor(modules, target)
             or _is_plain_builtin_exception_constructor(modules, target)
             or _is_inert_declarative_model_constructor(modules, target)
             or _is_sqlalchemy_column_descriptor_helper(modules, target)
@@ -5622,6 +5753,314 @@ def _value_provenance_trace(
     )
 
 
+
+def _dashboard_engine_resultado_mei_fallback_guard(
+    modules: dict[str, ModuleInfo],
+    *,
+    route_function_id: str,
+) -> dict:
+    """Prove that persisted MEI EngineResultado fallback fails closed."""
+    expected_route = (
+        "app.routers.dashboard_router."
+        "oportunidades_por_relatorio"
+    )
+
+    if route_function_id != expected_route:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "route"
+        )
+
+    found = _function_node(modules, route_function_id)
+    if found is None:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "function"
+        )
+
+    module, node = found
+
+    if (
+        module.imports.get("EngineResultado")
+        != "app.models.EngineResultado"
+        or module.imports.get("ANALYSIS_TYPE_MEI_TAX")
+        != "app.services.analysis_types.ANALYSIS_TYPE_MEI_TAX"
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "imports"
+        )
+
+    engine_assignments = [
+        item
+        for item in node.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "engines"
+        )
+    ]
+
+    if len(engine_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "engine_query_assignment"
+        )
+
+    engine_assignment = engine_assignments[0]
+
+    engine_queries = [
+        item
+        for item in ast.walk(engine_assignment.value)
+        if (
+            isinstance(item, ast.Call)
+            and _call_name(item) == "db.query"
+            and len(item.args) == 1
+            and isinstance(item.args[0], ast.Name)
+            and item.args[0].id == "EngineResultado"
+        )
+    ]
+
+    if len(engine_queries) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "engine_query"
+        )
+
+    report_filters = [
+        item
+        for item in ast.walk(engine_assignment.value)
+        if (
+            isinstance(item, ast.Compare)
+            and isinstance(item.left, ast.Attribute)
+            and isinstance(item.left.value, ast.Name)
+            and item.left.value.id == "EngineResultado"
+            and item.left.attr == "relatorio_analise_id"
+            and len(item.ops) == 1
+            and isinstance(item.ops[0], ast.Eq)
+            and len(item.comparators) == 1
+            and isinstance(item.comparators[0], ast.Name)
+            and item.comparators[0].id == "relatorio_id"
+        )
+    ]
+
+    if len(report_filters) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "report_filter"
+        )
+
+    loops = [
+        item
+        for item in node.body
+        if (
+            isinstance(item, ast.For)
+            and isinstance(item.target, ast.Name)
+            and item.target.id == "e"
+            and isinstance(item.iter, ast.Name)
+            and item.iter.id == "engines"
+        )
+    ]
+
+    if len(loops) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "loop"
+        )
+
+    loop = loops[0]
+
+
+    result_assignments = [
+        item
+        for item in loop.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "r"
+        )
+    ]
+
+    if len(result_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "result_source"
+        )
+
+    result_value = result_assignments[0].value
+
+    if not (
+        isinstance(result_value, ast.IfExp)
+        and isinstance(result_value.test, ast.Call)
+        and _call_name(result_value.test) == "hasattr"
+        and len(result_value.test.args) == 2
+        and isinstance(result_value.test.args[0], ast.Name)
+        and result_value.test.args[0].id == "e"
+        and isinstance(result_value.test.args[1], ast.Constant)
+        and result_value.test.args[1].value == "resultado"
+        and isinstance(result_value.body, ast.BoolOp)
+        and isinstance(result_value.body.op, ast.Or)
+        and len(result_value.body.values) == 2
+        and isinstance(result_value.body.values[0], ast.Attribute)
+        and isinstance(result_value.body.values[0].value, ast.Name)
+        and result_value.body.values[0].value.id == "e"
+        and result_value.body.values[0].attr == "resultado"
+        and isinstance(result_value.body.values[1], ast.Dict)
+        and not result_value.body.values[1].keys
+        and not result_value.body.values[1].values
+        and isinstance(result_value.orelse, ast.Dict)
+        and not result_value.orelse.keys
+        and not result_value.orelse.values
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "result_source"
+        )
+
+    opportunity_assignments = [
+        item
+        for item in loop.body
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "engine_oportunidades"
+            and isinstance(item.value, ast.BoolOp)
+            and isinstance(item.value.op, ast.Or)
+            and isinstance(item.value.values[0], ast.Call)
+            and _call_name(item.value.values[0]) == "r.get"
+            and len(item.value.values[0].args) == 1
+            and isinstance(item.value.values[0].args[0], ast.Constant)
+            and item.value.values[0].args[0].value == "oportunidades"
+        )
+    ]
+
+    if len(opportunity_assignments) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "opportunity_source"
+        )
+
+    guards = []
+
+    for item in loop.body:
+        if not (
+            isinstance(item, ast.If)
+            and isinstance(item.test, ast.BoolOp)
+            and isinstance(item.test.op, ast.And)
+            and len(item.test.values) == 2
+        ):
+            continue
+
+        comparison, opportunity_name = item.test.values
+
+        if not (
+            isinstance(comparison, ast.Compare)
+            and isinstance(comparison.left, ast.Call)
+            and _call_name(comparison.left) == "getattr"
+            and len(comparison.left.args) == 3
+            and isinstance(comparison.left.args[0], ast.Name)
+            and comparison.left.args[0].id == "e"
+            and isinstance(comparison.left.args[1], ast.Constant)
+            and comparison.left.args[1].value == "engine_nome"
+            and isinstance(comparison.left.args[2], ast.Constant)
+            and comparison.left.args[2].value is None
+            and len(comparison.ops) == 1
+            and isinstance(comparison.ops[0], ast.Eq)
+            and len(comparison.comparators) == 1
+            and isinstance(comparison.comparators[0], ast.Name)
+            and comparison.comparators[0].id == "ANALYSIS_TYPE_MEI_TAX"
+            and isinstance(opportunity_name, ast.Name)
+            and opportunity_name.id == "engine_oportunidades"
+        ):
+            continue
+
+        raises = [
+            statement
+            for statement in item.body
+            if (
+                isinstance(statement, ast.Raise)
+                and isinstance(statement.exc, ast.Call)
+                and _call_name(statement.exc) == "HTTPException"
+            )
+        ]
+
+        if len(raises) != 1:
+            continue
+
+        keywords = {
+            keyword.arg: keyword.value
+            for keyword in raises[0].exc.keywords
+            if keyword.arg is not None
+        }
+
+        status = keywords.get("status_code")
+        detail = keywords.get("detail")
+
+        if not (
+            isinstance(status, ast.Constant)
+            and status.value == 409
+            and isinstance(detail, ast.Dict)
+        ):
+            continue
+
+        try:
+            detail_value = ast.literal_eval(detail)
+        except (ValueError, TypeError):
+            continue
+
+        if detail_value != {
+            "bloqueado": True,
+            "tipo_bloqueio": (
+                "RESULTADO_PERSISTIDO_PROVENIENCIA_NAO_COMPROVADA"
+            ),
+            "estado_l3": "bloqueado",
+        }:
+            continue
+
+        guards.append(item)
+
+    if len(guards) != 1:
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "mei_guard"
+        )
+
+    guarded_extend = [
+        item
+        for item in loop.body
+        if (
+            isinstance(item, ast.Expr)
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value)
+            == "oportunidades_engines.extend"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "engine_oportunidades"
+        )
+    ]
+
+    if (
+        len(guarded_extend) != 1
+        or guards[0].lineno >= guarded_extend[0].lineno
+    ):
+        raise RuntimeError(
+            "MEI_REACHABILITY_UNRESOLVED_DASHBOARD_ENGINE_RESULTADO:"
+            "guard_order"
+        )
+
+    return {
+        "persistence_model": "app.models.EngineResultado",
+        "persistence_field": "resultado",
+        "engine_name_field": "engine_nome",
+        "mei_engine_name": "mei_tax",
+        "blocked_before_publication": True,
+        "blocker_code": "PERSISTED_MEI_PROVENANCE_UNPROVEN",
+    }
+
+
 def _persisted_mei_report_publication_source(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> dict | None:
@@ -5637,11 +6076,77 @@ def _persisted_mei_report_publication_source(
         )
         for item in ast.walk(node)
     )
+    if not has_relatorio_model:
+        return None
+
+    # Legacy topology: route accessed resultado_json directly.
     has_resultado_json = any(
-        isinstance(item, ast.Attribute) and item.attr == "resultado_json"
+        isinstance(item, ast.Attribute)
+        and item.attr == "resultado_json"
         for item in ast.walk(node)
     )
-    if not (has_relatorio_model and has_resultado_json):
+
+    # Current topology: the route loads one RelatorioAnalise row and passes
+    # that exact local object through verificar_resultado_persistido().
+    # That proves integrity/provenance verification exists, but does NOT
+    # prove canonical MEI authority.
+    relatorio_local_ids: set[str] = set()
+
+    for statement in ast.walk(node):
+        if not isinstance(statement, (ast.Assign, ast.AnnAssign)):
+            continue
+
+        if isinstance(statement, ast.Assign):
+            if len(statement.targets) != 1:
+                continue
+            target = statement.targets[0]
+            value = statement.value
+        else:
+            target = statement.target
+            value = statement.value
+
+        if not isinstance(target, ast.Name) or value is None:
+            continue
+
+        query_has_relatorio_model = any(
+            isinstance(item, ast.Call)
+            and _call_name(item) == "db.query"
+            and any(
+                (
+                    isinstance(arg, ast.Name)
+                    and arg.id == "RelatorioAnalise"
+                )
+                or (
+                    isinstance(arg, ast.Attribute)
+                    and arg.attr == "RelatorioAnalise"
+                )
+                for arg in item.args
+            )
+            for item in ast.walk(value)
+        )
+
+        if query_has_relatorio_model:
+            relatorio_local_ids.add(target.id)
+
+    verified_relatorio_ids = {
+        call.args[0].id
+        for call in ast.walk(node)
+        if (
+            isinstance(call, ast.Call)
+            and _call_name(call) == "verificar_resultado_persistido"
+            and len(call.args) == 1
+            and isinstance(call.args[0], ast.Name)
+        )
+    }
+
+    has_verified_persisted_result = bool(
+        relatorio_local_ids.intersection(verified_relatorio_ids)
+    )
+
+    if not (
+        has_resultado_json
+        or has_verified_persisted_result
+    ):
         return None
 
     mei_filter = any(
@@ -5667,15 +6172,39 @@ def _persisted_mei_report_publication_source(
         "field": "resultado_json",
         "lineage_proven": False,
     }
+
     if mei_filter:
         return {
             **source,
             "analysis_type": "mei_tax",
         }
+
     return {
         **source,
         "analysis_type_filter": None,
         "may_include_analysis_type": "mei_tax",
+    }
+
+
+
+def _route_coverage_inventory(
+    *,
+    mounted_entrypoints: set[str],
+    paths: list[dict],
+) -> dict:
+    """Return deterministic mounted-route coverage for Gate A."""
+    classified_entrypoints = {
+        item["entrypoint"]
+        for item in paths
+    }
+
+    unclassified_entrypoints = sorted(
+        mounted_entrypoints - classified_entrypoints
+    )
+
+    return {
+        "unclassified_entrypoints": unclassified_entrypoints,
+        "route_coverage_complete": not unclassified_entrypoints,
     }
 
 
@@ -5932,6 +6461,21 @@ def build_census() -> dict:
                         "sink_kinds": ["PUBLICATION"],
                         "trace": [function_id],
                         "persistence_source": persistence_source,
+                        **(
+                            {
+                                "engine_resultado_mei_fallback_guard":
+                                _dashboard_engine_resultado_mei_fallback_guard(
+                                    modules,
+                                    route_function_id=function_id,
+                                )
+                            }
+                            if function_id
+                            == (
+                                "app.routers.dashboard_router."
+                                "oportunidades_por_relatorio"
+                            )
+                            else {}
+                        ),
                     }
                 )
                 continue
@@ -5953,11 +6497,16 @@ def build_census() -> dict:
             )
 
     paths.sort(key=lambda item: item["entrypoint"])
-    classified_entrypoints = {item["entrypoint"] for item in paths}
-    unclassified_entrypoints = sorted(
-        mounted_entrypoints - classified_entrypoints
+    route_coverage = _route_coverage_inventory(
+        mounted_entrypoints=mounted_entrypoints,
+        paths=paths,
     )
-    route_coverage_complete = not unclassified_entrypoints
+    unclassified_entrypoints = (
+        route_coverage["unclassified_entrypoints"]
+    )
+    route_coverage_complete = (
+        route_coverage["route_coverage_complete"]
+    )
     blocked = _gate_a_blocked_by_paths(paths)
     scan_complete = (
         all(

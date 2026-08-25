@@ -1,13 +1,14 @@
-"""RED attack: the final census must publish proven alternative MEI producers."""
+﻿"""Guard: final census must not publish imposto_service as alternative MEI producer."""
 
 from __future__ import annotations
 
 
-def test_build_census_publishes_real_alternative_mei_producer_red():
+def test_build_census_does_not_publish_imposto_service_as_alternative_producer():
     import app.scripts.mei_publication_reachability_census as census_module
 
     census = census_module.build_census()
 
-    assert census["alternative_producers"][
+    assert (
         "app.services.imposto_service.calcular_imposto_simples"
-    ] == [census_module.PRODUCER_ID]
+        not in census["alternative_producers"]
+    )

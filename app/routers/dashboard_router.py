@@ -9,6 +9,7 @@ from app.services.resultado_provenance_service import (
     ResultadoProvenanceError,
     verificar_resultado_persistido,
 )
+from app.services.analysis_types import ANALYSIS_TYPE_MEI_TAX
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -150,8 +151,27 @@ def oportunidades_por_relatorio(
     oportunidades_engines = []
     for e in engines:
         r = (e.resultado or {}) if hasattr(e, "resultado") else {}
-        if isinstance(r, dict):
-            oportunidades_engines.extend(r.get("oportunidades") or [])
+        if not isinstance(r, dict):
+            continue
+
+        engine_oportunidades = r.get("oportunidades") or []
+
+        if (
+            getattr(e, "engine_nome", None) == ANALYSIS_TYPE_MEI_TAX
+            and engine_oportunidades
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "bloqueado": True,
+                    "tipo_bloqueio": (
+                        "RESULTADO_PERSISTIDO_PROVENIENCIA_NAO_COMPROVADA"
+                    ),
+                    "estado_l3": "bloqueado",
+                },
+            )
+
+        oportunidades_engines.extend(engine_oportunidades)
     if not oportunidades and oportunidades_engines:
         oportunidades = oportunidades_engines
     return {

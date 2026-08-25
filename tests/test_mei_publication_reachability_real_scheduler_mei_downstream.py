@@ -1,4 +1,4 @@
-"""Real scheduler control: MEI-capable downstream must not promote a disabled root."""
+﻿"""Real scheduler control: disabled scheduler must never promote its MEI-capable downstream."""
 
 from __future__ import annotations
 
@@ -12,8 +12,11 @@ def test_disabled_real_scheduler_is_not_promoted_by_mei_capable_downstream():
         modules,
         function_id="app.agents.agent_scheduler.AgentScheduler.iniciar_loop",
     )
+
     assert root == {
-        "function_id": "app.agents.agent_scheduler.AgentScheduler.iniciar_loop",
+        "function_id": (
+            "app.agents.agent_scheduler.AgentScheduler.iniciar_loop"
+        ),
         "present": True,
         "registration_ids": [],
         "is_root": False,
@@ -24,24 +27,61 @@ def test_disabled_real_scheduler_is_not_promoted_by_mei_capable_downstream():
         modules,
         "app.services.insights_engine.InsightEngine.gerar_insights_empresa",
     )
+
     assert insights is not None
+
     insights_module, insights_node = insights
+
     assert (
         "app.services.insights_engine.executar_engines"
-        in census_module._direct_callees(insights_module, insights_node)
+        in census_module._direct_callees(
+            insights_module,
+            insights_node,
+        )
     )
-    assert census_module._resolve_mei_registry_engine(modules) == census_module.MEI_ENGINE_EXECUTE_ID
+
+    assert (
+        census_module._resolve_mei_registry_engine(modules)
+        == census_module.MEI_ENGINE_EXECUTE_ID
+    )
 
     census = census_module.build_census()
-    forbidden = {
+
+    scheduler_ids = {
         "app.agents.agent_scheduler.AgentScheduler.iniciar_loop",
         "app.agents.agent_scheduler.AgentScheduler.executar_ciclo",
-        "app.agents.agent_scheduler.AgentScheduler.executar_ciclo_multi_tenant",
-        "app.agents.agent_scheduler.AgentScheduler._executar_agents_uma_empresa",
-        "app.services.insights_engine.InsightEngine.gerar_insights_empresa",
-        "app.services.insights_engine.executar_engines",
+        (
+            "app.agents.agent_scheduler.AgentScheduler."
+            "executar_ciclo_multi_tenant"
+        ),
+        (
+            "app.agents.agent_scheduler.AgentScheduler."
+            "_executar_agents_uma_empresa"
+        ),
     }
-    assert all(
-        not forbidden.intersection(item.get("trace", []))
+
+    traces = [
+        item.get("trace", [])
         for item in census["paths"]
+    ]
+
+    assert all(
+        not scheduler_ids.intersection(trace)
+        for trace in traces
+    )
+
+    flattened_trace = {
+        function_id
+        for trace in traces
+        for function_id in trace
+    }
+
+    assert (
+        "app.services.insights_engine.InsightEngine.gerar_insights_empresa"
+        in flattened_trace
+    )
+
+    assert (
+        "app.services.insights_engine.executar_engines"
+        in flattened_trace
     )

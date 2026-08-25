@@ -11,6 +11,10 @@ from app.database import get_db
 from app.main import app
 from app.models import EngineResultado, RelatorioAnalise, User
 from app.security import get_usuario_atual
+from app.services.resultado_provenance_service import (
+    fingerprint_resultado_json,
+    selar_resultado_nao_mei,
+)
 
 _oportunidade = {"tipo": "RESTITUICAO_ST", "valor_estimado": 500.0}
 _credito = {"tipo": "CREDITO_ST_ESTIMADO", "valor_estimado": 200.0}
@@ -74,9 +78,22 @@ def _mock_user():
 
 
 def _rel_with_json():
+    resultado = {
+        "oportunidades": [_oportunidade],
+        "creditos_detectados": [_credito],
+    }
+
+    sealed = selar_resultado_nao_mei(
+        resultado,
+        producer_id="app.tests.dashboard_fixture",
+    )
+
     return SimpleNamespace(
-        id=1, empresa_id=1, tempo_execucao=2.0,
-        resultado_json={"oportunidades": [_oportunidade], "creditos_detectados": [_credito]}
+        id=1,
+        empresa_id=1,
+        tempo_execucao=2.0,
+        resultado_json=sealed,
+        fingerprint=fingerprint_resultado_json(sealed),
     )
 
 
@@ -227,3 +244,41 @@ def test_j4_oportunidades_sem_auth_retorna_401():
     with TestClient(app) as c:
         res = c.get("/dashboard/relatorio/1/oportunidades")
     assert res.status_code == 401
+
+
+
+def test_j4_oportunidades_fallback_mei_sem_proveniencia_retorna_409(monkeypatch):
+    global _db_state
+    _db_state = None
+
+    monkeypatch.setattr(
+        dashboard_router,
+        "verificar_acesso_relatorio",
+        lambda *_a: None,
+    )
+
+    engine_mei = SimpleNamespace(
+        engine_nome="mei_tax",
+        resultado={"oportunidades": [_engine_op]},
+    )
+
+    app.dependency_overrides[get_usuario_atual] = _mock_user
+    app.dependency_overrides[get_db] = _override_db(
+        rel=_rel_empty_json(),
+        engines=[engine_mei],
+    )
+
+    try:
+        with TestClient(app) as c:
+            res = c.get("/dashboard/relatorio/1/oportunidades")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert res.status_code == 409
+    assert res.json() == {
+        "detail": {
+            "bloqueado": True,
+            "tipo_bloqueio": "RESULTADO_PERSISTIDO_PROVENIENCIA_NAO_COMPROVADA",
+            "estado_l3": "bloqueado",
+        }
+    }
