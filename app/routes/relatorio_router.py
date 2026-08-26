@@ -35,6 +35,7 @@ from app.xml_security import validar_upload_xml
 from app.services.analysis_types import (
     ANALYSIS_TYPE_TAX_PLANNING,
     ANALYSIS_TYPE_TAX_RECOVERY,
+    ANALYSIS_TYPE_CPF_TAX,
     ANALYSIS_TYPE_MEI_TAX,
     ANALYSIS_TYPES_RELATORIO_GET,
 )
@@ -558,7 +559,7 @@ async def gerar_relatorio_mei_tax(
     )
     rel = models.RelatorioAnalise(
         user_id=usuario_atual.id,
-        analysis_type=ANALYSIS_TYPE_MEI_TAX,
+        analysis_type=ANALYSIS_TYPE_CPF_TAX,
         status="ok",
         resultado_json=resultado_persistido,
         fingerprint=fingerprint_resultado_json(resultado_persistido),

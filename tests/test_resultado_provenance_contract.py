@@ -123,3 +123,21 @@ def test_unknown_authority_fails_closed():
 
     with pytest.raises(service.ResultadoProvenanceError):
         service.verificar_resultado_persistido(rel)
+
+
+def test_mei_analysis_type_with_none_authority_fails_closed_even_with_valid_fingerprint():
+    service = _service()
+
+    sealed = service.selar_resultado_nao_mei(
+        {"tipo": "MEI", "imposto": 82.05},
+        producer_id="app.services.imposto_service.calcular_imposto_simples",
+    )
+    fingerprint = service.fingerprint_resultado_json(sealed)
+    rel = SimpleNamespace(
+        analysis_type="mei_tax",
+        resultado_json=sealed,
+        fingerprint=fingerprint,
+    )
+
+    with pytest.raises(service.ResultadoProvenanceError):
+        service.verificar_resultado_persistido(rel)

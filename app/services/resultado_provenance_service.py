@@ -122,6 +122,14 @@ def verificar_resultado_persistido(relatorio: object) -> dict[str, Any]:
     if provenance.get("mei_authority") != _MEI_AUTHORITY_NONE:
         raise ResultadoProvenanceError("autoridade MEI não comprovada")
 
+    # Resultado classificado como MEI nao e publicavel enquanto
+    # o envelope V1 declarar ausencia de autoridade MEI.
+    if (
+        getattr(relatorio, "analysis_type", None) == "mei_tax"
+        and provenance.get("mei_authority") == _MEI_AUTHORITY_NONE
+    ):
+        raise ResultadoProvenanceError("resultado MEI sem autoridade comprovada")
+
     payload = copy.deepcopy(resultado)
     payload.pop(PROVENANCE_KEY, None)
     return payload
