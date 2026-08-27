@@ -1,0 +1,49 @@
+{
+  "contexto": {
+    "data_referencia": "2026-01-01",
+    "jurisdicao_codigo": "BR",
+    "uso_solicitado": "estimativa"
+  },
+  "bindings": [
+    {
+      "dataset_id": "MEI_LIMITE_ANUAL_FATURAMENTO",
+      "fonte_id": "LC123-001",
+      "versao_fonte": "LC123-CONSOLIDADA-2026-08-27",
+      "vigencia_inicio": "2026-01-01",
+      "vigencia_fim": "2026-12-31",
+      "jurisdicao_codigo": "BR",
+      "risco": "critico",
+      "invariantes": [
+        "INV_MEI_LIMITE_ANUAL_81000",
+        "INV_VIGENCIA_ANUAL_2026"
+      ]
+    },
+    {
+      "dataset_id": "MEI_DAS_FATOR_SALARIO_MINIMO",
+      "fonte_id": "LEI8212-MEI-001",
+      "versao_fonte": "L8212-COMPILADA-2026-08-27",
+      "vigencia_inicio": "2026-01-01",
+      "vigencia_fim": "2026-12-31",
+      "jurisdicao_codigo": "BR",
+      "risco": "critico",
+      "invariantes": [
+        "INV_MEI_FATOR_PREVIDENCIARIO_5_PCT",
+        "INV_VIGENCIA_ANUAL_2026"
+      ]
+    },
+    {
+      "dataset_id": "PARCELA_FIXA_POR_ATIVIDADE",
+      "fonte_id": "LC123-001",
+      "versao_fonte": "LC123-CONSOLIDADA-2026-08-27",
+      "vigencia_inicio": "2026-01-01",
+      "vigencia_fim": "2026-12-31",
+      "jurisdicao_codigo": "BR",
+      "risco": "critico",
+      "invariantes": [
+        "INV_MEI_ICMS_FIXO_1_REAL",
+        "INV_MEI_ISS_FIXO_5_REAIS",
+        "INV_VIGENCIA_ANUAL_2026"
+      ]
+    }
+  ]
+}

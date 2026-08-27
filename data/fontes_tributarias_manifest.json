@@ -13,17 +13,60 @@
       "escopo": "Regime Simples Nacional — alíquotas, limites, vedações, obrigações",
       "jurisdicao": "federal",
       "confianca": "absoluta",
-      "pode_fundamentar_decisao": false,
+      "pode_fundamentar_decisao": true,
       "pode_validar_fato_operacional": false,
-      "pode_ser_usada_por_llm": true,
-      "status": "em_revisao",
-      "vigencia_inicio": "2006-12-14",
-      "vigencia_fim": null,
-      "forma_internalizacao": "manual_curada",
+      "pode_ser_usada_por_llm": false,
+      "status": "activa",
+      "vigencia_inicio": "2026-01-01",
+      "vigencia_fim": "2026-12-31",
+      "forma_internalizacao": "snapshot_html_versionado",
       "risco_se_desatualizada": "critico",
-      "hash_referencia": null,
-      "ultima_verificacao": "2026-06-29",
-      "observacoes": "pode_fundamentar_decisao=false até internalização versionada com hash. Motor fiscal usa tabelas derivadas desta lei mas sem hash formal registado."
+      "hash_referencia": "662D98EB6AE4F825809EABBAAA3B2BC6F98B524CF2278A97F79FC69AA7F60BE0",
+      "ultima_verificacao": "2026-08-27",
+      "observacoes": "LC 123/2006 consolidada internalizada em snapshot HTML versionado. Autoridade estrita, somente em contexto temporal de 2026, para o limite anual MEI de R$ 81.000,00 e para as parcelas fixas de ICMS (R$ 1,00) e ISS (R$ 5,00). Nao autoriza o fator previdenciario, o alerta interno de R$ 75.000,00, aliases de atividade, PGMEI nem publicacao oficial.",
+      "jurisdicao_codigo": "BR",
+      "versao": "LC123-CONSOLIDADA-2026-08-27",
+      "alvos_normativos_autorizados": [
+        {
+          "tipo": "dataset",
+          "id": "MEI_LIMITE_ANUAL_FATURAMENTO"
+        },
+        {
+          "tipo": "dataset",
+          "id": "PARCELA_FIXA_POR_ATIVIDADE"
+        }
+      ],
+      "url_oficial": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm"
+    },
+    {
+      "id": "LEI8212-MEI-001",
+      "nome": "Lei 8.212/1991 compilada - art. 21, paragrafo 2, inciso II, alinea a",
+      "tipo": "normativa_oficial",
+      "autoridade": "Presidência da República / Congresso Nacional",
+      "url_base": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm",
+      "escopo": "Regime Simples Nacional — alíquotas, limites, vedações, obrigações",
+      "jurisdicao": "federal",
+      "confianca": "absoluta",
+      "pode_fundamentar_decisao": true,
+      "pode_validar_fato_operacional": false,
+      "pode_ser_usada_por_llm": false,
+      "status": "activa",
+      "vigencia_inicio": "2026-01-01",
+      "vigencia_fim": "2026-12-31",
+      "forma_internalizacao": "snapshot_html_versionado",
+      "risco_se_desatualizada": "critico",
+      "hash_referencia": "12DEDBB415B179A94ABDA2E9E743C04A44A9718499EB0597769E6E67F3C528DE",
+      "ultima_verificacao": "2026-08-27",
+      "observacoes": "Lei 8.212/1991 compilada internalizada em snapshot HTML versionado. Autoridade estrita, somente em contexto temporal de 2026, para o fator previdenciario MEI de 5% previsto no art. 21, paragrafo 2, inciso II, alinea a. Nao autoriza salario minimo, limite de faturamento, ICMS, ISS, PGMEI nem publicacao oficial.",
+      "jurisdicao_codigo": "BR",
+      "versao": "L8212-COMPILADA-2026-08-27",
+      "alvos_normativos_autorizados": [
+        {
+          "tipo": "dataset",
+          "id": "MEI_DAS_FATOR_SALARIO_MINIMO"
+        }
+      ],
+      "url_oficial": "https://www.planalto.gov.br/ccivil_03/leis/l8212compilado.htm"
     },
     {
       "id": "CGSN-001",

@@ -8,3 +8,5 @@
 *.yml text eol=lf
 docs/EVIDENCE/BUNDLE-EVIDENCIA-9B4-REPORT-031-V1.0/*.stdout.txt -text
 data/mei/decreto_12797_2025_snapshot_2026-08-27.html -text whitespace=-trailing-space,cr-at-eol
+data/mei/lc_123_consolidada_snapshot_2026-08-27.html -text whitespace=-trailing-space,cr-at-eol
+data/mei/lei_8212_consolidada_snapshot_2026-08-27.html -text whitespace=-trailing-space,cr-at-eol,-space-before-tab

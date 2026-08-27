@@ -48,3 +48,16 @@ CB3845804F3C14CB9CB1320AEE19BF14498CF15988CD9263FD4618D8FAAAB8B6
 - alvo: dataset temporal `SALARIO_MINIMO_POR_ANO`;
 - escopo: apenas o valor de R$ 1.621,00 aplicavel ao contexto de 2026;
 - nao autoriza anos anteriores, limite MEI, fator previdenciario, ICMS, ISS ou publicacao oficial PGMEI.
+
+## DAS-MEI 2026 - LC 123 e Lei 8.212
+
+- snapshot LC123: `lc_123_consolidada_snapshot_2026-08-27.html`;
+- SHA-256 LC123: `662D98EB6AE4F825809EABBAAA3B2BC6F98B524CF2278A97F79FC69AA7F60BE0`;
+- bytes LC123: `1622252`;
+- snapshot Lei 8.212: `lei_8212_consolidada_snapshot_2026-08-27.html`;
+- SHA-256 Lei 8.212: `12DEDBB415B179A94ABDA2E9E743C04A44A9718499EB0597769E6E67F3C528DE`;
+- bytes Lei 8.212: `320998`;
+- vigencia dos bindings: `2026-01-01` a `2026-12-31`;
+- LC123 autoriza somente limite anual e parcelas fixas ICMS/ISS;
+- Lei 8.212 autoriza somente o fator previdenciario MEI de 5%;
+- nao autoriza o alerta de R$ 75.000,00, aliases, PGMEI, modo decisorio ou publicacao oficial.
