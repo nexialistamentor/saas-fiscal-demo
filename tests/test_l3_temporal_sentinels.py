@@ -115,6 +115,15 @@ def _ficheiros_calculo_normativo() -> list[Path]:
     return ficheiros
 
 
+def _ficheiros_tax_engines_registry_exceto_mei() -> list[Path]:
+    """Engines sujeitas ao contrato genérico de resolver_ano_referencia()."""
+    return [
+        caminho
+        for caminho in _ficheiros_tax_engines_registry()
+        if caminho.name != "mei_tax_engine.py"
+    ]
+
+
 def _esta_na_allowlist_operacional(caminho: Path) -> bool:
     normalizado = caminho.as_posix()
     return any(normalizado.startswith(prefix) or normalizado == prefix.rstrip("/")
@@ -147,7 +156,11 @@ def test_sentinela_01_base_tax_engine_sem_ano_vigencia_fixo():
     )
 
 
-@pytest.mark.parametrize("caminho", _ficheiros_tax_engines_registry(), ids=lambda p: p.name)
+@pytest.mark.parametrize(
+    "caminho",
+    _ficheiros_tax_engines_registry_exceto_mei(),
+    ids=lambda p: p.name,
+)
 def test_sentinela_01_engine_registry_usa_resolver_ano_referencia(caminho: Path):
     source = caminho.read_text(encoding="utf-8")
     if "def execute" not in source:
@@ -155,6 +168,80 @@ def test_sentinela_01_engine_registry_usa_resolver_ano_referencia(caminho: Path)
     assert "resolver_ano_referencia" in source, (
         f"SENTINELA-01: {caminho} não usa resolver_ano_referencia() em execute()"
     )
+
+
+def test_sentinela_01_mei_resolve_contexto_antes_de_autoridade_e_calculo():
+    source = _ler_source("app/services/tax_engines/mei_tax_engine.py")
+    tree = ast.parse(source)
+    execute = next(
+        (
+            item
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "MEITaxEngine"
+            for item in node.body
+            if isinstance(item, ast.FunctionDef) and item.name == "execute"
+        ),
+        None,
+    )
+    assert execute is not None, "SENTINELA-01: MEITaxEngine.execute ausente"
+
+    chamadas = [node for node in ast.walk(execute) if isinstance(node, ast.Call)]
+    resolvedores = [
+        chamada
+        for chamada in chamadas
+        if isinstance(chamada.func, ast.Name)
+        and chamada.func.id == "resolver_data_referencia_mei"
+    ]
+    assert len(resolvedores) == 1, (
+        "SENTINELA-01: MEITaxEngine.execute deve chamar exatamente uma vez "
+        "resolver_data_referencia_mei(context)"
+    )
+
+    resolvedor = resolvedores[0]
+    posicao_resolvedor = (resolvedor.lineno, resolvedor.col_offset)
+    assert (
+        len(resolvedor.args) == 1
+        and isinstance(resolvedor.args[0], ast.Name)
+        and resolvedor.args[0].id == "context"
+        and not resolvedor.keywords
+    ), (
+        "SENTINELA-01: resolver_data_referencia_mei deve receber diretamente "
+        "o context original"
+    )
+    reconstrucoes_contexto = [
+        node
+        for node in ast.walk(execute)
+        if isinstance(node, ast.Name)
+        and node.id == "context"
+        and isinstance(node.ctx, ast.Store)
+        and (node.lineno, node.col_offset) < posicao_resolvedor
+    ]
+    assert not reconstrucoes_contexto, (
+        "SENTINELA-01: context não pode ser reconstruído antes de "
+        "resolver_data_referencia_mei(context)"
+    )
+
+    for nome_chamada in (
+        "_exigir_autoridade_normativa_mei",
+        "obter_salario_minimo",
+        "calcular_das_mei",
+    ):
+        chamadas_protegidas = [
+            chamada
+            for chamada in chamadas
+            if isinstance(chamada.func, ast.Name)
+            and chamada.func.id == nome_chamada
+        ]
+        assert chamadas_protegidas, (
+            f"SENTINELA-01: MEITaxEngine.execute não chama {nome_chamada}()"
+        )
+        assert all(
+            posicao_resolvedor < (chamada.lineno, chamada.col_offset)
+            for chamada in chamadas_protegidas
+        ), (
+            "SENTINELA-01: resolver_data_referencia_mei(context) deve preceder "
+            f"todas as chamadas {nome_chamada}()"
+        )
 
 
 @pytest.mark.parametrize("nome, engine_class", list(ENGINES.items()))
