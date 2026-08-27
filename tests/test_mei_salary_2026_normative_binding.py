@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
 from app.schemas.source_authority_schema import NormativeBindingStatus
 from app.services.source_authority_guard import validar_bindings_normativos
+from tests.canonical_source_hash import canonical_opaque_bytes_sha256
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +29,7 @@ def _payload():
 def test_salary_2026_snapshot_matches_manifest_hash_and_exact_bytes():
     raw = SNAPSHOT.read_bytes()
     assert len(raw) == 10327
-    assert hashlib.sha256(raw).hexdigest().upper() == EXPECTED_SHA256
+    assert canonical_opaque_bytes_sha256(SNAPSHOT) == EXPECTED_SHA256
     assert _source()["hash_referencia"] == EXPECTED_SHA256
     assert b"12.797" in raw
     assert b"1.621,00" in raw

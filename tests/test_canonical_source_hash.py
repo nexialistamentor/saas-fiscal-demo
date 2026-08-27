@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from tests.canonical_source_hash import REPO_ROOT, canonical_source_sha256
+from tests.canonical_source_hash import (
+    REPO_ROOT,
+    canonical_opaque_bytes_sha256,
+    canonical_source_sha256,
+)
 
 
 _SOURCE_SUFFIXES = {".py", ".pyi", ".js", ".jsx", ".ts", ".tsx"}
@@ -48,8 +53,11 @@ def _read_target(node: ast.AST, paths: dict[str, str | None]) -> str | None | bo
     return _static_path(opener.args[0], paths)
 
 
-def _raw_hash_targets(function: ast.AST) -> list[str | None]:
-    paths: dict[str, str | None] = {}
+def _raw_hash_targets(
+    function: ast.AST,
+    inherited_paths: dict[str, str | None] | None = None,
+) -> list[str | None]:
+    paths = dict(inherited_paths or {})
     byte_targets: dict[str, str | None] = {}
     targets: list[str | None] = []
     saw_physical_read = False
@@ -268,6 +276,14 @@ def _find_violations(tests_root: Path) -> list[str]:
     for path in sorted(tests_root.rglob("test_*.py")):
         source = path.read_text(encoding="utf-8-sig")
         tree = ast.parse(source, filename=str(path))
+        module_paths: dict[str, str | None] = {}
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Assign)
+                and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)
+            ):
+                module_paths[node.targets[0].id] = _static_path(node.value, module_paths)
         for function in (
             node for node in ast.walk(tree)
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
@@ -277,7 +293,7 @@ def _find_violations(tests_root: Path) -> list[str]:
                 and _is_same_checkout_mutation_guard(function)
             ):
                 continue
-            for target in _raw_hash_targets(function):
+            for target in _raw_hash_targets(function, module_paths):
                 suffix = Path(target).suffix.lower() if target is not None else ""
                 if suffix in _BINARY_SUFFIXES:
                     continue
@@ -330,6 +346,65 @@ def test_canonical_hash_fails_closed_for_disallowed_attributes() -> None:
     with patch("tests.canonical_source_hash.subprocess.run", side_effect=run_with_bad_attributes):
         with pytest.raises(ValueError, match="not canonical"):
             canonical_source_sha256(source)
+
+
+def test_opaque_hash_accepts_tracked_snapshot_exact_bytes() -> None:
+    snapshot = REPO_ROOT / "data" / "mei" / "decreto_12797_2025_snapshot_2026-08-27.html"
+    assert canonical_opaque_bytes_sha256(snapshot) == (
+        "9C3FC6738634B9E1FCDDA94307CFD90FE028FFEDF34FF7391A99A0359AE6A52C"
+    )
+
+
+def test_opaque_hash_rejects_text_source() -> None:
+    source = REPO_ROOT / "app" / "agents" / "ag_abertura_agent.py"
+    with pytest.raises(ValueError, match="opaque attributes are not canonical"):
+        canonical_opaque_bytes_sha256(source)
+
+
+def test_opaque_hash_rejects_external_file() -> None:
+    external = Path(sys.executable)
+    with pytest.raises(ValueError, match="inside the repo"):
+        canonical_opaque_bytes_sha256(external)
+
+
+def test_opaque_hash_rejects_untracked_file() -> None:
+    snapshot = REPO_ROOT / "data" / "mei" / "decreto_12797_2025_snapshot_2026-08-27.html"
+    real_run = __import__("subprocess").run
+
+    def run_as_untracked(command, *args, **kwargs):
+        result = real_run(command, *args, **kwargs)
+        if command[1:3] == ["ls-files", "--error-unmatch"]:
+            result.returncode = 1
+            result.stdout = ""
+        return result
+
+    with patch("tests.canonical_source_hash.subprocess.run", side_effect=run_as_untracked):
+        with pytest.raises(ValueError, match="tracked by git"):
+            canonical_opaque_bytes_sha256(snapshot)
+
+
+@pytest.mark.parametrize(
+    "attribute,value",
+    [("filter", "active-filter"), ("working-tree-encoding", "UTF-16")],
+    ids=["active-filter", "active-encoding"],
+)
+def test_opaque_hash_rejects_active_git_transform(attribute: str, value: str) -> None:
+    snapshot = REPO_ROOT / "data" / "mei" / "decreto_12797_2025_snapshot_2026-08-27.html"
+    real_run = __import__("subprocess").run
+
+    def run_with_transform(command, *args, **kwargs):
+        result = real_run(command, *args, **kwargs)
+        if command[1:3] == ["check-attr", "-z"]:
+            result.stdout = result.stdout.replace(
+                f"\0{attribute}\0unspecified\0",
+                f"\0{attribute}\0{value}\0",
+                1,
+            )
+        return result
+
+    with patch("tests.canonical_source_hash.subprocess.run", side_effect=run_with_transform):
+        with pytest.raises(ValueError, match="opaque attributes are not canonical"):
+            canonical_opaque_bytes_sha256(snapshot)
 
 
 def _targets(snippet: str) -> list[str | None]:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import html
 import json
 import re
@@ -11,6 +10,7 @@ from app.services.source_authority_guard import (
     carregar_binding_normativo_mei_das_2026,
     validar_bindings_normativos,
 )
+from tests.canonical_source_hash import canonical_opaque_bytes_sha256
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,8 +47,8 @@ def test_mei_2026_normative_snapshots_match_exact_hashes_and_evidence():
     lei_raw = LEI8212.read_bytes()
     assert len(lc_raw) == 1622252
     assert len(lei_raw) == 320998
-    assert hashlib.sha256(lc_raw).hexdigest().upper() == LC123_SHA256
-    assert hashlib.sha256(lei_raw).hexdigest().upper() == LEI8212_SHA256
+    assert canonical_opaque_bytes_sha256(LC123) == LC123_SHA256
+    assert canonical_opaque_bytes_sha256(LEI8212) == LEI8212_SHA256
     assert "81.000,00" in _visible_text(lc_raw)
     assert "R$ 1,00" in _visible_text(lc_raw)
     assert "R$ 5,00" in _visible_text(lc_raw)

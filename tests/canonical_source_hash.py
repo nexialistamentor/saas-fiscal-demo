@@ -1,4 +1,4 @@
-"""Canonical SHA-256 helper for tracked LF source files in test guards."""
+"""Canonical SHA-256 helpers for tracked files in test guards."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-_EXPECTED_ATTRIBUTES = {
+_EXPECTED_SOURCE_ATTRIBUTES = {
     "text": "set",
     "eol": "lf",
     "filter": "unspecified",
@@ -16,8 +16,7 @@ _EXPECTED_ATTRIBUTES = {
 }
 
 
-def canonical_source_sha256(path: str | Path) -> str:
-    """Hash current worktree source after the sole permitted CRLF-to-LF fold."""
+def _resolve_tracked_file_attributes(path: str | Path) -> tuple[Path, dict[str, str]]:
     candidate = Path(path)
     if not candidate.is_absolute():
         candidate = REPO_ROOT / candidate
@@ -63,7 +62,13 @@ def canonical_source_sha256(path: str | Path) -> str:
         if item_path != git_path or name in observed:
             raise ValueError("git attributes response is ambiguous")
         observed[name] = value
-    if observed != _EXPECTED_ATTRIBUTES:
+    return resolved, observed
+
+
+def canonical_source_sha256(path: str | Path) -> str:
+    """Hash tracked text=set/eol=lf source after the permitted LF fold."""
+    resolved, observed = _resolve_tracked_file_attributes(path)
+    if observed != _EXPECTED_SOURCE_ATTRIBUTES:
         raise ValueError(f"source attributes are not canonical: {observed!r}")
 
     raw = resolved.read_bytes()
@@ -71,3 +76,16 @@ def canonical_source_sha256(path: str | Path) -> str:
     if b"\r" in canonical:
         raise ValueError("source contains an ambiguous carriage return")
     return hashlib.sha256(canonical).hexdigest().upper()
+
+
+def canonical_opaque_bytes_sha256(path: str | Path) -> str:
+    """Hash exact bytes of a tracked opaque file with no active Git transform."""
+    resolved, observed = _resolve_tracked_file_attributes(path)
+    expected = {
+        "text": "unset",
+        "filter": "unspecified",
+        "working-tree-encoding": "unspecified",
+    }
+    if {name: observed.get(name) for name in expected} != expected:
+        raise ValueError(f"opaque attributes are not canonical: {observed!r}")
+    return hashlib.sha256(resolved.read_bytes()).hexdigest().upper()
