@@ -39,4 +39,5 @@ def perguntar(
         bloqueado=resultado.get("bloqueado"),
         tipo_bloqueio=resultado.get("tipo_bloqueio"),
         estado_l3=resultado.get("estado_l3"),
+        modo=resultado.get("modo"),
     )

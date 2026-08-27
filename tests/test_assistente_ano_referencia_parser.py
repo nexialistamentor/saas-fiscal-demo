@@ -51,6 +51,7 @@ def test_mei_entrega_ano_temporal_e_faturamento_correctos_ao_motor(
         chamada["analysis_type"] = analysis_type
         chamada["dados"] = dados
         return {
+            "modo": "estimativa",
             "tributos": {"das": 82.05},
             "alertas": [],
         }
@@ -62,10 +63,11 @@ def test_mei_entrega_ano_temporal_e_faturamento_correctos_ao_motor(
     )
 
     resultado = assistente_service._resposta_assistente_mei(
-        "quanto pago de MEI em 2026 com 2000 por mes"
+        "quanto pago de MEI prestador de serviços em 2026 com 2000 por mes"
     )
 
     assert chamada["analysis_type"] == "mei_tax"
     assert chamada["dados"]["faturamento"] == 2_000
     assert chamada["dados"]["ano_referencia"] == 2026
+    assert chamada["dados"]["atividade"] == "servicos"
     assert resultado.get("bloqueado") is not True

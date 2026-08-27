@@ -1,6 +1,7 @@
 import unicodedata
+from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class PerguntaRequest(BaseModel):
@@ -60,3 +61,14 @@ class AssistenteResponse(BaseModel):
     bloqueado: bool | None = None
     tipo_bloqueio: str | None = None
     estado_l3: str | None = None
+    modo: Literal["estimativa", "decisao_definitiva"] | None = None
+
+    @model_validator(mode="after")
+    def exigir_modo_mei_comprovado(self):
+        if (
+            self.analysis_type == "mei_tax"
+            and self.bloqueado is not True
+            and self.modo is None
+        ):
+            raise ValueError("Resposta MEI não bloqueada exige modo comprovado")
+        return self

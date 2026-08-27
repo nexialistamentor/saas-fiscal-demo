@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models import User
 from app.security import get_usuario_atual
+from app.services import assistente_service
 
 
 def _client_mock(consulta_paga=False, empresas=None):
@@ -64,14 +65,93 @@ def test_perguntar_mei_sem_ano_bloqueia_estruturado(client_sem_empresa):
 def test_perguntar_mei_com_ano_calcula(client_sem_empresa):
     res = client_sem_empresa.post(
         "/perguntar",
-        json={"pergunta": "quanto pago de MEI em 2026 com faturamento de 5000 por mes"},
+        json={
+            "pergunta": (
+                "quanto pago de MEI prestador de serviços em 2026 "
+                "com faturamento de 5000 por mes"
+            )
+        },
     )
     assert res.status_code == 200
     body = res.json()
     assert body.get("bloqueado") is not True
     assert body["analysis_type"] == "mei_tax"
+    assert body["modo"] == "estimativa"
     assert body["requires_payment"] is False
     assert "DAS" in body["resposta"] or "MEI" in body["resposta"]
+
+
+def test_perguntar_mei_com_ano_sem_atividade_bloqueia_antes_motor(
+    client_sem_empresa,
+    monkeypatch,
+):
+    def motor_nao_deve_ser_chamado(*args, **kwargs):
+        raise AssertionError("motor não deve ser chamado sem atividade MEI explícita")
+
+    monkeypatch.setattr(
+        assistente_service,
+        "executar_analise",
+        motor_nao_deve_ser_chamado,
+    )
+
+    res = client_sem_empresa.post(
+        "/perguntar",
+        json={"pergunta": "quanto pago de MEI em 2026 com faturamento de 5000 por mes"},
+    )
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["bloqueado"] is True
+    assert body["tipo_bloqueio"] == "ATIVIDADE_MEI_AUSENTE"
+    assert body["estado_l3"] == "bloqueado"
+    assert body["requires_payment"] is False
+
+
+@pytest.mark.parametrize("modo_interno", [None, "decisao_definitiva", "adulterado"])
+def test_perguntar_mei_sem_modo_estimativa_comprovado_bloqueia(
+    client_sem_empresa,
+    monkeypatch,
+    modo_interno,
+):
+    chamada = {}
+
+    def fake_engine(analysis_type, dados):
+        chamada["analysis_type"] = analysis_type
+        chamada["dados"] = dados
+        resultado = {"tributos": {"das": 81.05}, "alertas": []}
+        if modo_interno is not None:
+            resultado["modo"] = modo_interno
+        return resultado
+
+    monkeypatch.setattr(assistente_service, "executar_analise", fake_engine)
+
+    res = client_sem_empresa.post(
+        "/perguntar",
+        json={
+            "pergunta": (
+                "quanto pago de MEI prestador de serviços em 2026 "
+                "com faturamento de 5000 por mes"
+            )
+        },
+    )
+
+    assert chamada == {
+        "analysis_type": "mei_tax",
+        "dados": {
+            "faturamento": 5000.0,
+            "ano_referencia": 2026,
+            "atividade": "servicos",
+            "modo": "estimativa",
+        },
+    }
+    assert res.status_code == 200
+    body = res.json()
+    assert body["bloqueado"] is True
+    assert body["tipo_bloqueio"] == "MODO_MEI_NAO_COMPROVADO"
+    assert body["estado_l3"] == "bloqueado"
+    assert body["requires_payment"] is False
+    assert body["analysis_type"] == "mei_tax"
+    assert body["modo"] is None
 
 
 def test_perguntar_empresa_sem_empresa_vinculada_pede_vinculo(client_sem_empresa):

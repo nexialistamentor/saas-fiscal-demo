@@ -17,6 +17,10 @@ from app.services.tax_engines.base_tax_engine import (
     LimiteSimplesNacionalExcedidoError,
     TempoNormativoAusenteError,
 )
+from app.services.tax_engines.mei_constants import (
+    ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS,
+    normalizar_atividade_mei,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -205,6 +209,19 @@ def extrair_faturamento(pergunta: str) -> float | None:
     return None
 
 
+def extrair_atividade_mei(pergunta: str) -> str | None:
+    """Extrai somente atividade MEI escrita como alias canónico na pergunta."""
+    aliases = sorted(
+        ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS,
+        key=len,
+        reverse=True,
+    )
+    for alias in aliases:
+        if re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", pergunta, re.IGNORECASE):
+            return normalizar_atividade_mei(alias)
+    return None
+
+
 def _fmt_br(valor: float, decimais: int = 2) -> str:
     """Formata valor no padrão brasileiro (1.234,56)."""
     s = f"{valor:.{decimais}f}"
@@ -235,10 +252,40 @@ def _resposta_assistente_mei(pergunta: str) -> dict:
             "estado_l3": "bloqueado",
         }
 
-    dados: dict = {"faturamento": faturamento}
     ano = extrair_ano_referencia(pergunta)
-    if ano is not None:
-        dados["ano_referencia"] = ano
+    if ano is None:
+        return {
+            "resposta": (
+                "Para calcular o imposto do MEI preciso do ano de referência normativo "
+                "(ex.: 2025 ou 2026). Informe o ano para continuar."
+            ),
+            "requires_payment": False,
+            "analysis_type": "mei_tax",
+            "bloqueado": True,
+            "tipo_bloqueio": "TEMPO_NORMATIVO_AUSENTE",
+            "estado_l3": "bloqueado",
+        }
+
+    atividade = extrair_atividade_mei(pergunta)
+    if atividade is None:
+        return {
+            "resposta": (
+                "Para calcular o imposto do MEI, informe explicitamente a atividade "
+                "(comércio, indústria ou serviços)."
+            ),
+            "requires_payment": False,
+            "analysis_type": "mei_tax",
+            "bloqueado": True,
+            "tipo_bloqueio": "ATIVIDADE_MEI_AUSENTE",
+            "estado_l3": "bloqueado",
+        }
+
+    dados: dict = {
+        "faturamento": faturamento,
+        "ano_referencia": ano,
+        "atividade": atividade,
+        "modo": "estimativa",
+    }
 
     try:
         resultado = executar_analise("mei_tax", dados)
@@ -256,10 +303,32 @@ def _resposta_assistente_mei(pergunta: str) -> dict:
         }
 
     if resultado.get("erro"):
+        tipo_bloqueio = (
+            resultado.get("causa")
+            or resultado.get("codigo")
+            or "ERRO_ANALISE_MEI"
+        )
         return {
-            "resposta": resultado.get("mensagem"),
-            "requires_payment": True,
+            "resposta": resultado.get("mensagem") or str(resultado.get("erro")),
+            "requires_payment": False,
             "analysis_type": "mei_tax",
+            "bloqueado": True,
+            "tipo_bloqueio": tipo_bloqueio,
+            "estado_l3": "bloqueado",
+        }
+
+    modo = resultado.get("modo")
+    if modo != "estimativa":
+        return {
+            "resposta": (
+                "Não foi possível comprovar o modo de estimativa do cálculo MEI. "
+                "A análise foi bloqueada por segurança."
+            ),
+            "requires_payment": False,
+            "analysis_type": "mei_tax",
+            "bloqueado": True,
+            "tipo_bloqueio": "MODO_MEI_NAO_COMPROVADO",
+            "estado_l3": "bloqueado",
         }
 
     tributos = resultado.get("tributos", {})
@@ -277,6 +346,7 @@ def _resposta_assistente_mei(pergunta: str) -> dict:
         "resposta": resposta,
         "requires_payment": False,
         "analysis_type": "mei_tax",
+        "modo": modo,
     }
 
 

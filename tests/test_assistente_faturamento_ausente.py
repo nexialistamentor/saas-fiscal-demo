@@ -56,6 +56,7 @@ def test_mei_faturamento_zero_nao_presume_5000(monkeypatch):
         chamada["analysis_type"] = analysis_type
         chamada["dados"] = dados
         return {
+            "modo": "estimativa",
             "tributos": {"das": 0},
             "alertas": [],
         }
@@ -67,11 +68,12 @@ def test_mei_faturamento_zero_nao_presume_5000(monkeypatch):
     )
 
     resultado = assistente_service._resposta_assistente_mei(
-        "quanto pago de MEI em 2026 com faturamento de 0 por mes"
+        "quanto pago de MEI prestador de serviços em 2026 com faturamento de 0 por mes"
     )
 
     assert chamada["analysis_type"] == "mei_tax"
     assert chamada["dados"]["faturamento"] == 0
+    assert chamada["dados"]["atividade"] == "servicos"
     assert resultado.get("bloqueado") is not True
     assert "R$ 0,00" in resultado["resposta"]
     assert "R$ 5.000,00" not in resultado["resposta"]
