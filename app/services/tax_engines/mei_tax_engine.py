@@ -1,7 +1,11 @@
 from decimal import Decimal
 
 from app.schemas.source_authority_schema import SourceAuthorityRequest
-from app.services.source_authority_guard import verificar
+from app.services.source_authority_guard import (
+    carregar_binding_normativo_mei_das_2026,
+    validar_bindings_normativos,
+    verificar,
+)
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
 from app.services.tax_engines.mei_temporal import (
     resolver_data_referencia_mei,
@@ -32,10 +36,44 @@ class AutoridadeNormativaMEIIndisponivelError(RuntimeError):
         super().__init__(f"{self.codigo}: {motivo}")
 
 
-def _exigir_autoridade_normativa_mei() -> None:
-    raise AutoridadeNormativaMEIIndisponivelError(
-        motivo="BINDING_MISSING",
-    )
+def _exigir_autoridade_normativa_mei(
+    *,
+    modo: str,
+    data_referencia,
+) -> None:
+    if data_referencia.year != 2026:
+        raise AutoridadeNormativaMEIIndisponivelError(
+            motivo="BINDING_FORA_DO_ANO_2026",
+        )
+
+    payload = carregar_binding_normativo_mei_das_2026()
+    contexto_binding = payload.get("contexto")
+    if not isinstance(contexto_binding, dict):
+        raise AutoridadeNormativaMEIIndisponivelError(
+            motivo="CONTEXTO_BINDING_INVALIDO",
+        )
+
+    uso_binding = contexto_binding.get("uso_solicitado")
+    if uso_binding != modo:
+        raise AutoridadeNormativaMEIIndisponivelError(
+            motivo=f"BINDING_INCOMPATIVEL_COM_MODO_{modo.upper()}",
+        )
+
+    bindings = payload.get("bindings")
+    if not isinstance(bindings, (list, tuple)) or len(bindings) != 3:
+        raise AutoridadeNormativaMEIIndisponivelError(
+            motivo="QUANTIDADE_BINDINGS_INVALIDA",
+        )
+
+    contexto_binding["data_referencia"] = data_referencia.isoformat()
+    resultado = validar_bindings_normativos(payload)
+    if (
+        not resultado.autorizado_fundamentar_decisao
+        or resultado.bindings_validados != 3
+    ):
+        raise AutoridadeNormativaMEIIndisponivelError(
+            motivo="BINDING_NAO_AUTORIZADO",
+        )
 
 
 class MEITaxEngine(BaseTaxEngine):
@@ -50,6 +88,16 @@ class MEITaxEngine(BaseTaxEngine):
     name = "mei_tax"
 
     def execute(self, context: dict):
+        if "modo" not in context:
+            modo = "decisao_definitiva"
+        else:
+            modo = context["modo"]
+            if not isinstance(modo, str) or modo not in {
+                "estimativa",
+                "decisao_definitiva",
+            }:
+                raise ValueError("modo MEI invalido")
+
         data_referencia = resolver_data_referencia_mei(context)
         ano_referencia = data_referencia.year
         faturamento = context.get("faturamento")
@@ -71,19 +119,23 @@ class MEITaxEngine(BaseTaxEngine):
         if atividade is None:
             atividade = context.get("atividade_mei")
 
-        autoridade = verificar(
-            SourceAuthorityRequest(
-                fonte_id="PGMEI-001",
-                uso_pretendido="validar_fato_operacional",
+        if modo == "decisao_definitiva":
+            autoridade = verificar(
+                SourceAuthorityRequest(
+                    fonte_id="PGMEI-001",
+                    uso_pretendido="validar_fato_operacional",
+                )
             )
-        )
-        if not autoridade.permitido:
-            raise AutoridadeFiscalIndisponivelError(
-                fonte_id=autoridade.fonte_id,
-                motivo=autoridade.motivo,
-            )
+            if not autoridade.permitido:
+                raise AutoridadeFiscalIndisponivelError(
+                    fonte_id=autoridade.fonte_id,
+                    motivo=autoridade.motivo,
+                )
 
-        _exigir_autoridade_normativa_mei()
+        _exigir_autoridade_normativa_mei(
+            modo=modo,
+            data_referencia=data_referencia,
+        )
 
         sal_min = obter_salario_minimo(ano_referencia)
         imposto = calcular_das_mei(sal_min, atividade)
@@ -100,6 +152,7 @@ class MEITaxEngine(BaseTaxEngine):
 
         return {
             "regime": "mei",
+            "modo": modo,
             "tributos": {
                 "das": imposto
             },

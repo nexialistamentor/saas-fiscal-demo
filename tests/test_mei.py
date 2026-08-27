@@ -28,13 +28,17 @@ def mei_engine_normative_authority_permitida(monkeypatch):
     monkeypatch.setattr(
         mei_tax_engine_module,
         "_exigir_autoridade_normativa_mei",
-        lambda: None,
+        lambda *, modo, data_referencia: None,
     )
 
 
 def _assert_parity(faturamento_mensal: float, atividade: str):
     engine = MEITaxEngine()
-    ctx = {"faturamento": faturamento_mensal, "ano_referencia": 2026}
+    ctx = {
+        "faturamento": faturamento_mensal,
+        "ano_referencia": 2026,
+        "modo": "estimativa",
+    }
     ctx["atividade"] = atividade
     l2 = engine.execute(ctx)
     legado = calcular_imposto_simples(
@@ -46,6 +50,7 @@ def _assert_parity(faturamento_mensal: float, atividade: str):
     )
 
     assert l2["regime"] == "mei"
+    assert l2["modo"] == "estimativa"
     assert l2["tributos"]["das"] == legado["imposto"]
     assert l2["alertas"] == legado["alertas"]
     assert l2["bases_calculo"]["faturamento_mensal"] == faturamento_mensal
@@ -93,6 +98,7 @@ def test_mei_r001_engine_e_servico_bloqueiam_atividade_invalida(
                 "faturamento": 5000.0,
                 "atividade": atividade,
                 "ano_referencia": 2026,
+                "modo": "estimativa",
             }
         )
     with pytest.raises(ValueError, match="Atividade MEI"):

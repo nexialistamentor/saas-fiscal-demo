@@ -8,6 +8,7 @@ from app.services.tax_engines.mei_temporal import (
     TempoNormativoMEIInvalidoError,
     resolver_data_referencia_mei,
 )
+from app.services.tax_engines.mei_tax_engine import MEITaxEngine
 
 
 def test_mei_2026_year_resolves_to_full_year_vigencia_start():
@@ -70,3 +71,16 @@ def test_canonical_mei_engine_reaches_strict_temporal_resolver_before_authority(
             "atividade": "servicos",
         }
     ]
+
+
+@pytest.mark.parametrize("modo", [None, "", 1, "desconhecido"])
+def test_canonical_mei_engine_rejeita_modo_presente_invalido(modo):
+    with pytest.raises(ValueError, match="modo MEI invalido"):
+        MEITaxEngine().execute(
+            {
+                "ano_referencia": 2026,
+                "faturamento": 1000.0,
+                "atividade": "servicos",
+                "modo": modo,
+            }
+        )
