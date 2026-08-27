@@ -3,6 +3,7 @@ Testes B13-OPS-01 — Manifesto soberano de fontes tributárias.
 14 invariantes L3.
 """
 import json
+import re
 import pytest
 from pathlib import Path
 
@@ -16,7 +17,14 @@ STATUS_VALIDOS = {"activa", "descontinuada", "substituida", "em_revisao"}
 JURISDICAO_VALIDA = {"federal", "estadual", "municipal", "nacional", "federativa"}
 CONFIANCA_VALIDA = {"absoluta", "alta", "media", "baixa", "nula"}
 RISCO_VALIDO = {"baixo", "medio", "alto", "critico"}
-INTERNALIZACAO_VALIDA = {"manual_curada", "ingestao_controlada", "tabela_versionada", "proibida"}
+INTERNALIZACAO_VALIDA = {
+    "manual_curada",
+    "ingestao_controlada",
+    "tabela_versionada",
+    "snapshot_html_versionado",
+    "proibida",
+}
+INTERNALIZACAO_DECISORIA_VALIDA = INTERNALIZACAO_VALIDA - {"proibida"}
 CAMPOS_OBRIGATORIOS = {
     "id", "nome", "tipo", "autoridade", "url_base", "escopo", "jurisdicao",
     "confianca", "pode_fundamentar_decisao", "pode_validar_fato_operacional",
@@ -110,10 +118,9 @@ def test_fundamenta_decisao_exige_status_activa(fontes):
 
 
 def test_fundamenta_decisao_exige_internalizacao_valida(fontes):
-    internalizacao_aceite = {"manual_curada", "ingestao_controlada", "tabela_versionada"}
     for fonte in fontes:
         if fonte["pode_fundamentar_decisao"] is True:
-            assert fonte["forma_internalizacao"] in internalizacao_aceite, \
+            assert fonte["forma_internalizacao"] in INTERNALIZACAO_DECISORIA_VALIDA, \
                 f"[{fonte['id']}] pode_fundamentar_decisao=true exige internalização válida"
 
 
@@ -153,32 +160,36 @@ def test_irpf_progressivo_001_existe(fontes):
     assert "IRPF-PROGRESSIVO-001" in ids
 
 
-@pytest.mark.parametrize("fonte_id", ["SALARIO-MINIMO-001", "IRPF-PROGRESSIVO-001"])
-def test_fontes_12b_em_revisao(fontes, fonte_id):
-    fonte = next(f for f in fontes if f["id"] == fonte_id)
-    assert fonte["status"] == "em_revisao", f"{fonte_id} deve estar em_revisao"
+def test_irpf_progressivo_001_em_revisao(fontes):
+    fonte = next(f for f in fontes if f["id"] == "IRPF-PROGRESSIVO-001")
+    assert fonte["status"] == "em_revisao"
 
 
-@pytest.mark.parametrize("fonte_id", ["SALARIO-MINIMO-001", "IRPF-PROGRESSIVO-001"])
-def test_fontes_12b_nao_fundamentam_decisao(fontes, fonte_id):
-    fonte = next(f for f in fontes if f["id"] == fonte_id)
+def test_irpf_progressivo_001_nao_fundamenta_decisao(fontes):
+    fonte = next(f for f in fontes if f["id"] == "IRPF-PROGRESSIVO-001")
     assert fonte["pode_fundamentar_decisao"] is False
 
 
-@pytest.mark.parametrize("fonte_id", ["SALARIO-MINIMO-001", "IRPF-PROGRESSIVO-001"])
-def test_fontes_12b_sem_hash(fontes, fonte_id):
-    fonte = next(f for f in fontes if f["id"] == fonte_id)
+def test_irpf_progressivo_001_sem_hash(fontes):
+    fonte = next(f for f in fontes if f["id"] == "IRPF-PROGRESSIVO-001")
     assert fonte["hash_referencia"] is None
 
 
-def test_source_authority_guard_bloqueia_salario_minimo_fundamentar():
+def test_salario_minimo_001_activo_e_autorizado_para_decisao(fontes):
     from app.schemas.source_authority_schema import SourceAuthorityRequest
     from app.services.source_authority_guard import verificar
+
+    fonte = next(f for f in fontes if f["id"] == "SALARIO-MINIMO-001")
+    assert fonte["status"] == "activa"
+    assert fonte["forma_internalizacao"] == "snapshot_html_versionado"
+    assert fonte["pode_fundamentar_decisao"] is True
+    assert re.fullmatch(r"[0-9A-F]{64}", fonte["hash_referencia"])
+
     r = verificar(SourceAuthorityRequest(
         fonte_id="SALARIO-MINIMO-001",
         uso_pretendido="fundamentar_decisao",
     ))
-    assert not r.permitido
+    assert r.permitido is True
 
 
 def test_source_authority_guard_bloqueia_irpf_fundamentar():
