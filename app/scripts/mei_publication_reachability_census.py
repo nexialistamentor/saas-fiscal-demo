@@ -6061,7 +6061,602 @@ def _dashboard_engine_resultado_mei_fallback_guard(
     }
 
 
+def _persisted_mei_none_authority_guard(
+    modules: dict[str, ModuleInfo],
+) -> bool:
+    """Prove that persisted mei_tax + NONE fails closed before publication."""
+    module = modules.get("app.services.resultado_provenance_service")
+    if module is None:
+        return False
+
+    node = module.functions.get("verificar_resultado_persistido")
+    if node is None:
+        return False
+
+    expected_test = ast.parse(
+        'getattr(relatorio, "analysis_type", None) == "mei_tax" '
+        'and provenance.get("mei_authority") == _MEI_AUTHORITY_NONE',
+        mode="eval",
+    ).body
+    expected_dump = ast.dump(expected_test, include_attributes=False)
+
+    guards = [
+        item
+        for item in ast.walk(node)
+        if (
+            isinstance(item, ast.If)
+            and ast.dump(item.test, include_attributes=False) == expected_dump
+            and not item.orelse
+            and len(item.body) == 1
+            and isinstance(item.body[0], ast.Raise)
+            and isinstance(item.body[0].exc, ast.Call)
+            and isinstance(item.body[0].exc.func, ast.Name)
+            and item.body[0].exc.func.id == "ResultadoProvenanceError"
+        )
+    ]
+
+    payload_assigns = [
+        item
+        for item in ast.walk(node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "payload"
+        )
+    ]
+
+    return (
+        len(guards) == 1
+        and len(payload_assigns) == 1
+        and guards[0].lineno < payload_assigns[0].lineno
+    )
+
+
+def _persisted_result_rejects_unsealed_payload(
+    modules: dict[str, ModuleInfo],
+) -> bool:
+    """Prove that the persisted-result verifier rejects an unsealed payload."""
+    module = modules.get("app.services.resultado_provenance_service")
+    if module is None:
+        return False
+
+    node = module.functions.get("verificar_resultado_persistido")
+    if node is None:
+        return False
+
+    def provenance_raise(statement: ast.AST) -> bool:
+        return (
+            isinstance(statement, ast.Raise)
+            and isinstance(statement.exc, ast.Call)
+            and _call_name(statement.exc) == "ResultadoProvenanceError"
+        )
+
+    fingerprint_guards = [
+        item
+        for item in ast.walk(node)
+        if (
+            isinstance(item, ast.If)
+            and isinstance(item.test, ast.UnaryOp)
+            and isinstance(item.test.op, ast.Not)
+            and isinstance(item.test.operand, ast.Call)
+            and _call_name(item.test.operand) == "_fingerprint_formato_valido"
+            and len(item.test.operand.args) == 1
+            and isinstance(item.test.operand.args[0], ast.Name)
+            and item.test.operand.args[0].id == "fingerprint"
+            and len(item.body) == 1
+            and provenance_raise(item.body[0])
+        )
+    ]
+
+    provenance_assignments = [
+        item
+        for item in ast.walk(node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "provenance"
+            and isinstance(item.value, ast.Call)
+            and _call_name(item.value) == "resultado.get"
+            and len(item.value.args) == 1
+            and isinstance(item.value.args[0], ast.Name)
+            and item.value.args[0].id == "PROVENANCE_KEY"
+            and not item.value.keywords
+        )
+    ]
+
+    provenance_guards = [
+        item
+        for item in ast.walk(node)
+        if (
+            isinstance(item, ast.If)
+            and isinstance(item.test, ast.UnaryOp)
+            and isinstance(item.test.op, ast.Not)
+            and isinstance(item.test.operand, ast.Call)
+            and _call_name(item.test.operand) == "isinstance"
+            and len(item.test.operand.args) == 2
+            and isinstance(item.test.operand.args[0], ast.Name)
+            and item.test.operand.args[0].id == "provenance"
+            and isinstance(item.test.operand.args[1], ast.Name)
+            and item.test.operand.args[1].id == "dict"
+            and len(item.body) == 1
+            and provenance_raise(item.body[0])
+        )
+    ]
+
+    return (
+        len(fingerprint_guards) == 1
+        and len(provenance_assignments) == 1
+        and len(provenance_guards) == 1
+        and fingerprint_guards[0].lineno
+        < provenance_assignments[0].lineno
+        < provenance_guards[0].lineno
+    )
+
+
+def _generic_persisted_report_writer_closure(
+    modules: dict[str, ModuleInfo],
+) -> bool:
+    """Prove the exact current RelatorioAnalise writer/verifier closure."""
+    if not _persisted_result_rejects_unsealed_payload(modules):
+        return False
+
+    model_id = "app.models.RelatorioAnalise"
+    route_writer_id = (
+        "app.routes.relatorio_router.gerar_relatorio_mei_tax"
+    )
+    insights_writer_id = (
+        "app.services.insights_engine."
+        "InsightEngine.gerar_insights_empresa"
+    )
+    creator_id = (
+        "app.services.registro_analise_service."
+        "criar_registro_analise"
+    )
+    finalizer_id = (
+        "app.services.registro_analise_service."
+        "finalizar_registro_analise"
+    )
+    xml_service_id = (
+        "app.services.registro_analise_service."
+        "executar_e_registrar_analise_xml"
+    )
+    sealer_id = (
+        "app.services.resultado_provenance_service."
+        "selar_resultado_nao_mei"
+    )
+
+    def scoped_nodes(
+        function_node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> list[ast.AST]:
+        found: list[ast.AST] = []
+        stack: list[ast.AST] = list(reversed(function_node.body))
+        while stack:
+            item = stack.pop()
+            if isinstance(
+                item,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                    ast.ClassDef,
+                    ast.Lambda,
+                ),
+            ):
+                continue
+            found.append(item)
+            stack.extend(reversed(list(ast.iter_child_nodes(item))))
+        return found
+
+    def keywords(call: ast.Call) -> dict[str, ast.AST] | None:
+        if any(keyword.arg is None for keyword in call.keywords):
+            return None
+        names = [keyword.arg for keyword in call.keywords]
+        if len(names) != len(set(names)):
+            return None
+        return {
+            keyword.arg: keyword.value
+            for keyword in call.keywords
+            if keyword.arg is not None
+        }
+
+    def bound_argument(
+        call: ast.Call,
+        *,
+        position: int,
+        name: str,
+    ) -> ast.AST | None:
+        kw = keywords(call)
+        if kw is None:
+            return None
+        if name in kw:
+            return kw[name]
+        if len(call.args) > position:
+            return call.args[position]
+        return None
+
+    def resolved_calls(
+        target_id: str,
+    ) -> list[
+        tuple[
+            str,
+            ModuleInfo,
+            ast.FunctionDef | ast.AsyncFunctionDef,
+            ast.Call,
+        ]
+    ]:
+        rows = []
+        for module_name in sorted(modules):
+            module = modules[module_name]
+            for local_name, function_node in sorted(
+                module.functions.items()
+            ):
+                function_id = f"{module.name}.{local_name}"
+                for item in scoped_nodes(function_node):
+                    if not isinstance(item, ast.Call):
+                        continue
+                    call_name = _call_name(item)
+                    if call_name is None:
+                        continue
+                    if _resolve_name(module, call_name) == target_id:
+                        rows.append(
+                            (
+                                function_id,
+                                module,
+                                function_node,
+                                item,
+                            )
+                        )
+        return rows
+
+    # Every constructor of RelatorioAnalise must be accounted for.
+    constructors = resolved_calls(model_id)
+    constructor_ids = [row[0] for row in constructors]
+    expected_constructor_ids = {
+        route_writer_id,
+        insights_writer_id,
+        creator_id,
+    }
+    if (
+        set(constructor_ids) != expected_constructor_ids
+        or len(constructor_ids) != len(expected_constructor_ids)
+    ):
+        return False
+
+    by_id = {
+        function_id: (module, function_node, call)
+        for function_id, module, function_node, call in constructors
+    }
+
+    # Writer 1: /relatorio/mei_tax now persists CPF only, after an
+    # unconditional terminal MEI authority blocker.
+    route_module, route_node, route_ctor = by_id[route_writer_id]
+    route_kw = keywords(route_ctor)
+    if route_kw is None:
+        return False
+    analysis_node = route_kw.get("analysis_type")
+    if (
+        analysis_node is None
+        or _static_string_value(
+            modules,
+            route_module,
+            analysis_node,
+        )
+        != "cpf_tax"
+    ):
+        return False
+
+    route_guards = []
+    for statement in route_node.body:
+        if not (
+            isinstance(statement, ast.If)
+            and _condition_mentions_mei(statement.test)
+        ):
+            continue
+        blocker_codes = [
+            _extract_blocker_code(child)
+            for child in statement.body
+            if isinstance(child, ast.Raise)
+        ]
+        if "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL" in blocker_codes:
+            route_guards.append(statement)
+
+    if (
+        len(route_guards) != 1
+        or route_guards[0].lineno >= route_ctor.lineno
+    ):
+        return False
+
+    # Writer 2: InsightEngine is MEI-capable, but its owned
+    # RelatorioAnalise payload is deliberately raw/unsealed. The generic
+    # verifier therefore rejects it before publication.
+    insights_module, insights_node, insights_ctor = by_id[
+        insights_writer_id
+    ]
+    insights_kw = keywords(insights_ctor)
+    if insights_kw is None:
+        return False
+
+    insights_analysis = insights_kw.get("analysis_type")
+    if (
+        insights_analysis is None
+        or _static_string_value(
+            modules,
+            insights_module,
+            insights_analysis,
+        )
+        != "empresa_tax"
+        or "resultado_json" in insights_kw
+        or "fingerprint" in insights_kw
+    ):
+        return False
+
+    owned_ctor_assignments = [
+        item
+        for item in scoped_nodes(insights_node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "relatorio"
+            and item.value is insights_ctor
+        )
+    ]
+    if len(owned_ctor_assignments) != 1:
+        return False
+
+    insights_result_writes = [
+        item
+        for item in scoped_nodes(insights_node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Attribute)
+            and item.targets[0].attr == "resultado_json"
+            and isinstance(item.targets[0].value, ast.Name)
+            and item.targets[0].value.id == "relatorio"
+        )
+    ]
+    if len(insights_result_writes) != 1:
+        return False
+
+    raw_result = insights_result_writes[0].value
+    if not isinstance(raw_result, ast.Dict):
+        return False
+
+    raw_keys = {
+        _static_string_value(
+            modules,
+            insights_module,
+            key,
+        )
+        for key in raw_result.keys
+        if key is not None
+    }
+    if raw_keys != {
+        "empresa_id",
+        "oportunidades",
+        "creditos_detectados",
+        "risco_tributario",
+        "resultados_engines",
+        "context_flags",
+        "decomposicao_impacto",
+    }:
+        return False
+
+    fingerprint_writes = [
+        item
+        for item in scoped_nodes(insights_node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Attribute)
+            and item.targets[0].attr == "fingerprint"
+            and isinstance(item.targets[0].value, ast.Name)
+            and item.targets[0].value.id == "relatorio"
+        )
+    ]
+    if fingerprint_writes:
+        return False
+
+    commits_after_raw_result = [
+        item
+        for item in scoped_nodes(insights_node)
+        if (
+            isinstance(item, ast.Call)
+            and _call_name(item) == "self.db.commit"
+            and item.lineno > insights_result_writes[0].lineno
+        )
+    ]
+    if len(commits_after_raw_result) != 1:
+        return False
+
+    # No other direct resultado_json attribute writer is allowed.
+    result_attribute_writers: list[str] = []
+    for module_name in sorted(modules):
+        module = modules[module_name]
+        for local_name, function_node in sorted(
+            module.functions.items()
+        ):
+            function_id = f"{module.name}.{local_name}"
+            for item in scoped_nodes(function_node):
+                targets: list[ast.AST] = []
+                if isinstance(item, ast.Assign):
+                    targets = list(item.targets)
+                elif isinstance(item, ast.AnnAssign):
+                    targets = [item.target]
+                else:
+                    continue
+                if any(
+                    isinstance(target, ast.Attribute)
+                    and target.attr == "resultado_json"
+                    for target in targets
+                ):
+                    result_attribute_writers.append(function_id)
+
+    if (
+        set(result_attribute_writers)
+        != {insights_writer_id, finalizer_id}
+        or len(result_attribute_writers) != 2
+    ):
+        return False
+
+    # Writer 3: generic creator may only be called with current proven
+    # non-MEI analysis types.
+    creator_calls = resolved_calls(creator_id)
+    if not creator_calls:
+        return False
+
+    for _, caller_module, _, call in creator_calls:
+        analysis_arg = bound_argument(
+            call,
+            position=2,
+            name="analysis_type",
+        )
+        if analysis_arg is None:
+            return False
+        analysis_value = _static_string_value(
+            modules,
+            caller_module,
+            analysis_arg,
+        )
+        if analysis_value not in {"cpf_tax", "xml_analise"}:
+            return False
+
+    # The only result-bearing finalization must target the same
+    # xml_analise record and receive a selar_resultado_nao_mei() result
+    # from executar_analise_xml.
+    finalizer_calls = resolved_calls(finalizer_id)
+    if not finalizer_calls:
+        return False
+
+    for (
+        caller_id,
+        caller_module,
+        caller_node,
+        call,
+    ) in finalizer_calls:
+        result_arg = bound_argument(
+            call,
+            position=7,
+            name="resultado_json",
+        )
+
+        if result_arg is None or (
+            isinstance(result_arg, ast.Constant)
+            and result_arg.value is None
+        ):
+            continue
+
+        if caller_id != xml_service_id:
+            return False
+
+        relatorio_id_arg = bound_argument(
+            call,
+            position=1,
+            name="relatorio_id",
+        )
+        if not (
+            isinstance(relatorio_id_arg, ast.Attribute)
+            and relatorio_id_arg.attr == "id"
+            and isinstance(relatorio_id_arg.value, ast.Name)
+            and relatorio_id_arg.value.id == "rel"
+        ):
+            return False
+
+        rel_creations = []
+        for item in scoped_nodes(caller_node):
+            if not (
+                isinstance(item, ast.Assign)
+                and len(item.targets) == 1
+                and isinstance(item.targets[0], ast.Name)
+                and item.targets[0].id == "rel"
+                and isinstance(item.value, ast.Call)
+            ):
+                continue
+            call_name = _call_name(item.value)
+            if (
+                call_name is not None
+                and _resolve_name(
+                    caller_module,
+                    call_name,
+                )
+                == creator_id
+            ):
+                rel_creations.append(item)
+
+        if len(rel_creations) != 1:
+            return False
+
+        creator_call = rel_creations[0].value
+        creator_analysis = bound_argument(
+            creator_call,
+            position=2,
+            name="analysis_type",
+        )
+        if (
+            creator_analysis is None
+            or _static_string_value(
+                modules,
+                caller_module,
+                creator_analysis,
+            )
+            != "xml_analise"
+            or rel_creations[0].lineno >= call.lineno
+        ):
+            return False
+
+        if not isinstance(result_arg, ast.Name):
+            return False
+
+        sealed_assignments = []
+        for item in scoped_nodes(caller_node):
+            if not (
+                isinstance(item, ast.Assign)
+                and len(item.targets) == 1
+                and isinstance(item.targets[0], ast.Name)
+                and item.targets[0].id == result_arg.id
+                and isinstance(item.value, ast.Call)
+            ):
+                continue
+
+            call_name = _call_name(item.value)
+            if (
+                call_name is not None
+                and _resolve_name(
+                    caller_module,
+                    call_name,
+                )
+                == sealer_id
+            ):
+                sealed_assignments.append(item)
+
+        if len(sealed_assignments) != 1:
+            return False
+
+        seal_call = sealed_assignments[0].value
+        seal_kw = keywords(seal_call)
+        if seal_kw is None:
+            return False
+
+        producer_node = seal_kw.get("producer_id")
+        if not (
+            producer_node is not None
+            and _static_string_value(
+                modules,
+                caller_module,
+                producer_node,
+            )
+            == "app.services.analysis_orchestrator.executar_analise_xml"
+            and sealed_assignments[0].lineno < call.lineno
+        ):
+            return False
+
+    return True
+
+
 def _persisted_mei_report_publication_source(
+    modules: dict[str, ModuleInfo],
     node: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> dict | None:
     """Return persistence evidence when a route publishes stored MEI-capable results."""
@@ -6143,12 +6738,6 @@ def _persisted_mei_report_publication_source(
         relatorio_local_ids.intersection(verified_relatorio_ids)
     )
 
-    if not (
-        has_resultado_json
-        or has_verified_persisted_result
-    ):
-        return None
-
     mei_filter = any(
         isinstance(item, ast.Compare)
         and isinstance(item.left, ast.Attribute)
@@ -6167,10 +6756,30 @@ def _persisted_mei_report_publication_source(
         for item in ast.walk(node)
     )
 
+    if not (
+        has_resultado_json
+        or has_verified_persisted_result
+        or mei_filter
+        or bool(relatorio_local_ids)
+    ):
+        return None
+
     source = {
         "model": "app.models.RelatorioAnalise",
         "field": "resultado_json",
-        "lineage_proven": False,
+        "lineage_proven": bool(
+            has_verified_persisted_result
+            and (
+                (
+                    mei_filter
+                    and _persisted_mei_none_authority_guard(modules)
+                )
+                or (
+                    not mei_filter
+                    and _generic_persisted_report_writer_closure(modules)
+                )
+            )
+        ),
     }
 
     if mei_filter:
@@ -6448,15 +7057,26 @@ def build_census() -> dict:
                     **relatorio_pdf_inventory,
                 })
                 continue
-            persistence_source = _persisted_mei_report_publication_source(node)
+            persistence_source = _persisted_mei_report_publication_source(
+                modules,
+                node,
+            )
             if persistence_source is not None:
                 paths.append(
                     {
                         "entrypoint": entrypoint,
                         "function_id": function_id,
-                        "mei_reachability": "UNRESOLVED_MEI",
+                        "mei_reachability": (
+                            "NO_CANONICAL_MEI_PRODUCER"
+                            if persistence_source.get("lineage_proven") is True
+                            else "UNRESOLVED_MEI"
+                        ),
                         "blocked_before_producer": False,
-                        "blocker_code": "PERSISTED_MEI_PROVENANCE_UNPROVEN",
+                        "blocker_code": (
+                            None
+                            if persistence_source.get("lineage_proven") is True
+                            else "PERSISTED_MEI_PROVENANCE_UNPROVEN"
+                        ),
                         "producer_ids": [],
                         "sink_kinds": ["PUBLICATION"],
                         "trace": [function_id],
