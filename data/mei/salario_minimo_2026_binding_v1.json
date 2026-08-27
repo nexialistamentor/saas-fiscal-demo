@@ -1,0 +1,22 @@
+{
+  "contexto": {
+    "data_referencia": "2026-01-01",
+    "jurisdicao_codigo": "BR",
+    "uso_solicitado": "estimativa"
+  },
+  "bindings": [
+    {
+      "dataset_id": "SALARIO_MINIMO_POR_ANO",
+      "fonte_id": "SALARIO-MINIMO-001",
+      "versao_fonte": "D12797-2025",
+      "vigencia_inicio": "2026-01-01",
+      "vigencia_fim": "2026-12-31",
+      "jurisdicao_codigo": "BR",
+      "risco": "alto",
+      "invariantes": [
+        "INV_SALARIO_MINIMO_2026_EXATO",
+        "INV_VIGENCIA_ANUAL_2026"
+      ]
+    }
+  ]
+}

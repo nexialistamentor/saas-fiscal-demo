@@ -256,7 +256,7 @@
       "ultima_verificacao": "2026-06-29",
       "observacoes": "Auxiliar educativo. Nunca fundamenta decisão fiscal."
     },
-    {
+        {
       "id": "SALARIO-MINIMO-001",
       "nome": "Salário Mínimo Nacional — Decretos Federais Anuais",
       "tipo": "normativa_oficial",
@@ -265,17 +265,25 @@
       "escopo": "Valor do salário mínimo vigente por ano — base de cálculo do DAS MEI e outros benefícios",
       "jurisdicao": "federal",
       "confianca": "absoluta",
-      "pode_fundamentar_decisao": false,
+      "pode_fundamentar_decisao": true,
       "pode_validar_fato_operacional": false,
-      "pode_ser_usada_por_llm": true,
-      "status": "em_revisao",
-      "vigencia_inicio": null,
+      "pode_ser_usada_por_llm": false,
+      "status": "activa",
+      "vigencia_inicio": "2026-01-01",
       "vigencia_fim": null,
-      "forma_internalizacao": "manual_curada",
+      "forma_internalizacao": "snapshot_html_versionado",
       "risco_se_desatualizada": "alto",
-      "hash_referencia": null,
-      "ultima_verificacao": "2026-06-30",
-      "observacoes": "Fonte anual por decreto federal específico. Para 2026, Decreto nº 12.797/2025 fixa R$ 1.621,00 (vigência 1º jan 2026). A Lei 14.663/2023 compõe a política de valorização, mas não substitui o decreto anual. Valor internalizado em mei_constants.SALARIO_MINIMO_POR_ANO. Sem hash formal — pode_fundamentar_decisao=false até internalização versionada. B13-OPS-12B-P0C: corrigido 2026=1518→1621."
+      "hash_referencia": "9C3FC6738634B9E1FCDDA94307CFD90FE028FFEDF34FF7391A99A0359AE6A52C",
+      "ultima_verificacao": "2026-08-27",
+      "observacoes": "Decreto 12.797/2025 internalizado em snapshot HTML versionado. Autoridade estrita para o valor do salario minimo aplicavel ao dataset SALARIO_MINIMO_POR_ANO somente em contexto temporal de 2026; nao autoriza valores de outros anos nem qualquer parcela do DAS-MEI.",
+      "jurisdicao_codigo": "BR",
+      "versao": "D12797-2025",
+      "alvos_normativos_autorizados": [
+        {
+          "tipo": "dataset",
+          "id": "SALARIO_MINIMO_POR_ANO"
+        }
+      ]
     },
     {
       "id": "IRPF-PROGRESSIVO-001",

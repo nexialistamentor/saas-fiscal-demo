@@ -38,3 +38,13 @@ CB3845804F3C14CB9CB1320AEE19BF14498CF15988CD9263FD4618D8FAAAB8B6
 - qualquer regeneração deve manter vínculo verificável ao `source_sha256`;
 - alteração da fonte exige novo snapshot, novo hash, reextração e revalidação;
 - elegibilidade/aplicabilidade MEI continua fail-closed até que o dataset seja autorizado para consumo por motor fiscal.
+
+## Salario minimo 2026 - Decreto 12.797/2025
+
+- snapshot: `decreto_12797_2025_snapshot_2026-08-27.html`;
+- SHA-256: `9C3FC6738634B9E1FCDDA94307CFD90FE028FFEDF34FF7391A99A0359AE6A52C`;
+- bytes: `10327`;
+- vigencia do binding: `2026-01-01` a `2026-12-31`;
+- alvo: dataset temporal `SALARIO_MINIMO_POR_ANO`;
+- escopo: apenas o valor de R$ 1.621,00 aplicavel ao contexto de 2026;
+- nao autoriza anos anteriores, limite MEI, fator previdenciario, ICMS, ISS ou publicacao oficial PGMEI.
