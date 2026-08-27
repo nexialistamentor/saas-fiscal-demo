@@ -42,6 +42,25 @@ def _visible_text(raw: bytes) -> str:
     return re.sub(r"\s+", " ", html.unescape(text).replace("\xa0", " ")).strip()
 
 
+def test_lei8212_mei_source_uses_its_own_official_provenance():
+    source = _sources()["LEI8212-MEI-001"]
+    official_url = "https://www.planalto.gov.br/ccivil_03/leis/l8212compilado.htm"
+
+    assert source["url_base"] == official_url
+    assert source["url_oficial"] == official_url
+
+    scope = source["escopo"].lower()
+    assert "lei 8.212/1991" in scope
+    assert "art. 21" in scope
+    assert "mei" in scope
+    assert "5%" in scope
+    assert "simples nacional" not in scope
+    assert "alíquotas" not in scope
+    assert "limites" not in scope
+    assert "vedações" not in scope
+    assert "obrigações" not in scope
+
+
 def test_mei_2026_normative_snapshots_match_exact_hashes_and_evidence():
     lc_raw = LC123.read_bytes()
     lei_raw = LEI8212.read_bytes()
