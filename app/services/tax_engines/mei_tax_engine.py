@@ -3,6 +3,9 @@ from decimal import Decimal
 from app.schemas.source_authority_schema import SourceAuthorityRequest
 from app.services.source_authority_guard import verificar
 from app.services.tax_engines.base_tax_engine import BaseTaxEngine
+from app.services.tax_engines.mei_temporal import (
+    resolver_data_referencia_mei,
+)
 from app.services.tax_engines.mei_constants import (
     MEI_FATURAMENTO_ALERTA_PROXIMO_LIMITE,
     MEI_LIMITE_ANUAL_FATURAMENTO,
@@ -47,7 +50,8 @@ class MEITaxEngine(BaseTaxEngine):
     name = "mei_tax"
 
     def execute(self, context: dict):
-        ano_referencia = self.resolver_ano_referencia(context)
+        data_referencia = resolver_data_referencia_mei(context)
+        ano_referencia = data_referencia.year
         faturamento = context.get("faturamento")
         if faturamento is None:
             raise ValueError("faturamento ausente")
