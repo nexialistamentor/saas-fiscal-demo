@@ -1,5 +1,19 @@
 from app.services import assistente_service
-from app.services.assistente_service import extrair_ano_referencia
+from app.services.assistente_service import (
+    extrair_ano_referencia,
+    extrair_atividade_mei,
+)
+from app.services.tax_engines.mei_constants import (
+    ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS,
+    normalizar_atividade_mei,
+)
+
+
+def test_todos_aliases_de_atividade_mei_respeitam_fronteiras_de_palavra():
+    for alias in ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS:
+        assert extrair_atividade_mei(alias) == normalizar_atividade_mei(alias)
+        assert extrair_atividade_mei(f"prefixo{alias} sufixo") is None
+        assert extrair_atividade_mei(f"prefixo {alias}sufixo") is None
 
 
 def test_ano_temporal_prevalece_sobre_faturamento_que_parece_ano():

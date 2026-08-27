@@ -211,12 +211,7 @@ def extrair_faturamento(pergunta: str) -> float | None:
 
 def extrair_atividade_mei(pergunta: str) -> str | None:
     """Extrai somente atividade MEI escrita como alias canónico na pergunta."""
-    aliases = sorted(
-        ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS,
-        key=len,
-        reverse=True,
-    )
-    for alias in aliases:
+    for alias in ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS:
         if re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", pergunta, re.IGNORECASE):
             return normalizar_atividade_mei(alias)
     return None
