@@ -24,6 +24,7 @@ Sequência de verificação (ordem é lei):
 import json
 import re
 import unicodedata
+from copy import deepcopy
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -45,6 +46,10 @@ from app.schemas.source_authority_schema import (
 )
 
 MANIFEST_PATH = Path("data/fontes_tributarias_manifest.json")
+MEI_DAS_2026_NORMATIVE_BINDING_PATH = (
+    MANIFEST_PATH.parent
+    / "mei/mei_das_2026_normative_binding_v1.json"
+)
 
 
 @lru_cache(maxsize=1)
@@ -53,6 +58,20 @@ def _carregar_manifest() -> dict:
     with open(MANIFEST_PATH, encoding="utf-8") as f:
         data = json.load(f)
     return {fonte["id"]: fonte for fonte in data["fontes"]}
+
+
+@lru_cache(maxsize=1)
+def _carregar_binding_normativo_mei_das_2026() -> dict:
+    with open(
+        MEI_DAS_2026_NORMATIVE_BINDING_PATH,
+        encoding="utf-8",
+    ) as f:
+        return json.load(f)
+
+
+def carregar_binding_normativo_mei_das_2026() -> dict:
+    """Carrega uma cópia isolada do binding DAS MEI 2026 canónico."""
+    return deepcopy(_carregar_binding_normativo_mei_das_2026())
 
 
 def _fonte_ou_none(fonte_id: str) -> dict | None:

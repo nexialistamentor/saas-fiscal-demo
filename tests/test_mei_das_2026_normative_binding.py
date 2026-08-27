@@ -7,12 +7,14 @@ import re
 from pathlib import Path
 
 from app.schemas.source_authority_schema import NormativeBindingStatus
-from app.services.source_authority_guard import validar_bindings_normativos
+from app.services.source_authority_guard import (
+    carregar_binding_normativo_mei_das_2026,
+    validar_bindings_normativos,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "data/fontes_tributarias_manifest.json"
-BINDING = ROOT / "data/mei/mei_das_2026_normative_binding_v1.json"
 LC123 = ROOT / "data/mei/lc_123_consolidada_snapshot_2026-08-27.html"
 LEI8212 = ROOT / "data/mei/lei_8212_consolidada_snapshot_2026-08-27.html"
 
@@ -26,7 +28,7 @@ def _sources():
 
 
 def _payload():
-    return json.loads(BINDING.read_text(encoding="utf-8"))
+    return carregar_binding_normativo_mei_das_2026()
 
 
 def _visible_text(raw: bytes) -> str:
@@ -76,6 +78,28 @@ def test_mei_2026_binding_is_authorized_for_estimate():
     assert result.autorizado_fundamentar_decisao is True
     assert result.bindings_validados == 3
     assert result.reasons == ()
+
+
+def test_mei_2026_binding_loader_returns_authorized_canonical_payload():
+    payload = carregar_binding_normativo_mei_das_2026()
+
+    result = validar_bindings_normativos(payload)
+
+    assert result.status == NormativeBindingStatus.valido_com_autoridade_decisoria
+    assert result.autorizado_fundamentar_decisao is True
+    assert result.bindings_validados == 3
+    assert result.reasons == ()
+
+
+def test_mei_2026_binding_loader_returns_independent_deep_copies():
+    payload = carregar_binding_normativo_mei_das_2026()
+    payload["bindings"][0]["invariantes"].append("CACHE_POISONING")
+
+    subsequent_payload = carregar_binding_normativo_mei_das_2026()
+
+    assert "CACHE_POISONING" not in (
+        subsequent_payload["bindings"][0]["invariantes"]
+    )
 
 
 def test_mei_2026_binding_fails_closed_with_incompatible_source_risk():
