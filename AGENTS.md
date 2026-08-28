@@ -38,3 +38,25 @@ O executor técnico não pode:
 - substituir a auditoria ou a ratificação humanas.
 
 Ao encontrar uma necessidade não autorizada, deve parar e reportá-la sem a implementar.
+
+## 3. Proteção contra falso GREEN
+
+Toda missão de correção que parta de um teste RED deve identificar um teste já commitado como contrato imutável durante a correção.
+
+Antes de qualquer alteração, o executor deve registar o hash do ficheiro protegido mediante `git hash-object <ficheiro>` e, ao final, deve executar novamente o mesmo comando e confirmar que o hash final é idêntico ao hash inicial.
+
+Durante reparos de produção ou de scanner, é proibido modificar, apagar, renomear, pular, aplicar `skip` ou `xfail`, deselecionar, inverter ou relaxar asserções, alterar fixtures para contornar o caminho testado ou mudar o resultado esperado do teste RED. Controlos adicionais devem ser criados em ficheiro separado, mantendo intacto o contrato original.
+
+Se o teste parecer desatualizado, o executor deve interromper a implementação e entregar somente um diagnóstico de leitura. Qualquer alteração desse contrato exige missão separada e commit `test-only` separado, sem alterações de produção.
+
+GREEN só pode ser declarado quando, cumulativamente:
+
+- o node ID RED original foi executado sem deselection;
+- os hashes inicial e final do contrato são iguais;
+- os controlos negativos permanecem ativos;
+- os testes passam;
+- `git diff --check` passa.
+
+Qualquer incompatibilidade deve terminar como `CONTRACT_CONFLICT`, sem adaptar o teste.
+
+A contagem de testes `passed` não constitui prova suficiente de GREEN quando o diff modifica o contrato observado.
