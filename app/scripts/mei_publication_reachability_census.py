@@ -1597,11 +1597,16 @@ def _is_plain_builtin_exception_constructor(
 
 
 
-def _is_inert_pydantic_model_constructor(
+def _pydantic_model_constructor_validator_ids(
     modules: dict[str, ModuleInfo],
     target_id: str,
-) -> bool:
-    """Qualify only structurally simple Pydantic model construction."""
+) -> tuple[str, ...] | None:
+    """Return validators run by a narrowly qualified Pydantic constructor.
+
+    ``None`` means that construction cannot be proven safe to traverse.  An
+    empty tuple identifies an inert constructor; a non-empty tuple identifies
+    the exact field-validator functions that construction executes.
+    """
     for module_name in sorted(modules, key=len, reverse=True):
         prefix = module_name + "."
         if not target_id.startswith(prefix):
@@ -1609,7 +1614,7 @@ def _is_inert_pydantic_model_constructor(
 
         class_name = target_id[len(prefix):]
         if not class_name or "." in class_name:
-            return False
+            return None
 
         module = modules[module_name]
         definitions = [
@@ -1618,7 +1623,7 @@ def _is_inert_pydantic_model_constructor(
             if isinstance(item, ast.ClassDef) and item.name == class_name
         ]
         if len(definitions) != 1:
-            return False
+            return None
 
         class_node = definitions[0]
         if (
@@ -1626,7 +1631,7 @@ def _is_inert_pydantic_model_constructor(
             or class_node.keywords
             or class_node.decorator_list
         ):
-            return False
+            return None
 
         base = class_node.bases[0]
         if isinstance(base, ast.Name):
@@ -1634,17 +1639,22 @@ def _is_inert_pydantic_model_constructor(
         elif isinstance(base, ast.Attribute):
             base_name = ast.unparse(base)
         else:
-            return False
+            return None
 
         if _resolve_name(module, base_name) != "pydantic.BaseModel":
-            return False
+            return None
 
-        # Custom methods may contain application behavior or validators.
-        if any(
-            isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+        methods = [
+            member
             for member in class_node.body
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+        ]
+
+        if any(
+            member.name in {"__init__", "__new__", "model_post_init"}
+            for member in methods
         ):
-            return False
+            return None
 
         # Pydantic default_factory executes during model construction,
         # so such a model is not an inert constructor.
@@ -1653,11 +1663,40 @@ def _is_inert_pydantic_model_constructor(
             and item.arg == "default_factory"
             for item in ast.walk(class_node)
         ):
-            return False
+            return None
 
-        return True
+        validator_ids: list[str] = []
+        for member in methods:
+            # Ordinary undecorated methods do not run during construction.
+            if not member.decorator_list:
+                continue
+            if len(member.decorator_list) != 2:
+                return None
 
-    return False
+            field_decorator, class_decorator = member.decorator_list
+            if not (
+                isinstance(field_decorator, ast.Call)
+                and _call_name(field_decorator) is not None
+                and _resolve_name(module, _call_name(field_decorator) or "")
+                == "pydantic.field_validator"
+                and isinstance(class_decorator, ast.Name)
+                and class_decorator.id == "classmethod"
+            ):
+                return None
+            validator_ids.append(f"{module_name}.{class_name}.{member.name}")
+
+        return tuple(validator_ids)
+
+    return None
+
+
+def _is_inert_pydantic_model_constructor(
+    modules: dict[str, ModuleInfo],
+    target_id: str,
+) -> bool:
+    """Qualify only Pydantic constructors that execute no application code."""
+    validator_ids = _pydantic_model_constructor_validator_ids(modules, target_id)
+    return validator_ids == ()
 
 
 def _is_inert_single_app_base_constructor(
@@ -2137,6 +2176,9 @@ def _reachable_orm_persistence_sinks(
             or _is_inert_sqlalchemy_sessionmaker_factory(modules, target)
         )
 
+    def pydantic_validator_targets(target: str) -> tuple[str, ...] | None:
+        return _pydantic_model_constructor_validator_ids(modules, target)
+
     while pending:
         current = pending.pop(0)
         if current in seen:
@@ -2145,6 +2187,14 @@ def _reachable_orm_persistence_sinks(
 
         found = _function_node(modules, current)
         if found is None:
+            validators = pydantic_validator_targets(current)
+            if validators is not None:
+                pending.extend(
+                    validator
+                    for validator in validators
+                    if validator not in seen
+                )
+                continue
             if inert_app_target(current):
                 continue
             if current.startswith("app."):
@@ -2163,6 +2213,14 @@ def _reachable_orm_persistence_sinks(
             if not callee.startswith("app."):
                 continue
             if _function_node(modules, callee) is None:
+                validators = pydantic_validator_targets(callee)
+                if validators is not None:
+                    pending.extend(
+                        validator
+                        for validator in validators
+                        if validator not in seen
+                    )
+                    continue
                 if inert_app_target(callee):
                     continue
                 unresolved_app_callees.add(callee)
