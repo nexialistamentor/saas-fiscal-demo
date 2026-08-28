@@ -6284,6 +6284,11 @@ def _generic_persisted_report_writer_closure(
         "app.services.resultado_provenance_service."
         "selar_resultado_nao_mei"
     )
+    fingerprint_id = (
+        "app.services.resultado_provenance_service."
+        "fingerprint_resultado_json"
+    )
+    cpf_writer_id = "app.services.assistente_service.responder_pergunta"
 
     def scoped_nodes(
         function_node: ast.FunctionDef | ast.AsyncFunctionDef,
@@ -6303,6 +6308,22 @@ def _generic_persisted_report_writer_closure(
             ):
                 continue
             found.append(item)
+            stack.extend(reversed(list(ast.iter_child_nodes(item))))
+        return found
+
+    def scope_binding_nodes(
+        function_node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> list[ast.AST]:
+        found: list[ast.AST] = []
+        stack: list[ast.AST] = list(reversed(function_node.body))
+        while stack:
+            item = stack.pop()
+            found.append(item)
+            if isinstance(
+                item,
+                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda),
+            ):
+                continue
             stack.extend(reversed(list(ast.iter_child_nodes(item))))
         return found
 
@@ -6350,13 +6371,106 @@ def _generic_persisted_report_writer_closure(
                 module.functions.items()
             ):
                 function_id = f"{module.name}.{local_name}"
+                local_import_targets: dict[str, set[str]] = {}
+                local_import_counts: dict[str, int] = {}
+                locally_rebound: set[str] = set()
+                locally_imported: set[str] = set()
+                arguments = (
+                    list(function_node.args.posonlyargs)
+                    + list(function_node.args.args)
+                    + list(function_node.args.kwonlyargs)
+                )
+                if function_node.args.vararg is not None:
+                    arguments.append(function_node.args.vararg)
+                if function_node.args.kwarg is not None:
+                    arguments.append(function_node.args.kwarg)
+                locally_rebound.update(argument.arg for argument in arguments)
+                for item in scope_binding_nodes(function_node):
+                    if isinstance(item, ast.ImportFrom):
+                        for alias in item.names:
+                            bound_name = alias.asname or alias.name
+                            locally_imported.add(bound_name)
+                            local_import_counts[bound_name] = (
+                                local_import_counts.get(bound_name, 0) + 1
+                            )
+                            if item.level == 0 and item.module:
+                                local_import_targets.setdefault(
+                                    bound_name, set()
+                                ).add(f"{item.module}.{alias.name}")
+                        continue
+                    if isinstance(item, ast.Import):
+                        for alias in item.names:
+                            bound_name = alias.asname or alias.name.split(".", 1)[0]
+                            locally_imported.add(bound_name)
+                            local_import_counts[bound_name] = (
+                                local_import_counts.get(bound_name, 0) + 1
+                            )
+                            local_import_targets.setdefault(
+                                bound_name, set()
+                            ).add(alias.name if alias.asname else bound_name)
+                        continue
+                    targets: list[ast.AST] = []
+                    if isinstance(item, ast.Assign):
+                        targets = list(item.targets)
+                    elif isinstance(item, (ast.AnnAssign, ast.AugAssign)):
+                        targets = [item.target]
+                    elif isinstance(item, ast.Delete):
+                        targets = list(item.targets)
+                    elif isinstance(item, (ast.For, ast.AsyncFor)):
+                        targets = [item.target]
+                    elif isinstance(item, (ast.With, ast.AsyncWith)):
+                        targets = [
+                            with_item.optional_vars
+                            for with_item in item.items
+                            if with_item.optional_vars is not None
+                        ]
+                    elif isinstance(item, ast.ExceptHandler) and item.name:
+                        locally_rebound.add(item.name)
+                    elif isinstance(item, ast.NamedExpr):
+                        targets = [item.target]
+                    elif isinstance(item, ast.MatchAs) and item.name:
+                        locally_rebound.add(item.name)
+                    elif isinstance(item, ast.MatchStar) and item.name:
+                        locally_rebound.add(item.name)
+                    elif isinstance(item, ast.MatchMapping) and item.rest:
+                        locally_rebound.add(item.rest)
+                    elif isinstance(
+                        item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+                    ):
+                        locally_rebound.add(item.name)
+                    for target in targets:
+                        locally_rebound.update(_bound_names(target))
+
+                def resolve_scoped_name(name: str) -> str | None:
+                    if "." in name:
+                        root_name, remainder = name.split(".", 1)
+                    else:
+                        root_name, remainder = name, None
+                    targets = local_import_targets.get(root_name)
+                    if targets is not None:
+                        if (
+                            len(targets) != 1
+                            or local_import_counts.get(root_name) != 1
+                            or root_name in locally_rebound
+                        ):
+                            return None
+                        target = next(iter(targets))
+                        return (
+                            f"{target}.{remainder}"
+                            if remainder is not None
+                            else target
+                        )
+                    if root_name in locally_rebound or root_name in locally_imported:
+                        return None
+                    return _resolve_name(module, name)
+
                 for item in scoped_nodes(function_node):
                     if not isinstance(item, ast.Call):
                         continue
                     call_name = _call_name(item)
                     if call_name is None:
                         continue
-                    if _resolve_name(module, call_name) == target_id:
+                    if resolve_scoped_name(call_name) == target_id:
                         rows.append(
                             (
                                 function_id,
@@ -6425,9 +6539,8 @@ def _generic_persisted_report_writer_closure(
     ):
         return False
 
-    # Writer 2: InsightEngine is MEI-capable, but its owned
-    # RelatorioAnalise payload is deliberately raw/unsealed. The generic
-    # verifier therefore rejects it before publication.
+    # Writer 2: InsightEngine owns the report it creates and delegates
+    # provenance sealing and fingerprinting to the central services.
     insights_module, insights_node, insights_ctor = by_id[
         insights_writer_id
     ]
@@ -6460,7 +6573,190 @@ def _generic_persisted_report_writer_closure(
             and item.value is insights_ctor
         )
     ]
-    if len(owned_ctor_assignments) != 1:
+    parent_by_node = {
+        child: parent
+        for parent in ast.walk(insights_node)
+        for child in ast.iter_child_nodes(parent)
+    }
+
+    def branch_side(item: ast.AST, branch: ast.If) -> str | None:
+        current = item
+        parent = parent_by_node.get(current)
+        while parent is not None and parent is not branch:
+            current = parent
+            parent = parent_by_node.get(current)
+        if parent is not branch:
+            return None
+        if current in branch.body:
+            return "body"
+        if current in branch.orelse:
+            return "orelse"
+        return None
+
+    def missing_relatorio_id_branch(item: ast.AST) -> ast.If | None:
+        current = parent_by_node.get(item)
+        while current is not None and current is not insights_node:
+            if (
+                isinstance(current, ast.If)
+                and isinstance(current.test, ast.Compare)
+                and isinstance(current.test.left, ast.Name)
+                and current.test.left.id == "relatorio_analise_id"
+                and len(current.test.ops) == 1
+                and isinstance(current.test.ops[0], ast.Is)
+                and len(current.test.comparators) == 1
+                and isinstance(current.test.comparators[0], ast.Constant)
+                and current.test.comparators[0].value is None
+            ):
+                return current
+            current = parent_by_node.get(current)
+        return None
+
+    relatorio_bindings: list[tuple[ast.AST, ast.AST | None]] = []
+    insight_arguments = (
+        list(insights_node.args.posonlyargs)
+        + list(insights_node.args.args)
+        + list(insights_node.args.kwonlyargs)
+    )
+    if insights_node.args.vararg is not None:
+        insight_arguments.append(insights_node.args.vararg)
+    if insights_node.args.kwarg is not None:
+        insight_arguments.append(insights_node.args.kwarg)
+    relatorio_bindings.extend(
+        (argument, None)
+        for argument in insight_arguments
+        if argument.arg == "relatorio"
+    )
+    for item in scope_binding_nodes(insights_node):
+        targets: list[ast.AST] = []
+        value: ast.AST | None = None
+        if isinstance(item, ast.Assign):
+            targets = list(item.targets)
+            value = item.value
+        elif isinstance(item, (ast.AnnAssign, ast.AugAssign)):
+            targets = [item.target]
+            value = item.value
+        elif isinstance(item, (ast.For, ast.AsyncFor)):
+            targets = [item.target]
+        elif isinstance(item, (ast.With, ast.AsyncWith)):
+            targets = [
+                with_item.optional_vars
+                for with_item in item.items
+                if with_item.optional_vars is not None
+            ]
+        elif isinstance(item, ast.ExceptHandler) and item.name == "relatorio":
+            relatorio_bindings.append((item, None))
+        elif isinstance(item, ast.NamedExpr):
+            targets = [item.target]
+            value = item.value
+        elif isinstance(item, ast.Delete):
+            targets = list(item.targets)
+        elif isinstance(item, (ast.Global, ast.Nonlocal)):
+            if "relatorio" in item.names:
+                relatorio_bindings.append((item, None))
+        elif isinstance(item, ast.MatchAs) and item.name == "relatorio":
+            relatorio_bindings.append((item, None))
+        elif isinstance(item, ast.MatchStar) and item.name == "relatorio":
+            relatorio_bindings.append((item, None))
+        elif isinstance(item, ast.MatchMapping) and item.rest == "relatorio":
+            relatorio_bindings.append((item, None))
+        elif isinstance(item, ast.ImportFrom):
+            if any(
+                (alias.asname or alias.name) == "relatorio"
+                for alias in item.names
+            ):
+                relatorio_bindings.append((item, None))
+        elif isinstance(item, ast.Import):
+            if any(
+                (alias.asname or alias.name.split(".", 1)[0]) == "relatorio"
+                for alias in item.names
+            ):
+                relatorio_bindings.append((item, None))
+        elif isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if item.name == "relatorio":
+                relatorio_bindings.append((item, None))
+        for target in targets:
+            if "relatorio" in _bound_names(target):
+                relatorio_bindings.append((item, value))
+
+    initial_relatorio_bindings = [
+        item
+        for item, value in relatorio_bindings
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "relatorio"
+            and isinstance(value, ast.Constant)
+            and value.value is None
+        )
+    ]
+    if (
+        len(relatorio_bindings) != 2
+        or len(initial_relatorio_bindings) != 1
+        or len(owned_ctor_assignments) != 1
+        or initial_relatorio_bindings[0].lineno >= owned_ctor_assignments[0].lineno
+    ):
+        return False
+
+    constructor_branch = missing_relatorio_id_branch(owned_ctor_assignments[0])
+
+    relatorio_id_writes = [
+        item
+        for item in scoped_nodes(insights_node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "relatorio_analise_id"
+        )
+    ]
+    if not (
+        constructor_branch is not None
+        and branch_side(owned_ctor_assignments[0], constructor_branch) == "body"
+        and len(relatorio_id_writes) == 1
+        and missing_relatorio_id_branch(relatorio_id_writes[0]) is constructor_branch
+        and branch_side(relatorio_id_writes[0], constructor_branch) == "body"
+        and isinstance(relatorio_id_writes[0].value, ast.Attribute)
+        and relatorio_id_writes[0].value.attr == "id"
+        and isinstance(relatorio_id_writes[0].value.value, ast.Name)
+        and relatorio_id_writes[0].value.value.id == "relatorio"
+    ):
+        return False
+
+    result_payload_assignments = [
+        item
+        for item in scoped_nodes(insights_node)
+        if (
+            isinstance(item, ast.Assign)
+            and len(item.targets) == 1
+            and isinstance(item.targets[0], ast.Name)
+            and item.targets[0].id == "resultado_persistido"
+            and isinstance(item.value, ast.Dict)
+        )
+    ]
+    if len(result_payload_assignments) != 1:
+        return False
+
+    payload_assignment = result_payload_assignments[0]
+    expected_payload_keys = {
+        "empresa_id",
+        "oportunidades",
+        "creditos_detectados",
+        "risco_tributario",
+        "resultados_engines",
+        "context_flags",
+        "decomposicao_impacto",
+    }
+    payload_keys = payload_assignment.value.keys
+    if (
+        len(payload_keys) != len(expected_payload_keys)
+        or any(
+            not isinstance(key, ast.Constant) or not isinstance(key.value, str)
+            for key in payload_keys
+        )
+        or len({key.value for key in payload_keys}) != len(payload_keys)
+        or {key.value for key in payload_keys} != expected_payload_keys
+    ):
         return False
 
     insights_result_writes = [
@@ -6478,28 +6774,27 @@ def _generic_persisted_report_writer_closure(
     if len(insights_result_writes) != 1:
         return False
 
-    raw_result = insights_result_writes[0].value
-    if not isinstance(raw_result, ast.Dict):
+    sealed_write = insights_result_writes[0]
+    if not isinstance(sealed_write.value, ast.Call):
         return False
-
-    raw_keys = {
-        _static_string_value(
-            modules,
-            insights_module,
-            key,
+    seal_name = _call_name(sealed_write.value)
+    seal_kw = keywords(sealed_write.value)
+    seal_payload = bound_argument(
+        sealed_write.value, position=0, name="resultado"
+    )
+    if (
+        seal_name is None
+        or _resolve_name(insights_module, seal_name) != sealer_id
+        or seal_kw is None
+        or len(sealed_write.value.args) != 1
+        or set(seal_kw) != {"producer_id"}
+        or not isinstance(seal_payload, ast.Name)
+        or seal_payload.id != "resultado_persistido"
+        or _static_string_value(
+            modules, insights_module, seal_kw.get("producer_id")
         )
-        for key in raw_result.keys
-        if key is not None
-    }
-    if raw_keys != {
-        "empresa_id",
-        "oportunidades",
-        "creditos_detectados",
-        "risco_tributario",
-        "resultados_engines",
-        "context_flags",
-        "decomposicao_impacto",
-    }:
+        != insights_writer_id
+    ):
         return False
 
     fingerprint_writes = [
@@ -6514,19 +6809,72 @@ def _generic_persisted_report_writer_closure(
             and item.targets[0].value.id == "relatorio"
         )
     ]
-    if fingerprint_writes:
+    if len(fingerprint_writes) != 1:
         return False
 
-    commits_after_raw_result = [
+    fingerprint_write = fingerprint_writes[0]
+    if not isinstance(fingerprint_write.value, ast.Call):
+        return False
+    fingerprint_name = _call_name(fingerprint_write.value)
+    fingerprint_arg = bound_argument(
+        fingerprint_write.value, position=0, name="resultado"
+    )
+    if (
+        fingerprint_name is None
+        or _resolve_name(insights_module, fingerprint_name) != fingerprint_id
+        or len(fingerprint_write.value.args) != 1
+        or fingerprint_write.value.keywords
+        or not (
+            isinstance(fingerprint_arg, ast.Attribute)
+            and fingerprint_arg.attr == "resultado_json"
+            and isinstance(fingerprint_arg.value, ast.Name)
+            and fingerprint_arg.value.id == "relatorio"
+        )
+    ):
+        return False
+
+    def relatorio_branch(item: ast.AST) -> ast.If | None:
+        current = parent_by_node.get(item)
+        while current is not None and current is not insights_node:
+            if (
+                isinstance(current, ast.If)
+                and isinstance(current.test, ast.Name)
+                and current.test.id == "relatorio"
+            ):
+                return current
+            current = parent_by_node.get(current)
+        return None
+
+    owned_relatorio_branch = relatorio_branch(payload_assignment)
+
+    if not (
+        owned_relatorio_branch is not None
+        and relatorio_branch(sealed_write) is owned_relatorio_branch
+        and relatorio_branch(fingerprint_write) is owned_relatorio_branch
+        and branch_side(payload_assignment, owned_relatorio_branch) == "body"
+        and branch_side(sealed_write, owned_relatorio_branch) == "body"
+        and branch_side(fingerprint_write, owned_relatorio_branch) == "body"
+    ):
+        return False
+
+    commits = [
         item
         for item in scoped_nodes(insights_node)
         if (
             isinstance(item, ast.Call)
             and _call_name(item) == "self.db.commit"
-            and item.lineno > insights_result_writes[0].lineno
         )
     ]
-    if len(commits_after_raw_result) != 1:
+    if (
+        len(commits) != 1
+        or not (
+            owned_ctor_assignments[0].lineno
+            < payload_assignment.lineno
+            < sealed_write.lineno
+            < fingerprint_write.lineno
+            < commits[0].lineno
+        )
+    ):
         return False
 
     # No other direct resultado_json attribute writer is allowed.
@@ -6587,6 +6935,36 @@ def _generic_persisted_report_writer_closure(
     finalizer_calls = resolved_calls(finalizer_id)
     if not finalizer_calls:
         return False
+    sealer_calls = resolved_calls(sealer_id)
+
+    result_bearing_callers = []
+    for caller_id, _, _, call in finalizer_calls:
+        result_arg = bound_argument(
+            call, position=7, name="resultado_json"
+        )
+        if not (
+            result_arg is None
+            or (
+                isinstance(result_arg, ast.Constant)
+                and result_arg.value is None
+            )
+        ):
+            result_bearing_callers.append(caller_id)
+    expected_result_bearing_callers = {xml_service_id, cpf_writer_id}
+    if (
+        set(result_bearing_callers) != expected_result_bearing_callers
+        or len(result_bearing_callers)
+        != len(expected_result_bearing_callers)
+    ):
+        unexpected = sorted(
+            set(result_bearing_callers)
+            - expected_result_bearing_callers
+        )
+        if unexpected:
+            raise RuntimeError(
+                "UNEXPECTED_WRITER_TOPOLOGY:" + ",".join(unexpected)
+            )
+        return False
 
     for (
         caller_id,
@@ -6606,8 +6984,17 @@ def _generic_persisted_report_writer_closure(
         ):
             continue
 
-        if caller_id != xml_service_id:
+        if caller_id not in expected_result_bearing_callers:
             return False
+
+        expected_analysis_type = (
+            "cpf_tax" if caller_id == cpf_writer_id else "xml_analise"
+        )
+        expected_producer_id = (
+            "app.services.analysis_orchestrator.executar_analise"
+            if caller_id == cpf_writer_id
+            else "app.services.analysis_orchestrator.executar_analise_xml"
+        )
 
         relatorio_id_arg = bound_argument(
             call,
@@ -6632,14 +7019,9 @@ def _generic_persisted_report_writer_closure(
                 and isinstance(item.value, ast.Call)
             ):
                 continue
-            call_name = _call_name(item.value)
-            if (
-                call_name is not None
-                and _resolve_name(
-                    caller_module,
-                    call_name,
-                )
-                == creator_id
+            if any(
+                row[0] == caller_id and row[3] is item.value
+                for row in creator_calls
             ):
                 rel_creations.append(item)
 
@@ -6659,7 +7041,7 @@ def _generic_persisted_report_writer_closure(
                 caller_module,
                 creator_analysis,
             )
-            != "xml_analise"
+            != expected_analysis_type
             or rel_creations[0].lineno >= call.lineno
         ):
             return False
@@ -6678,14 +7060,9 @@ def _generic_persisted_report_writer_closure(
             ):
                 continue
 
-            call_name = _call_name(item.value)
-            if (
-                call_name is not None
-                and _resolve_name(
-                    caller_module,
-                    call_name,
-                )
-                == sealer_id
+            if any(
+                row[0] == caller_id and row[3] is item.value
+                for row in sealer_calls
             ):
                 sealed_assignments.append(item)
 
@@ -6694,7 +7071,22 @@ def _generic_persisted_report_writer_closure(
 
         seal_call = sealed_assignments[0].value
         seal_kw = keywords(seal_call)
-        if seal_kw is None:
+        expected_seal_payload: ast.AST
+        if caller_id == cpf_writer_id:
+            expected_seal_payload = ast.Subscript(
+                value=ast.Name(id="cpf_resultado", ctx=ast.Load()),
+                slice=ast.Constant(value="payload"),
+                ctx=ast.Load(),
+            )
+        else:
+            expected_seal_payload = ast.Name(id="resultado", ctx=ast.Load())
+        if (
+            seal_kw is None
+            or len(seal_call.args) != 1
+            or set(seal_kw) != {"producer_id"}
+            or ast.dump(seal_call.args[0], include_attributes=False)
+            != ast.dump(expected_seal_payload, include_attributes=False)
+        ):
             return False
 
         producer_node = seal_kw.get("producer_id")
@@ -6705,7 +7097,7 @@ def _generic_persisted_report_writer_closure(
                 caller_module,
                 producer_node,
             )
-            == "app.services.analysis_orchestrator.executar_analise_xml"
+            == expected_producer_id
             and sealed_assignments[0].lineno < call.lineno
         ):
             return False
