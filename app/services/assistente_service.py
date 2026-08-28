@@ -12,6 +12,7 @@ from app.constants import PALAVRAS_ABERTURA, PALAVRAS_ENCERRAMENTO
 from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.insights_engine import InsightEngine
 from app.services.analysis_orchestrator import executar_analise
+from app.services.resultado_provenance_service import selar_resultado_nao_mei
 from app.services.tax_engines.base_tax_engine import (
     AnexoSimplesNaoDeterminadoError,
     LimiteSimplesNacionalExcedidoError,
@@ -907,12 +908,16 @@ def responder_pergunta(
             analysis_type="cpf_tax",
             empresa_id=None,
         )
+        payload_persistido = selar_resultado_nao_mei(
+            cpf_resultado["payload"],
+            producer_id="app.services.analysis_orchestrator.executar_analise",
+        )
         finalizar_registro_analise(
             db=db,
             relatorio_id=rel.id,
             status="ok",
             total_alertas=len(cpf_resultado["payload"].get("alertas", [])),
-            resultado_json=cpf_resultado["payload"],
+            resultado_json=payload_persistido,
         )
         return {
             "resposta": cpf_resultado["resposta"],
