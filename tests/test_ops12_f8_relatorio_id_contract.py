@@ -11,6 +11,10 @@ from app.database import get_db
 from app.main import app
 from app.models import Empresa, RelatorioAnalise, User
 from app.security import get_usuario_atual
+from app.services.resultado_provenance_service import (
+    fingerprint_resultado_json,
+    selar_resultado_nao_mei,
+)
 
 
 _events = []
@@ -135,6 +139,10 @@ def _make_rel(
     pago=True,
     resultado_json=None,
 ):
+    resultado_persistido = selar_resultado_nao_mei(
+        {} if resultado_json is None else resultado_json,
+        producer_id="app.services.analysis_orchestrator.executar_analise",
+    )
     return _ObservedEntity(
         _kind="relatorio",
         id=1,
@@ -146,7 +154,8 @@ def _make_rel(
         total_alertas=2,
         pago=pago,
         created_at=datetime(2026, 1, 15, 10, 0, 0),
-        resultado_json={} if resultado_json is None else resultado_json,
+        resultado_json=resultado_persistido,
+        fingerprint=fingerprint_resultado_json(resultado_persistido),
     )
 
 
