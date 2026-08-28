@@ -260,6 +260,7 @@ def comparar_regimes(
             try:
                 _resultado_mei = MEITaxEngine().execute(
                     {
+                        "modo": "estimativa",
                         "faturamento": faturamento_anual / Decimal("12"),
                         "faturamento_anual": faturamento_anual,
                         "atividade": atividade,
