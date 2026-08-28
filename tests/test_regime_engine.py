@@ -284,10 +284,45 @@ def test_pad001_das_mei_sem_hardcoded_legacy():
 
 
 def test_pad001_das_mei_usa_fonte_canonica():
-    for caminho in [
-        "app/services/regime_engine.py",
-        "app/services/tax_engines/mei_engine.py",
-    ]:
-        src = Path(caminho).read_text(encoding="utf-8")
-        assert "calcular_das_mei" in src
-        assert "obter_salario_minimo" in src
+    import ast
+
+    contratos = [
+        ("app/services/regime_engine.py", "comparar_regimes", ast.Dict),
+        ("app/services/tax_engines/mei_engine.py", "execute", ast.Name),
+    ]
+
+    for caminho, funcao_alvo, tipo_contexto in contratos:
+        arvore = ast.parse(Path(caminho).read_text(encoding="utf-8"))
+        funcoes = [
+            node
+            for node in ast.walk(arvore)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == funcao_alvo
+        ]
+        assert len(funcoes) == 1
+
+        chamadas = [node for node in ast.walk(funcoes[0]) if isinstance(node, ast.Call)]
+        delegacoes = [
+            chamada
+            for chamada in chamadas
+            if isinstance(chamada.func, ast.Attribute)
+            and chamada.func.attr == "execute"
+            and isinstance(chamada.func.value, ast.Call)
+            and isinstance(chamada.func.value.func, ast.Name)
+            and chamada.func.value.func.id == "MEITaxEngine"
+            and not chamada.func.value.args
+            and not chamada.func.value.keywords
+        ]
+
+        assert len(delegacoes) == 1
+        assert len(delegacoes[0].args) == 1
+        assert isinstance(delegacoes[0].args[0], tipo_contexto)
+        assert not delegacoes[0].keywords
+
+        chamadas_diretas = {
+            chamada.func.id
+            for chamada in chamadas
+            if isinstance(chamada.func, ast.Name)
+            and chamada.func.id in {"calcular_das_mei", "obter_salario_minimo"}
+        }
+        assert chamadas_diretas == set()
