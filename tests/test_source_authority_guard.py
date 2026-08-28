@@ -63,18 +63,31 @@ def test_informativa_pode_apoiar_explicacao_ux():
     assert r.permitido
 
 
-def test_normativa_sem_hash_nao_fundamenta_decisao():
-    """Hoje todas as normativas têm pode_fundamentar_decisao=false — nenhuma tem hash."""
+def test_normativa_internalizada_fundamenta_decisao():
+    """LC123-001 activa e internalizada pode fundamentar decisão."""
+    import json
+
+    with open("data/fontes_tributarias_manifest.json", encoding="utf-8") as f:
+        fontes = {fonte["id"]: fonte for fonte in json.load(f)["fontes"]}
+
+    lc123 = fontes["LC123-001"]
+    assert lc123["status"] == "activa"
+    assert lc123["forma_internalizacao"] == "snapshot_html_versionado"
+    assert lc123["hash_referencia"] == (
+        "662D98EB6AE4F825809EABBAAA3B2BC6F98B524CF2278A97F79FC69AA7F60BE0"
+    )
+    assert lc123["pode_fundamentar_decisao"] is True
+
     r = verificar(_req("LC123-001", "fundamentar_decisao"))
-    assert not r.permitido
-    assert "hash_referencia" in r.motivo or "internalização" in r.motivo
-
-
-def test_normativa_pode_ser_contexto_llm():
-    """LC123-001 tem pode_ser_usada_por_llm=true."""
-    r = verificar(_req("LC123-001", "contexto_llm"))
     assert r.permitido
-    assert "supervisionado" in r.acao.lower()
+    assert r.pode_fundamentar_decisao is True
+
+
+def test_normativa_bloqueia_contexto_llm():
+    """LC123-001 mantém pode_ser_usada_por_llm=false."""
+    r = verificar(_req("LC123-001", "contexto_llm"))
+    assert not r.permitido
+    assert r.pode_ser_usada_por_llm is False
 
 
 def test_fonte_sem_llm_bloqueia_contexto_llm():
