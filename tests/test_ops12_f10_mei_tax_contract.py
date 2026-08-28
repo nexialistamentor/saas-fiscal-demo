@@ -12,6 +12,10 @@ from app.database import get_db
 from app.main import app
 from app.models import RelatorioAnalise, User
 from app.security import get_usuario_atual
+from app.services.resultado_provenance_service import (
+    fingerprint_resultado_json,
+    selar_resultado_nao_mei,
+)
 
 
 class _DBFake:
@@ -216,12 +220,17 @@ class _ReadOnlyQuery:
 
 class _ReadOnlyDB:
     def __init__(self):
+        resultado_101 = selar_resultado_nao_mei(
+            {"registro": "A", "valor": 101},
+            producer_id="app.services.imposto_service.calcular_imposto_simples",
+        )
         self.registros = [
             SimpleNamespace(
                 id=101,
                 user_id=1,
                 analysis_type=relatorio_router.ANALYSIS_TYPE_MEI_TAX,
-                resultado_json={"registro": "A", "valor": 101},
+                resultado_json=resultado_101,
+                fingerprint=fingerprint_resultado_json(resultado_101),
             ),
             SimpleNamespace(
                 id=102,
@@ -434,56 +443,55 @@ def test_f11_get_mei_tax_de_outro_tipo_retorna_404(monkeypatch):
     assert _readonly_db_state.eventos == ["Q", "F", "R"]
 
 
-def test_f11_get_mei_tax_autorizado_retorna_pdf_read_only(monkeypatch):
+def test_f11_get_mei_tax_v1_sem_autoridade_retorna_409_read_only(monkeypatch):
     argumentos_gerador = []
     global _readonly_db_state
     _readonly_db_state = _ReadOnlyDB()
     rel = _readonly_db_state.registros[0]
     estado_antes = copy.deepcopy(vars(rel))
 
-    def fake_gerador(resultado):
-        _readonly_db_state.eventos.append("G")
+    def fail_gerador(resultado):
         argumentos_gerador.append(resultado)
-        return BytesIO(b"%PDF-1.4\nrelatorio")
+        raise AssertionError("gerar_pdf_imposto nao devia ser chamado")
 
     response = _get_mei_tax(
-        101, monkeypatch, gerador=fake_gerador, db=_readonly_db_state
+        101, monkeypatch, gerador=fail_gerador, db=_readonly_db_state
     )
 
-    assert response.status_code == 200
-    assert response.content.startswith(b"%PDF")
-    assert response.headers["content-type"].startswith("application/pdf")
-    assert response.headers["content-disposition"] == (
-        "attachment; filename=relatorio-mei.pdf"
+    assert response.status_code == 409
+    assert response.json()["detail"]["tipo_bloqueio"] == (
+        "RESULTADO_PERSISTIDO_PROVENIENCIA_NAO_COMPROVADA"
     )
-    assert len(argumentos_gerador) == 1
-    assert argumentos_gerador[0] is rel.resultado_json
+    assert response.json()["detail"]["estado_l3"] == "bloqueado"
+    assert argumentos_gerador == []
     assert vars(rel) == estado_antes
     assert _criterios_registrados(_readonly_db_state) == _criterios_esperados(101)
-    assert _readonly_db_state.eventos == ["Q", "F", "R", "G"]
+    assert _readonly_db_state.eventos == ["Q", "F", "R"]
     assert _readonly_db_state.query_calls == 1
+    assert _readonly_db_state.first_results == [rel]
 
 
-def test_f11_get_mei_tax_falha_do_gerador_retorna_500_sem_mutacao(monkeypatch):
+def test_f11_get_mei_tax_v1_bloqueia_antes_do_gerador_sem_mutacao(monkeypatch):
     global _readonly_db_state
     _readonly_db_state = _ReadOnlyDB()
     rel = _readonly_db_state.registros[0]
     estado_antes = copy.deepcopy(vars(rel))
 
-    def gerador_com_falha(resultado):
-        _readonly_db_state.eventos.append("G_FAIL")
-        raise RuntimeError(f"falha controlada para {resultado['registro']}")
+    def gerador_com_falha(_resultado):
+        raise AssertionError("gerar_pdf_imposto foi alcancado")
 
     response = _get_mei_tax(
         101,
         monkeypatch,
         gerador=gerador_com_falha,
-        raise_server_exceptions=False,
         db=_readonly_db_state,
     )
-    assert response.status_code == 500
-    assert not response.content.startswith(b"%PDF")
-    assert _readonly_db_state.eventos == ["Q", "F", "R", "G_FAIL"]
+    assert response.status_code == 409
+    assert response.json()["detail"]["tipo_bloqueio"] == (
+        "RESULTADO_PERSISTIDO_PROVENIENCIA_NAO_COMPROVADA"
+    )
+    assert response.json()["detail"]["estado_l3"] == "bloqueado"
+    assert _readonly_db_state.eventos == ["Q", "F", "R"]
     assert _readonly_db_state.query_calls == 1
     assert _readonly_db_state.first_results == [rel]
     assert vars(rel) == estado_antes
