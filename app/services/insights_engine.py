@@ -33,6 +33,10 @@ from app.services.context_flags_service import (
     inferir_flags_contexto_empresa,
     merge_context_flags,
 )
+from app.services.resultado_provenance_service import (
+    fingerprint_resultado_json,
+    selar_resultado_nao_mei,
+)
 
 
 def executar_engines(context: dict) -> dict:
@@ -372,7 +376,7 @@ class InsightEngine:
             relatorio.tempo_execucao = (datetime.utcnow() - inicio).total_seconds()
             relatorio.total_alertas = contar_alertas_empresa(self.db, empresa_id)
             relatorio.score_resultante = round(score["score_global_tributario"], 2)
-            relatorio.resultado_json = {
+            resultado_persistido = {
                 "empresa_id": empresa_id,
                 "oportunidades": oportunidades,
                 "creditos_detectados": creditos_detectados,
@@ -381,6 +385,13 @@ class InsightEngine:
                 "context_flags": context_flags_final,
                 "decomposicao_impacto": decomp,
             }
+            relatorio.resultado_json = selar_resultado_nao_mei(
+                resultado_persistido,
+                producer_id="app.services.insights_engine.InsightEngine.gerar_insights_empresa",
+            )
+            relatorio.fingerprint = fingerprint_resultado_json(
+                relatorio.resultado_json
+            )
 
         self.db.commit()
 
