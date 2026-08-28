@@ -71,6 +71,7 @@ def _fake_resultado_regime():
         economia_anual_vs_pior=Decimal("8000.00"),
         justificativa="Simples Nacional é o mais vantajoso.",
         regimes_inelegiveis=[],
+        regimes_nao_avaliados={},
         resultados={
             "simples": _fake_resultado_regime_obj("simples"),
             "lucro_presumido": _fake_resultado_regime_obj("lucro_presumido"),
@@ -106,6 +107,7 @@ _BODY_ESPERADO_200 = {
     "economia_anual_vs_pior": "8000.00",
     "regimes_compativeis": ["mei", "simples", "lucro_presumido"],
     "regimes_inelegiveis": [],
+    "regimes_nao_avaliados": {},
     "resultados_regime": {
         "simples": _REGIME_SERIALIZADO,
         "lucro_presumido": {**_REGIME_SERIALIZADO, "regime": "lucro_presumido"},
