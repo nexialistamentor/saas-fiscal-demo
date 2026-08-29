@@ -26,19 +26,46 @@ import {
   Legend
 } from "recharts"
 
-// B2-DASH-02: NCM real virá de itens_fiscais via endpoint dedicado futuro.
-// Sem mock: quando não há NCM real, a UI mostra estado indisponível.
-const dadosNCM = []
-
-const TIPOS_RENDIMENTO_OPTS = [
-  { id: "salario", label: "Salário" },
-  { id: "autonomo", label: "Autônomo" },
-  { id: "aluguel", label: "Aluguel" },
-  { id: "investimento", label: "Investimento" },
-  { id: "outro", label: "Outro" }
-]
-
 function App() {
+  async function handleEmitirDasOficial(event) {
+    event.preventDefault()
+    setEmissaoErro("")
+    setResultadoEmissao(null)
+
+    if (!Number.isInteger(idPerfil) || idPerfil <= 0) {
+      setEmissaoErro("A emissão oficial requer um perfil MEI vinculado a uma empresa real.")
+      return
+    }
+
+    const periodoApuracao = competenciaDas.replace("-", "")
+    setEmitindoDas(true)
+    try {
+      const resultado = await emitirDasOficial(idPerfil, periodoApuracao, formatoDas)
+      setResultadoEmissao(resultado); if (
+        formatoDas === "pdf"
+        && resultado.estado_oficial === "emitido"
+        && resultado.documento?.pdf_base64
+      ) {
+        var binario = atob(resultado.documento.pdf_base64)
+        var bytes = new Uint8Array(binario.length)
+        for (var indice = 0; indice < binario.length; indice += 1) {
+          bytes[indice] = binario.charCodeAt(indice)
+        }
+        var arquivo = new Blob([bytes], { type: "application/pdf" })
+        var url = URL.createObjectURL(arquivo)
+        var link = document.createElement("a")
+        link.href = url
+        link.download = `das-mei-${periodoApuracao}.pdf`
+        link.click()
+        URL.revokeObjectURL(url)
+      }
+    } catch (erroEmissao) {
+      setEmissaoErro("Não foi possível emitir o DAS oficial. Tente novamente.")
+    } finally {
+      setEmitindoDas(false)
+    }
+  }
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [usuario, setUsuario] = useState(null)
@@ -95,13 +122,14 @@ function App() {
 
   const [cpfFaturamentoMensal, setCpfFaturamentoMensal] = useState("")
   const [cpfDespesasMensais, setCpfDespesasMensais] = useState("")
-  const [meiFaturamentoMensal, setMeiFaturamentoMensal] = useState("")
-  const [meiDespesasMensais, setMeiDespesasMensais] = useState("")
+  const [competenciaDas, setCompetenciaDas] = useState("")
+  const [formatoDas, setFormatoDas] = useState("pdf")
+  const [emitindoDas, setEmitindoDas] = useState(false)
+  const [resultadoEmissao, setResultadoEmissao] = useState(null)
+  const [emissaoErro, setEmissaoErro] = useState("")
 
-  const meiResult = useMeiDashboard({
-    faturamento_mensal: meiFaturamentoMensal,
-    despesas: meiDespesasMensais
-  })
+  const meiResult = useMeiDashboard()
+  const { emitirDasOficial } = meiResult
   const cpfResult = useCpfDashboard({
     faturamento_mensal: cpfFaturamentoMensal,
     despesas: cpfDespesasMensais
@@ -1425,33 +1453,71 @@ function App() {
 
         {perfilAtual.tipo === "mei" && (
           <section className="card" style={{ marginBottom: 20 }}>
-            <h3>Dados para simulação MEI</h3>
+            <h3>Emitir DAS oficial</h3>
+            <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+              Selecione a competência e o formato para solicitar o documento oficial.
+            </p>
 
-            <div style={{ display: "grid", gap: 12, maxWidth: 420 }}>
+            {!Number.isInteger(idPerfil) || idPerfil <= 0 ? (
+              <p style={{ color: "#92400e", marginBottom: 0 }}>
+                Este perfil é apenas de orientação e não está vinculado a uma empresa real.
+                A emissão oficial não está disponível.
+              </p>
+            ) : (
+              <form style={{ display: "grid", gap: 12, maxWidth: 420 }}>
               <label>
-                <span>Faturamento mensal</span>
+                <span>Competência</span>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={meiFaturamentoMensal}
-                  onChange={(e) => setMeiFaturamentoMensal(e.target.value)}
-                  placeholder="Ex: 5000"
+                  type="month"
+                  value={competenciaDas}
+                  required
+                  onChange={(e) => setCompetenciaDas(e.target.value)}
                 />
               </label>
 
               <label>
-                <span>Despesas mensais</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={meiDespesasMensais}
-                  onChange={(e) => setMeiDespesasMensais(e.target.value)}
-                  placeholder="Ex: 1000"
-                />
+                <span>Formato</span>
+                <select value={formatoDas} onChange={(e) => setFormatoDas(e.target.value)}>
+                  <option value="pdf">PDF</option>
+                  <option value="codigo_barras">Código de barras</option>
+                </select>
               </label>
-            </div>
+
+              <button
+                type="button"
+                onClick={handleEmitirDasOficial}
+                disabled={emitindoDas || !competenciaDas}
+              >
+                {emitindoDas ? "Emissão em curso..." : "Emitir DAS oficial"}
+              </button>
+            </form>
+            )}
+
+            {emissaoErro && (
+              <p style={{ color: "#b91c1c", marginBottom: 0 }}>{emissaoErro}</p>
+            )}
+
+            {resultadoEmissao?.estado_oficial === "emitido" && (
+              <div style={{ marginTop: 16, padding: 12, border: "1px solid #16a34a", borderRadius: 8 }}>
+                {formatoDas === "pdf" ? (
+                  <p style={{ margin: 0 }}>DAS oficial emitido. O download do PDF foi iniciado.</p>
+                ) : formatoDas === "codigo_barras" && Array.isArray(resultadoEmissao.documento?.codigo_barras) ? (
+                  <div>
+                    <p style={{ marginTop: 0 }}>Código de barras do DAS oficial:</p>
+                    {resultadoEmissao.documento.codigo_barras.map((bloco, indice) => (
+                      <div key={indice} style={{ fontFamily: "monospace", marginTop: 4 }}>{bloco}</div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {resultadoEmissao?.estado_oficial === "nao_emitido" && (
+              <p style={{ marginTop: 16, marginBottom: 0, color: "#92400e" }}>
+                {MOTIVOS_DAS_NAO_EMITIDO[resultadoEmissao.motivo_oficial]
+                  || "Não há DAS disponível para emissão nesta competência."}
+              </p>
+            )}
           </section>
         )}
 
@@ -1487,12 +1553,10 @@ function App() {
           </section>
         )}
 
-        <section className="impacto-hero">
+        {tipoPerfil !== "mei" && <section className="impacto-hero">
           <article className="card card-impacto">
             <span className="card-label">
-              {tipoPerfil === "mei"
-                ? "DAS Estimado Anual"
-                : tipoPerfil === "cpf"
+              {tipoPerfil === "cpf"
                   ? "IRPF Estimado Anual"
                   : "Impacto Financeiro Anual"}
             </span>
@@ -1500,14 +1564,12 @@ function App() {
               R$ {(impacto ?? 0).toLocaleString("pt-BR")}
             </strong>
             <p className="card-sub">
-              {tipoPerfil === "mei"
-                ? "Imposto mensal estimado × 12"
-                : tipoPerfil === "cpf"
+              {tipoPerfil === "cpf"
                   ? "Imposto de renda estimado no ano"
                   : "Valor recuperável estimado no ano"}
             </p>
           </article>
-        </section>
+        </section>}
 
         <section className="cards-grid">
           {cardsDashboard.map((card) => (
@@ -1611,6 +1673,25 @@ function App() {
       </main>
     </div>
   )
+}
+
+// B2-DASH-02: NCM real virá de itens_fiscais via endpoint dedicado futuro.
+// Sem mock: quando não há NCM real, a UI mostra estado indisponível.
+const dadosNCM = []
+
+const TIPOS_RENDIMENTO_OPTS = [
+  { id: "salario", label: "Salário" },
+  { id: "autonomo", label: "Autônomo" },
+  { id: "aluguel", label: "Aluguel" },
+  { id: "investimento", label: "Investimento" },
+  { id: "outro", label: "Outro" }
+]
+
+const MOTIVOS_DAS_NAO_EMITIDO = {
+  DEBITO_EM_DIVIDA_ATIVA: "Existem débitos encaminhados para dívida ativa.",
+  VALOR_INFERIOR_MINIMO: "O valor apurado é inferior ao mínimo permitido para emissão.",
+  PERIODO_JA_PAGO: "A competência selecionada já está paga.",
+  SEM_DAS_A_EMITIR: "Não há DAS disponível para esta competência."
 }
 
 function MemorialButton({ relatorioId }) {
