@@ -1,5 +1,9 @@
-from datetime import date
+import base64
+import binascii
+from datetime import date, datetime
 from functools import lru_cache
+import json
+import math
 import re
 from typing import Literal
 
@@ -31,6 +35,14 @@ _SERVICOS_PGMEI = {
     "pdf": "GERARDASPDF21",
     "codigo_barras": "GERARDASCODBARRA22",
 }
+_MOTIVOS_NAO_EMISSAO = {
+    "[Aviso-PGMEI-MSG_13011]": "DEBITO_EM_DIVIDA_ATIVA",
+    "[Aviso-PGMEI-MSG_23017]": "VALOR_INFERIOR_MINIMO",
+    "[Aviso-PGMEI-MSG_23018]": "PERIODO_JA_PAGO",
+    "[Aviso-PGMEI-MSG_23019]": "SEM_DAS_A_EMITIR",
+}
+_NUMERO_DOCUMENTO = re.compile(r"[0-9]{17}", flags=re.ASCII)
+_CODIGO_BARRAS = re.compile(r"[0-9]{12}", flags=re.ASCII)
 
 
 class MeiDasOficialRequest(BaseModel):
@@ -82,6 +94,99 @@ def _cnpj_canonico(value: object) -> str | None:
     return "".join(match.groups())
 
 
+def _data_oficial(value: object) -> bool:
+    if not isinstance(value, str) or len(value) != 8 or not value.isascii() or not value.isdigit():
+        return False
+    try:
+        datetime.strptime(value, "%Y%m%d")
+    except ValueError:
+        return False
+    return True
+
+
+def _normalizar_documento_oficial(
+    dados_oficiais: str,
+    formato: str,
+    cnpj: str,
+    periodo_apuracao: str,
+) -> dict:
+    payload = json.loads(dados_oficiais)
+    if type(payload) is not list or len(payload) != 1 or type(payload[0]) is not dict:
+        raise ValueError("resposta oficial divergente")
+
+    documento = payload[0]
+    if documento.get("cnpjCompleto") != cnpj:
+        raise ValueError("cnpj oficial divergente")
+
+    detalhamento = documento.get("detalhamento")
+    if formato == "pdf":
+        if type(detalhamento) is not dict:
+            raise ValueError("detalhamento oficial divergente")
+    else:
+        if type(detalhamento) is not list or len(detalhamento) != 1 or type(detalhamento[0]) is not dict:
+            raise ValueError("detalhamento oficial divergente")
+        detalhamento = detalhamento[0]
+
+    valores = detalhamento.get("valores")
+    if type(valores) is not dict:
+        raise ValueError("valores oficiais divergentes")
+    total = valores.get("total")
+    if isinstance(total, bool) or not isinstance(total, (int, float)) or not math.isfinite(total) or total < 0:
+        raise ValueError("total oficial divergente")
+
+    numero_documento = detalhamento.get("numeroDocumento")
+    if not isinstance(numero_documento, str) or _NUMERO_DOCUMENTO.fullmatch(numero_documento) is None:
+        raise ValueError("numero oficial divergente")
+    if detalhamento.get("periodoApuracao") != periodo_apuracao:
+        raise ValueError("periodo oficial divergente")
+    data_vencimento = detalhamento.get("dataVencimento")
+    data_limite = detalhamento.get("dataLimiteAcolhimento")
+    if not _data_oficial(data_vencimento) or not _data_oficial(data_limite):
+        raise ValueError("data oficial divergente")
+
+    normalizado = {
+        "cnpj": cnpj,
+        "periodo_apuracao": periodo_apuracao,
+        "numero_documento": numero_documento,
+        "data_vencimento": data_vencimento,
+        "data_limite_acolhimento": data_limite,
+        "valor_total": total,
+    }
+    if formato == "pdf":
+        pdf_base64 = documento.get("pdf")
+        if not isinstance(pdf_base64, str):
+            raise ValueError("pdf oficial divergente")
+        try:
+            pdf = base64.b64decode(pdf_base64, validate=True)
+        except (binascii.Error, ValueError):
+            raise ValueError("pdf oficial divergente") from None
+        if not pdf.startswith(b"%PDF-"):
+            raise ValueError("pdf oficial divergente")
+        normalizado["pdf_base64"] = pdf_base64
+    else:
+        codigo_barras = detalhamento.get("codigoDeBarras")
+        if (
+            type(codigo_barras) is not list
+            or len(codigo_barras) != 4
+            or any(
+                not isinstance(bloco, str) or _CODIGO_BARRAS.fullmatch(bloco) is None
+                for bloco in codigo_barras
+            )
+        ):
+            raise ValueError("codigo de barras oficial divergente")
+        normalizado["codigo_barras"] = codigo_barras
+    return normalizado
+
+
+def _motivo_nao_emissao(messages: object) -> str:
+    if type(messages) is not list or len(messages) != 1 or type(messages[0]) is not dict:
+        raise ValueError("mensagem oficial divergente")
+    codigo = messages[0].get("codigo")
+    if not isinstance(codigo, str) or codigo not in _MOTIVOS_NAO_EMISSAO:
+        raise ValueError("mensagem oficial divergente")
+    return _MOTIVOS_NAO_EMISSAO[codigo]
+
+
 @router.post("/mei/{empresa_id}/das")
 @limiter.limit("5/minute")
 def obter_das_mei_oficial(
@@ -109,8 +214,26 @@ def obter_das_mei_oficial(
     try:
         resultado = client.request(servico, cnpj, dados.periodo_apuracao)
         dados_oficiais = resultado.data
-        if not isinstance(dados_oficiais, str) or not dados_oficiais.strip():
+        if not isinstance(dados_oficiais, str):
             raise ValueError("resposta oficial divergente")
+        if not dados_oficiais.strip():
+            motivo = _motivo_nao_emissao(resultado.messages)
+            return {
+                "empresa_id": empresa.id,
+                "periodo_apuracao": dados.periodo_apuracao,
+                "formato": dados.formato,
+                "servico": servico,
+                "origem_oficial": "SERPRO_PGMEI",
+                "estado_oficial": "nao_emitido",
+                "motivo_oficial": motivo,
+                "documento": None,
+            }
+        documento = _normalizar_documento_oficial(
+            dados_oficiais,
+            dados.formato,
+            cnpj,
+            dados.periodo_apuracao,
+        )
     except Exception:
         raise _bloqueio(502, "AUTORIDADE_OFICIAL_MEI_FALHOU") from None
 
@@ -120,7 +243,8 @@ def obter_das_mei_oficial(
         "formato": dados.formato,
         "servico": servico,
         "origem_oficial": "SERPRO_PGMEI",
-        "dados_oficiais": dados_oficiais,
+        "estado_oficial": "emitido",
+        "documento": documento,
     }
 
 
