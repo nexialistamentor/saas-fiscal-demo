@@ -3,53 +3,50 @@ import { useCallback, useEffect, useState } from "react"
 import { API_BASE, fetchAutenticado, isAuthenticated } from "../config"
 
 export default function useMeiDashboard(contexto = {}) {
-  const [data, setData] = useState(null)
+  const [data] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  const faturamentoMensal = Number(contexto.faturamento_mensal || 0)
-  const despesasMensais = Number(contexto.despesas || 0)
 
   const carregar = useCallback(async () => {
     if (!isAuthenticated()) { setLoading(false); return }
-    try {
-      const res = await fetchAutenticado(`${API_BASE}/imposto/calcular`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tipo_usuario: "MEI",
-          faturamento_mensal: faturamentoMensal,
-          despesas: despesasMensais
-        })
-      })
-      if (!res || !res.ok) {
-        console.error("[Dashboard MEI] falhou:", res?.status)
-        setLoading(false)
-        return
-      }
-      const json = await res.json()
-      setData({
-        impacto_financeiro_anual: json.imposto_anual ?? 0,
-        risco_tributario_percentual: null,
-        pontuacao_fiscal: null,
-        dados_indisponiveis: true,
-        mensagem_indisponivel: "Análise de risco e pontuação ainda não disponível para MEI.",
-        total_insights: json.alertas?.length || 0,
-        consulta_paga: false,
-        mei_imposto_mensal: json.imposto_mensal ?? 0,
-        mei_alertas: json.alertas ?? []
-      })
-    } catch (erro) {
-      console.error("[Dashboard MEI] erro:", erro)
-    } finally {
-      setLoading(false)
+    setLoading(false)
+  }, [])
+
+  const emitirDasOficial = useCallback(async (empresaId, periodoApuracao, formato) => {
+    if (!Number.isInteger(empresaId) || empresaId <= 0) {
+      throw new TypeError("empresaId deve ser um inteiro positivo")
     }
-  }, [faturamentoMensal, despesasMensais])
+    if (!["pdf", "codigo_barras"].includes(formato)) {
+      throw new TypeError("formato deve ser pdf ou codigo_barras")
+    }
+
+    const res = await fetchAutenticado(`${API_BASE}/imposto/mei/${empresaId}/das`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        periodo_apuracao: periodoApuracao,
+        formato: formato
+      })
+    })
+    if (!res || !res.ok) {
+      throw new Error(`Falha ao emitir DAS oficial: ${res?.status ?? "sem resposta"}`)
+    }
+
+    const resposta = await res.json()
+    if (
+      !resposta
+      || typeof resposta !== "object"
+      || !["emitido", "nao_emitido"].includes(resposta.estado_oficial)
+    ) {
+      throw new Error("Resposta oficial do DAS fora do contrato normalizado")
+    }
+    return resposta
+  }, [])
 
   useEffect(() => {
     carregar()
   }, [carregar])
 
-  // -1 sentinela de indisponivel — App.jsx detecta e mostra "N/D"
+  // -1 sentinela de indisponivel - App.jsx detecta e mostra "N/D"
   const risco = data
     ? (data.risco_tributario_percentual === null || data.risco_tributario_percentual === undefined
         ? -1 : Math.min(100, data.risco_tributario_percentual))
@@ -68,6 +65,7 @@ export default function useMeiDashboard(contexto = {}) {
     risco,
     pontuacao,
     impacto,
+    emitirDasOficial,
     refetch: carregar
   }
 }
