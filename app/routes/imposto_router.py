@@ -1,10 +1,16 @@
 from datetime import date
+from functools import lru_cache
+import re
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
-from pydantic import AliasChoices, BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+
+from app.rate_limit import limiter
+from app.security import tenant_empresa
 from app.services.analysis_orchestrator import executar_analise
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
+from app.services.serpro_pgmei_composition import compose_serpro_pgmei
 from app.services.tax_engines.base_tax_engine import (
     LimiteSimplesNacionalExcedidoError,
     TempoNormativoAusenteError,
@@ -15,6 +21,107 @@ from app.services.tax_engines.mei_constants import (
 )
 
 router = APIRouter()
+
+_CNPJ_CANONICO = re.compile(r"[A-Z0-9]{12}[0-9]{2}", flags=re.ASCII)
+_CNPJ_MASCARADO = re.compile(
+    r"([A-Z0-9]{2})\.([A-Z0-9]{3})\.([A-Z0-9]{3})/([A-Z0-9]{4})-([0-9]{2})",
+    flags=re.ASCII,
+)
+_SERVICOS_PGMEI = {
+    "pdf": "GERARDASPDF21",
+    "codigo_barras": "GERARDASCODBARRA22",
+}
+
+
+class MeiDasOficialRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    periodo_apuracao: str
+    formato: Literal["pdf", "codigo_barras"]
+
+    @field_validator("periodo_apuracao")
+    @classmethod
+    def validar_periodo_apuracao(cls, value: str) -> str:
+        if (
+            not isinstance(value, str)
+            or len(value) != 6
+            or not value.isascii()
+            or not value.isdigit()
+            or not 1 <= int(value[4:]) <= 12
+        ):
+            raise ValueError("periodo_apuracao invalido")
+        return value
+
+
+@lru_cache(maxsize=1)
+def _get_serpro_pgmei_client():
+    """Compose lazily and retain the OAuth-backed client across requests."""
+    return compose_serpro_pgmei()
+
+
+def _bloqueio(status_code: int, tipo_bloqueio: str) -> HTTPException:
+    return HTTPException(
+        status_code=status_code,
+        detail={
+            "bloqueado": True,
+            "estado_l3": "bloqueado",
+            "tipo_bloqueio": tipo_bloqueio,
+        },
+    )
+
+
+def _cnpj_canonico(value: object) -> str | None:
+    if not isinstance(value, str) or not value.isascii():
+        return None
+    upper = value.upper()
+    if _CNPJ_CANONICO.fullmatch(upper):
+        return upper
+    match = _CNPJ_MASCARADO.fullmatch(upper)
+    if match is None:
+        return None
+    return "".join(match.groups())
+
+
+@router.post("/mei/{empresa_id}/das")
+@limiter.limit("5/minute")
+def obter_das_mei_oficial(
+    request: Request,
+    dados: MeiDasOficialRequest,
+    empresa=Depends(tenant_empresa),
+):
+    if getattr(empresa, "status_empresa", None) != "ativa":
+        raise _bloqueio(422, "EMPRESA_MEI_INATIVA")
+    if getattr(empresa, "regime_tributario", None) != "mei":
+        raise _bloqueio(422, "EMPRESA_NAO_MEI")
+
+    cnpj = _cnpj_canonico(getattr(empresa, "cnpj", None))
+    if cnpj is None:
+        raise _bloqueio(422, "CNPJ_EMPRESA_INVALIDO")
+
+    try:
+        client = _get_serpro_pgmei_client()
+    except Exception:
+        raise _bloqueio(503, "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL") from None
+    if client is None:
+        raise _bloqueio(503, "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL")
+
+    servico = _SERVICOS_PGMEI[dados.formato]
+    try:
+        resultado = client.request(servico, cnpj, dados.periodo_apuracao)
+        dados_oficiais = resultado.data
+        if not isinstance(dados_oficiais, str) or not dados_oficiais.strip():
+            raise ValueError("resposta oficial divergente")
+    except Exception:
+        raise _bloqueio(502, "AUTORIDADE_OFICIAL_MEI_FALHOU") from None
+
+    return {
+        "empresa_id": empresa.id,
+        "periodo_apuracao": dados.periodo_apuracao,
+        "formato": dados.formato,
+        "servico": servico,
+        "origem_oficial": "SERPRO_PGMEI",
+        "dados_oficiais": dados_oficiais,
+    }
 
 
 class DadosImposto(BaseModel):
