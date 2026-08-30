@@ -291,6 +291,12 @@ class Pagamento(Base):
     user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     plano_id = Column(Integer, ForeignKey("planos.id"), nullable=True)
     relatorio_analise_id = Column(Integer, ForeignKey("relatorios_analise.id"), nullable=True)
+    ordem_checkout_id = Column(
+        Integer,
+        ForeignKey("ordens_checkout.id"),
+        nullable=True,
+        unique=True,
+    )
 
     # Idempotência — previne cobranças duplicadas
     idempotency_key = Column(String, unique=True, index=True, nullable=False)
@@ -414,6 +420,81 @@ class Empresa(Base):
     documentos_ingeridos = relationship("DocumentoIngerido", back_populates="empresa")
     vinculos_contador = relationship("ContadorEmpresaVinculo", back_populates="empresa")
     atribuicoes_homologacao = relationship("HomologacaoAtribuicao", back_populates="empresa")
+
+
+# =========================
+# CHECKOUT DURAVEL
+# =========================
+class OrdemCheckout(Base):
+    __tablename__ = "ordens_checkout"
+    __table_args__ = (
+        CheckConstraint(
+            "moeda = 'BRL'",
+            name="ck_ordens_checkout_moeda_brl",
+        ),
+        CheckConstraint(
+            "estado IN ('pending', 'paid', 'cancelled')",
+            name="ck_ordens_checkout_estado_valido",
+        ),
+        CheckConstraint(
+            "valor > 0",
+            name="ck_ordens_checkout_valor_positivo",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    plano_id = Column(Integer, ForeignKey("planos.id"), nullable=False, index=True)
+    valor = Column(Numeric(10, 2), nullable=False)
+    moeda = Column(String(3), nullable=False, default="BRL", server_default="BRL")
+    estado = Column(
+        String(20), nullable=False, default="pending", server_default="pending", index=True
+    )
+    idempotency_key = Column(String(255), nullable=False, unique=True)
+    provider_order_id = Column(String(255), nullable=True, unique=True)
+    checkout_url = Column(String(2000), nullable=True)
+    payment_id = Column(String(255), nullable=True, unique=True)
+    criado_em = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
+    atualizado_em = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        server_default=func.now(),
+    )
+
+
+class EventoPagamento(Base):
+    __tablename__ = "eventos_pagamento"
+
+    id = Column(Integer, primary_key=True)
+    ordem_id = Column(Integer, ForeignKey("ordens_checkout.id"), nullable=False, index=True)
+    notification_id = Column(String(255), nullable=False, unique=True)
+    payment_id = Column(String(255), nullable=False, index=True)
+    criado_em = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
+
+
+class Entitlement(Base):
+    __tablename__ = "entitlements"
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('active', 'under_review', 'suspended')",
+            name="ck_entitlements_estado_valido",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    ordem_id = Column(
+        Integer, ForeignKey("ordens_checkout.id"), nullable=False, unique=True
+    )
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    plano_id = Column(Integer, ForeignKey("planos.id"), nullable=False, index=True)
+    estado = Column(
+        String(20), nullable=False, default="active", server_default="active", index=True
+    )
+    criado_em = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
 
 
 # =========================
