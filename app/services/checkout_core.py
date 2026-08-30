@@ -68,6 +68,7 @@ class CheckoutCore:
         self.ativador = ativador
         self.verificador_webhook = verificador_webhook
         self._eventos_processados: dict[str, tuple[str, str]] = {}
+        self._checkout_urls: dict[int, str] = {}
 
     def iniciar_checkout(
         self,
@@ -131,7 +132,11 @@ class CheckoutCore:
                     "Identificador do provedor já utilizado"
                 )
             ordem.provider_order_id = provider_order_id
+            checkout_url = resposta.get("checkout_url")
+            if isinstance(checkout_url, str) and checkout_url.strip():
+                self._checkout_urls[ordem.id] = checkout_url
         except Exception:
+            self._checkout_urls.pop(ordem.id, None)
             for indice, ordem_persistida in enumerate(self.repositorio.ordens):
                 if ordem_persistida is ordem:
                     del self.repositorio.ordens[indice]
@@ -147,6 +152,17 @@ class CheckoutCore:
         self._garantir_acesso(ordem, user_id, empresa_id)
         return ordem
 
+    def obter_checkout_url(self, ordem_id, user_id, empresa_id):
+        self._validar_id_positivo(ordem_id)
+        self._validar_id_positivo(user_id)
+        self._validar_id_positivo(empresa_id)
+        ordem = self._ordem_por_id(ordem_id)
+        self._garantir_acesso(ordem, user_id, empresa_id)
+        checkout_url = self._checkout_urls.get(ordem.id)
+        if ordem.status != "pending" or not checkout_url:
+            raise DadosCheckoutInvalidosError("URL de checkout indisponível")
+        return checkout_url
+
     def cancelar_ordem(self, ordem_id, user_id, empresa_id):
         self._validar_id_positivo(ordem_id)
         self._validar_id_positivo(user_id)
@@ -157,6 +173,7 @@ class CheckoutCore:
             raise DadosCheckoutInvalidosError("Ordem não pode ser cancelada")
         self.gateway.cancelar_cobranca(provider_order_id=ordem.provider_order_id)
         ordem.status = "cancelled"
+        self._checkout_urls.pop(ordem.id, None)
         return ordem
 
     def processar_retorno(self, provider_order_id, status):
@@ -202,6 +219,7 @@ class CheckoutCore:
             self._eventos_processados[event_id] = dados_evento
             return ordem
         if ordem.status == "paid":
+            self._checkout_urls.pop(ordem.id, None)
             self._eventos_processados[event_id] = dados_evento
             return ordem
 
@@ -214,6 +232,7 @@ class CheckoutCore:
         )
         self.repositorio.pagamentos.append(pagamento)
         ordem.status = "paid"
+        self._checkout_urls.pop(ordem.id, None)
         self.ativador.ativar(
             user_id=ordem.user_id,
             empresa_id=ordem.empresa_id,
