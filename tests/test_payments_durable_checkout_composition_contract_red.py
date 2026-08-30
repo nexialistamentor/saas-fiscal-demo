@@ -100,7 +100,7 @@ def _ambiente(models):
     Session = sessionmaker(
         bind=engine,
         class_=_SessionRastreada,
-        expire_on_commit=False,
+        expire_on_commit=True,
     )
     with Session.begin() as db:
         db.add(models.Plano(id=7, nome="Plano", limite_cnpjs=3,
@@ -133,6 +133,21 @@ def _assert_pending_limpa(ordem):
     assert ordem.estado == "pending"
     assert ordem.provider_order_id is None
     assert ordem.checkout_url is None
+
+
+def _assert_entrega_desanexada(entrega, *, provider_order_id="mp-pref-1"):
+    assert set(entrega) == {"ordem", "checkout_url"}
+    assert entrega["checkout_url"] == CHECKOUT_URL
+    ordem = entrega["ordem"]
+    assert ordem.id is not None
+    assert ordem.user_id == 42
+    assert ordem.empresa_id == 314
+    assert ordem.plano_id == 7
+    assert ordem.valor == Decimal("49.90")
+    assert ordem.moeda == "BRL"
+    assert ordem.provider_order_id == provider_order_id
+    assert ordem.checkout_url == CHECKOUT_URL
+    return ordem
 
 
 def _assert_sanitizado(erro, *proibidos):
@@ -168,16 +183,7 @@ def test_payments_durable_checkout_composition_contract_red(monkeypatch):
     )
     entrega = composer.iniciar_checkout(**_dados())
 
-    assert set(entrega) == {"ordem", "checkout_url"}
-    assert entrega["checkout_url"] == CHECKOUT_URL
-    ordem = entrega["ordem"]
-    assert ordem.user_id == 42
-    assert ordem.empresa_id == 314
-    assert ordem.plano_id == 7
-    assert ordem.valor == Decimal("49.90")
-    assert ordem.moeda == "BRL"
-    assert ordem.provider_order_id == "mp-pref-1"
-    assert ordem.checkout_url == CHECKOUT_URL
+    ordem = _assert_entrega_desanexada(entrega)
     assert catalogo.consultas == [7]
     assert gateway.chamadas == [{
         "ordem_id": ordem.id,
@@ -197,8 +203,8 @@ def test_payments_durable_checkout_composition_contract_red(monkeypatch):
 
     eventos_antes = list(eventos)
     mesma_entrega = composer.iniciar_checkout(**_dados())
-    assert mesma_entrega["ordem"].id == ordem.id
-    assert mesma_entrega["checkout_url"] == CHECKOUT_URL
+    mesma_ordem = _assert_entrega_desanexada(mesma_entrega)
+    assert mesma_ordem.id == ordem.id
     assert len(gateway.chamadas) == 1
     assert len(_SessionRastreada.eventos) > len(eventos_antes)
 
@@ -237,7 +243,7 @@ def test_payments_durable_checkout_composition_contract_red(monkeypatch):
         composer.iniciar_checkout(**_dados())
     _assert_pending_limpa(_ordem(Session, models))
     recuperada = composer.iniciar_checkout(**_dados())
-    assert recuperada["checkout_url"] == CHECKOUT_URL
+    _assert_entrega_desanexada(recuperada)
     assert len(gateway.chamadas) == 2
     assert {c["idempotency_key"] for c in gateway.chamadas} == {
         "checkout-durable-composition-42"
@@ -260,7 +266,7 @@ def test_payments_durable_checkout_composition_contract_red(monkeypatch):
     chamadas_antes = list(gateway.chamadas)
     _SessionRastreada.falhar_depois_do_commit_numero = None
     entrega_retry = composer.iniciar_checkout(**_dados())
-    assert entrega_retry["checkout_url"] == CHECKOUT_URL
+    _assert_entrega_desanexada(entrega_retry)
     assert gateway.chamadas == chamadas_antes
 
     # Falha anterior a qualquer gateway nao vaza detalhes e fecha a sessao.
