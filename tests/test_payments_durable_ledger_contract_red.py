@@ -9,15 +9,47 @@ from importlib import import_module
 
 import pytest
 from sqlalchemy import create_engine, event, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 
 def test_payments_durable_ledger_contract_red():
     durable = import_module("app.services.checkout_durable_ledger")
+    models = import_module("app.models")
 
     engine = create_engine("sqlite:///:memory:")
     durable.Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine, expire_on_commit=False)
+
+    # Ownership real: o ledger opera sobre identidades canónicas persistidas.
+    with Session.begin() as db:
+        db.add(
+            models.Plano(
+                id=7,
+                nome="Plano ledger",
+                limite_cnpjs=3,
+                limite_analises=100,
+                preco=Decimal("49.90"),
+            )
+        )
+        db.add_all(
+            [
+                models.User(
+                    id=user_id,
+                    email=f"ledger-{user_id}@example.invalid",
+                    hashed_password="hash-de-teste",
+                    plano_id=7,
+                )
+                for user_id in (42, 43, 44)
+            ]
+        )
+        db.add_all(
+            [
+                models.Empresa(id=314, razao_social="Empresa 42", user_id=42),
+                models.Empresa(id=315, razao_social="Empresa 43", user_id=43),
+                models.Empresa(id=316, razao_social="Empresa 44", user_id=44),
+            ]
+        )
 
     dados = dict(
         user_id=42,
@@ -27,6 +59,27 @@ def test_payments_durable_ledger_contract_red():
         moeda="BRL",
         idempotency_key="checkout-durable-42-314-7",
     )
+
+    # Um empresa_id existente não autoriza um utilizador que não seja o owner.
+    with Session.begin() as db:
+        ledger = durable.CheckoutDurableLedger(db)
+        with pytest.raises(durable.CheckoutDurableLedgerError) as capturada:
+            ledger.criar_ou_obter_ordem(
+                **(
+                    dados
+                    | {
+                        "empresa_id": 315,
+                        "idempotency_key": "checkout-owner-mismatch-42-315",
+                    }
+                )
+            )
+        _assert_erro_publico_sanitizado(capturada.value)
+        assert db.scalar(
+            select(durable.OrdemCheckout).where(
+                durable.OrdemCheckout.idempotency_key
+                == "checkout-owner-mismatch-42-315"
+            )
+        ) is None
 
     with Session.begin() as db:
         ledger = durable.CheckoutDurableLedger(db)
@@ -145,6 +198,37 @@ def test_payments_durable_ledger_contract_red():
         assert retry.id == ordem_id
         assert contagens(db) == (1, 1, 1)
 
+        # Notificações distintas do mesmo pagamento são eventos de auditoria
+        # distintos, sem repetir os efeitos financeiros ou o entitlement.
+        nova_notificacao = ledger.confirmar_pagamento_aprovado(
+            ordem_id=ordem_id,
+            user_id=42,
+            empresa_id=314,
+            notification_id="8130",
+            payment_id="4719",
+        )
+        assert nova_notificacao.id == ordem_id
+        assert contagens(db) == (1, 1, 2)
+        assert {
+            evento.notification_id
+            for evento in db.scalars(
+                select(durable.EventoPagamento).where(
+                    durable.EventoPagamento.ordem_id == ordem_id,
+                    durable.EventoPagamento.payment_id == "4719",
+                )
+            )
+        } == {"8128", "8130"}
+
+        retry_nova_notificacao = ledger.confirmar_pagamento_aprovado(
+            ordem_id=ordem_id,
+            user_id=42,
+            empresa_id=314,
+            notification_id="8130",
+            payment_id="4719",
+        )
+        assert retry_nova_notificacao.id == ordem_id
+        assert contagens(db) == (1, 1, 2)
+
         for colisao in (
             dict(ordem_id=outra_id, user_id=43, empresa_id=315,
                  notification_id="8128", payment_id="9999"),
@@ -153,7 +237,7 @@ def test_payments_durable_ledger_contract_red():
         ):
             with pytest.raises(durable.CheckoutDurableLedgerError):
                 ledger.confirmar_pagamento_aprovado(**colisao)
-        assert contagens(db) == (1, 1, 1)
+        assert contagens(db) == (1, 1, 2)
 
         # request_id e dado de transporte, nunca identidade publica do evento.
         with pytest.raises(TypeError):
@@ -200,7 +284,25 @@ def test_payments_durable_ledger_contract_red():
         ordem_integra = db.get(durable.OrdemCheckout, terceira_id)
         assert ordem_integra.estado == "pending"
         assert ordem_integra.payment_id is None
-        assert contagens(db) == (1, 1, 1)
+        assert contagens(db) == (1, 1, 2)
+
+        # O entitlement possui ciclo persistente próprio, sem pressupor aqui
+        # qualquer implementação de refund ou chargeback.
+        entitlement = db.scalars(select(durable.Entitlement)).one()
+        entitlement.estado = "under_review"
+        db.flush()
+        assert db.get(durable.Entitlement, entitlement.id).estado == "under_review"
+        entitlement.estado = "suspended"
+        db.flush()
+        assert db.get(durable.Entitlement, entitlement.id).estado == "suspended"
+
+    with Session.begin() as db:
+        entitlement = db.scalars(select(durable.Entitlement)).one()
+        assert entitlement.estado == "suspended"
+        with pytest.raises(IntegrityError):
+            with db.begin_nested():
+                entitlement.estado = "estado-fora-do-contrato"
+                db.flush()
 
 
 def _assert_erro_publico_sanitizado(erro, *proibidos):
