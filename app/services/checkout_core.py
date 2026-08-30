@@ -67,7 +67,7 @@ class CheckoutCore:
         self.gateway = gateway
         self.ativador = ativador
         self.verificador_webhook = verificador_webhook
-        self._eventos_processados: set[str] = set()
+        self._eventos_processados: dict[str, tuple[str, str]] = {}
 
     def iniciar_checkout(
         self,
@@ -113,6 +113,9 @@ class CheckoutCore:
         if not isinstance(provider_order_id, str) or not provider_order_id.strip():
             raise DadosCheckoutInvalidosError("Resposta inválida do gateway")
 
+        if self._ordem_por_provider_id(provider_order_id) is not None:
+            raise DadosCheckoutInvalidosError("Identificador do provedor já utilizado")
+
         ordem = OrdemCheckout(
             id=self._proximo_id_ordem(),
             user_id=user_id,
@@ -148,9 +151,7 @@ class CheckoutCore:
 
     def processar_retorno(self, provider_order_id, status):
         """Trata o retorno do browser apenas como informação não confiável."""
-        if not isinstance(provider_order_id, str) or not provider_order_id.strip():
-            return None
-        return self._ordem_por_provider_id(provider_order_id)
+        return None
 
     def processar_webhook(self, evento, assinatura):
         try:
@@ -175,16 +176,23 @@ class CheckoutCore:
         ):
             raise WebhookNaoAutenticadoError("Webhook não autenticado")
 
-        if event_id in self._eventos_processados:
-            return self._ordem_por_provider_id(provider_order_id)
-        if status != "paid":
+        dados_evento = (provider_order_id, status)
+        evento_processado = self._eventos_processados.get(event_id)
+        if evento_processado is not None:
+            if evento_processado != dados_evento:
+                raise DadosCheckoutInvalidosError(
+                    "Evento reutilizado com dados diferentes"
+                )
             return self._ordem_por_provider_id(provider_order_id)
 
         ordem = self._ordem_por_provider_id(provider_order_id)
         if ordem is None:
-            return None
+            raise OrdemNaoEncontradaError("Ordem não encontrada")
+        if status != "paid":
+            self._eventos_processados[event_id] = dados_evento
+            return ordem
         if ordem.status == "paid":
-            self._eventos_processados.add(event_id)
+            self._eventos_processados[event_id] = dados_evento
             return ordem
 
         pagamento = PagamentoCheckout(
@@ -202,7 +210,7 @@ class CheckoutCore:
             plano_id=ordem.plano_id,
             ordem_id=ordem.id,
         )
-        self._eventos_processados.add(event_id)
+        self._eventos_processados[event_id] = dados_evento
         return ordem
 
     @staticmethod
