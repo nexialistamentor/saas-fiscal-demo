@@ -97,25 +97,6 @@ class CheckoutCore:
 
         plano = self.catalogo.obter_plano(plano_id)
         valor, moeda = self._dados_canonicos_seguros(plano, plano_id)
-        resposta = self.gateway.criar_cobranca(
-            user_id=user_id,
-            empresa_id=empresa_id,
-            plano_id=plano_id,
-            valor=valor,
-            moeda=moeda,
-            idempotency_key=idempotency_key,
-        )
-        provider_order_id = (
-            resposta.get("provider_order_id")
-            if isinstance(resposta, dict)
-            else None
-        )
-        if not isinstance(provider_order_id, str) or not provider_order_id.strip():
-            raise DadosCheckoutInvalidosError("Resposta inválida do gateway")
-
-        if self._ordem_por_provider_id(provider_order_id) is not None:
-            raise DadosCheckoutInvalidosError("Identificador do provedor já utilizado")
-
         ordem = OrdemCheckout(
             id=self._proximo_id_ordem(),
             user_id=user_id,
@@ -123,10 +104,39 @@ class CheckoutCore:
             plano_id=plano_id,
             valor=valor,
             moeda=moeda,
-            provider_order_id=provider_order_id,
+            provider_order_id="",
             idempotency_key=idempotency_key,
         )
         self.repositorio.ordens.append(ordem)
+        try:
+            resposta = self.gateway.criar_cobranca(
+                ordem_id=ordem.id,
+                user_id=user_id,
+                empresa_id=empresa_id,
+                plano_id=plano_id,
+                valor=valor,
+                moeda=moeda,
+                idempotency_key=idempotency_key,
+            )
+            provider_order_id = (
+                resposta.get("provider_order_id")
+                if isinstance(resposta, dict)
+                else None
+            )
+            if not isinstance(provider_order_id, str) or not provider_order_id.strip():
+                raise DadosCheckoutInvalidosError("Resposta inválida do gateway")
+
+            if self._ordem_por_provider_id(provider_order_id) is not None:
+                raise DadosCheckoutInvalidosError(
+                    "Identificador do provedor já utilizado"
+                )
+            ordem.provider_order_id = provider_order_id
+        except Exception:
+            for indice, ordem_persistida in enumerate(self.repositorio.ordens):
+                if ordem_persistida is ordem:
+                    del self.repositorio.ordens[indice]
+                    break
+            raise
         return ordem
 
     def consultar_ordem(self, ordem_id, user_id, empresa_id):
