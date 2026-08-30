@@ -57,56 +57,69 @@ def test_mercado_pago_webhook_signature_contract_red():
     )
     _assert_publico_sanitizado(verificador, SECRET)
 
-    eventos_invalidos = (
+    envelopes_invalidos = (
         None,
         [],
         "evento",
         {},
-        {"event_id": "evento-1"},
+        {"notification_id": "8128", "payment_id": "4719"},
         {"request_id": "request-1"},
-        {"event_id": None, "request_id": "request-1"},
-        {"event_id": 1, "request_id": "request-1"},
-        {"event_id": "", "request_id": "request-1"},
-        {"event_id": "   ", "request_id": "request-1"},
-        {"event_id": "evento-1", "request_id": None},
-        {"event_id": "evento-1", "request_id": 1},
-        {"event_id": "evento-1", "request_id": ""},
-        {"event_id": "evento-1", "request_id": "   "},
+        {"notification_id": "8128", "request_id": "request-1"},
+        {"payment_id": "4719", "request_id": "request-1"},
+        {"notification_id": None, "payment_id": "4719", "request_id": "request-1"},
+        {"notification_id": 8128, "payment_id": "4719", "request_id": "request-1"},
+        {"notification_id": "", "payment_id": "4719", "request_id": "request-1"},
+        {"notification_id": "0", "payment_id": "4719", "request_id": "request-1"},
+        {"notification_id": "08128", "payment_id": "4719", "request_id": "request-1"},
+        {"notification_id": "8128", "payment_id": None, "request_id": "request-1"},
+        {"notification_id": "8128", "payment_id": 4719, "request_id": "request-1"},
+        {"notification_id": "8128", "payment_id": "", "request_id": "request-1"},
+        {"notification_id": "8128", "payment_id": "0", "request_id": "request-1"},
+        {"notification_id": "8128", "payment_id": "04719", "request_id": "request-1"},
+        {"notification_id": "8128", "payment_id": "4719", "request_id": None},
+        {"notification_id": "8128", "payment_id": "4719", "request_id": 1},
+        {"notification_id": "8128", "payment_id": "4719", "request_id": ""},
+        {"notification_id": "8128", "payment_id": "4719", "request_id": "request 1"},
+        {"notification_id": "8128", "payment_id": "4719", "request_id": "request\r1"},
+        {"notification_id": "8128", "payment_id": "4719", "request_id": "request\n1"},
+        {"notification_id": "8128", "payment_id": "4719", "request_id": "request-1", "event_id": "8128"},
+        {"notification_id": "4719", "payment_id": "8128", "request_id": "request-1", "extra": True},
     )
     assinaturas_invalidas = (None, 123, "", "   ", "assinatura\rforjada", "x\ny")
-    for evento in eventos_invalidos:
+    for envelope in envelopes_invalidos:
         chamadas_antes = list(validador.chamadas)
-        assert verificador.verificar(evento, "assinatura-valida") is False
+        assert verificador.verificar(envelope, "assinatura-valida") is False
         assert validador.chamadas == chamadas_antes
-    evento_minimo = {"event_id": "evento-1", "request_id": "request-1"}
+    envelope_minimo = {
+        "notification_id": "8128",
+        "payment_id": "4719",
+        "request_id": "request-1",
+    }
     for assinatura in assinaturas_invalidas:
         chamadas_antes = list(validador.chamadas)
-        assert verificador.verificar(evento_minimo, assinatura) is False
+        assert verificador.verificar(envelope_minimo, assinatura) is False
         assert validador.chamadas == chamadas_antes
 
-    evento = {
-        "event_id": "evento-4719",
+    envelope = {
+        "notification_id": "8128",
+        "payment_id": "4719",
         "request_id": "request-8128",
-        "status": "paid",
-        "preco": "0.01",
-        "user_id": 999,
-        "empresa_id": 888,
-        "payload": {"token": "dado-nao-confiavel"},
     }
     assinatura = "ts=1700000000,v1=assinatura-falsa"
-    assert verificador.verificar(evento, assinatura) is True
+    assert verificador.verificar(envelope, assinatura) is True
     assert validador.chamadas == [
         {
             "x_signature": assinatura,
             "x_request_id": "request-8128",
-            "data_id": "evento-4719",
+            "data_id": "4719",
             "secret": SECRET,
         }
     ]
-    assert evento["status"] == "paid"
-    assert evento["preco"] == "0.01"
-    assert evento["user_id"] == 999
-    assert evento["empresa_id"] == 888
+    assert envelope == {
+        "notification_id": "8128",
+        "payment_id": "4719",
+        "request_id": "request-8128",
+    }
 
     for retorno in (False, None, 0, 1, "true", object()):
         validador_falso = _ValidadorOficialFalso(resultado=retorno)
@@ -114,7 +127,7 @@ def test_mercado_pago_webhook_signature_contract_red():
             validador=validador_falso,
             secret=SECRET,
         )
-        assert verificador_falso.verificar(evento_minimo, assinatura) is False
+        assert verificador_falso.verificar(envelope_minimo, assinatura) is False
         assert len(validador_falso.chamadas) == 1
 
     detalhe_interno = "falha-interna-privada-9931"
@@ -127,6 +140,6 @@ def test_mercado_pago_webhook_signature_contract_red():
         validador=validador_em_falha,
         secret=SECRET,
     )
-    assert verificador_em_falha.verificar(evento_minimo, assinatura) is False
+    assert verificador_em_falha.verificar(envelope_minimo, assinatura) is False
     assert len(validador_em_falha.chamadas) == 1
     _assert_publico_sanitizado(verificador_em_falha, SECRET, detalhe_interno)

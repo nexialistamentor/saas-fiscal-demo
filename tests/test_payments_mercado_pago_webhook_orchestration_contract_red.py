@@ -62,7 +62,11 @@ def test_mercado_pago_webhook_orchestration_contract_red():
         "app.services.mercado_pago_webhook_orchestration"
     )
     erro_publico = modulo.MercadoPagoWebhookOrchestrationError
-    evento = {"event_id": "4719", "request_id": "request-8128"}
+    envelope = {
+        "notification_id": "8128",
+        "payment_id": "4719",
+        "request_id": "request-9931",
+    }
     assinatura = "assinatura-opaca-9931"
 
     dependencias_validas = _dependencias()[:3]
@@ -82,25 +86,36 @@ def test_mercado_pago_webhook_orchestration_contract_red():
     eventos_invalidos = (
         None,
         [],
-        _DictDerivado(evento),
+        _DictDerivado(envelope),
         {},
-        {"event_id": "4719"},
-        {"request_id": "request-8128"},
-        {"event_id": "4719", "request_id": "request-8128", "status": "paid"},
-        {"event_id": None, "request_id": "request-8128"},
-        {"event_id": 4719, "request_id": "request-8128"},
-        {"event_id": "", "request_id": "request-8128"},
-        {"event_id": " ", "request_id": "request-8128"},
-        {"event_id": "47 19", "request_id": "request-8128"},
-        {"event_id": "4719\r", "request_id": "request-8128"},
-        {"event_id": "4719\n", "request_id": "request-8128"},
-        {"event_id": "4719", "request_id": None},
-        {"event_id": "4719", "request_id": 8128},
-        {"event_id": "4719", "request_id": ""},
-        {"event_id": "4719", "request_id": " "},
-        {"event_id": "4719", "request_id": "request 8128"},
-        {"event_id": "4719", "request_id": "request\r8128"},
-        {"event_id": "4719", "request_id": "request\n8128"},
+        {"notification_id": "8128", "payment_id": "4719"},
+        {"notification_id": "8128", "request_id": "request-9931"},
+        {"payment_id": "4719", "request_id": "request-9931"},
+        {**envelope, "status": "paid"},
+        {**envelope, "notification_id": None},
+        {**envelope, "notification_id": 8128},
+        {**envelope, "notification_id": ""},
+        {**envelope, "notification_id": "0"},
+        {**envelope, "notification_id": "-1"},
+        {**envelope, "notification_id": "08128"},
+        {**envelope, "notification_id": "81 28"},
+        {**envelope, "notification_id": "8128\r"},
+        {**envelope, "notification_id": "8128\n"},
+        {**envelope, "payment_id": None},
+        {**envelope, "payment_id": 4719},
+        {**envelope, "payment_id": ""},
+        {**envelope, "payment_id": "0"},
+        {**envelope, "payment_id": "-1"},
+        {**envelope, "payment_id": "04719"},
+        {**envelope, "payment_id": "47 19"},
+        {**envelope, "payment_id": "4719\r"},
+        {**envelope, "payment_id": "4719\n"},
+        {**envelope, "request_id": None},
+        {**envelope, "request_id": 9931},
+        {**envelope, "request_id": ""},
+        {**envelope, "request_id": "request 9931"},
+        {**envelope, "request_id": "request\r9931"},
+        {**envelope, "request_id": "request\n9931"},
     )
     for evento_invalido in eventos_invalidos:
         orquestrador, verificador, resolvedor, core, ordem = _orquestrador(modulo)
@@ -109,8 +124,8 @@ def test_mercado_pago_webhook_orchestration_contract_red():
         assert verificador.chamadas == resolvedor.chamadas == core.chamadas == []
         assert ordem == []
 
-    evento_extra = {
-        **evento,
+    envelope_extra = {
+        **envelope,
         "status": "approved",
         "preco": "0.01",
         "moeda": "USD",
@@ -120,7 +135,7 @@ def test_mercado_pago_webhook_orchestration_contract_red():
     }
     orquestrador, verificador, resolvedor, core, ordem = _orquestrador(modulo)
     with pytest.raises(erro_publico):
-        orquestrador.processar(evento_extra, assinatura)
+        orquestrador.processar(envelope_extra, assinatura)
     assert verificador.chamadas == resolvedor.chamadas == core.chamadas == []
     assert ordem == []
 
@@ -131,8 +146,8 @@ def test_mercado_pago_webhook_orchestration_contract_red():
             modulo, assinatura=retorno_assinatura
         )
         with pytest.raises(erro_publico) as capturada:
-            orquestrador.processar(evento, assinatura)
-        assert ordem == [("verificar", (evento, assinatura), {})]
+            orquestrador.processar(envelope, assinatura)
+        assert ordem == [("verificar", (envelope, assinatura), {})]
         assert len(verificador.chamadas) == 1
         assert resolvedor.chamadas == core.chamadas == []
         _assert_sanitizado(capturada.value, assinatura)
@@ -142,8 +157,8 @@ def test_mercado_pago_webhook_orchestration_contract_red():
         f"token payload credencial {segredo} {detalhe}"
     )
     with pytest.raises(erro_publico) as capturada:
-        orquestrador.processar(evento, assinatura)
-    assert ordem == [("verificar", (evento, assinatura), {})]
+        orquestrador.processar(envelope, assinatura)
+    assert ordem == [("verificar", (envelope, assinatura), {})]
     assert resolvedor.chamadas == core.chamadas == []
     _assert_sanitizado(capturada.value, segredo, detalhe, assinatura)
 
@@ -151,40 +166,42 @@ def test_mercado_pago_webhook_orchestration_contract_red():
     orquestrador, verificador, resolvedor, core, ordem = _orquestrador(
         modulo, resolucao=None, resultado_core=resultado_core
     )
-    assert orquestrador.processar(evento, assinatura) is None
+    assert orquestrador.processar(envelope, assinatura) is None
     assert ordem == [
-        ("verificar", (evento, assinatura), {}),
-        ("resolver_pagamento", ("4719", "request-8128"), {}),
+        ("verificar", (envelope, assinatura), {}),
+        ("resolver_pagamento", ("4719", "8128"), {}),
     ]
     assert core.chamadas == []
 
-    resolucao = {"ordem_id": 91, "event_id": "request-8128"}
+    resolucao = {"ordem_id": 91, "event_id": "8128"}
     orquestrador, verificador, resolvedor, core, ordem = _orquestrador(
         modulo, resolucao=resolucao, resultado_core=resultado_core
     )
-    assert orquestrador.processar(evento, assinatura) is resultado_core
+    assert orquestrador.processar(envelope, assinatura) is resultado_core
     assert ordem == [
-        ("verificar", (evento, assinatura), {}),
-        ("resolver_pagamento", ("4719", "request-8128"), {}),
-        ("confirmar_pagamento_autorizado", (91, "request-8128"), {}),
+        ("verificar", (envelope, assinatura), {}),
+        ("resolver_pagamento", ("4719", "8128"), {}),
+        ("confirmar_pagamento_autorizado", (91, "8128"), {}),
     ]
 
     resolucoes_invalidas = (
         {},
         [],
-        {"ordem_id": True, "event_id": "request-8128"},
-        {"ordem_id": 0, "event_id": "request-8128"},
-        {"ordem_id": -1, "event_id": "request-8128"},
+        {"ordem_id": True, "event_id": "8128"},
+        {"ordem_id": 0, "event_id": "8128"},
+        {"ordem_id": -1, "event_id": "8128"},
         {"ordem_id": 91},
-        {"ordem_id": 91, "event_id": "request-divergente"},
-        {"ordem_id": 91, "event_id": "request-8128", "status": "approved"},
+        {"ordem_id": 91, "event_id": "4719"},
+        {"ordem_id": 91, "event_id": "request-9931"},
+        {"ordem_id": 91, "event_id": "8129"},
+        {"ordem_id": 91, "event_id": "8128", "status": "approved"},
     )
     for resolucao_invalida in resolucoes_invalidas:
         orquestrador, verificador, resolvedor, core, ordem = _orquestrador(
             modulo, resolucao=resolucao_invalida
         )
         with pytest.raises(erro_publico) as capturada:
-            orquestrador.processar(evento, assinatura)
+            orquestrador.processar(envelope, assinatura)
         assert len(verificador.chamadas) == len(resolvedor.chamadas) == 1
         assert core.chamadas == []
         _assert_sanitizado(capturada.value, segredo, detalhe, resolucao_invalida)
@@ -199,7 +216,7 @@ def test_mercado_pago_webhook_orchestration_contract_red():
         alvo = resolvedor if dependencia == "resolvedor" else core
         alvo.erro = RuntimeError(f"token payload {segredo} {detalhe}")
         with pytest.raises(erro_publico) as capturada:
-            orquestrador.processar(evento, assinatura)
+            orquestrador.processar(envelope, assinatura)
         assert len(verificador.chamadas) == 1
         assert len(resolvedor.chamadas) == 1
         assert len(core.chamadas) == (1 if dependencia == "core" else 0)

@@ -81,43 +81,47 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
         "payload": {"credencial": "privada"},
     }
     resolvedor, cliente = _resolver(mercado_pago, resposta_aprovada)
-    assert resolvedor.resolver_pagamento("4719", "request-8128") == {
+    assert resolvedor.resolver_pagamento("4719", "8128") == {
         "ordem_id": 91,
-        "event_id": "request-8128",
+        "event_id": "8128",
     }
     assert cliente.chamadas == [{"payment_id": "4719"}]
 
     resposta_id_string = {**resposta_aprovada, "id": "4719"}
     resolvedor, cliente = _resolver(mercado_pago, resposta_id_string)
-    assert resolvedor.resolver_pagamento("4719", "request-8129") == {
+    assert resolvedor.resolver_pagamento("4719", "8129") == {
         "ordem_id": 91,
-        "event_id": "request-8129",
+        "event_id": "8129",
     }
     assert cliente.chamadas == [{"payment_id": "4719"}]
 
-    for data_id, request_id in (
-        (None, "request-1"),
-        (4719, "request-1"),
-        ("", "request-1"),
-        ("0", "request-1"),
-        ("-1", "request-1"),
-        ("01", "request-1"),
-        (" 4719", "request-1"),
-        ("4719 ", "request-1"),
-        ("47 19", "request-1"),
-        ("4719\r", "request-1"),
-        ("4719\n", "request-1"),
+    for payment_id, notification_id in (
+        (None, "8128"),
+        (4719, "8128"),
+        ("", "8128"),
+        ("0", "8128"),
+        ("-1", "8128"),
+        ("01", "8128"),
+        (" 4719", "8128"),
+        ("4719 ", "8128"),
+        ("47 19", "8128"),
+        ("4719\r", "8128"),
+        ("4719\n", "8128"),
         ("4719", None),
         ("4719", 8128),
         ("4719", ""),
-        ("4719", " request-1"),
-        ("4719", "request 1"),
-        ("4719", "request-1\rforjado"),
-        ("4719", "request-1\nforjado"),
+        ("4719", "0"),
+        ("4719", "-1"),
+        ("4719", "08128"),
+        ("4719", " 8128"),
+        ("4719", "8128 "),
+        ("4719", "81 28"),
+        ("4719", "8128\r"),
+        ("4719", "8128\n"),
     ):
         resolvedor, cliente = _resolver(mercado_pago, resposta_aprovada)
         with pytest.raises(mercado_pago.MercadoPagoPaymentResolutionError):
-            resolvedor.resolver_pagamento(data_id, request_id)
+            resolvedor.resolver_pagamento(payment_id, notification_id)
         assert cliente.chamadas == []
 
     estados_nao_aprovados = (
@@ -134,7 +138,7 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
         resolvedor, cliente = _resolver(
             mercado_pago, {**resposta_aprovada, "status": status}
         )
-        assert resolvedor.resolver_pagamento("4719", "request-known") is None
+        assert resolvedor.resolver_pagamento("4719", "8128") is None
         assert cliente.chamadas == [{"payment_id": "4719"}]
 
     respostas_invalidas = (
@@ -174,7 +178,7 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
         with pytest.raises(
             mercado_pago.MercadoPagoPaymentResolutionError
         ) as capturada:
-            resolvedor.resolver_pagamento("4719", "request-invalid")
+            resolvedor.resolver_pagamento("4719", "8128")
         assert cliente.chamadas == [{"payment_id": "4719"}]
         _assert_erro_sanitizado(
             capturada.value,
@@ -194,6 +198,6 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
     with pytest.raises(
         mercado_pago.MercadoPagoPaymentResolutionError
     ) as capturada:
-        resolvedor.resolver_pagamento("4719", "request-failure")
+        resolvedor.resolver_pagamento("4719", "8128")
     assert cliente.chamadas == [{"payment_id": "4719"}]
     _assert_erro_sanitizado(capturada.value, segredo, detalhe_interno)
