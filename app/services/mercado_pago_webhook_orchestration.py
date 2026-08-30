@@ -39,13 +39,20 @@ class MercadoPagoWebhookOrchestrator:
         self._confirmar_pagamento = confirmar_pagamento
 
     def processar(self, evento, assinatura):
-        if type(evento) is not dict or set(evento) != {"event_id", "request_id"}:
+        if type(evento) is not dict or set(evento) != {
+            "notification_id",
+            "payment_id",
+            "request_id",
+        }:
             raise MercadoPagoWebhookOrchestrationError()
 
-        event_id = evento["event_id"]
+        notification_id = evento["notification_id"]
+        payment_id = evento["payment_id"]
         request_id = evento["request_id"]
-        if not self._identificador_valido(event_id) or not self._identificador_valido(
-            request_id
+        if (
+            not self._decimal_ascii_canonico_positivo(notification_id)
+            or not self._decimal_ascii_canonico_positivo(payment_id)
+            or not self._request_id_valido(request_id)
         ):
             raise MercadoPagoWebhookOrchestrationError()
 
@@ -57,7 +64,7 @@ class MercadoPagoWebhookOrchestrator:
             raise MercadoPagoWebhookOrchestrationError()
 
         try:
-            resolucao = self._resolver_pagamento(event_id, request_id)
+            resolucao = self._resolver_pagamento(payment_id, notification_id)
         except Exception:
             raise MercadoPagoWebhookOrchestrationError() from None
 
@@ -71,17 +78,27 @@ class MercadoPagoWebhookOrchestrator:
             isinstance(ordem_id, bool)
             or not isinstance(ordem_id, int)
             or ordem_id <= 0
-            or resolucao["event_id"] != request_id
+            or resolucao["event_id"] != notification_id
         ):
             raise MercadoPagoWebhookOrchestrationError()
 
         try:
-            return self._confirmar_pagamento(ordem_id, request_id)
+            return self._confirmar_pagamento(ordem_id, notification_id)
         except Exception:
             raise MercadoPagoWebhookOrchestrationError() from None
 
     @staticmethod
-    def _identificador_valido(valor):
+    def _decimal_ascii_canonico_positivo(valor):
+        return (
+            isinstance(valor, str)
+            and bool(valor)
+            and valor.isascii()
+            and valor.isdecimal()
+            and valor[0] != "0"
+        )
+
+    @staticmethod
+    def _request_id_valido(valor):
         return (
             isinstance(valor, str)
             and bool(valor)

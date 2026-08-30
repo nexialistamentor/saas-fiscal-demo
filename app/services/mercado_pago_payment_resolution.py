@@ -32,33 +32,32 @@ class MercadoPagoPaymentResolver:
 
         self._obter_pagamento = obter_pagamento
 
-    def resolver_pagamento(self, data_id, request_id):
-        if not self._decimal_ascii_canonico_positivo(data_id):
+    def resolver_pagamento(self, payment_id, notification_id):
+        if not self._decimal_ascii_canonico_positivo(payment_id):
             raise MercadoPagoPaymentResolutionError()
-        if (
-            not isinstance(request_id, str)
-            or not request_id
-            or any(caractere.isspace() for caractere in request_id)
-        ):
+        if not self._decimal_ascii_canonico_positivo(notification_id):
             raise MercadoPagoPaymentResolutionError()
 
         try:
-            resposta = self._obter_pagamento(payment_id=data_id)
+            resposta = self._obter_pagamento(payment_id=payment_id)
         except Exception:
             raise MercadoPagoPaymentResolutionError() from None
 
         if not isinstance(resposta, dict):
             raise MercadoPagoPaymentResolutionError()
 
-        payment_id = resposta.get("id")
-        if isinstance(payment_id, bool):
+        resposta_payment_id = resposta.get("id")
+        if isinstance(resposta_payment_id, bool):
             raise MercadoPagoPaymentResolutionError()
-        if isinstance(payment_id, int):
-            id_corresponde = payment_id > 0 and str(payment_id) == data_id
+        if isinstance(resposta_payment_id, int):
+            id_corresponde = (
+                resposta_payment_id > 0
+                and str(resposta_payment_id) == payment_id
+            )
         else:
             id_corresponde = (
-                self._decimal_ascii_canonico_positivo(payment_id)
-                and payment_id == data_id
+                self._decimal_ascii_canonico_positivo(resposta_payment_id)
+                and resposta_payment_id == payment_id
             )
         if not id_corresponde:
             raise MercadoPagoPaymentResolutionError()
@@ -70,7 +69,7 @@ class MercadoPagoPaymentResolver:
 
         status = resposta.get("status")
         if status == "approved":
-            return {"ordem_id": ordem_id, "event_id": request_id}
+            return {"ordem_id": ordem_id, "event_id": notification_id}
         if status in self._ESTADOS_NAO_APROVADOS:
             return None
         raise MercadoPagoPaymentResolutionError()
