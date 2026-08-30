@@ -197,4 +197,3 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
         resolvedor.resolver_pagamento("4719", "request-failure")
     assert cliente.chamadas == [{"payment_id": "4719"}]
     _assert_erro_sanitizado(capturada.value, segredo, detalhe_interno)
-
