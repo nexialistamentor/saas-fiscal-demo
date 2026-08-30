@@ -68,6 +68,7 @@ class CheckoutCore:
         self.ativador = ativador
         self.verificador_webhook = verificador_webhook
         self._eventos_processados: dict[str, tuple[str, str]] = {}
+        self._confirmacoes_confiaveis: dict[str, int] = {}
         self._checkout_urls: dict[int, str] = {}
 
     def iniciar_checkout(
@@ -179,6 +180,46 @@ class CheckoutCore:
     def processar_retorno(self, provider_order_id, status):
         """Trata o retorno do browser apenas como informação não confiável."""
         return None
+
+    def confirmar_pagamento_autorizado(self, ordem_id, event_id):
+        self._validar_id_positivo(ordem_id)
+        if (
+            not isinstance(event_id, str)
+            or not event_id.strip()
+            or "\r" in event_id
+            or "\n" in event_id
+        ):
+            raise DadosCheckoutInvalidosError("Evento de confirmacao invalido")
+
+        ordem = self._ordem_por_id(ordem_id)
+        ordem_confirmada = self._confirmacoes_confiaveis.get(event_id)
+        if ordem_confirmada is not None:
+            if ordem_confirmada != ordem.id:
+                raise DadosCheckoutInvalidosError(
+                    "Evento de confirmacao reutilizado para outra ordem"
+                )
+            return ordem
+        if ordem.status != "pending":
+            raise DadosCheckoutInvalidosError("Ordem nao pode ser confirmada")
+
+        pagamento = PagamentoCheckout(
+            ordem_id=ordem.id,
+            event_id=event_id,
+            provider_order_id=ordem.provider_order_id,
+            valor=ordem.valor,
+            moeda=ordem.moeda,
+        )
+        self.repositorio.pagamentos.append(pagamento)
+        ordem.status = "paid"
+        self._checkout_urls.pop(ordem.id, None)
+        self.ativador.ativar(
+            user_id=ordem.user_id,
+            empresa_id=ordem.empresa_id,
+            plano_id=ordem.plano_id,
+            ordem_id=ordem.id,
+        )
+        self._confirmacoes_confiaveis[event_id] = ordem.id
+        return ordem
 
     def processar_webhook(self, evento, assinatura):
         try:
