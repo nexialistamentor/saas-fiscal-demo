@@ -83,7 +83,9 @@ class MercadoPagoWebhookOrchestrator:
             raise MercadoPagoWebhookOrchestrationError()
 
         try:
-            return self._confirmar_pagamento(ordem_id, notification_id)
+            return self._confirmar_pagamento(
+                ordem_id, notification_id, payment_id
+            )
         except Exception:
             raise MercadoPagoWebhookOrchestrationError() from None
 
