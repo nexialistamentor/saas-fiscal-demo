@@ -260,6 +260,21 @@ def test_payments_multi_vertical_one_time_confirmation_contract_red():
     assert all(parametro.kind is Parameter.POSITIONAL_OR_KEYWORD
                for parametro in parametros.values())
 
+    segredo_factory = "segredo-session-factory-9930"
+
+    def session_factory_com_falha():
+        raise RuntimeError(
+            f"token payload SELECT * FROM interno segredo {segredo_factory}"
+        )
+
+    with pytest.raises(
+        confirmation.CheckoutOfferOneTimeConfirmationError
+    ) as capturada_factory:
+        _confirmar(confirmation, session_factory_com_falha)
+    _assert_sanitizado(
+        capturada_factory.value, confirmation, segredo_factory
+    )
+
     engine, Session = _ambiente(models)
     comandos = []
     event.listen(
@@ -458,6 +473,13 @@ def test_payments_multi_vertical_one_time_confirmation_contract_red():
         721: {"usage_limit": 0},
         722: {"provider_order_id": None},
         723: {"checkout_url": None},
+        727: {"checkout_url": "http://checkout.example.invalid/727"},
+        728: {
+            "checkout_url": "https://username:password@checkout.example.invalid/728"
+        },
+        729: {"checkout_url": "https://checkout.example.invalid/729#fragmento"},
+        730: {"checkout_url": "https://checkout.example.invalid/730\r\nforjado"},
+        731: {"provider_order_id": "provider-731\r\nforjado"},
     }
     with engine.begin() as conn:
         conn.execute(text("PRAGMA foreign_keys=OFF"))
@@ -517,6 +539,27 @@ def test_payments_multi_vertical_one_time_confirmation_contract_red():
                 confirmation, Session, ordem_id, str(9000 + ordem_id),
                 str(10000 + ordem_id),
             )
+        with Session() as db:
+            ordem = db.get(models.OrdemCheckout, ordem_id)
+            assert (ordem.estado, ordem.payment_id) == ("pending", None)
+            assert db.scalar(
+                select(func.count()).select_from(models.EventoPagamento).where(
+                    models.EventoPagamento.ordem_id == ordem_id
+                )
+            ) == 0
+            assert db.scalar(
+                select(func.count()).select_from(models.Pagamento).where(
+                    models.Pagamento.ordem_checkout_id == ordem_id
+                )
+            ) == 0
+            assert db.scalar(
+                select(func.count()).select_from(models.CheckoutOfferGrant).where(
+                    models.CheckoutOfferGrant.ordem_id == ordem_id
+                )
+            ) == 0
+            assert db.scalar(select(func.count()).select_from(
+                models.Entitlement
+            )) == 0
     with Session() as db:
         assert _contagens(db, models) == {
             "EventoPagamento": 1,
