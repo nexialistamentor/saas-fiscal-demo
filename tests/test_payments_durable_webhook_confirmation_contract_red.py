@@ -98,7 +98,9 @@ def _assert_sanitizado(erro, *proibidos):
         ):
             assert marcador not in texto
         for proibido in proibidos:
-            assert str(proibido).lower() not in texto
+            texto_proibido = str(proibido).lower()
+            if texto_proibido:
+                assert texto_proibido not in texto
 
 
 def _assert_todas_fechadas():
