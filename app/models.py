@@ -497,6 +497,93 @@ class Entitlement(Base):
     criado_em = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
 
 
+class CheckoutOffer(Base):
+    __tablename__ = "checkout_offers"
+    __table_args__ = (
+        UniqueConstraint("codigo", name="uq_checkout_offers_codigo"),
+        CheckConstraint("vertical IN ('tax', 'document')", name="ck_checkout_offers_vertical"),
+        CheckConstraint(
+            "commercial_model IN ('monthly', 'one_time', 'negotiated')",
+            name="ck_checkout_offers_commercial_model",
+        ),
+        CheckConstraint(
+            "subject_type IN ('cpf', 'company', 'institution')",
+            name="ck_checkout_offers_subject_type",
+        ),
+        CheckConstraint(
+            "estado IN ('draft', 'published', 'retired')",
+            name="ck_checkout_offers_estado",
+        ),
+        CheckConstraint("contract_version > 0", name="ck_checkout_offers_contract_version"),
+        CheckConstraint(
+            "codigo = lower(codigo) AND codigo = trim(codigo) "
+            "AND length(codigo) > 0 AND codigo NOT LIKE '%--%'",
+            name="ck_checkout_offers_codigo_canonico",
+        ),
+        CheckConstraint(
+            "(commercial_model = 'monthly' AND moeda = 'BRL' AND preco > 0 "
+            "AND billing_period = 'month' AND usage_unit IS NULL AND usage_limit IS NULL) "
+            "OR (commercial_model = 'one_time' AND moeda = 'BRL' AND preco > 0 "
+            "AND billing_period IS NULL AND usage_unit IS NOT NULL "
+            "AND length(trim(usage_unit)) > 0 AND usage_limit > 0) "
+            "OR (commercial_model = 'negotiated' AND moeda IS NULL AND preco IS NULL "
+            "AND billing_period IS NULL AND usage_unit IS NULL AND usage_limit IS NULL)",
+            name="ck_checkout_offers_commercial_configuration",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    codigo = Column(String(120), nullable=False, index=True)
+    nome_publico = Column(String(255), nullable=False)
+    vertical = Column(String(20), nullable=False)
+    commercial_model = Column(String(20), nullable=False)
+    subject_type = Column(String(20), nullable=False)
+    estado = Column(String(20), nullable=False, default="draft", server_default="draft")
+    moeda = Column(String(3), nullable=True)
+    preco = Column(Numeric(12, 2), nullable=True)
+    billing_period = Column(String(20), nullable=True)
+    usage_unit = Column(String(50), nullable=True)
+    usage_limit = Column(Integer, nullable=True)
+    contract_version = Column(Integer, nullable=False)
+    criado_em = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
+    atualizado_em = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        server_default=func.now(),
+    )
+
+    capabilities = relationship(
+        "CheckoutOfferCapability",
+        back_populates="offer",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class CheckoutOfferCapability(Base):
+    __tablename__ = "checkout_offer_capabilities"
+    __table_args__ = (
+        UniqueConstraint("offer_id", "codigo", name="uq_checkout_offer_capabilities_offer_codigo"),
+        CheckConstraint(
+            "codigo = lower(codigo) AND codigo = trim(codigo) AND length(codigo) > 0",
+            name="ck_checkout_offer_capabilities_codigo_canonico",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    offer_id = Column(
+        Integer,
+        ForeignKey("checkout_offers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    codigo = Column(String(120), nullable=False)
+
+    offer = relationship("CheckoutOffer", back_populates="capabilities")
+
+
 # =========================
 # DOCUMENTO FISCAL
 # =========================
