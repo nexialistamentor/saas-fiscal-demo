@@ -440,12 +440,62 @@ class OrdemCheckout(Base):
             "valor > 0",
             name="ck_ordens_checkout_valor_positivo",
         ),
+        CheckConstraint(
+            "(offer_id IS NULL AND plano_id IS NOT NULL AND empresa_id IS NOT NULL "
+            "AND offer_code IS NULL AND contract_version IS NULL AND vertical IS NULL "
+            "AND commercial_model IS NULL AND subject_type IS NULL AND subject_id IS NULL "
+            "AND billing_period IS NULL AND usage_unit IS NULL AND usage_limit IS NULL) "
+            "OR (offer_id IS NOT NULL AND plano_id IS NULL AND offer_code IS NOT NULL "
+            "AND contract_version IS NOT NULL AND vertical IS NOT NULL "
+            "AND commercial_model IS NOT NULL AND subject_type IS NOT NULL "
+            "AND subject_id IS NOT NULL)",
+            name="ck_ordens_checkout_formato_coerente",
+        ),
+        CheckConstraint(
+            "offer_id IS NULL OR commercial_model IN ('monthly', 'one_time')",
+            name="ck_ordens_checkout_offer_commercial_model",
+        ),
+        CheckConstraint(
+            "offer_id IS NULL OR vertical IN ('tax', 'document')",
+            name="ck_ordens_checkout_offer_vertical",
+        ),
+        CheckConstraint(
+            "offer_id IS NULL OR subject_type IN ('cpf', 'company', 'institution')",
+            name="ck_ordens_checkout_offer_subject_type",
+        ),
+        CheckConstraint(
+            "offer_id IS NULL OR (contract_version > 0 AND subject_id > 0)",
+            name="ck_ordens_checkout_offer_identidade_positiva",
+        ),
+        CheckConstraint(
+            "offer_id IS NULL OR subject_type <> 'company' "
+            "OR (empresa_id IS NOT NULL AND subject_id = empresa_id)",
+            name="ck_ordens_checkout_offer_company_coerente",
+        ),
+        CheckConstraint(
+            "offer_id IS NULL OR commercial_model <> 'monthly' "
+            "OR (billing_period = 'month' AND usage_unit IS NULL AND usage_limit IS NULL)",
+            name="ck_ordens_checkout_offer_monthly_coerente",
+        ),
+        CheckConstraint(
+            "offer_id IS NULL OR commercial_model <> 'one_time' "
+            "OR (billing_period IS NULL AND usage_unit IS NOT NULL "
+            "AND length(trim(usage_unit)) > 0 AND usage_limit > 0)",
+            name="ck_ordens_checkout_offer_one_time_coerente",
+        ),
     )
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
-    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
-    plano_id = Column(Integer, ForeignKey("planos.id"), nullable=False, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=True, index=True)
+    plano_id = Column(Integer, ForeignKey("planos.id"), nullable=True, index=True)
+    offer_id = Column(Integer, ForeignKey("checkout_offers.id"), nullable=True, index=True)
+    offer_code = Column(String(120), nullable=True)
+    contract_version = Column(Integer, nullable=True)
+    vertical = Column(String(20), nullable=True)
+    commercial_model = Column(String(20), nullable=True)
+    subject_type = Column(String(20), nullable=True)
+    subject_id = Column(Integer, nullable=True)
     valor = Column(Numeric(10, 2), nullable=False)
     moeda = Column(String(3), nullable=False, default="BRL", server_default="BRL")
     estado = Column(
@@ -455,6 +505,9 @@ class OrdemCheckout(Base):
     provider_order_id = Column(String(255), nullable=True, unique=True)
     checkout_url = Column(String(2000), nullable=True)
     payment_id = Column(String(255), nullable=True, unique=True)
+    billing_period = Column(String(20), nullable=True)
+    usage_unit = Column(String(50), nullable=True)
+    usage_limit = Column(Integer, nullable=True)
     criado_em = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
     atualizado_em = Column(
         DateTime,
@@ -463,6 +516,39 @@ class OrdemCheckout(Base):
         onupdate=datetime.utcnow,
         server_default=func.now(),
     )
+
+    offer = relationship("CheckoutOffer")
+    capabilities = relationship(
+        "OrdemCheckoutCapability",
+        back_populates="ordem",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="OrdemCheckoutCapability.codigo",
+    )
+
+
+class OrdemCheckoutCapability(Base):
+    __tablename__ = "ordem_checkout_capabilities"
+    __table_args__ = (
+        UniqueConstraint(
+            "ordem_id", "codigo", name="uq_ordem_checkout_capabilities_ordem_codigo"
+        ),
+        CheckConstraint(
+            "codigo = lower(codigo) AND codigo = trim(codigo) AND length(codigo) > 0",
+            name="ck_ordem_checkout_capabilities_codigo_canonico",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    ordem_id = Column(
+        Integer,
+        ForeignKey("ordens_checkout.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    codigo = Column(String(120), nullable=False)
+
+    ordem = relationship("OrdemCheckout", back_populates="capabilities")
 
 
 class EventoPagamento(Base):

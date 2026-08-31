@@ -201,8 +201,19 @@ class CheckoutOfferCatalog:
             raise CheckoutOfferCatalogError()
 
 
+def checkout_offer_snapshot(oferta):
+    """Valida uma oferta ja carregada e devolve uma projecao desanexada."""
+    try:
+        return CheckoutOfferCatalog._snapshot(oferta)
+    except CheckoutOfferCatalogError:
+        raise
+    except Exception:
+        raise CheckoutOfferCatalogError() from None
+
+
 __all__ = [
     "CheckoutOfferCatalog",
     "CheckoutOfferCatalogError",
     "CheckoutOfferSnapshot",
+    "checkout_offer_snapshot",
 ]
