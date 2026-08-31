@@ -297,13 +297,19 @@ def test_payments_multi_vertical_one_time_confirmation_contract_red():
                 evento_pagamento.payment_id) == (701, "8128", "4719")
         assert pagamento.ordem_checkout_id == 701
         assert pagamento.user_id == 41
-        assert pagamento.empresa_id == 301
         assert pagamento.plano_id is None
         assert pagamento.valor == Decimal("79.50")
-        assert pagamento.moeda == "BRL"
         assert pagamento.mp_payment_id == "4719"
         assert pagamento.status == "approved"
         assert pagamento.confirmado_em is not None
+        ordem_do_pagamento = db.get(
+            models.OrdemCheckout,
+            pagamento.ordem_checkout_id,
+        )
+        assert ordem_do_pagamento is not None
+        assert ordem_do_pagamento.empresa_id == 301
+        assert ordem_do_pagamento.moeda == "BRL"
+        assert ordem_do_pagamento.id == ordem.id
         assert grant.ordem_id == 701
         assert (grant.usage_unit, grant.usage_limit, grant.usage_consumed,
                 grant.estado) == ("document", 7, 0, "active")
