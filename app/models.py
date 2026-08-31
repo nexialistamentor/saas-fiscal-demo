@@ -525,6 +525,13 @@ class OrdemCheckout(Base):
         passive_deletes=True,
         order_by="OrdemCheckoutCapability.codigo",
     )
+    grant = relationship(
+        "CheckoutOfferGrant",
+        back_populates="ordem",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
 
 
 class OrdemCheckoutCapability(Base):
@@ -549,6 +556,81 @@ class OrdemCheckoutCapability(Base):
     codigo = Column(String(120), nullable=False)
 
     ordem = relationship("OrdemCheckout", back_populates="capabilities")
+
+
+class CheckoutOfferGrant(Base):
+    __tablename__ = "checkout_offer_grants"
+    __table_args__ = (
+        CheckConstraint(
+            "usage_unit = lower(usage_unit) AND usage_unit = trim(usage_unit) "
+            "AND length(usage_unit) > 0",
+            name="ck_checkout_offer_grants_usage_unit_canonico",
+        ),
+        CheckConstraint(
+            "usage_limit > 0",
+            name="ck_checkout_offer_grants_usage_limit_positivo",
+        ),
+        CheckConstraint(
+            "usage_consumed >= 0 AND usage_consumed <= usage_limit",
+            name="ck_checkout_offer_grants_usage_consumed_valido",
+        ),
+        CheckConstraint(
+            "estado IN ('active', 'exhausted', 'revoked')",
+            name="ck_checkout_offer_grants_estado_valido",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    ordem_id = Column(
+        Integer,
+        ForeignKey("ordens_checkout.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    usage_unit = Column(String(50), nullable=False)
+    usage_limit = Column(Integer, nullable=False)
+    usage_consumed = Column(Integer, nullable=False, default=0, server_default="0")
+    estado = Column(
+        String(20), nullable=False, default="active", server_default="active"
+    )
+    created_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
+    )
+
+    ordem = relationship("OrdemCheckout", back_populates="grant")
+    capabilities = relationship(
+        "CheckoutOfferGrantCapability",
+        back_populates="grant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="CheckoutOfferGrantCapability.codigo",
+    )
+
+
+class CheckoutOfferGrantCapability(Base):
+    __tablename__ = "checkout_offer_grant_capabilities"
+    __table_args__ = (
+        UniqueConstraint(
+            "grant_id",
+            "codigo",
+            name="uq_checkout_offer_grant_capabilities_grant_codigo",
+        ),
+        CheckConstraint(
+            "length(trim(codigo)) > 0",
+            name="ck_checkout_offer_grant_capabilities_codigo_nao_vazio",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    grant_id = Column(
+        Integer,
+        ForeignKey("checkout_offer_grants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    codigo = Column(String(120), nullable=False)
+
+    grant = relationship("CheckoutOfferGrant", back_populates="capabilities")
 
 
 class EventoPagamento(Base):
