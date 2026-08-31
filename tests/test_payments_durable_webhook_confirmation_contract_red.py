@@ -80,11 +80,22 @@ def _contagens(db, models):
     ))
 
 
+def _snapshot_ordem(db, models, ordem_id):
+    ordem = db.get(models.OrdemCheckout, ordem_id)
+    return tuple(
+        getattr(ordem, coluna.key)
+        for coluna in sa_inspect(models.OrdemCheckout).columns
+    )
+
+
 def _assert_sanitizado(erro, *proibidos):
     assert type(erro).__name__ == "CheckoutDurableWebhookConfirmationError"
     for representacao in (str(erro), repr(erro)):
         texto = representacao.lower()
-        for marcador in ("token", "payload", "segredo", "credencial", "interno"):
+        for marcador in (
+            "token", "payload", "segredo", "credencial", "interno", "sql",
+            "valor", "moeda",
+        ):
             assert marcador not in texto
         for proibido in proibidos:
             assert str(proibido).lower() not in texto
@@ -110,7 +121,7 @@ def test_payments_durable_webhook_confirmation_contract_red(monkeypatch):
         "session_factory"
     ]
     assert list(signature(metodo).parameters) == [
-        "self", "ordem_id", "notification_id", "payment_id"
+        "self", "ordem_id", "notification_id", "payment_id", "valor", "moeda"
     ]
 
     chamadas = []
@@ -128,7 +139,9 @@ def test_payments_durable_webhook_confirmation_contract_red(monkeypatch):
 
     Session = _ambiente(models)
     confirmer = confirmation.CheckoutDurableWebhookConfirmer(Session)
-    resposta = confirmer.confirmar_pagamento_autorizado(91, "8128", "4719")
+    resposta = confirmer.confirmar_pagamento_autorizado(
+        91, "8128", "4719", Decimal("49.90"), "BRL"
+    )
     assert chamadas == [((), {
         "ordem_id": 91,
         "user_id": 42,
@@ -161,16 +174,16 @@ def test_payments_durable_webhook_confirmation_contract_red(monkeypatch):
 
     # Nova instancia e nova sessao preservam a idempotencia duravel.
     confirmation.CheckoutDurableWebhookConfirmer(Session).confirmar_pagamento_autorizado(
-        91, "8128", "4719"
+        91, "8128", "4719", Decimal("49.90"), "BRL"
     )
     with Session() as db:
         assert _contagens(db, models) == (1, 1, 1)
 
     erro_publico = confirmation.CheckoutDurableWebhookConfirmationError
     for argumentos in (
-        (91, "8128", "4720"),       # notification_id com outro payment_id
-        (92, "8129", "4719"),       # payment_id ligado a outra ordem
-        (999, "8130", "4721"),      # ordem inexistente
+        (91, "8128", "4720", Decimal("49.90"), "BRL"),
+        (92, "8129", "4719", Decimal("49.90"), "BRL"),
+        (999, "8130", "4721", Decimal("49.90"), "BRL"),
     ):
         with pytest.raises(erro_publico) as capturada:
             confirmation.CheckoutDurableWebhookConfirmer(
@@ -181,19 +194,19 @@ def test_payments_durable_webhook_confirmation_contract_red(monkeypatch):
 
     chamadas_antes = list(chamadas)
     invalidos = (
-        (True, "8131", "4722"),
-        (91.0, "8131", "4722"),
-        ("91", "8131", "4722"),
-        (0, "8131", "4722"),
-        (-1, "8131", "4722"),
-        (92, True, "4722"),
-        (92, 8131, "4722"),
-        (92, "08131", "4722"),
-        (92, "8131\n", "4722"),
-        (92, "8131", True),
-        (92, "8131", 4722),
-        (92, "8131", "04722"),
-        (92, "8131", "4722 "),
+        (True, "8131", "4722", Decimal("49.90"), "BRL"),
+        (91.0, "8131", "4722", Decimal("49.90"), "BRL"),
+        ("91", "8131", "4722", Decimal("49.90"), "BRL"),
+        (0, "8131", "4722", Decimal("49.90"), "BRL"),
+        (-1, "8131", "4722", Decimal("49.90"), "BRL"),
+        (92, True, "4722", Decimal("49.90"), "BRL"),
+        (92, 8131, "4722", Decimal("49.90"), "BRL"),
+        (92, "08131", "4722", Decimal("49.90"), "BRL"),
+        (92, "8131\n", "4722", Decimal("49.90"), "BRL"),
+        (92, "8131", True, Decimal("49.90"), "BRL"),
+        (92, "8131", 4722, Decimal("49.90"), "BRL"),
+        (92, "8131", "04722", Decimal("49.90"), "BRL"),
+        (92, "8131", "4722 ", Decimal("49.90"), "BRL"),
     )
     for argumentos in invalidos:
         with pytest.raises(erro_publico):
@@ -202,10 +215,64 @@ def test_payments_durable_webhook_confirmation_contract_red(monkeypatch):
             ).confirmar_pagamento_autorizado(*argumentos)
     assert chamadas == chamadas_antes
 
+    monetarios_invalidos = (
+        (Decimal("49.89"), "BRL"),
+        (Decimal("49.91"), "BRL"),
+        (Decimal("49.90"), "USD"),
+        (Decimal("49.90"), "brl"),
+        (True, "BRL"),
+        (49, "BRL"),
+        (49.90, "BRL"),
+        ("49.90", "BRL"),
+        (Decimal("0.00"), "BRL"),
+        (Decimal("-0.01"), "BRL"),
+        (Decimal("NaN"), "BRL"),
+        (Decimal("Infinity"), "BRL"),
+        (Decimal("49.9"), "BRL"),
+        (Decimal("49.900"), "BRL"),
+        (Decimal("49.901"), "BRL"),
+        (Decimal("49.90"), ""),
+        (Decimal("49.90"), None),
+        (Decimal("49.90"), True),
+        (Decimal("49.90"), 986),
+    )
+    for valor, moeda in monetarios_invalidos:
+        with Session() as db:
+            ordem_antes = _snapshot_ordem(db, models, 92)
+            contagens_antes = _contagens(db, models)
+        chamadas_antes = list(chamadas)
+        rollbacks_antes = sum(
+            nome == "rollback" for nome, _ in _SessionRastreada.eventos
+        )
+        with pytest.raises(erro_publico) as capturada:
+            confirmation.CheckoutDurableWebhookConfirmer(
+                Session
+            ).confirmar_pagamento_autorizado(
+                92, "8131", "4722", valor, moeda
+            )
+        _assert_sanitizado(capturada.value, valor, moeda)
+        assert chamadas == chamadas_antes
+        assert sum(
+            nome == "rollback" for nome, _ in _SessionRastreada.eventos
+        ) == rollbacks_antes + 1
+        _assert_todas_fechadas()
+        with Session() as db:
+            assert _snapshot_ordem(db, models, 92) == ordem_antes
+            assert _contagens(db, models) == contagens_antes
+
+    for argumentos in (
+        (92, "8131", "4722"),
+        (92, "8131", "4722", Decimal("49.90")),
+        (92, "8131", "4722", Decimal("49.90"), "BRL", "extra"),
+    ):
+        with pytest.raises(TypeError):
+            confirmer.confirmar_pagamento_autorizado(*argumentos)
+
     for identidade in ("user_id", "empresa_id"):
         with pytest.raises(TypeError):
             confirmer.confirmar_pagamento_autorizado(
-                92, "8131", "4722", **{identidade: 999}
+                92, "8131", "4722", Decimal("49.90"), "BRL",
+                **{identidade: 999}
             )
 
     segredo = "segredo-ultrassecreto-9931"
@@ -218,7 +285,9 @@ def test_payments_durable_webhook_confirmation_contract_red(monkeypatch):
         with pytest.raises(erro_publico) as capturada:
             confirmation.CheckoutDurableWebhookConfirmer(
                 Session
-            ).confirmar_pagamento_autorizado(92, "8131", "4722")
+            ).confirmar_pagamento_autorizado(
+                92, "8131", "4722", Decimal("49.90"), "BRL"
+            )
         _assert_sanitizado(capturada.value, segredo)
     finally:
         event.remove(models.Entitlement, "before_insert", falhar_entitlement)
