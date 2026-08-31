@@ -1,6 +1,7 @@
 """Confirmacao transacional de pagamentos autenticados no ledger duravel."""
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from app.models import OrdemCheckout
 from app.services.checkout_durable_ledger import CheckoutDurableLedger
@@ -32,7 +33,7 @@ class CheckoutDurableWebhookConfirmer:
         self._session_factory = session_factory
 
     def confirmar_pagamento_autorizado(
-        self, ordem_id, notification_id, payment_id
+        self, ordem_id, notification_id, payment_id, valor, moeda
     ):
         session = None
         try:
@@ -43,11 +44,18 @@ class CheckoutDurableWebhookConfirmer:
                 or ordem_id <= 0
                 or not self._decimal_ascii_canonico_positivo(notification_id)
                 or not self._decimal_ascii_canonico_positivo(payment_id)
+                or type(valor) is not Decimal
+                or not valor.is_finite()
+                or valor <= Decimal(0)
+                or valor.as_tuple().exponent != -2
+                or moeda != "BRL"
             ):
                 raise CheckoutDurableWebhookConfirmationError()
 
             ordem = session.get(OrdemCheckout, ordem_id)
             if ordem is None:
+                raise CheckoutDurableWebhookConfirmationError()
+            if valor != ordem.valor or moeda != ordem.moeda:
                 raise CheckoutDurableWebhookConfirmationError()
 
             confirmada = CheckoutDurableLedger(
