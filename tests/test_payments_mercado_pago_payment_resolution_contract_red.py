@@ -1,5 +1,6 @@
 """Contrato RED offline do futuro resolvedor de pagamento Mercado Pago."""
 
+from decimal import Decimal
 from importlib import import_module
 
 import pytest
@@ -21,7 +22,17 @@ class _ClientePagamentosFalso:
 def _assert_erro_sanitizado(erro, *dados_proibidos):
     for representacao in (str(erro), repr(erro)):
         texto = representacao.lower()
-        for marcador in ("token", "credencial", "payload", "interno"):
+        for marcador in (
+            "token",
+            "secret",
+            "segredo",
+            "credencial",
+            "payload",
+            "sql",
+            "interno",
+            "transaction_amount",
+            "currency_id",
+        ):
             assert marcador not in texto
         for dado in dados_proibidos:
             assert str(dado).lower() not in texto
@@ -73,10 +84,8 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
         "id": 4719,
         "external_reference": "91",
         "status": "approved",
-        "user_id": 42,
-        "empresa_id": 314,
-        "transaction_amount": "0.01",
-        "currency_id": "USD",
+        "transaction_amount": 49.90,
+        "currency_id": "BRL",
         "token": "token-nao-confiavel",
         "payload": {"credencial": "privada"},
     }
@@ -84,6 +93,8 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
     assert resolvedor.resolver_pagamento("4719", "8128") == {
         "ordem_id": 91,
         "event_id": "8128",
+        "valor": Decimal("49.90"),
+        "moeda": "BRL",
     }
     assert cliente.chamadas == [{"payment_id": "4719"}]
 
@@ -92,6 +103,43 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
     assert resolvedor.resolver_pagamento("4719", "8129") == {
         "ordem_id": 91,
         "event_id": "8129",
+        "valor": Decimal("49.90"),
+        "moeda": "BRL",
+    }
+    assert cliente.chamadas == [{"payment_id": "4719"}]
+
+    for valor in (
+        "49.90",
+        "49.900",
+        "4.99E+1",
+        "49.9",
+        Decimal("49.90"),
+        49,
+    ):
+        resolvedor, cliente = _resolver(
+            mercado_pago,
+            {**resposta_aprovada, "transaction_amount": valor},
+        )
+        resolucao = resolvedor.resolver_pagamento("4719", "8128")
+        assert set(resolucao) == {"ordem_id", "event_id", "valor", "moeda"}
+        assert resolucao == {
+            "ordem_id": 91,
+            "event_id": "8128",
+            "valor": Decimal("49.90") if valor != 49 else Decimal("49.00"),
+            "moeda": "BRL",
+        }
+        assert resolucao["valor"].as_tuple().exponent == -2
+        assert cliente.chamadas == [{"payment_id": "4719"}]
+
+    resolvedor, cliente = _resolver(
+        mercado_pago,
+        {**resposta_aprovada, "transaction_amount": "0.01"},
+    )
+    assert resolvedor.resolver_pagamento("4719", "8128") == {
+        "ordem_id": 91,
+        "event_id": "8128",
+        "valor": Decimal("0.01"),
+        "moeda": "BRL",
     }
     assert cliente.chamadas == [{"payment_id": "4719"}]
 
@@ -136,7 +184,8 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
     )
     for status in estados_nao_aprovados:
         resolvedor, cliente = _resolver(
-            mercado_pago, {**resposta_aprovada, "status": status}
+            mercado_pago,
+            {"id": 4719, "external_reference": "91", "status": status},
         )
         assert resolvedor.resolver_pagamento("4719", "8128") is None
         assert cliente.chamadas == [{"payment_id": "4719"}]
@@ -186,6 +235,58 @@ def test_mercado_pago_payment_resolution_contract_red(monkeypatch):
             "privada",
             "ordem-arbitraria",
         )
+
+    campos_monetarios_invalidos = (
+        {key: value for key, value in resposta_aprovada.items() if key != "transaction_amount"},
+        {key: value for key, value in resposta_aprovada.items() if key != "currency_id"},
+        {**resposta_aprovada, "transaction_amount": None},
+        {**resposta_aprovada, "transaction_amount": True},
+        {**resposta_aprovada, "transaction_amount": "valor-invalido"},
+        {**resposta_aprovada, "transaction_amount": "NaN"},
+        {**resposta_aprovada, "transaction_amount": "Infinity"},
+        {**resposta_aprovada, "transaction_amount": "-Infinity"},
+        {**resposta_aprovada, "transaction_amount": 0},
+        {**resposta_aprovada, "transaction_amount": -1},
+        {**resposta_aprovada, "transaction_amount": 49.901},
+        {**resposta_aprovada, "transaction_amount": "49.901"},
+        {**resposta_aprovada, "transaction_amount": Decimal("49.901")},
+        {**resposta_aprovada, "currency_id": "brl"},
+        {**resposta_aprovada, "currency_id": "USD"},
+        {**resposta_aprovada, "currency_id": ""},
+        {**resposta_aprovada, "currency_id": None},
+        {**resposta_aprovada, "currency_id": True},
+        {**resposta_aprovada, "currency_id": 1},
+    )
+    for resposta_invalida in campos_monetarios_invalidos:
+        resolvedor, cliente = _resolver(mercado_pago, resposta_invalida)
+        with pytest.raises(
+            mercado_pago.MercadoPagoPaymentResolutionError
+        ) as capturada:
+            resolvedor.resolver_pagamento("4719", "8128")
+        assert cliente.chamadas == [{"payment_id": "4719"}]
+        _assert_erro_sanitizado(
+            capturada.value,
+            "49.90",
+            "0.01",
+            "USD",
+            "token-nao-confiavel",
+            "privada",
+        )
+
+    resolvedor, cliente = _resolver(
+        mercado_pago,
+        {
+            **resposta_aprovada,
+            "transaction_amount": "0.01",
+            "currency_id": "USD",
+        },
+    )
+    with pytest.raises(
+        mercado_pago.MercadoPagoPaymentResolutionError
+    ) as capturada:
+        resolvedor.resolver_pagamento("4719", "8128")
+    assert cliente.chamadas == [{"payment_id": "4719"}]
+    _assert_erro_sanitizado(capturada.value, "0.01", "USD")
 
     detalhe_interno = "falha-interna-privada-9931"
     segredo = "segredo-ultrassecreto-8128"
