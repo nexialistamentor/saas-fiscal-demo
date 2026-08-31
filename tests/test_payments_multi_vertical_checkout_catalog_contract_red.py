@@ -7,6 +7,7 @@ from inspect import signature
 
 import pytest
 from sqlalchemy import create_engine, inspect as sa_inspect
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -288,22 +289,36 @@ def test_payments_multi_vertical_checkout_catalog_contract_red():
     }
 
     _provar_configuracoes_invalidas_falham_fechadas(
+        Session, models
+    )
+    _provar_oferta_publicada_sem_capabilities_falha_fechada(
         Session, models, catalog
     )
+    _provar_falha_interna_sanitizada(catalog)
 
 
-def _provar_configuracoes_invalidas_falham_fechadas(Session, models, catalog):
+def _provar_configuracoes_invalidas_falham_fechadas(Session, models):
     casos = (
-        ("invalid-monthly-zero", "monthly", "BRL", Decimal("0"), "month", None, None, ("tax.report",)),
-        ("invalid-monthly-currency", "monthly", "USD", Decimal("10"), "month", None, None, ("tax.report",)),
-        ("invalid-monthly-period", "monthly", "BRL", Decimal("10"), "year", None, None, ("tax.report",)),
-        ("invalid-one-time-limit", "one_time", "BRL", Decimal("10"), None, "document", 0, ("document.extract",)),
-        ("invalid-negotiated-price", "negotiated", "BRL", Decimal("10"), None, None, None, ("tax.audit",)),
-        ("invalid-empty-capabilities", "monthly", "BRL", Decimal("10"), "month", None, None, ()),
+        ("invalid-monthly-zero", "monthly", "BRL", Decimal("0"), "month", None, None),
+        ("invalid-monthly-negative", "monthly", "BRL", Decimal("-0.01"), "month", None, None),
+        ("invalid-monthly-currency", "monthly", "USD", Decimal("10"), "month", None, None),
+        ("invalid-monthly-period", "monthly", "BRL", Decimal("10"), "year", None, None),
+        ("invalid-monthly-unit", "monthly", "BRL", Decimal("10"), "month", "document", None),
+        ("invalid-monthly-limit", "monthly", "BRL", Decimal("10"), "month", None, 1),
+        ("invalid-one-time-zero", "one_time", "BRL", Decimal("0"), None, "document", 1),
+        ("invalid-one-time-negative", "one_time", "BRL", Decimal("-0.01"), None, "document", 1),
+        ("invalid-one-time-unit", "one_time", "BRL", Decimal("10"), None, None, 1),
+        ("invalid-one-time-limit", "one_time", "BRL", Decimal("10"), None, "document", 0),
+        ("invalid-one-time-period", "one_time", "BRL", Decimal("10"), "month", "document", 1),
+        ("invalid-negotiated-price", "negotiated", None, Decimal("10"), None, None, None),
+        ("invalid-negotiated-currency", "negotiated", "BRL", None, None, None, None),
+        ("invalid-negotiated-period", "negotiated", None, None, "month", None, None),
+        ("invalid-negotiated-unit", "negotiated", None, None, None, "document", None),
+        ("invalid-negotiated-limit", "negotiated", None, None, None, None, 1),
     )
     for numero, caso in enumerate(casos, start=100):
-        codigo, modelo, moeda, preco, periodo, unidade, limite, capacidades = caso
-        with Session.begin() as db:
+        codigo, modelo, moeda, preco, periodo, unidade, limite = caso
+        with Session() as db:
             oferta = models.CheckoutOffer(
                 id=numero,
                 codigo=codigo,
@@ -320,20 +335,70 @@ def _provar_configuracoes_invalidas_falham_fechadas(Session, models, catalog):
                 contract_version=1,
             )
             db.add(oferta)
-            db.flush()
-            db.add_all(
-                models.CheckoutOfferCapability(offer_id=numero, codigo=capacidade)
-                for capacidade in capacidades
+            with pytest.raises(IntegrityError):
+                db.flush()
+            db.rollback()
+            assert (
+                db.query(models.CheckoutOffer)
+                .filter(models.CheckoutOffer.codigo == codigo)
+                .one_or_none()
+                is None
             )
 
-        with pytest.raises(catalog.CheckoutOfferCatalogError) as capturada:
-            catalog.CheckoutOfferCatalog(Session).obter_oferta_publicada(codigo)
-        _assert_erro_publico_sanitizado(
-            capturada.value,
-            "SELECT checkout_offers",
-            "segredo-ultrassecreto-9931",
-            "0.01",
+
+def _provar_oferta_publicada_sem_capabilities_falha_fechada(
+    Session, models, catalog
+):
+    codigo = "tax-published-without-capabilities"
+    with Session.begin() as db:
+        db.add(
+            models.CheckoutOffer(
+                codigo=codigo,
+                nome_publico="Oferta publicada sem capabilities",
+                vertical="tax",
+                commercial_model="monthly",
+                subject_type="company",
+                estado="published",
+                moeda="BRL",
+                preco=Decimal("10.00"),
+                billing_period="month",
+                usage_unit=None,
+                usage_limit=None,
+                contract_version=1,
+            )
         )
+
+    servico = catalog.CheckoutOfferCatalog(Session)
+    with pytest.raises(catalog.CheckoutOfferCatalogError) as capturada:
+        servico.obter_oferta_publicada(codigo)
+    _assert_erro_publico_sanitizado(capturada.value)
+
+    # A listagem inteira falha fechada, sem devolver snapshot parcial.
+    with pytest.raises(catalog.CheckoutOfferCatalogError) as capturada:
+        servico.listar_ofertas_publicadas()
+    _assert_erro_publico_sanitizado(capturada.value)
+
+
+def _provar_falha_interna_sanitizada(catalog):
+    mensagem_interna = (
+        "SELECT checkout_offers; segredo-ultrassecreto-9931; "
+        "token=token-privado; credential=credencial-privada; "
+        "payload={'preco': '0.01'}; sqlalchemy"
+    )
+
+    def abrir_sessao_com_falha_controlada():
+        raise RuntimeError(mensagem_interna)
+
+    servico = catalog.CheckoutOfferCatalog(abrir_sessao_com_falha_controlada)
+    with pytest.raises(catalog.CheckoutOfferCatalogError) as capturada:
+        servico.listar_ofertas_publicadas()
+    _assert_erro_publico_sanitizado(
+        capturada.value,
+        mensagem_interna,
+        "token-privado",
+        "credencial-privada",
+        "0.01",
+    )
 
 
 def _assert_erro_publico_sanitizado(erro, *proibidos):
