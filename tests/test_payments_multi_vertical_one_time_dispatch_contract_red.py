@@ -78,6 +78,10 @@ def _ambiente(models):
             models.Empresa(id=303, razao_social="Also owned", user_id=41),
             _oferta(models, identificador=1, codigo="document-one-time-company"),
             _oferta(
+                models, identificador=3,
+                codigo="document-one-time-mutated-company",
+            ),
+            _oferta(
                 models, identificador=2, codigo="document-monthly-company",
                 commercial_model="monthly",
             ),
@@ -169,7 +173,10 @@ def test_payments_multi_vertical_one_time_dispatch_contract_red(monkeypatch):
     )
 
     engine, Session = _ambiente(models)
-    ordem = _criar_ordem(composition, Session)
+    ordem = _criar_ordem(
+        composition, Session,
+        offer_code="document-one-time-mutated-company",
+    )
     snapshot_gateway = {
         "ordem_id": ordem.id,
         "user_id": ordem.user_id,
@@ -374,7 +381,10 @@ def test_payments_multi_vertical_one_time_dispatch_contract_red(monkeypatch):
     # Falha de persistencia apos resposta exige rollback. O retry recebe a
     # mesma chave duravel; o espiao representa a idempotencia logica externa.
     candidata = _criar_ordem(composition, Session, chave="persistence-retry-301")
-    gateway_retry = _GatewayEspiao()
+    gateway_retry = _GatewayEspiao(resposta={
+        "provider_order_id": "provider-persistence-retry-4719",
+        "checkout_url": CHECKOUT_URL,
+    })
     dispatcher_retry = dispatch.CheckoutOfferOneTimeDispatcher(Session, gateway_retry)
 
     def falhar_update(_c, _u, statement, _p, _x, _m):
@@ -391,7 +401,7 @@ def test_payments_multi_vertical_one_time_dispatch_contract_red(monkeypatch):
     _assert_limpa(Session, models, candidata.id)
 
     recuperada = _despachar(dispatcher_retry, ordem_id=candidata.id)
-    assert recuperada.provider_order_id == "provider-one-time-4719"
+    assert recuperada.provider_order_id == "provider-persistence-retry-4719"
     assert len(gateway_retry.chamadas) == 2
     assert {chamada["idempotency_key"] for chamada in gateway_retry.chamadas} == {
         "persistence-retry-301"
