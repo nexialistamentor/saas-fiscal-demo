@@ -181,7 +181,7 @@ def test_mercado_pago_webhook_orchestration_contract_red():
     assert ordem == [
         ("verificar", (envelope, assinatura), {}),
         ("resolver_pagamento", ("4719", "8128"), {}),
-        ("confirmar_pagamento_autorizado", (91, "8128"), {}),
+        ("confirmar_pagamento_autorizado", (91, "8128", "4719"), {}),
     ]
 
     resolucoes_invalidas = (
