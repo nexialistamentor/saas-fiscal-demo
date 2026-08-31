@@ -1,5 +1,6 @@
 """Contrato RED offline do futuro orquestrador de webhook Mercado Pago."""
 
+from decimal import Decimal
 from importlib import import_module
 
 import pytest
@@ -68,6 +69,7 @@ def test_mercado_pago_webhook_orchestration_contract_red():
         "request_id": "request-9931",
     }
     assinatura = "assinatura-opaca-9931"
+    BRL = "BRL"
 
     dependencias_validas = _dependencias()[:3]
     invalidas = (None, object(), lambda: None, _Espia("metodo_errado"))
@@ -92,6 +94,10 @@ def test_mercado_pago_webhook_orchestration_contract_red():
         {"notification_id": "8128", "request_id": "request-9931"},
         {"payment_id": "4719", "request_id": "request-9931"},
         {**envelope, "status": "paid"},
+        {**envelope, "valor": "49.90"},
+        {**envelope, "transaction_amount": "49.90"},
+        {**envelope, "moeda": "BRL"},
+        {**envelope, "currency_id": "BRL"},
         {**envelope, "notification_id": None},
         {**envelope, "notification_id": 8128},
         {**envelope, "notification_id": ""},
@@ -173,7 +179,13 @@ def test_mercado_pago_webhook_orchestration_contract_red():
     ]
     assert core.chamadas == []
 
-    resolucao = {"ordem_id": 91, "event_id": "8128"}
+    valor_autenticado = Decimal("49.90")
+    resolucao = {
+        "ordem_id": 91,
+        "event_id": "8128",
+        "valor": valor_autenticado,
+        "moeda": BRL,
+    }
     orquestrador, verificador, resolvedor, core, ordem = _orquestrador(
         modulo, resolucao=resolucao, resultado_core=resultado_core
     )
@@ -181,20 +193,51 @@ def test_mercado_pago_webhook_orchestration_contract_red():
     assert ordem == [
         ("verificar", (envelope, assinatura), {}),
         ("resolver_pagamento", ("4719", "8128"), {}),
-        ("confirmar_pagamento_autorizado", (91, "8128", "4719"), {}),
+        (
+            "confirmar_pagamento_autorizado",
+            (91, "8128", "4719", valor_autenticado, BRL),
+            {},
+        ),
     ]
+    assert core.chamadas == [
+        ((91, "8128", "4719", valor_autenticado, BRL), {})
+    ]
+    assert core.chamadas[0][0][3] is valor_autenticado
 
     resolucoes_invalidas = (
         {},
         [],
-        {"ordem_id": True, "event_id": "8128"},
-        {"ordem_id": 0, "event_id": "8128"},
-        {"ordem_id": -1, "event_id": "8128"},
-        {"ordem_id": 91},
-        {"ordem_id": 91, "event_id": "4719"},
-        {"ordem_id": 91, "event_id": "request-9931"},
-        {"ordem_id": 91, "event_id": "8129"},
-        {"ordem_id": 91, "event_id": "8128", "status": "approved"},
+        {**resolucao, "ordem_id": True},
+        {**resolucao, "ordem_id": 0},
+        {**resolucao, "ordem_id": -1},
+        {chave: valor for chave, valor in resolucao.items() if chave != "ordem_id"},
+        {chave: valor for chave, valor in resolucao.items() if chave != "event_id"},
+        {chave: valor for chave, valor in resolucao.items() if chave != "valor"},
+        {chave: valor for chave, valor in resolucao.items() if chave != "moeda"},
+        {**resolucao, "status": "approved"},
+        {**resolucao, "event_id": 8128},
+        {**resolucao, "event_id": 4719},
+        {**resolucao, "event_id": "4719"},
+        {**resolucao, "event_id": "request-9931"},
+        {**resolucao, "event_id": 8129},
+        {**resolucao, "event_id": "8129"},
+        {**resolucao, "valor": True},
+        {**resolucao, "valor": 49},
+        {**resolucao, "valor": 49.90},
+        {**resolucao, "valor": "49.90"},
+        {**resolucao, "valor": Decimal("0.00")},
+        {**resolucao, "valor": Decimal("-0.01")},
+        {**resolucao, "valor": Decimal("NaN")},
+        {**resolucao, "valor": Decimal("Infinity")},
+        {**resolucao, "valor": Decimal("49.9")},
+        {**resolucao, "valor": Decimal("49.900")},
+        {**resolucao, "valor": Decimal("49.901")},
+        {**resolucao, "moeda": "brl"},
+        {**resolucao, "moeda": "USD"},
+        {**resolucao, "moeda": ""},
+        {**resolucao, "moeda": None},
+        {**resolucao, "moeda": True},
+        {**resolucao, "moeda": 986},
     )
     for resolucao_invalida in resolucoes_invalidas:
         orquestrador, verificador, resolvedor, core, ordem = _orquestrador(
