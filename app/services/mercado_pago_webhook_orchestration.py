@@ -1,5 +1,7 @@
 """Orquestracao offline do webhook do Mercado Pago."""
 
+from decimal import Decimal
+
 
 class MercadoPagoWebhookOrchestrationError(Exception):
     """Erro publico e sanitizado da orquestracao do webhook."""
@@ -70,21 +72,37 @@ class MercadoPagoWebhookOrchestrator:
 
         if resolucao is None:
             return None
-        if type(resolucao) is not dict or set(resolucao) != {"ordem_id", "event_id"}:
+        if type(resolucao) is not dict or set(resolucao) != {
+            "ordem_id",
+            "event_id",
+            "valor",
+            "moeda",
+        }:
             raise MercadoPagoWebhookOrchestrationError()
 
         ordem_id = resolucao["ordem_id"]
+        valor = resolucao["valor"]
+        moeda = resolucao["moeda"]
         if (
             isinstance(ordem_id, bool)
             or not isinstance(ordem_id, int)
             or ordem_id <= 0
             or resolucao["event_id"] != notification_id
+            or type(valor) is not Decimal
+            or not valor.is_finite()
+            or valor <= Decimal(0)
+            or valor.as_tuple().exponent != -2
+            or moeda != "BRL"
         ):
             raise MercadoPagoWebhookOrchestrationError()
 
         try:
             return self._confirmar_pagamento(
-                ordem_id, notification_id, payment_id
+                ordem_id,
+                notification_id,
+                payment_id,
+                valor,
+                moeda,
             )
         except Exception:
             raise MercadoPagoWebhookOrchestrationError() from None
