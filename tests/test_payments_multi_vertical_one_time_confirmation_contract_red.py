@@ -149,9 +149,15 @@ def _ambiente(models):
             models.OrdemCheckoutCapability(codigo="document.validate"),
         ]
         db.add_all([
-            plano_legado, owner, outro, empresa, outra_empresa, oferta, ordem,
-            segunda,
+            plano_legado,
+            owner,
+            outro,
+            empresa,
+            outra_empresa,
+            oferta,
         ])
+        db.flush()
+        db.add_all([ordem, segunda])
 
     # O catalogo corrente deixa de representar o snapshot comprado.
     with Session.begin() as db:
