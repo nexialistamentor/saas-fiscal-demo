@@ -534,6 +534,12 @@ def test_payments_multi_vertical_one_time_confirmation_contract_red():
         conn.execute(text("PRAGMA foreign_keys=ON"))
 
     for ordem_id in (*casos_snapshot, 724, 725, 726):
+        with Session() as db:
+            ordem_antes = db.get(models.OrdemCheckout, ordem_id)
+            estado_pagamento_antes = (
+                ordem_antes.estado,
+                ordem_antes.payment_id,
+            )
         with pytest.raises(confirmation.CheckoutOfferOneTimeConfirmationError):
             _confirmar(
                 confirmation, Session, ordem_id, str(9000 + ordem_id),
@@ -541,7 +547,7 @@ def test_payments_multi_vertical_one_time_confirmation_contract_red():
             )
         with Session() as db:
             ordem = db.get(models.OrdemCheckout, ordem_id)
-            assert (ordem.estado, ordem.payment_id) == ("pending", None)
+            assert (ordem.estado, ordem.payment_id) == estado_pagamento_antes
             assert db.scalar(
                 select(func.count()).select_from(models.EventoPagamento).where(
                     models.EventoPagamento.ordem_id == ordem_id
