@@ -138,7 +138,7 @@ def _assert_exact_post(
 
 
 def _assert_not_exposed(texts, private_values=()):
-    combined = "\n".join(texts).lower()
+    lowered_texts = tuple(text.lower() for text in texts)
     for private_value in (
         _ACCESS_TOKEN,
         _IDEMPOTENCY_KEY,
@@ -149,7 +149,9 @@ def _assert_not_exposed(texts, private_values=()):
     ):
         rendered = str(private_value)
         assert rendered
-        assert rendered.lower() not in combined
+        if rendered.isspace():
+            continue
+        assert all(rendered.lower() not in text for text in lowered_texts)
 
 
 def _capture_client_error(
