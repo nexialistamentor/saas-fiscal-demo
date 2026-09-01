@@ -48,8 +48,13 @@ def _orquestrador(modulo, **substituicoes):
     return instancia, verificador, resolvedor, core, ordem
 
 
-def _assert_sanitizado(erro, *dados_proibidos):
-    assert type(erro).__name__ == "MercadoPagoWebhookOrchestrationError"
+def _assert_sanitizado(erro, *dados_proibidos, tipo_esperado=None):
+    if tipo_esperado is None:
+        assert type(erro).__name__ == (
+            "MercadoPagoWebhookOrchestrationError"
+        )
+    else:
+        assert type(erro) is tipo_esperado
     for representacao in (str(erro), repr(erro)):
         texto = representacao.lower()
         for marcador in ("token", "payload", "segredo", "credencial", "interno"):
@@ -63,6 +68,9 @@ def test_mercado_pago_webhook_orchestration_contract_red():
         "app.services.mercado_pago_webhook_orchestration"
     )
     erro_publico = modulo.MercadoPagoWebhookOrchestrationError
+    erro_autenticacao = modulo.MercadoPagoWebhookAuthenticationError
+    assert issubclass(erro_autenticacao, erro_publico)
+    assert erro_autenticacao is not erro_publico
     envelope = {
         "notification_id": "8128",
         "payment_id": "4719",
@@ -156,7 +164,11 @@ def test_mercado_pago_webhook_orchestration_contract_red():
         assert ordem == [("verificar", (envelope, assinatura), {})]
         assert len(verificador.chamadas) == 1
         assert resolvedor.chamadas == core.chamadas == []
-        _assert_sanitizado(capturada.value, assinatura)
+        _assert_sanitizado(
+            capturada.value,
+            assinatura,
+            tipo_esperado=erro_autenticacao,
+        )
 
     orquestrador, verificador, resolvedor, core, ordem = _orquestrador(modulo)
     verificador.erro = RuntimeError(
