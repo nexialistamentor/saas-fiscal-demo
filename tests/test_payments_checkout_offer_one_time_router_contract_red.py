@@ -217,7 +217,7 @@ def test_payments_checkout_offer_one_time_router_contract_red():
         assert dependency.calls == [()]
         assert object.__getattribute__(user, "_accesses") == ["id"]
 
-        service.reset({"checkout_url": _CHECKOUT_URL})
+        service.reset(result={"checkout_url": _CHECKOUT_URL})
         dependency.reset(_UserProbe(_USER_ID))
         query_response = _post(
             client,
@@ -226,7 +226,7 @@ def test_payments_checkout_offer_one_time_router_contract_red():
         assert query_response.status_code == 200
         assert service.calls == [expected_call]
 
-        service.reset({"checkout_url": _CHECKOUT_URL})
+        service.reset(result={"checkout_url": _CHECKOUT_URL})
         dependency.reset(SimpleNamespace(id=_USER_ID))
         missing_header = _post(
             client,
@@ -243,7 +243,7 @@ def test_payments_checkout_offer_one_time_router_contract_red():
             "idempotency_key": "body-key-is-forbidden",
         }
         for field, value in forbidden_fields.items():
-            service.reset({"checkout_url": _CHECKOUT_URL})
+            service.reset(result={"checkout_url": _CHECKOUT_URL})
             body = {
                 "empresa_id": _EMPRESA_ID,
                 "offer_code": _OFFER_CODE,
@@ -255,12 +255,12 @@ def test_payments_checkout_offer_one_time_router_contract_red():
         for body in (
             {}, {"empresa_id": _EMPRESA_ID}, {"offer_code": _OFFER_CODE}, [],
         ):
-            service.reset({"checkout_url": _CHECKOUT_URL})
+            service.reset(result={"checkout_url": _CHECKOUT_URL})
             rejected = _post(client, body=body)
             assert rejected.status_code == 422
             assert service.calls == []
         for invalid_empresa_id in (None, True, False, 0, -1, 301.0, "301"):
-            service.reset({"checkout_url": _CHECKOUT_URL})
+            service.reset(result={"checkout_url": _CHECKOUT_URL})
             rejected = _post(client, body={
                 "empresa_id": invalid_empresa_id, "offer_code": _OFFER_CODE,
             })
@@ -271,19 +271,19 @@ def test_payments_checkout_offer_one_time_router_contract_red():
             "document one-time-company", "document\r\none-time-company",
             "document", "a-" + "b" * 119,
         ):
-            service.reset({"checkout_url": _CHECKOUT_URL})
+            service.reset(result={"checkout_url": _CHECKOUT_URL})
             rejected = _post(client, body={
                 "empresa_id": _EMPRESA_ID, "offer_code": invalid_offer_code,
             })
             assert rejected.status_code == 422
             assert service.calls == []
         for invalid_key in ("", " ", "\t", "a" * 256):
-            service.reset({"checkout_url": _CHECKOUT_URL})
+            service.reset(result={"checkout_url": _CHECKOUT_URL})
             rejected = _post(client, key=invalid_key)
             assert rejected.status_code == 422
             assert service.calls == []
 
-        service.reset({"checkout_url": _CHECKOUT_URL})
+        service.reset(result={"checkout_url": _CHECKOUT_URL})
         duplicate_header = client.post(
             "/checkout/one-time",
             headers=[("Idempotency-Key", "first-key"),
@@ -294,19 +294,19 @@ def test_payments_checkout_offer_one_time_router_contract_red():
         assert service.calls == []
 
         exact_key = "!#$%&'*+-.^_`|~AZaz09"
-        service.reset({"checkout_url": _CHECKOUT_URL})
+        service.reset(result={"checkout_url": _CHECKOUT_URL})
         assert _post(client, key=exact_key).status_code == 200
         assert service.calls == [{**expected_call, "idempotency_key": exact_key}]
 
         for invalid_id in (
             None, True, False, 0, -1, "41", _DerivedInt(_USER_ID),
         ):
-            service.reset({"checkout_url": _CHECKOUT_URL})
+            service.reset(result={"checkout_url": _CHECKOUT_URL})
             dependency.reset(SimpleNamespace(id=invalid_id))
             invalid_user = _post(client)
             _assert_empty_500(invalid_user)
             assert service.calls == []
-        service.reset({"checkout_url": _CHECKOUT_URL})
+        service.reset(result={"checkout_url": _CHECKOUT_URL})
         dependency.reset(object())
         _assert_empty_500(_post(client))
         assert service.calls == []
@@ -331,7 +331,7 @@ def test_payments_checkout_offer_one_time_router_contract_red():
             },
         )
         for invalid_result in invalid_results:
-            service.reset(invalid_result)
+            service.reset(result=invalid_result)
             divergent = _post(client)
             _assert_empty_500(divergent)
             assert service.calls == [expected_call]
