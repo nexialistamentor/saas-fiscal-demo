@@ -120,7 +120,10 @@ def _assert_opaque(value, *private_values):
         "traceback", "dotenv", "http://", "https://",
         *_PRIVATE_MARKERS, *private_values,
     ):
-        assert str(marker).lower() not in rendered
+        marker_text = str(marker)
+        if not marker_text.strip():
+            continue
+        assert marker_text.lower() not in rendered
 
 
 def _reject(module, values, *private_values):
@@ -340,6 +343,17 @@ def test_payments_mercado_pago_runtime_config_contract_red(monkeypatch):
     for key in url_keys:
         for invalid in invalid_urls:
             _reject(module, _replace(base, key, invalid), invalid)
+    for valid_notification in (
+        "https://hooks.example.invalid/webhooks/mercado-pago",
+        "https://hooks.example.invalid/api/v1/webhooks/mercado-pago",
+    ):
+        candidate = _replace(
+            base, _COMMON_KEYS["notification_url"], valid_notification
+        )
+        resolved = module.resolver_mercado_pago_runtime_config(
+            values=candidate
+        )
+        assert resolved.notification_url == valid_notification
     for invalid_notification in (
         "https://hooks.example.invalid/webhooks/mercado-pago/",
         "https://hooks.example.invalid/webhooks/mercado-pago/extra",
