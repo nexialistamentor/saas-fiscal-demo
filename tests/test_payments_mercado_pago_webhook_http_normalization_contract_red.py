@@ -62,6 +62,8 @@ def _assert_private_error(error, *extra_private):
     for representation in (str(error), repr(error)):
         lowered = representation.lower()
         for value in prohibited:
+            if isinstance(value, str) and value == "":
+                continue
             assert str(value).lower() not in lowered
 
 
