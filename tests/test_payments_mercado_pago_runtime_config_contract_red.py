@@ -108,7 +108,7 @@ def _sensitive_values(values):
             value = values[key]
         except (KeyError, AssertionError):
             continue
-        if isinstance(value, str) and value:
+        if isinstance(value, str) and value and value.strip():
             result.append(value)
     return tuple(result)
 
