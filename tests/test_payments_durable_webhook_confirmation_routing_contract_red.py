@@ -96,7 +96,7 @@ def _ambiente(models):
         ))
 
     def oferta(ordem_id, offer_id, code, model, vertical, billing, unit, limit):
-        return models.OrdemCheckout(
+        ordem = models.OrdemCheckout(
             id=ordem_id, user_id=41, empresa_id=301, plano_id=None,
             offer_id=offer_id, offer_code=code, contract_version=3,
             vertical=vertical, commercial_model=model, subject_type="company",
@@ -104,6 +104,16 @@ def _ambiente(models):
             estado="pending", idempotency_key=f"routing-{ordem_id}",
             billing_period=billing, usage_unit=unit, usage_limit=limit,
         )
+        if model == "one_time":
+            ordem.capabilities = [
+                models.OrdemCheckoutCapability(codigo="document.extract"),
+                models.OrdemCheckoutCapability(codigo="document.validate"),
+            ]
+        elif model == "monthly":
+            ordem.capabilities = [
+                models.OrdemCheckoutCapability(codigo="tax.monitor"),
+            ]
+        return ordem
 
     # Fase 2: ordens validas primeiro; corrupcoes sao simuladas depois.
     with Session.begin() as db:
@@ -185,6 +195,17 @@ def _preflight_fixture():
         ordens = {identidade: db.get(models.OrdemCheckout, identidade)
                   for identidade in range(101, 112)}
         assert all(ordens.values())
+        capabilities = {
+            identidade: tuple(capability.codigo for capability in ordem.capabilities)
+            for identidade, ordem in ordens.items()
+        }
+        assert capabilities[101] == ()
+        assert capabilities[102] == ("document.extract", "document.validate")
+        assert capabilities[103] == ("tax.monitor",)
+        assert all(
+            capabilities[identidade] == ("document.extract", "document.validate")
+            for identidade in range(104, 112)
+        )
         assert (ordens[101].plano_id, ordens[101].offer_id,
                 ordens[101].commercial_model) == (7, None, None)
         assert (ordens[102].plano_id, ordens[102].offer_id,
