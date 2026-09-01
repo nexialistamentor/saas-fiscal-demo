@@ -10,6 +10,12 @@ class MercadoPagoWebhookOrchestrationError(Exception):
         super().__init__("Falha ao processar webhook")
 
 
+class MercadoPagoWebhookAuthenticationError(
+    MercadoPagoWebhookOrchestrationError
+):
+    """Falha pública e opaca de autenticação do webhook."""
+
+
 class MercadoPagoWebhookOrchestrator:
     """Coordena autenticacao, resolucao e confirmacao de um pagamento."""
 
@@ -63,7 +69,7 @@ class MercadoPagoWebhookOrchestrator:
         except Exception:
             raise MercadoPagoWebhookOrchestrationError() from None
         if autenticado is not True:
-            raise MercadoPagoWebhookOrchestrationError()
+            raise MercadoPagoWebhookAuthenticationError()
 
         try:
             resolucao = self._resolver_pagamento(payment_id, notification_id)
