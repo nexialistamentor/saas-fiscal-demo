@@ -208,10 +208,12 @@ def _preflight_fixture():
         )
         assert (ordens[101].plano_id, ordens[101].offer_id,
                 ordens[101].commercial_model) == (7, None, None)
+        assert ordens[101].valor == Decimal("29.90")
         assert (ordens[102].plano_id, ordens[102].offer_id,
                 ordens[102].offer_code, ordens[102].commercial_model) == (
                     None, 11, "document-one-time-company", "one_time"
                 )
+        assert ordens[102].valor == Decimal("79.50")
         assert (ordens[103].offer_id, ordens[103].commercial_model) == (12, "monthly")
         assert (ordens[104].plano_id, ordens[104].offer_id) == (7, 11)
         assert (ordens[105].plano_id, ordens[105].offer_id) == (None, None)
@@ -252,21 +254,23 @@ def test_payments_durable_webhook_confirmation_routing_contract_red():
     router = routing.CheckoutDurableWebhookConfirmationRouter(
         Session, legacy, one_time
     )
-    valor = Decimal("79.50")
-    argumentos = ("8128", "4719", valor, "BRL")
+    valor_legacy = Decimal("29.90")
+    argumentos_legacy = ("8128", "4719", valor_legacy, "BRL")
+    valor_one_time = Decimal("79.50")
+    argumentos_one_time = ("8129", "4720", valor_one_time, "BRL")
     antes = _contagens(Session, models)
 
-    resposta = router.confirmar_pagamento_autorizado(101, *argumentos)
+    resposta = router.confirmar_pagamento_autorizado(101, *argumentos_legacy)
     assert resposta is retorno_legacy
-    assert legacy.chamadas == [(101, *argumentos)]
-    assert legacy.chamadas[0][3] is valor
+    assert legacy.chamadas == [(101, *argumentos_legacy)]
+    assert legacy.chamadas[0][3] is valor_legacy
     assert one_time.chamadas == []
 
-    resposta = router.confirmar_pagamento_autorizado(102, *argumentos)
+    resposta = router.confirmar_pagamento_autorizado(102, *argumentos_one_time)
     assert resposta is retorno_one_time
-    assert one_time.chamadas == [(102, *argumentos)]
-    assert one_time.chamadas[0][3] is valor
-    assert legacy.chamadas == [(101, *argumentos)]
+    assert one_time.chamadas == [(102, *argumentos_one_time)]
+    assert one_time.chamadas[0][3] is valor_one_time
+    assert legacy.chamadas == [(101, *argumentos_legacy)]
     assert _contagens(Session, models) == antes
 
     sql_roteamento = tuple(sql)
@@ -284,14 +288,16 @@ def test_payments_durable_webhook_confirmation_routing_contract_red():
     chamadas_validas = (list(legacy.chamadas), list(one_time.chamadas))
     for ordem_id in (103, 104, 105, 106, 107, 108, 109, 110, 111, 999999):
         with pytest.raises(erro_publico) as capturada:
-            router.confirmar_pagamento_autorizado(ordem_id, *argumentos)
-        _assert_sanitizado(capturada.value, erro_publico, ordem_id, *argumentos)
+            router.confirmar_pagamento_autorizado(ordem_id, *argumentos_one_time)
+        _assert_sanitizado(
+            capturada.value, erro_publico, ordem_id, *argumentos_one_time
+        )
         assert (legacy.chamadas, one_time.chamadas) == chamadas_validas
         assert _contagens(Session, models) == antes
 
     for ordem_id in (True, 101.0, "101", 0, -1, None):
         with pytest.raises(erro_publico):
-            router.confirmar_pagamento_autorizado(ordem_id, *argumentos)
+            router.confirmar_pagamento_autorizado(ordem_id, *argumentos_one_time)
     assert (legacy.chamadas, one_time.chamadas) == chamadas_validas
 
     mensagem = None
@@ -334,11 +340,17 @@ def test_payments_durable_webhook_confirmation_routing_contract_red():
         with pytest.raises(erro_publico) as capturada:
             routing.CheckoutDurableWebhookConfirmationRouter(
                 fabrica, legacy, one_time
-            ).confirmar_pagamento_autorizado(101, *argumentos)
-        _assert_sanitizado(capturada.value, erro_publico, segredo, *argumentos)
+            ).confirmar_pagamento_autorizado(101, *argumentos_legacy)
+        _assert_sanitizado(
+            capturada.value, erro_publico, segredo, *argumentos_legacy
+        )
         assert (legacy.chamadas, one_time.chamadas) == antes_chamadas
 
-    for selecionado, ordem_id in (("legacy", 101), ("one_time", 102)):
+    casos_falha_delegate = (
+        ("legacy", 101, argumentos_legacy, valor_legacy),
+        ("one_time", 102, argumentos_one_time, valor_one_time),
+    )
+    for selecionado, ordem_id, argumentos, valor in casos_falha_delegate:
         falho = _DelegateEspiao(falha=RuntimeError(segredo + selecionado))
         candidato = routing.CheckoutDurableWebhookConfirmationRouter(
             Session,
