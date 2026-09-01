@@ -79,15 +79,15 @@ def test_payments_mercado_pago_webhook_composition_contract_red(monkeypatch):
     def forbidden_getenv(*args, **kwargs):
         raise AssertionError("a composicao nao pode ler variaveis de ambiente")
 
-    monkeypatch.setattr(os, "getenv", forbidden_getenv)
-    monkeypatch.setattr(os, "environ", _ForbiddenEnvironment())
-
-    result = composition.criar_mercado_pago_webhook_orchestrator(
-        session_factory=session_factory,
-        signature_validator=signature_validator,
-        signature_secret=signature_secret,
-        payment_client=payment_client,
-    )
+    with monkeypatch.context() as environment_guard:
+        environment_guard.setattr(os, "getenv", forbidden_getenv)
+        environment_guard.setattr(os, "environ", _ForbiddenEnvironment())
+        result = composition.criar_mercado_pago_webhook_orchestrator(
+            session_factory=session_factory,
+            signature_validator=signature_validator,
+            signature_secret=signature_secret,
+            payment_client=payment_client,
+        )
 
     assert [entry[0] for entry in construction_order] == constructor_names
     assert all(entry[2] == {} for entry in construction_order)
