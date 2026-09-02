@@ -8,6 +8,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     LargeBinary,
     Numeric,
@@ -18,6 +19,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.types import JSON
 from sqlalchemy.sql import func
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -605,6 +607,12 @@ class CheckoutOfferGrant(Base):
         passive_deletes=True,
         order_by="CheckoutOfferGrantCapability.codigo",
     )
+    consumptions = relationship(
+        "CheckoutOfferGrantConsumption",
+        back_populates="grant",
+        passive_deletes=True,
+        order_by="CheckoutOfferGrantConsumption.created_at",
+    )
 
 
 class CheckoutOfferGrantCapability(Base):
@@ -631,6 +639,76 @@ class CheckoutOfferGrantCapability(Base):
     codigo = Column(String(120), nullable=False)
 
     grant = relationship("CheckoutOfferGrant", back_populates="capabilities")
+
+
+class CheckoutOfferGrantConsumption(Base):
+    __tablename__ = "checkout_offer_grant_consumptions"
+    __table_args__ = (
+        UniqueConstraint(
+            "idempotency_key",
+            name="uq_checkout_offer_grant_consumptions_idempotency_key",
+        ),
+        CheckConstraint(
+            "units > 0",
+            name="ck_checkout_offer_grant_consumptions_units_positive",
+        ),
+        CheckConstraint(
+            "usage_before >= 0",
+            name="ck_checkout_offer_grant_consumptions_usage_before_nonnegative",
+        ),
+        CheckConstraint(
+            "usage_after = usage_before + units",
+            name="ck_checkout_offer_grant_consumptions_usage_after_consistent",
+        ),
+        Index(
+            "ix_checkout_offer_grant_consumptions_scope_created_at",
+            "user_id",
+            "empresa_id",
+            "capability",
+            "created_at",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    grant_id = Column(
+        Integer,
+        ForeignKey("checkout_offer_grants.id"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(Integer, nullable=False)
+    empresa_id = Column(Integer, nullable=False)
+    capability = Column(String(120), nullable=False)
+    idempotency_key = Column(String(255), nullable=False)
+    request_fingerprint = Column(String(255), nullable=False)
+    units = Column(Integer, nullable=False)
+    usage_before = Column(Integer, nullable=False)
+    usage_after = Column(Integer, nullable=False)
+    created_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
+    )
+
+    grant = relationship("CheckoutOfferGrant", back_populates="consumptions")
+
+
+def _reject_checkout_offer_grant_consumption_mutation(
+    _mapper, _connection, _target
+) -> None:
+    raise InvalidRequestError(
+        "checkout_offer_grant_consumptions is append-only"
+    )
+
+
+event.listen(
+    CheckoutOfferGrantConsumption,
+    "before_update",
+    _reject_checkout_offer_grant_consumption_mutation,
+)
+event.listen(
+    CheckoutOfferGrantConsumption,
+    "before_delete",
+    _reject_checkout_offer_grant_consumption_mutation,
+)
 
 
 class EventoPagamento(Base):
