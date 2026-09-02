@@ -278,8 +278,17 @@ class CheckoutOfferOneTimeConfirmer:
             or payment.confirmado_em is None
             or grant.usage_unit != ordem.usage_unit
             or grant.usage_limit != ordem.usage_limit
-            or grant.usage_consumed != 0
-            or grant.estado != "active"
+            or type(grant.usage_consumed) is not int
+            or not 0 <= grant.usage_consumed <= grant.usage_limit
+            or grant.estado not in ("active", "exhausted", "revoked")
+            or (
+                grant.estado == "active"
+                and grant.usage_consumed == grant.usage_limit
+            )
+            or (
+                grant.estado == "exhausted"
+                and grant.usage_consumed != grant.usage_limit
+            )
         ):
             _fail()
         grant_capabilities = tuple(item.codigo for item in grant.capabilities)
