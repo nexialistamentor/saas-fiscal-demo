@@ -6,7 +6,10 @@ import gc
 import inspect
 import os
 import socket
+import subprocess
+import sys
 from importlib import import_module
+from pathlib import Path
 from types import NoneType
 from typing import get_args, get_type_hints
 
@@ -18,6 +21,61 @@ _CLIENT_PRIVATE_MARKER = "mp-client-private-marker-7c1"
 _CONFIG_PRIVATE_MARKER = "mp-config-private-marker-7c1"
 _INVALID_PRIVATE_MARKER = "mp-invalid-private-marker-7c1"
 _PARTIAL_PRIVATE_MARKER = "mp-partial-private-marker-7c1"
+_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _assert_clean_import_boundary():
+    code = f"""
+import builtins
+import socket
+import sys
+
+sys.path.insert(0, {str(_ROOT)!r})
+
+def forbidden_effect(*args, **kwargs):
+    raise AssertionError("isolated import touched I/O or network")
+
+def forbid_network(event, args):
+    if event in {{
+        "socket.bind",
+        "socket.connect",
+        "socket.getaddrinfo",
+        "socket.gethostbyaddr",
+    }}:
+        raise AssertionError("isolated import touched network")
+
+builtins.open = forbidden_effect
+socket.create_connection = forbidden_effect
+sys.addaudithook(forbid_network)
+
+import app.services.mercado_pago_runtime_lifecycle as lifecycle
+
+for forbidden_module in (
+    "app.services.mercado_pago_composition",
+    "app.models",
+    "app.database",
+    "app.main",
+    "tests.conftest",
+):
+    assert forbidden_module not in sys.modules, forbidden_module
+
+assert callable(lifecycle.compor_mercado_pago)
+
+def replacement(*args, **kwargs):
+    raise AssertionError("composition must not run during import")
+
+lifecycle.compor_mercado_pago = replacement
+assert lifecycle.compor_mercado_pago is replacement
+assert callable(lifecycle.compor_mercado_pago)
+"""
+    completed = subprocess.run(
+        [sys.executable, "-I", "-c", code],
+        cwd=_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
 
 
 class _ForbiddenEnvironment(dict):
@@ -154,6 +212,7 @@ def _assert_opaque(value, *private_markers):
 
 
 def test_payments_mercado_pago_runtime_lifecycle_contract_red(monkeypatch):
+    _assert_clean_import_boundary()
     lifecycle = import_module(_TARGET_MODULE)
 
     assert set(lifecycle.__all__) == {
