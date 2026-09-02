@@ -1,6 +1,7 @@
 """Router HTTP minimo para webhooks do Mercado Pago."""
 
 from fastapi import APIRouter
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import Response
@@ -92,7 +93,7 @@ def criar_mercado_pago_webhook_router(*, orchestrator, max_body_bytes):
                 return Response(status_code=400)
 
             try:
-                orchestrator.processar(evento, assinatura)
+                await run_in_threadpool(processar, evento, assinatura)
             except MercadoPagoWebhookAuthenticationError:
                 return Response(status_code=401)
             except MercadoPagoWebhookOrchestrationError:
