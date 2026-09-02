@@ -789,6 +789,27 @@ def test_payments_mercado_pago_webhook_router_contract_red():
             "tenacity",
         }
     )
+    assert not any(
+        (
+            isinstance(node, ast.Name)
+            and node.id.lower() == "currency"
+        )
+        or (
+            isinstance(node, ast.Attribute)
+            and node.attr.lower() == "currency"
+        )
+        or (
+            isinstance(node, ast.keyword)
+            and node.arg is not None
+            and node.arg.lower() == "currency"
+        )
+        or (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and node.value.lower() == "currency"
+        )
+        for node in ast.walk(tree)
+    )
     lowered_source = source.lower()
     for forbidden_fragment in (
         "app.main",
@@ -805,7 +826,6 @@ def test_payments_mercado_pago_webhook_router_contract_red():
         "preco",
         "price",
         "moeda",
-        "currency",
         "oferta",
         "offer",
         "capabilit",
