@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 import os
 import logging
+import httpx
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -53,11 +54,14 @@ from app.routers.contador_router import router as contador_router
 from app.routers.inteligencia_router import inteligencia_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.assistente_router import assistente_router
+from app.routers.checkout_offer_one_time_router import criar_checkout_offer_one_time_router
+from app.routers.mercado_pago_webhook_router import criar_mercado_pago_webhook_router
 from app.xml_security import validar_upload_xml
 from app.security import get_usuario_atual, require_role, verificar_token
 from app.rate_limit import limiter
 from app.agents.agent_scheduler import AgentScheduler
 from app.services.request_log_retention import purga_request_logs_mais_antigos_que
+from app.services.mercado_pago_runtime_lifecycle import ativar_mercado_pago
 from app.services.normative_update_service import (
     expirar_regras_revogadas,
     listar_alertas_normativos_pendentes,
@@ -135,11 +139,27 @@ async def lifespan(app: FastAPI):
         db.close()
     await asyncio.to_thread(_startup_purge_request_logs_sync)
 
-    # Scheduler desativado temporariamente para estabilizar o banco
-    # asyncio.create_task(scheduler.iniciar_loop(intervalo_segundos=300))  # multi-tenant
-    # asyncio.create_task(scheduler.iniciar_loop(empresa_id=1, intervalo_segundos=300))  # uma empresa
-
-    yield
+    activation = ativar_mercado_pago(
+        values=dict(os.environ),
+        session_factory=SessionLocal,
+        http_client_factory=httpx.Client,
+    )
+    try:
+        if activation is not None:
+            checkout_router = criar_checkout_offer_one_time_router(
+                application_service=activation.composition.checkout_application,
+                current_user_dependency=get_usuario_atual,
+            )
+            app.include_router(checkout_router)
+            webhook_router = criar_mercado_pago_webhook_router(
+                orchestrator=activation.composition.webhook_orchestrator,
+                max_body_bytes=activation.composition.max_body_bytes,
+            )
+            app.include_router(webhook_router)
+        yield
+    finally:
+        if activation is not None:
+            activation.close()
 
 
 app = FastAPI(
@@ -1003,5 +1023,4 @@ def criar_planos(
         "mensagem": f"Planos criados: {', '.join(criados)}" if criados else "Planos já existem",
         "criados": criados,
     }
-
 
