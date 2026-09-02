@@ -664,15 +664,55 @@ def test_payments_mercado_pago_webhook_router_contract_red():
         "query_params",
         "body",
     ]
-    process_calls = [
+    direct_process_calls = [
         node
         for node in calls
         if isinstance(node.func, ast.Attribute)
         and node.func.attr == "processar"
     ]
+    threadpool_process_calls = [
+        node
+        for node in calls
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id == "run_in_threadpool"
+            and node.args
+            and (
+                (
+                    isinstance(node.args[0], ast.Name)
+                    and node.args[0].id == "processar"
+                )
+                or (
+                    isinstance(node.args[0], ast.Attribute)
+                    and node.args[0].attr == "processar"
+                )
+            )
+        )
+    ]
+    process_calls = direct_process_calls + threadpool_process_calls
     assert len(process_calls) == 1
-    assert len(process_calls[0].args) == 2
-    assert process_calls[0].keywords == []
+    process_call = process_calls[0]
+    if direct_process_calls:
+        assert isinstance(process_call.func.value, ast.Name)
+        assert process_call.func.value.id == "orchestrator"
+        expected_process_args = ("evento", "assinatura")
+    else:
+        assert isinstance(
+            next(
+                parent
+                for parent in ast.walk(tree)
+                if process_call in ast.iter_child_nodes(parent)
+            ),
+            ast.Await,
+        )
+        expected_process_args = ("processar", "evento", "assinatura")
+    assert tuple(
+        argument.id
+        for argument in process_call.args
+        if isinstance(argument, ast.Name)
+    ) == expected_process_args
+    assert len(process_call.args) == len(expected_process_args)
+    assert process_call.keywords == []
     stream_calls = [
         node
         for node in calls
