@@ -1,9 +1,22 @@
 """Manage the explicit Mercado Pago runtime lifecycle."""
 
-from app.services.mercado_pago_composition import compor_mercado_pago
 from app.services.mercado_pago_runtime_config import (
     resolver_mercado_pago_runtime_config,
 )
+
+
+def compor_mercado_pago(*, values, session_factory, http_client):
+    """Delegate lazily to the canonical Mercado Pago composition."""
+
+    from app.services.mercado_pago_composition import (
+        compor_mercado_pago as compor_mercado_pago_canonico,
+    )
+
+    return compor_mercado_pago_canonico(
+        values=values,
+        session_factory=session_factory,
+        http_client=http_client,
+    )
 
 
 class MercadoPagoRuntimeActivation:
