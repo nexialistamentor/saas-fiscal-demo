@@ -111,6 +111,19 @@ def _normalizar_sql(value):
     return " ".join(str(value).lower().split())
 
 
+def _assert_postgresql_identifier_limit(test_source):
+    frozen_schema_names = set(
+        re.findall(r'''["']((?:ck|uq|ix|fk)_[a-z0-9_]+)["']''', test_source)
+    )
+    overlength = sorted(
+        name for name in frozen_schema_names if len(name) > 63
+    )
+    assert not overlength, (
+        "identificadores PostgreSQL excedem 63 caracteres: "
+        + ", ".join(overlength)
+    )
+
+
 def _carregar_migration(path):
     spec = util.spec_from_file_location(_MIGRATION_NAME, path)
     assert spec is not None and spec.loader is not None
@@ -365,6 +378,7 @@ def _assert_integrity_error(Session, entity):
 
 def test_payments_checkout_offer_limited_campaign_foundation_contract_red():
     repo_root = Path(__file__).resolve().parents[1]
+    _assert_postgresql_identifier_limit(Path(__file__).read_text(encoding="utf-8"))
     migration_path = (
         repo_root / "migrations" / "versions" / f"{_MIGRATION_NAME}.py"
     )
@@ -523,10 +537,10 @@ def test_payments_checkout_offer_limited_campaign_foundation_contract_red():
     assert set(reservation_migration_checks) == {
         "ck_checkout_offer_campaign_reservations_estado_valido",
         "ck_checkout_offer_campaign_reservations_intervalo_valido",
-        "ck_checkout_offer_campaign_reservations_estado_timestamps_coerentes",
+        "ck_checkout_offer_campaign_reservations_timestamps_coerentes",
     }
     reservation_coherence = reservation_migration_checks[
-        "ck_checkout_offer_campaign_reservations_estado_timestamps_coerentes"
+        "ck_checkout_offer_campaign_reservations_timestamps_coerentes"
     ]
     for state, timestamp in (
         ("reserved", None),
@@ -563,7 +577,7 @@ def test_payments_checkout_offer_limited_campaign_foundation_contract_red():
         index
         for index in recorder.indexes
         if index["name"]
-        == "ix_checkout_offer_campaign_reservations_campaign_estado_expires_at"
+        == "ix_checkout_offer_campaign_reservations_camp_estado_expires_at"
     ]
     assert len(reservation_quota_index) == 1
     assert reservation_quota_index[0]["table_name"] == (
@@ -726,7 +740,7 @@ def test_payments_checkout_offer_limited_campaign_foundation_contract_red():
         index
         for index in reservation_table.indexes
         if index.name
-        == "ix_checkout_offer_campaign_reservations_campaign_estado_expires_at"
+        == "ix_checkout_offer_campaign_reservations_camp_estado_expires_at"
     ]
     assert len(model_quota_indexes) == 1
     assert tuple(column.name for column in model_quota_indexes[0].columns) == (
