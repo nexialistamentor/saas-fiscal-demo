@@ -131,6 +131,7 @@ def _postgresql(models):
             models.Empresa.__table__,
             models.CheckoutOffer.__table__,
             models.CheckoutOfferCapability.__table__,
+            models.CheckoutOfferCampaign.__table__,
             models.OrdemCheckout.__table__,
             models.OrdemCheckoutCapability.__table__,
             models.DocumentoIngerido.__table__,
