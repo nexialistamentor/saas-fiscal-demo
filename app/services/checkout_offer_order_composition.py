@@ -10,12 +10,16 @@ from sqlalchemy.orm import selectinload
 
 from app.models import (
     CheckoutOffer,
+    CheckoutOfferCampaignReservation,
     Empresa,
     OrdemCheckout,
     OrdemCheckoutCapability,
     User,
 )
 from app.services.checkout_offer_catalog import checkout_offer_snapshot
+from app.services.checkout_offer_campaign_reservation import (
+    CheckoutOfferCampaignReservationAuthority,
+)
 
 
 _MENSAGEM_PUBLICA = "Nao foi possivel criar a ordem de checkout"
@@ -69,7 +73,11 @@ class CheckoutOfferOrderComposer:
             existente = self._por_chave(sessao, idempotency_key)
             if existente is not None:
                 return self._retry(
-                    existente, authenticated_user_id, empresa_id, offer_code
+                    sessao,
+                    existente,
+                    authenticated_user_id,
+                    empresa_id,
+                    offer_code,
                 )
 
             user = sessao.get(User, authenticated_user_id)
@@ -118,6 +126,13 @@ class CheckoutOfferOrderComposer:
             sessao.add(ordem)
             try:
                 sessao.flush()
+                CheckoutOfferCampaignReservationAuthority(
+                    sessao
+                ).reservar_para_ordem(
+                    authenticated_user_id=authenticated_user_id,
+                    empresa_id=empresa_id,
+                    ordem_id=ordem.id,
+                )
                 resultado = self._snapshot(ordem)
                 sessao.commit()
                 return resultado
@@ -127,7 +142,11 @@ class CheckoutOfferOrderComposer:
                 if existente is None:
                     raise CheckoutOfferOrderCompositionError()
                 return self._retry(
-                    existente, authenticated_user_id, empresa_id, offer_code
+                    sessao,
+                    existente,
+                    authenticated_user_id,
+                    empresa_id,
+                    offer_code,
                 )
         except CheckoutOfferOrderCompositionError:
             if sessao is not None and sessao.in_transaction():
@@ -156,13 +175,39 @@ class CheckoutOfferOrderComposer:
         ).scalar_one_or_none()
 
     @classmethod
-    def _retry(cls, ordem, user_id, empresa_id, offer_code):
+    def _retry(cls, sessao, ordem, user_id, empresa_id, offer_code):
         if (
             ordem.offer_id is None
             or ordem.user_id != user_id
             or ordem.empresa_id != empresa_id
             or ordem.offer_code != offer_code
         ):
+            raise CheckoutOfferOrderCompositionError()
+
+        campaign_snapshot = (
+            ordem.campaign_id,
+            ordem.campaign_code,
+            ordem.campaign_contract_version,
+            ordem.campaign_purchase_limit,
+            ordem.campaign_reservation_expires_at,
+        )
+        if all(value is None for value in campaign_snapshot):
+            reservation_id = sessao.scalar(
+                select(CheckoutOfferCampaignReservation.id)
+                .where(CheckoutOfferCampaignReservation.ordem_id == ordem.id)
+                .limit(1)
+            )
+            if reservation_id is not None:
+                raise CheckoutOfferOrderCompositionError()
+        elif all(value is not None for value in campaign_snapshot):
+            CheckoutOfferCampaignReservationAuthority(
+                sessao
+            ).reservar_para_ordem(
+                authenticated_user_id=user_id,
+                empresa_id=empresa_id,
+                ordem_id=ordem.id,
+            )
+        else:
             raise CheckoutOfferOrderCompositionError()
         return cls._snapshot(ordem)
 
