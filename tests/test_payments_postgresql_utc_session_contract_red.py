@@ -119,6 +119,11 @@ with engine.connect() as connection:
     assert second_pid == first_pid, (first_pid, second_pid)
     second_timezone = connection.execute(text("SHOW TIME ZONE")).scalar_one()
     assert second_timezone == "UTC", second_timezone
+    transaction_probe = connection.execute(text("SELECT 1")).scalar_one()
+    assert transaction_probe == 1, transaction_probe
+    connection.rollback()
+    timezone_after_rollback = connection.execute(text("SHOW TIME ZONE")).scalar_one()
+    assert timezone_after_rollback == "UTC", timezone_after_rollback
 
 engine.dispose()
 """
