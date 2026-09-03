@@ -3,7 +3,7 @@ import os
 from typing import Generator
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -117,6 +117,30 @@ def _build_connection_url_and_kwargs(raw_url: str, environment: str) -> tuple[st
 
 DATABASE_URL, _engine_kwargs = _build_connection_url_and_kwargs(_RAW_DATABASE_URL, ENVIRONMENT)
 engine = create_engine(DATABASE_URL, **_engine_kwargs)
+
+
+def _set_postgresql_session_timezone_utc(
+    dbapi_connection: object,
+    _connection_record: object,
+    _connection_proxy: object,
+) -> None:
+    """Reassert UTC durably before a pooled PostgreSQL connection is delivered."""
+    original_autocommit = dbapi_connection.autocommit
+    cursor = None
+    try:
+        dbapi_connection.autocommit = True
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET SESSION TIME ZONE 'UTC'")
+    finally:
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            dbapi_connection.autocommit = original_autocommit
+
+
+if _parse_scheme(DATABASE_URL) in ("postgresql", "postgres"):
+    event.listen(engine, "checkout", _set_postgresql_session_timezone_utc)
 
 SessionLocal = sessionmaker(
     autocommit=False,
