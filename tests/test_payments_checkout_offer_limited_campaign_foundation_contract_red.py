@@ -120,9 +120,12 @@ def _carregar_migration(path):
 
 
 def _elementos_tabela(recorder, table_name, kind):
+    table = recorder.tables.get(table_name)
+    if table is None:
+        return ()
     return tuple(
         element
-        for element in recorder.tables[table_name]["elements"]
+        for element in table["elements"]
         if isinstance(element, kind)
     )
 
