@@ -16,6 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     event,
+    text,
 )
 from sqlalchemy.types import JSON
 from sqlalchemy.sql import func
@@ -485,6 +486,19 @@ class OrdemCheckout(Base):
             "AND length(trim(usage_unit)) > 0 AND usage_limit > 0)",
             name="ck_ordens_checkout_offer_one_time_coerente",
         ),
+        CheckConstraint(
+            "(campaign_id IS NULL AND campaign_code IS NULL "
+            "AND campaign_contract_version IS NULL "
+            "AND campaign_purchase_limit IS NULL "
+            "AND campaign_reservation_expires_at IS NULL) "
+            "OR (campaign_id IS NOT NULL AND campaign_code IS NOT NULL "
+            "AND campaign_contract_version IS NOT NULL "
+            "AND campaign_purchase_limit IS NOT NULL "
+            "AND campaign_reservation_expires_at IS NOT NULL "
+            "AND campaign_contract_version > 0 "
+            "AND campaign_purchase_limit > 0)",
+            name="ck_ordens_checkout_campaign_snapshot_coerente",
+        ),
     )
 
     id = Column(Integer, primary_key=True)
@@ -510,6 +524,15 @@ class OrdemCheckout(Base):
     billing_period = Column(String(20), nullable=True)
     usage_unit = Column(String(50), nullable=True)
     usage_limit = Column(Integer, nullable=True)
+    campaign_id = Column(
+        Integer,
+        ForeignKey("checkout_offer_campaigns.id"),
+        nullable=True,
+    )
+    campaign_code = Column(String(120), nullable=True)
+    campaign_contract_version = Column(Integer, nullable=True)
+    campaign_purchase_limit = Column(Integer, nullable=True)
+    campaign_reservation_expires_at = Column(DateTime, nullable=True)
     criado_em = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
     atualizado_em = Column(
         DateTime,
@@ -806,6 +829,100 @@ class CheckoutOffer(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+
+class CheckoutOfferCampaign(Base):
+    __tablename__ = "checkout_offer_campaigns"
+    __table_args__ = (
+        UniqueConstraint("codigo", name="uq_checkout_offer_campaigns_codigo"),
+        CheckConstraint(
+            "codigo = lower(codigo) AND codigo = trim(codigo) "
+            "AND length(codigo) > 0 AND codigo NOT LIKE '%--%'",
+            name="ck_checkout_offer_campaigns_codigo_canonico",
+        ),
+        CheckConstraint(
+            "estado IN ('draft', 'active', 'retired')",
+            name="ck_checkout_offer_campaigns_estado_valido",
+        ),
+        CheckConstraint(
+            "purchase_limit > 0",
+            name="ck_checkout_offer_campaigns_purchase_limit_positivo",
+        ),
+        CheckConstraint(
+            "reservation_ttl_seconds > 0",
+            name="ck_checkout_offer_campaigns_reservation_ttl_seconds_positivo",
+        ),
+        CheckConstraint(
+            "contract_version > 0",
+            name="ck_checkout_offer_campaigns_contract_version_positivo",
+        ),
+        Index(
+            "uq_checkout_offer_campaigns_offer_active",
+            "offer_id",
+            unique=True,
+            postgresql_where=text("estado = 'active'"),
+            sqlite_where=text("estado = 'active'"),
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    codigo = Column(String(120), nullable=False)
+    offer_id = Column(Integer, ForeignKey("checkout_offers.id"), nullable=False)
+    estado = Column(String(20), nullable=False)
+    purchase_limit = Column(Integer, nullable=False)
+    reservation_ttl_seconds = Column(Integer, nullable=False)
+    contract_version = Column(Integer, nullable=False)
+    criado_em = Column(DateTime, nullable=False)
+    atualizado_em = Column(DateTime, nullable=False)
+
+
+class CheckoutOfferCampaignReservation(Base):
+    __tablename__ = "checkout_offer_campaign_reservations"
+    __table_args__ = (
+        UniqueConstraint(
+            "ordem_id",
+            name="uq_checkout_offer_campaign_reservations_ordem_id",
+        ),
+        CheckConstraint(
+            "estado IN ('reserved', 'confirmed', 'released', 'expired')",
+            name="ck_checkout_offer_campaign_reservations_estado_valido",
+        ),
+        CheckConstraint(
+            "expires_at > reserved_at",
+            name="ck_checkout_offer_campaign_reservations_intervalo_valido",
+        ),
+        CheckConstraint(
+            "(estado = 'reserved' AND confirmed_at IS NULL "
+            "AND released_at IS NULL AND expired_at IS NULL) "
+            "OR (estado = 'confirmed' AND confirmed_at IS NOT NULL "
+            "AND released_at IS NULL AND expired_at IS NULL) "
+            "OR (estado = 'released' AND confirmed_at IS NULL "
+            "AND released_at IS NOT NULL AND expired_at IS NULL) "
+            "OR (estado = 'expired' AND confirmed_at IS NULL "
+            "AND released_at IS NULL AND expired_at IS NOT NULL)",
+            name="ck_checkout_offer_campaign_reservations_timestamps_coerentes",
+        ),
+        Index(
+            "ix_checkout_offer_campaign_reservations_camp_estado_expires_at",
+            "campaign_id",
+            "estado",
+            "expires_at",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    campaign_id = Column(
+        Integer,
+        ForeignKey("checkout_offer_campaigns.id"),
+        nullable=False,
+    )
+    ordem_id = Column(Integer, ForeignKey("ordens_checkout.id"), nullable=False)
+    estado = Column(String(20), nullable=False)
+    reserved_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    confirmed_at = Column(DateTime, nullable=True)
+    released_at = Column(DateTime, nullable=True)
+    expired_at = Column(DateTime, nullable=True)
 
 
 class CheckoutOfferCapability(Base):
