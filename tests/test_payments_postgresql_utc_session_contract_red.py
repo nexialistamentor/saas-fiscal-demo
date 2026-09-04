@@ -1,19 +1,14 @@
 import os
-import socket
 import subprocess
 import sys
 import time
 import uuid
 from pathlib import Path
 
+import psycopg2
+
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-def _free_port() -> int:
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
 
 
 def _run(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -31,7 +26,7 @@ def test_payments_postgresql_utc_session_contract_red() -> None:
     container = f"mei-0049d0-utc-{uuid.uuid4().hex[:12]}"
     database = "mei_utc_contract"
     password = uuid.uuid4().hex
-    port = _free_port()
+    container_started = False
 
     try:
         result = _run(
@@ -46,61 +41,82 @@ def test_payments_postgresql_utc_session_contract_red() -> None:
             "-e",
             f"POSTGRES_DB={database}",
             "-p",
-            f"127.0.0.1:{port}:5432",
+            "127.0.0.1::5432",
             "postgres:16-alpine",
         )
         assert result.returncode == 0, result.stderr
+        container_started = True
+
+        published = _run("docker", "port", container, "5432/tcp")
+        assert published.returncode == 0, published.stderr
+        mappings = [line.strip() for line in published.stdout.splitlines() if line.strip()]
+        assert len(mappings) == 1, mappings
+        host, separator, raw_port = mappings[0].rpartition(":")
+        assert separator == ":", mappings[0]
+        assert host == "127.0.0.1", host
+        assert raw_port.isascii() and raw_port.isdigit(), raw_port
+        host_port = int(raw_port)
+        assert 1 <= host_port <= 65535, host_port
 
         deadline = time.monotonic() + 60
         while time.monotonic() < deadline:
-            ready = _run(
-                "docker",
-                "exec",
-                container,
-                "pg_isready",
-                "-U",
-                "postgres",
-                "-d",
-                database,
-            )
-            if ready.returncode == 0:
+            connection = None
+            try:
+                connection = psycopg2.connect(
+                    host="127.0.0.1",
+                    port=host_port,
+                    dbname=database,
+                    user="postgres",
+                    password=password,
+                    connect_timeout=1,
+                )
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                    readiness_probe = cursor.fetchone()
+                assert readiness_probe == (1,), readiness_probe
                 break
-            time.sleep(0.25)
+            except psycopg2.Error:
+                remaining = deadline - time.monotonic()
+                if remaining > 0:
+                    time.sleep(min(0.25, remaining))
+            finally:
+                if connection is not None:
+                    connection.close()
         else:
-            raise AssertionError("PostgreSQL 16 Alpine did not become ready")
+            raise AssertionError("PostgreSQL 16 Alpine did not become ready over published TCP")
 
-        configured = _run(
-            "docker",
-            "exec",
-            container,
-            "psql",
-            "-X",
-            "-v",
-            "ON_ERROR_STOP=1",
-            "-U",
-            "postgres",
-            "-d",
-            "postgres",
-            "-c",
-            f"ALTER DATABASE {database} SET TIME ZONE 'America/Sao_Paulo'",
+        configuration_connection = psycopg2.connect(
+            host="127.0.0.1",
+            port=host_port,
+            dbname="postgres",
+            user="postgres",
+            password=password,
+            connect_timeout=1,
         )
-        assert configured.returncode == 0, configured.stderr
+        try:
+            configuration_connection.autocommit = True
+            with configuration_connection.cursor() as cursor:
+                cursor.execute(
+                    "ALTER DATABASE mei_utc_contract SET TIME ZONE 'America/Sao_Paulo'"
+                )
+        finally:
+            configuration_connection.close()
 
-        non_utc_default = _run(
-            "docker",
-            "exec",
-            container,
-            "psql",
-            "-XAt",
-            "-U",
-            "postgres",
-            "-d",
-            database,
-            "-c",
-            "SHOW TIME ZONE",
+        default_connection = psycopg2.connect(
+            host="127.0.0.1",
+            port=host_port,
+            dbname=database,
+            user="postgres",
+            password=password,
+            connect_timeout=1,
         )
-        assert non_utc_default.returncode == 0, non_utc_default.stderr
-        assert non_utc_default.stdout.strip() == "America/Sao_Paulo"
+        try:
+            with default_connection.cursor() as cursor:
+                cursor.execute("SHOW TIME ZONE")
+                non_utc_default = cursor.fetchone()
+            assert non_utc_default == ("America/Sao_Paulo",), non_utc_default
+        finally:
+            default_connection.close()
 
         probe = """
 from sqlalchemy import text
@@ -132,7 +148,7 @@ engine.dispose()
             {
                 "DATABASE_URL": (
                     f"postgresql+psycopg2://postgres:{password}"
-                    f"@127.0.0.1:{port}/{database}?sslmode=disable"
+                    f"@127.0.0.1:{host_port}/{database}?sslmode=disable"
                 ),
                 "ENVIRONMENT": "development",
                 "PYTHONPATH": str(ROOT),
@@ -141,4 +157,5 @@ engine.dispose()
         contract = _run(sys.executable, "-c", probe, env=env)
         assert contract.returncode == 0, contract.stderr
     finally:
-        _run("docker", "rm", "--force", container)
+        if container_started:
+            _run("docker", "rm", "--force", container)
