@@ -1,5 +1,6 @@
 """Adaptador offline do Mercado Pago para ofertas de pagamento unico."""
 
+from datetime import datetime, timezone
 from decimal import Decimal
 import re
 from urllib.parse import urlsplit
@@ -53,6 +54,8 @@ class MercadoPagoCheckoutOfferOneTimeGateway:
         valor,
         moeda,
         idempotency_key,
+        expiration_date_from=None,
+        expiration_date_to=None,
     ):
         for identificador in (ordem_id, user_id, empresa_id):
             if (
@@ -83,6 +86,16 @@ class MercadoPagoCheckoutOfferOneTimeGateway:
             or "\n" in idempotency_key
         ):
             raise MercadoPagoCheckoutOfferOneTimeError()
+        if (expiration_date_from is None) != (expiration_date_to is None):
+            raise MercadoPagoCheckoutOfferOneTimeError()
+        if expiration_date_from is not None and (
+            type(expiration_date_from) is not datetime
+            or type(expiration_date_to) is not datetime
+            or expiration_date_from.tzinfo is not None
+            or expiration_date_to.tzinfo is not None
+            or expiration_date_from >= expiration_date_to
+        ):
+            raise MercadoPagoCheckoutOfferOneTimeError()
 
         payload = {
             "external_reference": str(ordem_id),
@@ -96,6 +109,16 @@ class MercadoPagoCheckoutOfferOneTimeGateway:
             "notification_url": self._notification_url,
             "back_urls": dict(self._back_urls),
         }
+        if expiration_date_from is not None:
+            payload.update({
+                "expires": True,
+                "expiration_date_from": expiration_date_from.replace(
+                    tzinfo=timezone.utc
+                ).isoformat(timespec="milliseconds"),
+                "expiration_date_to": expiration_date_to.replace(
+                    tzinfo=timezone.utc
+                ).isoformat(timespec="milliseconds"),
+            })
         try:
             resposta = self._cliente_preferencias.criar_preferencia(
                 payload=payload,

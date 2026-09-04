@@ -4,6 +4,7 @@ O primeiro ponto causal e a importacao direta do modulo futuro. O contrato
 nao usa rede, SDK, credenciais, banco de dados ou catalogo.
 """
 
+from datetime import datetime
 from decimal import Decimal
 from importlib import import_module
 from inspect import Parameter, signature
@@ -55,12 +56,15 @@ def test_mercado_pago_one_time_offer_gateway_contract_red():
     ).parameters
     assert list(parametros) == [
         "self", "ordem_id", "user_id", "empresa_id", "offer_code",
-        "valor", "moeda", "idempotency_key",
+        "valor", "moeda", "idempotency_key", "expiration_date_from",
+        "expiration_date_to",
     ]
     assert all(
         parametro.kind is Parameter.POSITIONAL_OR_KEYWORD
         for parametro in parametros.values()
     )
+    assert parametros["expiration_date_from"].default is None
+    assert parametros["expiration_date_to"].default is None
 
     urls = {
         "notification_url": "https://fisco.example/webhooks/mercado-pago",
@@ -106,6 +110,9 @@ def test_mercado_pago_one_time_offer_gateway_contract_red():
         "idempotency_key": "offer-one-time-order-91",
     }]
     payload = cliente.chamadas[0]["payload"]
+    assert "expires" not in payload
+    assert "expiration_date_from" not in payload
+    assert "expiration_date_to" not in payload
     unit_price = payload["items"][0]["unit_price"]
     assert type(unit_price) is float
     assert Decimal(str(unit_price)) == dados["valor"]
@@ -121,6 +128,74 @@ def test_mercado_pago_one_time_offer_gateway_contract_red():
         "credencial", "41", "301", "offer-one-time-order-91",
     ):
         assert ausente not in payload_serializado
+
+    expiration_date_from = datetime(2026, 9, 4, 12, 0, 0, 123000)
+    expiration_date_to = datetime(2026, 9, 4, 13, 0, 0, 456000)
+    cliente_expiry = _ClientePreferenciasFalso(resposta=resposta_valida)
+    gateway_expiry = mercado_pago.MercadoPagoCheckoutOfferOneTimeGateway(
+        cliente_preferencias=cliente_expiry, **urls
+    )
+    resultado_expiry = gateway_expiry.criar_cobranca(
+        **dados,
+        expiration_date_from=expiration_date_from,
+        expiration_date_to=expiration_date_to,
+    )
+    assert cliente_expiry.chamadas == [{
+        "payload": {
+            "external_reference": "91",
+            "items": [{
+                "id": "document-one-time-company",
+                "title": "document-one-time-company",
+                "quantity": 1,
+                "unit_price": 79.5,
+                "currency_id": "BRL",
+            }],
+            "notification_url": urls["notification_url"],
+            "back_urls": urls["back_urls"],
+            "expires": True,
+            "expiration_date_from": "2026-09-04T12:00:00.123+00:00",
+            "expiration_date_to": "2026-09-04T13:00:00.456+00:00",
+        },
+        "idempotency_key": "offer-one-time-order-91",
+    }]
+    assert resultado_expiry == {
+        "provider_order_id": "mp-pref-one-time-91",
+        "checkout_url": CHECKOUT_URL,
+    }
+    assert set(resultado_expiry) == {"provider_order_id", "checkout_url"}
+
+    instante_valido = datetime(2026, 9, 4, 12, 0, 0)
+    instante_posterior = datetime(2026, 9, 4, 13, 0, 0)
+    instante_aware = datetime.fromisoformat("2026-09-04T12:00:00+00:00")
+    expiracoes_invalidas = (
+        (instante_valido, None),
+        (None, instante_posterior),
+        (instante_valido, instante_valido),
+        (instante_posterior, instante_valido),
+        (instante_aware, instante_posterior),
+        (instante_valido, instante_aware),
+        ("2026-09-04T12:00:00", instante_posterior),
+        (instante_valido, "2026-09-04T13:00:00"),
+    )
+    for inicio_invalido, fim_invalido in expiracoes_invalidas:
+        cliente_expiry_invalido = _ClientePreferenciasFalso(
+            resposta=resposta_valida
+        )
+        gateway_expiry_invalido = (
+            mercado_pago.MercadoPagoCheckoutOfferOneTimeGateway(
+                cliente_preferencias=cliente_expiry_invalido, **urls
+            )
+        )
+        with pytest.raises(
+            mercado_pago.MercadoPagoCheckoutOfferOneTimeError
+        ) as capturada:
+            gateway_expiry_invalido.criar_cobranca(
+                **dados,
+                expiration_date_from=inicio_invalido,
+                expiration_date_to=fim_invalido,
+            )
+        _assert_sanitizado(capturada.value, mercado_pago)
+        assert cliente_expiry_invalido.chamadas == []
 
     # A API nao admite nomes/precos do browser, dados de catalogo, estado ou
     # campos que pertencem exclusivamente a resposta do provedor.

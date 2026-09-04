@@ -1,6 +1,7 @@
 """Despacho offline de ordens one-time baseadas em oferta persistida."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 import re
 from urllib.parse import urlsplit
@@ -9,7 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from app.models import OrdemCheckout
+from app.models import CheckoutOfferCampaignReservation, OrdemCheckout
+from app.services.checkout_offer_campaign_reservation import (
+    CheckoutOfferCampaignReservationAuthority,
+)
 
 
 _MENSAGEM_PUBLICA = "Nao foi possivel despachar a ordem de checkout"
@@ -47,6 +51,11 @@ class _OrderSnapshot:
     idempotency_key: str
     estado: str
     plano_id: None
+    campaign_id: int | None
+    campaign_code: str | None
+    campaign_contract_version: int | None
+    campaign_purchase_limit: int | None
+    campaign_reservation_expires_at: datetime | None
     provider_order_id: str | None
     checkout_url: str | None
 
@@ -74,13 +83,15 @@ class CheckoutOfferOneTimeDispatcher:
             self._positive_id(empresa_id)
             self._positive_id(ordem_id)
 
-            first = self._load_snapshot(
+            first, reservation = self._load_dispatch_context(
                 ordem_id, authenticated_user_id, empresa_id
             )
             if first.provider_order_id is not None:
                 return self._projection(first)
 
-            response = self._gateway.criar_cobranca(
+            reservation_terms = reservation
+
+            gateway_data = dict(
                 ordem_id=first.id,
                 user_id=first.user_id,
                 empresa_id=first.empresa_id,
@@ -89,17 +100,23 @@ class CheckoutOfferOneTimeDispatcher:
                 moeda=first.moeda,
                 idempotency_key=first.idempotency_key,
             )
+            if reservation is not None:
+                gateway_data.update(
+                    expiration_date_from=reservation.reserved_at,
+                    expiration_date_to=reservation.expires_at,
+                )
+            response = self._gateway.criar_cobranca(**gateway_data)
             provider_order_id, checkout_url = self._gateway_response(response)
             return self._persist(
                 first, authenticated_user_id, empresa_id,
-                provider_order_id, checkout_url,
+                provider_order_id, checkout_url, reservation_terms,
             )
         except CheckoutOfferOneTimeDispatchError:
             raise
         except Exception:
             raise CheckoutOfferOneTimeDispatchError() from None
 
-    def _load_snapshot(self, ordem_id, user_id, empresa_id):
+    def _load_dispatch_context(self, ordem_id, user_id, empresa_id):
         session = None
         try:
             session = self._open_session()
@@ -108,12 +125,53 @@ class CheckoutOfferOneTimeDispatcher:
                 .options(selectinload(OrdemCheckout.capabilities))
                 .where(OrdemCheckout.id == ordem_id)
             ).scalar_one_or_none()
-            return self._snapshot(order, user_id, empresa_id)
+            snapshot = self._snapshot(order, user_id, empresa_id)
+            if snapshot.provider_order_id is not None:
+                self._validate_existing_provider_campaign_coherence(
+                    session, snapshot
+                )
+                return snapshot, None
+            if snapshot.campaign_id is None:
+                reservation_id = session.execute(
+                    select(CheckoutOfferCampaignReservation.id).where(
+                        CheckoutOfferCampaignReservation.ordem_id == snapshot.id
+                    )
+                ).scalar_one_or_none()
+                if reservation_id is not None:
+                    raise CheckoutOfferOneTimeDispatchError()
+                return snapshot, None
+
+            reservation = CheckoutOfferCampaignReservationAuthority(
+                session
+            ).reservar_para_ordem(
+                authenticated_user_id=user_id,
+                empresa_id=empresa_id,
+                ordem_id=ordem_id,
+            )
+            if (
+                reservation is None
+                or reservation.campaign_id != snapshot.campaign_id
+                or reservation.campaign_code != snapshot.campaign_code
+                or reservation.campaign_contract_version
+                != snapshot.campaign_contract_version
+                or reservation.campaign_purchase_limit
+                != snapshot.campaign_purchase_limit
+                or reservation.expires_at
+                != snapshot.campaign_reservation_expires_at
+            ):
+                raise CheckoutOfferOneTimeDispatchError()
+            return snapshot, reservation
         finally:
             self._close_session(session)
 
     def _persist(
-        self, first, user_id, empresa_id, provider_order_id, checkout_url
+        self,
+        first,
+        user_id,
+        empresa_id,
+        provider_order_id,
+        checkout_url,
+        reservation_terms,
     ):
         session = None
         try:
@@ -128,12 +186,47 @@ class CheckoutOfferOneTimeDispatcher:
             if self._commercial_identity(current) != self._commercial_identity(first):
                 raise CheckoutOfferOneTimeDispatchError()
             if current.provider_order_id is not None:
+                self._validate_existing_provider_campaign_coherence(
+                    session, current
+                )
                 if (
                     current.provider_order_id == provider_order_id
                     and current.checkout_url == checkout_url
                 ):
                     return self._projection(current)
                 raise CheckoutOfferOneTimeDispatchError()
+
+            if current.campaign_id is None:
+                reservation_id = session.execute(
+                    select(CheckoutOfferCampaignReservation.id).where(
+                        CheckoutOfferCampaignReservation.ordem_id == current.id
+                    )
+                ).scalar_one_or_none()
+                if reservation_id is not None:
+                    raise CheckoutOfferOneTimeDispatchError()
+            else:
+                locked_reservation = session.execute(
+                    select(CheckoutOfferCampaignReservation)
+                    .where(
+                        CheckoutOfferCampaignReservation.ordem_id == current.id
+                    )
+                    .with_for_update()
+                ).scalar_one_or_none()
+                if locked_reservation is None:
+                    raise CheckoutOfferOneTimeDispatchError()
+                revalidated = CheckoutOfferCampaignReservationAuthority(
+                    session
+                ).reservar_para_ordem(
+                    authenticated_user_id=user_id,
+                    empresa_id=empresa_id,
+                    ordem_id=current.id,
+                )
+                if (
+                    reservation_terms is None
+                    or self._reservation_terms_identity(revalidated)
+                    != self._reservation_terms_identity(reservation_terms)
+                ):
+                    raise CheckoutOfferOneTimeDispatchError()
 
             order.provider_order_id = provider_order_id
             order.checkout_url = checkout_url
@@ -169,16 +262,87 @@ class CheckoutOfferOneTimeDispatcher:
                 .where(OrdemCheckout.id == first.id)
             ).scalar_one_or_none()
             current = self._snapshot(order, user_id, empresa_id)
-            if (
-                self._commercial_identity(current)
-                == self._commercial_identity(first)
-                and current.provider_order_id == provider_order_id
-                and current.checkout_url == checkout_url
-            ):
-                return self._projection(current)
+            if self._commercial_identity(current) != self._commercial_identity(first):
+                raise CheckoutOfferOneTimeDispatchError()
+            if current.provider_order_id is not None:
+                self._validate_existing_provider_campaign_coherence(
+                    session, current
+                )
+                if (
+                    current.provider_order_id == provider_order_id
+                    and current.checkout_url == checkout_url
+                ):
+                    return self._projection(current)
             raise CheckoutOfferOneTimeDispatchError()
         finally:
             self._close_session(session)
+
+    @staticmethod
+    def _validate_existing_provider_campaign_coherence(session, snapshot):
+        reservation = session.execute(
+            select(CheckoutOfferCampaignReservation).where(
+                CheckoutOfferCampaignReservation.ordem_id == snapshot.id
+            )
+        ).scalar_one_or_none()
+        if snapshot.campaign_id is None:
+            if reservation is not None:
+                raise CheckoutOfferOneTimeDispatchError()
+            return
+
+        if (
+            reservation is None
+            or type(reservation.id) is not int
+            or reservation.id <= 0
+            or reservation.ordem_id != snapshot.id
+            or reservation.campaign_id != snapshot.campaign_id
+            or type(reservation.reserved_at) is not datetime
+            or type(reservation.expires_at) is not datetime
+            or reservation.expires_at <= reservation.reserved_at
+            or reservation.expires_at
+            != snapshot.campaign_reservation_expires_at
+        ):
+            raise CheckoutOfferOneTimeDispatchError()
+
+        state_timestamps = (
+            reservation.estado,
+            reservation.confirmed_at,
+            reservation.released_at,
+            reservation.expired_at,
+        )
+        if not (
+            state_timestamps == ("reserved", None, None, None)
+            or (
+                reservation.estado == "confirmed"
+                and type(reservation.confirmed_at) is datetime
+                and reservation.released_at is None
+                and reservation.expired_at is None
+            )
+            or (
+                reservation.estado == "released"
+                and reservation.confirmed_at is None
+                and type(reservation.released_at) is datetime
+                and reservation.expired_at is None
+            )
+            or (
+                reservation.estado == "expired"
+                and reservation.confirmed_at is None
+                and reservation.released_at is None
+                and type(reservation.expired_at) is datetime
+            )
+        ):
+            raise CheckoutOfferOneTimeDispatchError()
+
+    @staticmethod
+    def _reservation_terms_identity(reservation):
+        return (
+            reservation.reservation_id,
+            reservation.campaign_id,
+            reservation.campaign_code,
+            reservation.campaign_contract_version,
+            reservation.campaign_purchase_limit,
+            reservation.reserved_at,
+            reservation.expires_at,
+        )
 
     @classmethod
     def _snapshot(cls, order, user_id, empresa_id):
@@ -231,6 +395,23 @@ class CheckoutOfferOneTimeDispatcher:
             cls._provider_id(provider)
             cls._checkout_url(checkout_url)
 
+        campaign = (
+            order.campaign_id,
+            order.campaign_code,
+            order.campaign_contract_version,
+            order.campaign_purchase_limit,
+            order.campaign_reservation_expires_at,
+        )
+        if campaign != (None, None, None, None, None):
+            if any(value is None for value in campaign):
+                raise CheckoutOfferOneTimeDispatchError()
+            cls._positive_id(order.campaign_id)
+            cls._campaign_code(order.campaign_code)
+            cls._positive_id(order.campaign_contract_version)
+            cls._positive_id(order.campaign_purchase_limit)
+            if type(order.campaign_reservation_expires_at) is not datetime:
+                raise CheckoutOfferOneTimeDispatchError()
+
         return _OrderSnapshot(
             id=order.id,
             user_id=order.user_id,
@@ -251,6 +432,13 @@ class CheckoutOfferOneTimeDispatcher:
             idempotency_key=order.idempotency_key,
             estado=order.estado,
             plano_id=order.plano_id,
+            campaign_id=order.campaign_id,
+            campaign_code=order.campaign_code,
+            campaign_contract_version=order.campaign_contract_version,
+            campaign_purchase_limit=order.campaign_purchase_limit,
+            campaign_reservation_expires_at=(
+                order.campaign_reservation_expires_at
+            ),
             provider_order_id=provider,
             checkout_url=checkout_url,
         )
@@ -277,6 +465,11 @@ class CheckoutOfferOneTimeDispatcher:
             snapshot.idempotency_key,
             snapshot.estado,
             snapshot.plano_id,
+            snapshot.campaign_id,
+            snapshot.campaign_code,
+            snapshot.campaign_contract_version,
+            snapshot.campaign_purchase_limit,
+            snapshot.campaign_reservation_expires_at,
         )
 
     @classmethod
@@ -313,6 +506,18 @@ class CheckoutOfferOneTimeDispatcher:
             or len(value) > limit
             or "\r" in value
             or "\n" in value
+        ):
+            raise CheckoutOfferOneTimeDispatchError()
+
+    @staticmethod
+    def _campaign_code(value):
+        if (
+            type(value) is not str
+            or not value
+            or len(value) > 120
+            or value != value.strip()
+            or value != value.lower()
+            or "--" in value
         ):
             raise CheckoutOfferOneTimeDispatchError()
 
