@@ -130,8 +130,6 @@ def run_migrations():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    models.Base.metadata.create_all(bind=engine)
-    run_migrations()
     db = SessionLocal()
     try:
         ensure_planos(db)
