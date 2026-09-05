@@ -251,35 +251,6 @@ class ExecutarParsersPayload(BaseModel):
 # ────────────────────────────────────────────────────────────────────────
 
 # ── Endpoints admin (todos POST — nunca GET para mutação) ──────────────
-@admin_router.post("/admin/create-tables")
-@limiter.limit("5/minute")
-def create_tables(
-    request: Request,
-    usuario: models.User = Depends(require_role("admin")),
-):
-    models.Base.metadata.create_all(bind=engine)
-    return {"status": "tables created"}
-
-
-@admin_router.post("/admin/fix-usuarios-plano")
-@limiter.limit("5/minute")
-def fix_plano_column(
-    request: Request,
-    usuario: models.User = Depends(require_role("admin")),
-):
-    with engine.connect() as conn:
-        conn.execute(text("""
-            ALTER TABLE usuarios
-            ADD COLUMN IF NOT EXISTS plano_id INTEGER;
-        """))
-        conn.execute(text("""
-            ALTER TABLE usuarios
-            ADD COLUMN IF NOT EXISTS consulta_paga BOOLEAN DEFAULT false;
-        """))
-        conn.commit()
-    return {"status": "usuarios fixed"}
-
-
 @admin_router.post("/admin/set-role")
 @limiter.limit("10/minute")
 def set_user_role(
@@ -316,21 +287,6 @@ def liberar_consulta(
         )
         conn.commit()
     return {"status": "consulta liberada", "email": payload.email}
-
-
-@admin_router.post("/admin/fix-planos")
-@limiter.limit("5/minute")
-def fix_planos(
-    request: Request,
-    usuario: models.User = Depends(require_role("admin")),
-):
-    with engine.connect() as conn:
-        conn.execute(text("""
-            ALTER TABLE planos
-            ADD COLUMN IF NOT EXISTS limite_analises INTEGER DEFAULT 100;
-        """))
-        conn.commit()
-    return {"status": "planos fixed"}
 
 
 @admin_router.post("/admin/purge-request-logs")
