@@ -745,6 +745,58 @@ class EventoPagamento(Base):
     criado_em = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
 
 
+class MercadoPagoPaymentObservation(Base):
+    __tablename__ = "mercado_pago_payment_observations"
+    __table_args__ = (
+        CheckConstraint(
+            "status = 'approved'",
+            name="ck_mercado_pago_payment_observations_status_approved",
+        ),
+        CheckConstraint(
+            "moeda = 'BRL'",
+            name="ck_mercado_pago_payment_observations_moeda_brl",
+        ),
+        CheckConstraint(
+            "valor > 0",
+            name="ck_mercado_pago_payment_observations_valor_positive",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    ordem_id = Column(
+        Integer,
+        ForeignKey("ordens_checkout.id"),
+        nullable=False,
+        index=True,
+    )
+    notification_id = Column(String(255), nullable=False, unique=True)
+    payment_id = Column(String(255), nullable=False, index=True)
+    status = Column(String(20), nullable=False)
+    valor = Column(Numeric(10, 2), nullable=False)
+    moeda = Column(String(3), nullable=False)
+    observed_at = Column(DateTime, nullable=False, server_default=func.now())
+
+
+def _reject_mercado_pago_payment_observation_mutation(
+    _mapper, _connection, _target
+) -> None:
+    raise InvalidRequestError(
+        "mercado_pago_payment_observations is append-only"
+    )
+
+
+event.listen(
+    MercadoPagoPaymentObservation,
+    "before_update",
+    _reject_mercado_pago_payment_observation_mutation,
+)
+event.listen(
+    MercadoPagoPaymentObservation,
+    "before_delete",
+    _reject_mercado_pago_payment_observation_mutation,
+)
+
+
 class Entitlement(Base):
     __tablename__ = "entitlements"
     __table_args__ = (

@@ -107,15 +107,23 @@ class CheckoutOfferOneTimeConfirmer:
             self._validate_inputs(
                 ordem_id, notification_id, payment_id, valor, moeda
             )
-            ordem = session.get(models.OrdemCheckout, ordem_id)
+            ordem = session.scalar(
+                select(models.OrdemCheckout)
+                .where(models.OrdemCheckout.id == ordem_id)
+                .with_for_update()
+            )
             if ordem is None:
                 _fail()
             capabilities = self._validate_order(session, ordem, valor, moeda)
+            self._observe_provider_payment(
+                session, ordem, notification_id, payment_id
+            )
 
             if ordem.estado == "paid":
-                result = self._replay(
-                    session, ordem, notification_id, payment_id, capabilities
+                _, _, grant = self._validate_paid_commercial_state(
+                    session, ordem, capabilities
                 )
+                result = self._projection(ordem, grant, capabilities)
                 session.commit()
                 return result
 
@@ -245,9 +253,84 @@ class CheckoutOfferOneTimeConfirmer:
         ) is not None:
             _fail()
 
+    @staticmethod
+    def _observe_provider_payment(
+        session, ordem, notification_id, payment_id
+    ):
+        observation = session.scalar(
+            select(models.MercadoPagoPaymentObservation).where(
+                models.MercadoPagoPaymentObservation.notification_id
+                == notification_id
+            )
+        )
+        if observation is not None:
+            if (
+                observation.ordem_id != ordem.id
+                or observation.payment_id != payment_id
+                or observation.status != "approved"
+                or observation.valor != ordem.valor
+                or observation.moeda != "BRL"
+            ):
+                _fail()
+
+        event_by_notification = session.scalar(
+            select(models.EventoPagamento).where(
+                models.EventoPagamento.notification_id == notification_id
+            )
+        )
+        if event_by_notification is not None and (
+            event_by_notification.ordem_id != ordem.id
+            or event_by_notification.payment_id != payment_id
+        ):
+            _fail()
+
+        event_orders_by_payment = session.scalars(
+            select(models.EventoPagamento.ordem_id).where(
+                models.EventoPagamento.payment_id == payment_id
+            )
+        ).all()
+        if any(event_ordem_id != ordem.id for event_ordem_id in event_orders_by_payment):
+            _fail()
+
+        payment_orders = session.scalars(
+            select(models.Pagamento.ordem_checkout_id).where(
+                models.Pagamento.mp_payment_id == payment_id
+            )
+        ).all()
+        if any(payment_ordem_id != ordem.id for payment_ordem_id in payment_orders):
+            _fail()
+
+        payment_observations = session.scalars(
+            select(models.MercadoPagoPaymentObservation).where(
+                models.MercadoPagoPaymentObservation.payment_id == payment_id
+            )
+        ).all()
+        if any(
+            existing.ordem_id != ordem.id
+            or existing.status != "approved"
+            or existing.valor != ordem.valor
+            or existing.moeda != "BRL"
+            for existing in payment_observations
+        ):
+            _fail()
+
+        if observation is not None:
+            return observation
+
+        observation = models.MercadoPagoPaymentObservation(
+            ordem_id=ordem.id,
+            notification_id=notification_id,
+            payment_id=payment_id,
+            status="approved",
+            valor=ordem.valor,
+            moeda="BRL",
+        )
+        session.add(observation)
+        return observation
+
     @classmethod
-    def _replay(cls, session, ordem, notification_id, payment_id, capabilities):
-        if ordem.payment_id != payment_id:
+    def _validate_paid_commercial_state(cls, session, ordem, capabilities):
+        if not _identity(ordem.payment_id):
             _fail()
         events = session.scalars(
             select(models.EventoPagamento).where(
@@ -268,14 +351,19 @@ class CheckoutOfferOneTimeConfirmer:
             _fail()
         event, payment, grant = events[0], payments[0], grants[0]
         if (
-            event.notification_id != notification_id
-            or event.payment_id != payment_id
+            event.ordem_id != ordem.id
+            or not _identity(event.notification_id)
+            or not _identity(event.payment_id)
+            or event.payment_id != ordem.payment_id
+            or payment.ordem_checkout_id != ordem.id
             or payment.user_id != ordem.user_id
             or payment.plano_id is not None
             or payment.valor != ordem.valor
-            or payment.mp_payment_id != payment_id
+            or ordem.moeda != "BRL"
+            or payment.mp_payment_id != ordem.payment_id
             or payment.status != "approved"
             or payment.confirmado_em is None
+            or grant.ordem_id != ordem.id
             or grant.usage_unit != ordem.usage_unit
             or grant.usage_limit != ordem.usage_limit
             or type(grant.usage_consumed) is not int
@@ -293,6 +381,20 @@ class CheckoutOfferOneTimeConfirmer:
             _fail()
         grant_capabilities = tuple(item.codigo for item in grant.capabilities)
         if grant_capabilities != capabilities:
+            _fail()
+        return event, payment, grant
+
+    @classmethod
+    def _replay(cls, session, ordem, notification_id, payment_id, capabilities):
+        if ordem.payment_id != payment_id:
+            _fail()
+        event, _, grant = cls._validate_paid_commercial_state(
+            session, ordem, capabilities
+        )
+        if (
+            event.notification_id != notification_id
+            or event.payment_id != payment_id
+        ):
             _fail()
         return cls._projection(ordem, grant, capabilities)
 
