@@ -51,6 +51,73 @@ class CheckoutOfferCampaignReservationAuthority:
     def __init__(self, session):
         self._session = session
 
+    def confirmar_para_ordem_bloqueada(self, order):
+        """Confirma a reserva de uma ordem cujo lock ja pertence ao caller."""
+        from app import models
+
+        snapshot = (
+            order.campaign_id,
+            order.campaign_code,
+            order.campaign_contract_version,
+            order.campaign_purchase_limit,
+            order.campaign_reservation_expires_at,
+        )
+        if snapshot == (None, None, None, None, None):
+            return
+        if (
+            any(value is None for value in snapshot)
+            or not _positive_integer(order.campaign_id)
+            or not _canonical_campaign_code(order.campaign_code)
+            or not _positive_integer(order.campaign_contract_version)
+            or not _positive_integer(order.campaign_purchase_limit)
+            or type(order.campaign_reservation_expires_at) is not datetime
+        ):
+            _fail()
+
+        reservation = self._session.scalar(
+            select(models.CheckoutOfferCampaignReservation)
+            .where(
+                models.CheckoutOfferCampaignReservation.ordem_id == order.id
+            )
+            .with_for_update()
+        )
+        if (
+            reservation is None
+            or not _positive_integer(reservation.id)
+            or reservation.ordem_id != order.id
+            or reservation.campaign_id != order.campaign_id
+            or type(reservation.reserved_at) is not datetime
+            or type(reservation.expires_at) is not datetime
+            or reservation.expires_at <= reservation.reserved_at
+            or order.campaign_reservation_expires_at != reservation.expires_at
+            or reservation.released_at is not None
+            or reservation.expired_at is not None
+        ):
+            _fail()
+
+        if order.estado == "pending":
+            if (
+                reservation.estado != "reserved"
+                or reservation.confirmed_at is not None
+            ):
+                _fail()
+            database_now = self._database_now()
+            if reservation.expires_at <= database_now:
+                _fail()
+            reservation.estado = "confirmed"
+            reservation.confirmed_at = database_now
+            return
+
+        if order.estado == "paid":
+            if (
+                reservation.estado != "confirmed"
+                or type(reservation.confirmed_at) is not datetime
+            ):
+                _fail()
+            return
+
+        _fail()
+
     def reservar_para_ordem(
         self,
         *,

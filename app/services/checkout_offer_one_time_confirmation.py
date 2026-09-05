@@ -14,6 +14,9 @@ from urllib.parse import urlsplit
 from sqlalchemy import select
 
 from app import models
+from app.services.checkout_offer_campaign_reservation import (
+    CheckoutOfferCampaignReservationAuthority,
+)
 
 
 _PUBLIC_ERROR = "confirmacao recusada"
@@ -120,6 +123,9 @@ class CheckoutOfferOneTimeConfirmer:
             )
 
             if ordem.estado == "paid":
+                CheckoutOfferCampaignReservationAuthority(
+                    session
+                ).confirmar_para_ordem_bloqueada(ordem)
                 _, _, grant = self._validate_paid_commercial_state(
                     session, ordem, capabilities
                 )
@@ -128,6 +134,9 @@ class CheckoutOfferOneTimeConfirmer:
                 return result
 
             self._reject_collisions(session, notification_id, payment_id)
+            CheckoutOfferCampaignReservationAuthority(
+                session
+            ).confirmar_para_ordem_bloqueada(ordem)
             ordem.estado = "paid"
             ordem.payment_id = payment_id
 
