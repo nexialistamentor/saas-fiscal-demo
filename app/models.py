@@ -518,6 +518,7 @@ class OrdemCheckout(Base):
         String(20), nullable=False, default="pending", server_default="pending", index=True
     )
     idempotency_key = Column(String(255), nullable=False, unique=True)
+    checkout_dispatch_claimed_at = Column(DateTime, nullable=True)
     provider_order_id = Column(String(255), nullable=True, unique=True)
     checkout_url = Column(String(2000), nullable=True)
     payment_id = Column(String(255), nullable=True, unique=True)

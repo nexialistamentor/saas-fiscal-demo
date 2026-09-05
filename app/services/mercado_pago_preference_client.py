@@ -3,11 +3,15 @@
 from copy import deepcopy
 from json import JSONDecodeError
 from math import isfinite
+import re
 
 from httpx import HTTPError
 
 
 _PREFERENCES_URL = "https://api.mercadopago.com/checkout/preferences"
+_PREFERENCES_SEARCH_URL = f"{_PREFERENCES_URL}/search"
+_PREFERENCE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,254}", re.ASCII)
+_SEARCH_LIMIT = 50
 
 
 class MercadoPagoPreferenceClientError(Exception):
@@ -127,4 +131,86 @@ class MercadoPagoPreferenceClient:
         if decoding_failed or type(response_payload) is not dict:
             raise MercadoPagoPreferenceClientError()
 
+        return deepcopy(response_payload)
+
+    def buscar_preferencias(self, *, external_reference):
+        if not _is_visible_ascii(external_reference):
+            raise MercadoPagoPreferenceClientError()
+
+        response_payload = self._read_json_dict(
+            url=_PREFERENCES_SEARCH_URL,
+            params={
+                "external_reference": external_reference,
+                "offset": 0,
+                "limit": _SEARCH_LIMIT,
+            },
+        )
+        elements = response_payload.get("elements")
+        next_offset = response_payload.get("next_offset")
+        total = response_payload.get("total")
+        if (
+            type(elements) is not list
+            or type(next_offset) is not int
+            or next_offset < 0
+            or type(total) is not int
+            or total < 0
+            or any(type(element) is not dict for element in elements)
+            or total != len(elements)
+        ):
+            raise MercadoPagoPreferenceClientError()
+        return deepcopy(elements)
+
+    def obter_preferencia(self, *, preference_id):
+        if (
+            type(preference_id) is not str
+            or _PREFERENCE_ID.fullmatch(preference_id) is None
+        ):
+            raise MercadoPagoPreferenceClientError()
+        return self._read_json_dict(
+            url=f"{_PREFERENCES_URL}/{preference_id}",
+            params=None,
+        )
+
+    def _read_json_dict(self, *, url, params):
+        get = getattr(self._http_client, "get", None)
+        request = getattr(self._http_client, "request", None)
+        if not callable(get) and not callable(request):
+            raise MercadoPagoPreferenceClientError()
+
+        request_data = {
+            "url": url,
+            "headers": {
+                "Accept": "application/json",
+                "Authorization": f"Bearer {self._access_token}",
+                "Content-Type": "application/json",
+            },
+            "timeout": self._timeout_seconds,
+            "follow_redirects": False,
+        }
+        if params is not None:
+            request_data["params"] = dict(params)
+
+        try:
+            if callable(get):
+                response = get(**request_data)
+            else:
+                response = request("GET", **request_data)
+        except HTTPError:
+            raise MercadoPagoPreferenceClientError() from None
+
+        status_code = getattr(response, "status_code", None)
+        response_json = getattr(response, "json", None)
+        if type(status_code) is not int or status_code != 200:
+            raise MercadoPagoPreferenceClientError()
+        if not callable(response_json):
+            raise MercadoPagoPreferenceClientError()
+        try:
+            response_payload = response_json()
+        except (JSONDecodeError, UnicodeDecodeError):
+            raise MercadoPagoPreferenceClientError() from None
+        if (
+            type(response_payload) is not dict
+            or not _is_json_compatible(response_payload)
+        ):
+            raise MercadoPagoPreferenceClientError()
         return deepcopy(response_payload)
