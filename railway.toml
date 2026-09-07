@@ -3,8 +3,8 @@
 builder = "nixpacks"
 
 [deploy]
-preDeployCommand = "alembic upgrade head"
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+preDeployCommand = "ENVIRONMENT=production PGSSLROOTCERT=config/railway_postgres_root_ca.pem alembic upgrade head"
+startCommand = "ENVIRONMENT=production PGSSLROOTCERT=config/railway_postgres_root_ca.pem uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
