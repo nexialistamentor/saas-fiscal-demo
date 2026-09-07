@@ -3,7 +3,7 @@
 Catalogo duravel de ofertas multi-vertical, sem publicacao ou seeds.
 
 Revision ID: 0045_multi_vertical_checkout_catalog
-Revises: 0044_payments_durable_ledger
+Revises: 0044a_alembic_version_capacity
 Create Date: 2026-08-31
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision: str = "0045_multi_vertical_checkout_catalog"
-down_revision: str = "0044_payments_durable_ledger"
+down_revision: str = "0044a_alembic_version_capacity"
 branch_labels = None
 depends_on = None
 
