@@ -13,7 +13,7 @@ class _InertSession:
 def test_production_startup_does_not_mutate_database_schema(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("ALEMBIC_RUNNING", "1")
-    monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://f1a:f1a@127.0.0.1:1/f1a?sslmode=verify-full")
     monkeypatch.setenv(
         "SECRET_KEYS",
         "f1a-test=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",

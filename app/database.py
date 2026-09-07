@@ -8,8 +8,11 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger(__name__)
 
-_RAW_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+_RAW_DATABASE_URL = os.getenv("DATABASE_URL")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower().strip()
+
+_LOCAL_DATABASE_URL = "sqlite:///./test.db"
+_STRICT_DATABASE_ENVIRONMENTS = frozenset({"production", "staging"})
 
 _SSL_MODES_SECURE = frozenset({"require", "verify-ca", "verify-full"})
 _SSL_MODES_INSECURE = frozenset({"disable", "allow", "prefer"})
@@ -24,6 +27,23 @@ def _parse_scheme(url: str) -> str:
     """Retorna o scheme normalizado da URL de banco (sqlite, postgresql, etc)."""
     parsed = urlparse(url)
     return parsed.scheme.split("+")[0].lower()
+
+
+def _resolve_database_url(raw_url: str | None, environment: str) -> str:
+    url = raw_url.strip() if raw_url is not None else ""
+    if not url:
+        if environment in _STRICT_DATABASE_ENVIRONMENTS:
+            raise DatabaseConfigError(
+                f"DATABASE_URL is required in environment '{environment}'."
+            )
+        return _LOCAL_DATABASE_URL
+
+    if environment in _STRICT_DATABASE_ENVIRONMENTS and _parse_scheme(url) == "sqlite":
+        raise DatabaseConfigError(
+            f"SQLite is not allowed in environment '{environment}'."
+        )
+
+    return url
 
 
 def _extract_sslmode(url: str) -> str | None:
@@ -57,7 +77,7 @@ def _validate_ssl_policy(sslmode: str | None, environment: str) -> str:
                                         Padrão quando ausente: verify-full.
       - development:  Tolerante. Se ausente, injeta 'require'. Inseguro → aviso.
     """
-    is_strict = environment in ("production", "staging")
+    is_strict = environment in _STRICT_DATABASE_ENVIRONMENTS
 
     if sslmode is None:
         resolved = "verify-full" if is_strict else "require"
@@ -115,7 +135,14 @@ def _build_connection_url_and_kwargs(raw_url: str, environment: str) -> tuple[st
     return final_url, engine_kwargs
 
 
-DATABASE_URL, _engine_kwargs = _build_connection_url_and_kwargs(_RAW_DATABASE_URL, ENVIRONMENT)
+_RESOLVED_RAW_DATABASE_URL = _resolve_database_url(
+    _RAW_DATABASE_URL,
+    ENVIRONMENT,
+)
+DATABASE_URL, _engine_kwargs = _build_connection_url_and_kwargs(
+    _RESOLVED_RAW_DATABASE_URL,
+    ENVIRONMENT,
+)
 engine = create_engine(DATABASE_URL, **_engine_kwargs)
 
 

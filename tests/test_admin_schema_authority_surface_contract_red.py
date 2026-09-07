@@ -6,7 +6,7 @@ import pytest
 def test_admin_http_surface_does_not_expose_schema_authority_routes(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("ALEMBIC_RUNNING", "1")
-    monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://f1b:f1b@127.0.0.1:1/f1b?sslmode=verify-full")
     monkeypatch.setenv(
         "SECRET_KEYS",
         "f1b-test=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
