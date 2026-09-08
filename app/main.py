@@ -55,12 +55,16 @@ from app.routers.inteligencia_router import inteligencia_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.assistente_router import assistente_router
 from app.routers.checkout_offer_one_time_router import criar_checkout_offer_one_time_router
+from app.routers.checkout_offer_catalog_router import (
+    criar_checkout_offer_catalog_router,
+)
 from app.routers.mercado_pago_webhook_router import criar_mercado_pago_webhook_router
 from app.xml_security import validar_upload_xml
 from app.security import get_usuario_atual, require_role, verificar_token
 from app.rate_limit import limiter
 from app.agents.agent_scheduler import AgentScheduler
 from app.services.request_log_retention import purga_request_logs_mais_antigos_que
+from app.services.checkout_offer_catalog import CheckoutOfferCatalog
 from app.services.mercado_pago_runtime_lifecycle import ativar_mercado_pago
 from app.services.normative_update_service import (
     expirar_regras_revogadas,
@@ -583,6 +587,12 @@ app.include_router(contador_router)
 app.include_router(inteligencia_router)
 app.include_router(dashboard_router)
 app.include_router(assistente_router)
+app.include_router(
+    criar_checkout_offer_catalog_router(
+        catalog_service=CheckoutOfferCatalog(SessionLocal),
+        current_user_dependency=get_usuario_atual,
+    )
+)
 app.include_router(metrics_router)
 app.include_router(auditoria_router, prefix="/estoque")
 app.include_router(estoque_dashboard_router, prefix="/estoque")
@@ -977,4 +987,3 @@ def criar_planos(
         "mensagem": f"Planos criados: {', '.join(criados)}" if criados else "Planos já existem",
         "criados": criados,
     }
-
