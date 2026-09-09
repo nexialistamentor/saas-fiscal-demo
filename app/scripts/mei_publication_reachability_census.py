@@ -1837,37 +1837,10 @@ def _is_inert_declarative_model_constructor(
         if member.name in {"__init__", "__new__"} or member.decorator_list:
             return False
 
-    validator_maps: list[ast.Dict] = []
-    for statement in models_module.tree.body:
-        value = None
-        if (
-            isinstance(statement, ast.Assign)
-            and any(
-                isinstance(target, ast.Name)
-                and target.id == "_ADR020_INSERT_VALIDATORS"
-                for target in statement.targets
-            )
-        ):
-            value = statement.value
-        elif (
-            isinstance(statement, ast.AnnAssign)
-            and isinstance(statement.target, ast.Name)
-            and statement.target.id == "_ADR020_INSERT_VALIDATORS"
-        ):
-            value = statement.value
-
-        if isinstance(value, ast.Dict):
-            validator_maps.append(value)
-
-    if len(validator_maps) != 1:
+    adr020_models = _adr020_append_only_models(models_module)
+    if adr020_models is None:
         return False
-
-    validator_keys = {
-        key.id
-        for key in validator_maps[0].keys
-        if isinstance(key, ast.Name)
-    }
-    if class_name in validator_keys:
+    if class_name in adr020_models:
         return False
 
     for module in modules.values():
@@ -1885,22 +1858,207 @@ def _is_inert_declarative_model_constructor(
                 "sqlalchemy.event.listens_for",
             }:
                 continue
-            if not call.args:
+            listener_scope = _sqlalchemy_listener_model_scope(
+                modules,
+                module_name=module.name,
+                call=call,
+            )
+            if listener_scope == frozenset():
+                continue
+            if listener_scope is None:
+                return False
+            if class_name in listener_scope:
                 return False
 
-            target = call.args[0]
-            if isinstance(target, ast.Name):
-                if target.id in {class_name, "Base"}:
-                    return False
-                if (
-                    module.name == "app.models"
-                    and target.id == "_adr020_append_only_model"
-                ):
-                    continue
-
-            return False
-
     return True
+
+
+def _adr020_append_only_models(module: ModuleInfo) -> frozenset[str] | None:
+    """Resolve the exact model keys expanded by the ADR-020 listener loop."""
+    validator_maps: list[ast.Dict] = []
+    for statement in module.tree.body:
+        value = None
+        if (
+            isinstance(statement, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "_ADR020_INSERT_VALIDATORS"
+                for target in statement.targets
+            )
+        ):
+            value = statement.value
+        elif (
+            isinstance(statement, ast.AnnAssign)
+            and isinstance(statement.target, ast.Name)
+            and statement.target.id == "_ADR020_INSERT_VALIDATORS"
+        ):
+            value = statement.value
+        if isinstance(value, ast.Dict):
+            validator_maps.append(value)
+
+    if len(validator_maps) != 1 or any(
+        not isinstance(key, ast.Name) for key in validator_maps[0].keys
+    ):
+        return None
+
+    matching_loops = []
+    for statement in module.tree.body:
+        if not isinstance(statement, ast.For):
+            continue
+        if not (
+            isinstance(statement.target, ast.Tuple)
+            and len(statement.target.elts) == 2
+            and all(isinstance(item, ast.Name) for item in statement.target.elts)
+            and statement.target.elts[0].id == "_adr020_append_only_model"
+            and statement.target.elts[1].id == "_adr020_insert_validator"
+            and isinstance(statement.iter, ast.Call)
+            and isinstance(statement.iter.func, ast.Attribute)
+            and statement.iter.func.attr == "items"
+            and isinstance(statement.iter.func.value, ast.Name)
+            and statement.iter.func.value.id == "_ADR020_INSERT_VALIDATORS"
+            and not statement.iter.args
+            and not statement.iter.keywords
+        ):
+            continue
+        matching_loops.append(statement)
+
+    if len(matching_loops) != 1:
+        return None
+    return frozenset(key.id for key in validator_maps[0].keys)
+
+
+def _sqlalchemy_listener_model_scope(
+    modules: dict[str, ModuleInfo],
+    *,
+    module_name: str,
+    call: ast.Call,
+) -> frozenset[str] | None:
+    """Return concrete app.models targets; empty means known engine infrastructure.
+
+    ``None`` is deliberately fail-closed: it includes global ORM targets,
+    unknown/dynamic targets, and every engine listener except the exact UTC
+    checkout listener qualified below.
+    """
+    if _is_known_database_timezone_checkout_listener(
+        modules, module_name=module_name, call=call
+    ):
+        return frozenset()
+    if not call.args:
+        return None
+
+    module = modules.get(module_name)
+    models_module = modules.get("app.models")
+    if module is None or models_module is None:
+        return None
+    target = call.args[0]
+    if not isinstance(target, ast.Name):
+        return None
+
+    if module_name == "app.models" and target.id == "_adr020_append_only_model":
+        return _adr020_append_only_models(models_module)
+
+    resolved = _resolve_name(module, target.id)
+    if target.id in {"Base", "Session", "Mapper"} or resolved in {
+        "app.database.Base",
+        "sqlalchemy.orm.Session",
+        "sqlalchemy.orm.Mapper",
+    }:
+        return None
+
+    concrete_models = {
+        item.name
+        for item in models_module.tree.body
+        if isinstance(item, ast.ClassDef)
+    }
+    if module_name == "app.models" and target.id in concrete_models:
+        return frozenset({target.id})
+    if resolved and resolved.startswith("app.models."):
+        resolved_name = resolved.removeprefix("app.models.")
+        if resolved_name in concrete_models:
+            return frozenset({resolved_name})
+    return None
+
+
+def _is_known_database_timezone_checkout_listener(
+    modules: dict[str, ModuleInfo],
+    *,
+    module_name: str,
+    call: ast.Call,
+) -> bool:
+    """Qualify only the exact app.database PostgreSQL UTC checkout listener."""
+    if module_name != "app.database":
+        return False
+
+    database_module = modules.get(module_name)
+    if database_module is None:
+        return False
+
+    call_name = _call_name(call)
+    if (
+        call_name is None
+        or _resolve_name(database_module, call_name) != "sqlalchemy.event.listen"
+        or len(call.args) != 3
+        or call.keywords
+    ):
+        return False
+
+    target, event_name, callback = call.args
+    if not (
+        isinstance(target, ast.Name)
+        and target.id == "engine"
+        and isinstance(event_name, ast.Constant)
+        and event_name.value == "checkout"
+        and isinstance(callback, ast.Name)
+        and callback.id == "_set_postgresql_session_timezone_utc"
+    ):
+        return False
+
+    definitions = [
+        statement
+        for statement in database_module.tree.body
+        if (
+            isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and statement.name == "_set_postgresql_session_timezone_utc"
+        )
+    ]
+    if len(definitions) != 1 or not isinstance(definitions[0], ast.FunctionDef):
+        return False
+
+    callback_node = definitions[0]
+    expected_callback = ast.parse(
+        '''
+def _set_postgresql_session_timezone_utc(
+    dbapi_connection: object,
+    _connection_record: object,
+    _connection_proxy: object,
+) -> None:
+    """Reassert UTC durably before a pooled PostgreSQL connection is delivered."""
+    original_autocommit = dbapi_connection.autocommit
+    cursor = None
+    try:
+        dbapi_connection.autocommit = True
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET SESSION TIME ZONE 'UTC'")
+    finally:
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            dbapi_connection.autocommit = original_autocommit
+'''
+    ).body[0]
+    if ast.dump(callback_node, include_attributes=False) != ast.dump(
+        expected_callback,
+        include_attributes=False,
+    ):
+        return False
+
+    reachable = [
+        callee
+        for callee in _direct_callees(database_module, callback_node)
+        if callee == PRODUCER_ID or callee.startswith("app.")
+    ]
+    return not reachable
 
 
 def _is_sqlalchemy_column_descriptor_helper(
@@ -2123,34 +2281,16 @@ def _is_inert_sqlalchemy_sessionmaker_factory(
             }:
                 sqlalchemy_events.append((module.name, call))
 
-    if len(sqlalchemy_events) != 3:
-        return False
-
-    event_names: set[str] = set()
     for module_name, call in sqlalchemy_events:
-        if module_name != "app.models":
+        listener_scope = _sqlalchemy_listener_model_scope(
+            modules,
+            module_name=module_name,
+            call=call,
+        )
+        if listener_scope is None:
             return False
-        call_name = _call_name(call)
-        if call_name is None:
-            return False
-        if _resolve_name(modules[module_name], call_name) != "sqlalchemy.event.listen":
-            return False
-        if len(call.args) < 2:
-            return False
-        if not (
-            isinstance(call.args[0], ast.Name)
-            and call.args[0].id == "_adr020_append_only_model"
-        ):
-            return False
-        if not (
-            isinstance(call.args[1], ast.Constant)
-            and isinstance(call.args[1].value, str)
-        ):
-            return False
-        event_names.add(call.args[1].value)
-
-    if event_names != {"before_insert", "before_update", "before_delete"}:
-        return False
+        # Concrete and statically expanded model listeners cannot affect the
+        # SessionLocal factory; the empty scope is known engine infrastructure.
 
     return True
 

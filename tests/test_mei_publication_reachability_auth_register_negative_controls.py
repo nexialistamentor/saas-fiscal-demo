@@ -31,6 +31,36 @@ def _class(module, name):
     return matches[0]
 
 
+def _add_custom_init(module, class_name):
+    model_class = _class(module, class_name)
+    custom_init = ast.parse(
+        "def __init__(self, **kwargs):\n"
+        "    self.id = kwargs.get('id')\n"
+    ).body[0]
+    model_class.body.append(custom_init)
+    ast.fix_missing_locations(model_class)
+
+
+def _add_insert_validator(module, model_name):
+    validator_maps = [
+        statement.value
+        for statement in module.tree.body
+        if (
+            isinstance(statement, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "_ADR020_INSERT_VALIDATORS"
+                for target in statement.targets
+            )
+            and isinstance(statement.value, ast.Dict)
+        )
+    ]
+    assert len(validator_maps) == 1
+    validator_maps[0].keys.append(ast.Name(id=model_name, ctx=ast.Load()))
+    validator_maps[0].values.append(ast.Name(id="validator", ctx=ast.Load()))
+    ast.fix_missing_locations(validator_maps[0])
+
+
 def test_auth_register_user_custom_constructor_must_fail_closed(monkeypatch):
     modules = census_module._parse_app()
     user_class = _class(modules["app.models"], "User")
@@ -41,6 +71,34 @@ def test_auth_register_user_custom_constructor_must_fail_closed(monkeypatch):
     ).body[0]
     user_class.body.append(custom_init)
     ast.fix_missing_locations(user_class)
+
+    _assert_not_no_canonical(modules, monkeypatch)
+
+
+def test_auth_register_plano_custom_constructor_must_fail_closed(monkeypatch):
+    modules = census_module._parse_app()
+    _add_custom_init(modules["app.models"], "Plano")
+
+    _assert_not_no_canonical(modules, monkeypatch)
+
+
+def test_auth_register_empresa_custom_constructor_must_fail_closed(monkeypatch):
+    modules = census_module._parse_app()
+    _add_custom_init(modules["app.models"], "Empresa")
+
+    _assert_not_no_canonical(modules, monkeypatch)
+
+
+def test_auth_register_plano_insert_validator_must_fail_closed(monkeypatch):
+    modules = census_module._parse_app()
+    _add_insert_validator(modules["app.models"], "Plano")
+
+    _assert_not_no_canonical(modules, monkeypatch)
+
+
+def test_auth_register_empresa_insert_validator_must_fail_closed(monkeypatch):
+    modules = census_module._parse_app()
+    _add_insert_validator(modules["app.models"], "Empresa")
 
     _assert_not_no_canonical(modules, monkeypatch)
 
