@@ -153,7 +153,7 @@ def gerar_pdf_relatorio(relatorio: dict) -> BytesIO:
     y -= 30
 
     valor = relatorio.get("potencial_recuperacao", {}).get("valor_estimado", 0)
-    c.drawString(100, y, f"Potencial de recuperação: R$ {valor}")
+    c.drawString(100, y, f"Valor tributário estimado para análise: R$ {valor}")
     y -= 30
 
     dec = relatorio.get("decomposicao_impacto") or {}
@@ -161,7 +161,7 @@ def gerar_pdf_relatorio(relatorio: dict) -> BytesIO:
         vr = dec.get("valor_recuperavel_real")
         ve = dec.get("valor_estimado")
         na = dec.get("normalizacoes_aplicadas")
-        c.drawString(100, y, f"Recuperável (base documental): R$ {vr}")
+        c.drawString(100, y, f"Valor tributário identificado para análise: R$ {vr}")
         y -= 20
         c.drawString(100, y, f"Componente estimado: R$ {ve}")
         y -= 20
@@ -279,7 +279,7 @@ def gerar_pdf_memorial(contexto: dict) -> BytesIO:
     c.drawString(
         margem + 20,
         y,
-        f"Total recuperável estimado: R$ {total_recuperavel:,.2f}".replace(",", "X")
+        f"Total estimado de valores tributários para análise: R$ {total_recuperavel:,.2f}".replace(",", "X")
         .replace(".", ",")
         .replace("X", "."),
     )
