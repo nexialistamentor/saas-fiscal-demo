@@ -169,3 +169,74 @@ def test_estimated_st_restitution_is_not_presented_as_recovered_value():
         and estimated_sources_feed_restituicao_st
         and simple_recovery_card
     ), "Restituição ST estimada não pode ser apresentada externamente como Recuperação"
+
+
+def test_raw_risk_with_arbitrary_normalization_is_not_exposed_as_percentage_or_severity():
+    app = APP.read_text(encoding="utf-8")
+    mapa_service = MAPA_SERVICE.read_text(encoding="utf-8")
+    risco_service = (
+        ROOT / "app" / "services" / "risco_tributario_service.py"
+    ).read_text(encoding="utf-8")
+
+    raw_risk_engine = (
+        all(
+            re.search(rf'sum\(item\[["\']{component}["\']\]\s+for\s+item\s+in', risco_service)
+            for component in ("variacao_detectada", "distorcao", "credito_estimado")
+        )
+        and re.search(
+            r"score_anomalias\s*\*\s*0\.4\s*\+"
+            r"[\s\S]{0,100}?score_distorcoes\s*\*\s*0\.3\s*\+"
+            r"[\s\S]{0,100}?score_creditos\s*\*\s*0\.3",
+            risco_service,
+        )
+        and re.search(
+            r"if\s+risco\s*>\s*100000\s*:[\s\S]{0,100}?nivel\s*=\s*[\"']alto[\"']"
+            r"[\s\S]{0,100}?elif\s+risco\s*>\s*30000\s*:"
+            r"[\s\S]{0,100}?nivel\s*=\s*[\"']medio[\"']"
+            r"[\s\S]{0,100}?else\s*:[\s\S]{0,100}?nivel\s*=\s*[\"']baixo[\"']",
+            risco_service,
+        )
+    )
+    arbitrary_zero_to_one_hundred_normalization = (
+        re.search(
+            r"def\s+normalizar_risco\([^)]*\)[\s\S]{0,300}?"
+            r"\(float\(score_risco_raw\)\s*/\s*1000(?:\.0)?\)\s*\*\s*100(?:\.0)?"
+            r"[\s\S]{0,200}?max\(0(?:\.0)?,\s*min\([\s\S]{0,100}?,\s*100(?:\.0)?\)\)",
+            mapa_service,
+        )
+        and re.search(
+            r'mapa\[["\']risco_tributario_percentual["\']\]\s*=\s*'
+            r"normalizar_risco\(risco_raw\)",
+            mapa_service,
+        )
+    )
+    external_percentage_and_severity = (
+        re.search(
+            r'titulo\s*:\s*["\']Risco Tribut.rio["\']'
+            r"[\s\S]{0,150}?valor\s*:\s*risco\s*===\s*-1\s*\?"
+            r'[\s\S]{0,100}?`\$\{risco\}%`',
+            app,
+        )
+        and re.search(
+            r"risco\s*>=\s*80\s*\?\s*[\"']cr.tico[\"']\s*:"
+            r"[\s\S]{0,100}?risco\s*>=\s*60\s*\?\s*[\"']alto[\"']\s*:"
+            r"[\s\S]{0,100}?risco\s*>=\s*40\s*\?\s*[\"']moderado[\"']\s*:"
+            r"[\s\S]{0,100}?risco\s*>=\s*20\s*\?\s*[\"']baixo[\"']\s*:"
+            r"[\s\S]{0,100}?[\"']controlado[\"']",
+            app,
+        )
+        and re.search(
+            r'titulo\s*:\s*["\']Severidade["\']'
+            r"[\s\S]{0,100}?valor\s*:\s*severidadeRisco",
+            app,
+        )
+    )
+
+    assert not (
+        raw_risk_engine
+        and arbitrary_zero_to_one_hundred_normalization
+        and external_percentage_and_severity
+    ), (
+        "Risco bruto normalizado arbitrariamente para 0-100 não pode ser exposto "
+        "como percentual e severidade sem metodologia validada"
+    )
