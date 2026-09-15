@@ -1524,7 +1524,7 @@ function App() {
             <span className="card-label">
               {tipoPerfil === "cpf"
                   ? "IRPF Estimado Anual"
-                  : "Impacto Financeiro Anual"}
+                  : "Valor Tributário para Análise"}
             </span>
             <strong className="card-valor-impacto">
               R$ {(impacto ?? 0).toLocaleString("pt-BR")}
@@ -1532,7 +1532,7 @@ function App() {
             <p className="card-sub">
               {tipoPerfil === "cpf"
                   ? "Imposto de renda estimado no ano"
-                  : "Valor recuperável estimado no ano"}
+                  : "Composição com valores identificados e estimados"}
             </p>
           </article>
         </section>}
