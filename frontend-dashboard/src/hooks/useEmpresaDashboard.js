@@ -43,7 +43,9 @@ export default function useEmpresaDashboard(idPerfil) {
     const intervalo = setInterval(carregar, 60000)
     return () => clearInterval(intervalo)
   }, [carregar])
-  const risco = data ? Math.min(100, data.risco_tributario_percentual ?? 0) : 0
+  const risco = !data || data.context_flags?.dados_incompletos === true || data.risco_tributario_percentual == null
+    ? -1
+    : Math.min(100, data.risco_tributario_percentual)
   const pontuacao = data ? Math.min(100, Math.max(0, data.pontuacao_fiscal ?? 0)) : 0
   const impacto = data?.impacto_financeiro_anual ?? (data?.restituicao_st ?? 0) * 12
   return {

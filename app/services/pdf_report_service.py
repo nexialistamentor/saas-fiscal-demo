@@ -186,10 +186,6 @@ def gerar_pdf_relatorio(relatorio: dict) -> BytesIO:
             y -= 28
         c.setFont("Helvetica", 10)
 
-    score = relatorio.get("score_global")
-    c.drawString(100, y, f"Score tributário: {score}")
-    y -= 40
-
     c.drawString(100, y, "Principais oportunidades:")
     y -= 20
 

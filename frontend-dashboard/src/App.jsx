@@ -14,8 +14,6 @@ import {
 } from "./config"
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -457,21 +455,6 @@ function App() {
   const acessoPro = planoId === 2
   const acessoIlimitado = planoId === 3
   const podeUploadXML = acessoBasico || acessoPro || acessoIlimitado
-
-  const historicoValido = historico.some((item) => (item.score_global ?? 0) > 0)
-
-  const dadosEvolucao = historicoValido
-    ? historico.map((item, index) => ({
-        mes: item.data_snapshot ?? `P${index + 1}`,
-        recuperacao: item.score_global ?? 0,
-      }))
-    : [
-        { mes: "P1", recuperacao: 20 },
-        { mes: "P2", recuperacao: 35 },
-        { mes: "P3", recuperacao: 30 },
-        { mes: "P4", recuperacao: 48 },
-        { mes: "P5", recuperacao: 52 },
-      ]
 
   useEffect(() => {
     if (tipoPerfil === "cpf") return
@@ -1613,29 +1596,6 @@ function App() {
             <MemorialButton relatorioId={resultadoXML?.relatorio_id} />
           </div>
         )}
-
-        <section className="chart-card">
-          <div className="section-header">
-            <h3>Evolução da Recuperação</h3>
-            <p>Últimos meses</p>
-          </div>
-
-          <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dadosEvolucao}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="recuperacao"
-                  strokeWidth={3}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
 
         <section className="chart-card">
           <div className="section-header">
