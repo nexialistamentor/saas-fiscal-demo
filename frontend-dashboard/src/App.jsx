@@ -123,7 +123,7 @@ function App() {
   const empresaResult = useEmpresaDashboard(
     tipoPerfil === "empresa" ? idPerfil : null
   )
-  const { data, historico, tendencia, loading, impacto, refetch } =
+  const { data, historico, loading, impacto, refetch } =
     tipoPerfil === "mei" ? meiResult :
     tipoPerfil === "cpf" ? cpfResult :
     empresaResult
@@ -825,18 +825,6 @@ function App() {
       id: "restituicao-st",
       titulo: "Valor estimado de ST para análise",
       valor: `R$ ${(data?.restituicao_st ?? 0).toLocaleString("pt-BR")}`,
-    },
-    {
-      id: "tendencia-inteligencia",
-      titulo: "Tendência da Inteligência Fiscal",
-      valor:
-        tendencia?.tendencia === "melhoria_forte" || tendencia?.tendencia === "melhoria"
-          ? "Melhoria"
-          : tendencia?.tendencia === "queda_forte" || tendencia?.tendencia === "queda"
-          ? "Queda"
-          : tendencia?.tendencia === "estavel"
-          ? "Estável"
-          : "Insuficiente",
     },
     {
       id: "timeline-fiscal",
