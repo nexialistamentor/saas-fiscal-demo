@@ -123,7 +123,7 @@ function App() {
   const empresaResult = useEmpresaDashboard(
     tipoPerfil === "empresa" ? idPerfil : null
   )
-  const { data, historico, tendencia, loading, risco, pontuacao, impacto, refetch } =
+  const { data, historico, tendencia, loading, risco, impacto, refetch } =
     tipoPerfil === "mei" ? meiResult :
     tipoPerfil === "cpf" ? cpfResult :
     empresaResult
@@ -866,11 +866,6 @@ function App() {
       id: "percepcoes-fiscais",
       titulo: "Percepções",
       valor: `${data?.total_insights ?? 0}`,
-    },
-    {
-      id: "pontuacao-fiscal",
-      titulo: "Pontuação Fiscal",
-      valor: pontuacao === -1 ? "N/D" : `${pontuacao}/100`,
     },
     {
       id: "estoque-fantasma",
