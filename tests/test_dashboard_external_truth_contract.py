@@ -41,3 +41,14 @@ def test_pdf_does_not_present_score_global_as_tax_score():
         r"score\s*=\s*relatorio\.get\([\"']score_global[\"']\)[\s\S]{0,300}Score tribut.rio",
         pdf_service,
     )
+
+
+def test_ncm_distribution_surface_is_not_backed_by_hardcoded_empty_data():
+    app = APP.read_text(encoding="utf-8")
+    hardcoded_empty_ncm = re.search(r"\bconst\s+dadosNCM\s*=\s*\[\s*\]", app)
+    ncm_distribution_surface = re.search(
+        r"Distribui..o por NCM[\s\S]{0,1500}data\s*=\s*\{dadosNCM\}",
+        app,
+    )
+
+    assert not (hardcoded_empty_ncm and ncm_distribution_surface)
