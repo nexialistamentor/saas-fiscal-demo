@@ -830,7 +830,7 @@ function App() {
   const cardsDashboard = [
     {
       id: "restituicao-st",
-      titulo: "Recuperação",
+      titulo: "Valor estimado de ST para análise",
       valor: `R$ ${(data?.restituicao_st ?? 0).toLocaleString("pt-BR")}`,
     },
     {
