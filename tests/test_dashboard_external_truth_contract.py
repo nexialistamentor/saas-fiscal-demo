@@ -8,6 +8,7 @@ EMPRESA_HOOK = ROOT / "frontend-dashboard" / "src" / "hooks" / "useEmpresaDashbo
 PDF_SERVICE = ROOT / "app" / "services" / "pdf_report_service.py"
 MAPA_SERVICE = ROOT / "app" / "services" / "mapa_oportunidades_service.py"
 INSIGHTS_ENGINE = ROOT / "app" / "services" / "insights_engine.py"
+TENDENCIA_SERVICE = ROOT / "app" / "services" / "tendencia_inteligencia_service.py"
 
 
 def test_dashboard_does_not_use_fictitious_evolution_series():
@@ -169,6 +170,43 @@ def test_estimated_st_restitution_is_not_presented_as_recovered_value():
         and estimated_sources_feed_restituicao_st
         and simple_recovery_card
     ), "Restituição ST estimada não pode ser apresentada externamente como Recuperação"
+
+
+def test_external_fiscal_intelligence_trend_is_not_derived_from_unvalidated_global_score():
+    app = APP.read_text(encoding="utf-8")
+    tendencia_service = TENDENCIA_SERVICE.read_text(encoding="utf-8")
+
+    historical_global_score_delta = re.search(
+        r'primeiro\s*=\s*historico\[0\]\[["\']score_global["\']\]'
+        r'[\s\S]{0,200}?ultimo\s*=\s*historico\[-1\]\[["\']score_global["\']\]'
+        r'[\s\S]{0,200}?variacao\s*=\s*ultimo\s*-\s*primeiro',
+        tendencia_service,
+    )
+    current_threshold_classification = all(
+        re.search(pattern, tendencia_service)
+        for pattern in (
+            r'variacao\s*>\s*30000[\s\S]{0,100}?["\']melhoria_forte["\']',
+            r'variacao\s*>\s*5000[\s\S]{0,100}?["\']melhoria["\']',
+            r'variacao\s*<\s*-30000[\s\S]{0,100}?["\']queda_forte["\']',
+            r'variacao\s*<\s*-5000[\s\S]{0,100}?["\']queda["\']',
+        )
+    )
+    external_trend_card = re.search(
+        r'id\s*:\s*["\']tendencia-inteligencia["\']'
+        r'[\s\S]{0,200}?titulo\s*:\s*["\']Tend.ncia da Intelig.ncia Fiscal["\']'
+        r'[\s\S]{0,500}?tendencia\?\.tendencia\s*===\s*["\']melhoria_forte["\']'
+        r'[\s\S]{0,500}?tendencia\?\.tendencia\s*===\s*["\']queda_forte["\']',
+        app,
+    )
+
+    assert not (
+        historical_global_score_delta
+        and current_threshold_classification
+        and external_trend_card
+    ), (
+        "Tendência da Inteligência Fiscal não pode ser exposta externamente quando "
+        "derivada do histórico de score_global pelos limiares atuais"
+    )
 
 
 def test_raw_risk_with_arbitrary_normalization_is_not_exposed_as_percentage_or_severity():
