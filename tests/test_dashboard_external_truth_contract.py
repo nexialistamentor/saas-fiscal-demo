@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "frontend-dashboard" / "src" / "App.jsx"
 EMPRESA_HOOK = ROOT / "frontend-dashboard" / "src" / "hooks" / "useEmpresaDashboard.js"
 PDF_SERVICE = ROOT / "app" / "services" / "pdf_report_service.py"
+MAPA_SERVICE = ROOT / "app" / "services" / "mapa_oportunidades_service.py"
 
 
 def test_dashboard_does_not_use_fictitious_evolution_series():
@@ -52,3 +53,32 @@ def test_ncm_distribution_surface_is_not_backed_by_hardcoded_empty_data():
     )
 
     assert not (hardcoded_empty_ncm and ncm_distribution_surface)
+
+
+def test_unvalidated_global_score_is_not_surfaced_as_fiscal_score_out_of_100():
+    app = APP.read_text(encoding="utf-8")
+    hook = EMPRESA_HOOK.read_text(encoding="utf-8")
+    mapa_service = MAPA_SERVICE.read_text(encoding="utf-8")
+
+    legacy_score_derivation = re.search(
+        r"score_data\s*=\s*calcular_score_global_tributario\([^)]*\)"
+        r"[\s\S]{0,300}?score_raw\s*=\s*score_data\.get\([\"']score_global_tributario[\"']"
+        r"[\s\S]{0,300}?mapa\[[\"']pontuacao_fiscal[\"']\]\s*=\s*normalizar_pontuacao\(score_raw\)",
+        mapa_service,
+    )
+    backend_value_reaches_card = re.search(
+        r"\bconst\s+pontuacao\s*=\s*[^\n]*data\.pontuacao_fiscal",
+        hook,
+    )
+    commercial_score_card = re.search(
+        r"id\s*:\s*[\"']pontuacao-fiscal[\"']"
+        r"[\s\S]{0,300}?titulo\s*:\s*[\"']Pontua..o Fiscal[\"']"
+        r"[\s\S]{0,300}?valor\s*:\s*[^\n]*pontuacao[^\n]*/100",
+        app,
+    )
+
+    assert not (
+        legacy_score_derivation
+        and backend_value_reaches_card
+        and commercial_score_card
+    ), "Pontuação Fiscal /100 não pode derivar de score_global_tributario sem metodologia validada"
