@@ -123,17 +123,10 @@ function App() {
   const empresaResult = useEmpresaDashboard(
     tipoPerfil === "empresa" ? idPerfil : null
   )
-  const { data, historico, tendencia, loading, risco, impacto, refetch } =
+  const { data, historico, tendencia, loading, impacto, refetch } =
     tipoPerfil === "mei" ? meiResult :
     tipoPerfil === "cpf" ? cpfResult :
     empresaResult
-  const severidadeRisco =
-    risco === -1 ? "indisponivel" :
-    risco >= 80 ? "crítico" :
-    risco >= 60 ? "alto" :
-    risco >= 40 ? "moderado" :
-    risco >= 20 ? "baixo" :
-    "controlado"
   const timelineFiscal =
     [...(historico ?? [])]
       .sort(
@@ -834,16 +827,6 @@ function App() {
       valor: `R$ ${(data?.restituicao_st ?? 0).toLocaleString("pt-BR")}`,
     },
     {
-      id: "risco-tributario",
-      titulo: "Risco Tributário",
-      valor: risco === -1 ? "N/D" : `${risco}%`,
-    },
-    {
-      id: "severidade-risco",
-      titulo: "Severidade",
-      valor: severidadeRisco,
-    },
-    {
       id: "tendencia-inteligencia",
       titulo: "Tendência da Inteligência Fiscal",
       valor:
@@ -1539,11 +1522,7 @@ function App() {
 
         <section className="cards-grid">
           {cardsDashboard.map((card) => (
-            <article
-              className={`card ${card.id === "severidade-risco" ? `card-severidade-${severidadeRisco}` : ""}`}
-              key={card.id}
-              data-card-id={card.id}
-            >
+            <article className="card" key={card.id} data-card-id={card.id}>
               <span className="card-label">{card.titulo}</span>
               <strong>{card.valor}</strong>
             </article>
