@@ -7,6 +7,7 @@ APP = ROOT / "frontend-dashboard" / "src" / "App.jsx"
 EMPRESA_HOOK = ROOT / "frontend-dashboard" / "src" / "hooks" / "useEmpresaDashboard.js"
 PDF_SERVICE = ROOT / "app" / "services" / "pdf_report_service.py"
 MAPA_SERVICE = ROOT / "app" / "services" / "mapa_oportunidades_service.py"
+INSIGHTS_ENGINE = ROOT / "app" / "services" / "insights_engine.py"
 
 
 def test_dashboard_does_not_use_fictitious_evolution_series():
@@ -130,3 +131,41 @@ def test_unvalidated_global_score_is_not_surfaced_as_fiscal_score_out_of_100():
         and backend_value_reaches_card
         and commercial_score_card
     ), "Pontuação Fiscal /100 não pode derivar de score_global_tributario sem metodologia validada"
+
+
+def test_estimated_st_restitution_is_not_presented_as_recovered_value():
+    app = APP.read_text(encoding="utf-8")
+    mapa_service = MAPA_SERVICE.read_text(encoding="utf-8")
+    insights_engine = INSIGHTS_ENGINE.read_text(encoding="utf-8")
+
+    estimated_sources = (
+        re.search(
+            r'["\']tipo["\']\s*:\s*["\']PRODUTO_COM_RESTITUICAO_RELEVANTE["\']'
+            r'[\s\S]{0,300}?["\']valor_estimado["\']\s*:\s*item\[["\']restituicao_estimada["\']\]',
+            insights_engine,
+        )
+        and re.search(
+            r'["\']tipo["\']\s*:\s*["\']ST_RESTITUICAO["\']'
+            r'[\s\S]{0,300}?["\']valor_estimado["\']\s*:\s*round\(restituicao_estimada\s*,\s*2\)'
+            r'[\s\S]{0,300}?Poss.vel restitui..o de ST estimada',
+            insights_engine,
+        )
+    )
+    estimated_sources_feed_restituicao_st = re.search(
+        r'if\s+tipo\s+in\s*\(\s*["\']PRODUTO_COM_RESTITUICAO_RELEVANTE["\']\s*,'
+        r'\s*["\']ST_RESTITUICAO["\']\s*\)\s*:'
+        r'[\s\S]{0,150}?mapa\[["\']restituicao_st["\']\]\s*\+=\s*valor',
+        mapa_service,
+    )
+    simple_recovery_card = re.search(
+        r'id\s*:\s*["\']restituicao-st["\']'
+        r'[\s\S]{0,200}?titulo\s*:\s*["\']Recupera..o["\']'
+        r'[\s\S]{0,200}?valor\s*:\s*[^\n]*data\?\.restituicao_st',
+        app,
+    )
+
+    assert not (
+        estimated_sources
+        and estimated_sources_feed_restituicao_st
+        and simple_recovery_card
+    ), "Restituição ST estimada não pode ser apresentada externamente como Recuperação"
