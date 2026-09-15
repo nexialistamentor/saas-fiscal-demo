@@ -55,6 +55,54 @@ def test_ncm_distribution_surface_is_not_backed_by_hardcoded_empty_data():
     assert not (hardcoded_empty_ncm and ncm_distribution_surface)
 
 
+def test_empresa_mixed_impact_is_not_presented_as_recoverable_estimate():
+    app = APP.read_text(encoding="utf-8")
+    hook = EMPRESA_HOOK.read_text(encoding="utf-8")
+    mapa_service = MAPA_SERVICE.read_text(encoding="utf-8")
+
+    backend_aggregates_direct_and_estimated_impact = (
+        "TIPOS_IMPACTO_DIRETO" in mapa_service
+        and "TIPOS_IMPACTO_ESTIMADO" in mapa_service
+        and re.search(
+            r'mapa\[["\']impacto_financeiro_anual["\']\]\s*\+=\s*valor'
+            r'[\s\S]{0,300}?tipo\s+in\s+TIPOS_IMPACTO_DIRETO'
+            r'[\s\S]{0,300}?tipo\s+in\s+TIPOS_IMPACTO_ESTIMADO',
+            mapa_service,
+        )
+        and '"valor_recuperavel_real"' in mapa_service
+        and '"valor_estimado"' in mapa_service
+    )
+    mixed_total_reaches_impacto = re.search(
+        r'\bconst\s+impacto\s*=\s*data\?\.impacto_financeiro_anual'
+        r'\s*\?\?\s*\(data\?\.restituicao_st\s*\?\?\s*0\)\s*\*\s*12',
+        hook,
+    )
+    profile_copy = re.search(
+        r'tipoPerfil\s*===\s*["\']cpf["\']\s*'
+        r'\?\s*["\']IRPF Estimado Anual["\']\s*'
+        r':\s*["\']Impacto Financeiro Anual["\']'
+        r'[\s\S]{0,300}?\bimpacto\b'
+        r'[\s\S]{0,300}?tipoPerfil\s*===\s*["\']cpf["\']\s*'
+        r'\?\s*["\']Imposto de renda estimado no ano["\']\s*'
+        r':\s*["\']Valor recuper.vel estimado no ano["\']',
+        app,
+    )
+
+    assert re.search(
+        r'tipoPerfil\s*===\s*["\']cpf["\']\s*'
+        r'\?\s*["\']IRPF Estimado Anual["\']',
+        app,
+    ), "O caminho CPF deve permanecer coberto como IRPF Estimado Anual"
+    assert not (
+        backend_aggregates_direct_and_estimated_impact
+        and mixed_total_reaches_impacto
+        and profile_copy
+    ), (
+        "EMPRESA não pode apresentar impacto_financeiro_anual misto como "
+        "Valor recuperável estimado no ano"
+    )
+
+
 def test_unvalidated_global_score_is_not_surfaced_as_fiscal_score_out_of_100():
     app = APP.read_text(encoding="utf-8")
     hook = EMPRESA_HOOK.read_text(encoding="utf-8")
