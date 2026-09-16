@@ -691,3 +691,10 @@ def test_raw_risk_with_arbitrary_normalization_is_not_exposed_as_percentage_or_s
         "Risco bruto normalizado arbitrariamente para 0-100 não pode ser exposto "
         "como percentual e severidade sem metodologia validada"
     )
+
+
+def test_estoque_fantasma_is_not_exposed_on_external_dashboard():
+    app = APP.read_text(encoding="utf-8")
+
+    assert not re.search(r'id\s*:\s*["\']estoque-fantasma["\']', app)
+    assert "Estoque Fantasma" not in app
