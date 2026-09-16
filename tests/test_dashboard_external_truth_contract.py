@@ -182,10 +182,47 @@ def test_missing_estimated_st_restitution_is_not_presented_as_monetary_zero():
     )
 
     assert st_card is not None
+    st_card_body = st_card.group("body")
+    st_value = r"data\?\.restituicao_st"
+
+    assert re.search(st_value, st_card_body), (
+        "O cartão ST deve continuar ligado ao valor externo de restituição estimada"
+    )
     assert not re.search(
-        r'data\?\.restituicao_st[\s\S]{0,100}?(?:\?\?|\|\|)\s*0\b',
-        st_card.group("body"),
+        rf'{st_value}[\s\S]{{0,100}}?(?:\?\?|\|\|)\s*0\b',
+        st_card_body,
     ), "Ausência de restituição ST não pode ser convertida silenciosamente em zero monetário"
+    assert not re.search(
+        rf'(?:!\s*{st_value}|{st_value}\s*(?:\?(?!\?)|&&|\|\|))',
+        st_card_body,
+    ), "Zero legítimo de restituição ST não pode ser confundido com ausência por truthiness"
+
+    nullish_comparison = re.search(
+        rf'{st_value}\s*(?:==|!=)\s*null\b',
+        st_card_body,
+    )
+    nullish_coalescing = re.search(rf'{st_value}\s*\?\?', st_card_body)
+    strict_null = rf'{st_value}\s*===\s*null\b'
+    strict_undefined = (
+        rf'(?:{st_value}\s*===\s*undefined\b|'
+        rf'typeof\s+{st_value}\s*===\s*["\']undefined["\'])'
+    )
+    strict_not_null = rf'{st_value}\s*!==\s*null\b'
+    strict_not_undefined = (
+        rf'(?:{st_value}\s*!==\s*undefined\b|'
+        rf'typeof\s+{st_value}\s*!==\s*["\']undefined["\'])'
+    )
+    explicit_null_and_undefined = re.search(
+        rf'(?:{strict_null}[\s\S]{{0,100}}?\|\|[\s\S]{{0,100}}?{strict_undefined}|'
+        rf'{strict_undefined}[\s\S]{{0,100}}?\|\|[\s\S]{{0,100}}?{strict_null}|'
+        rf'{strict_not_null}[\s\S]{{0,100}}?&&[\s\S]{{0,100}}?{strict_not_undefined}|'
+        rf'{strict_not_undefined}[\s\S]{{0,100}}?&&[\s\S]{{0,100}}?{strict_not_null})',
+        st_card_body,
+    )
+
+    assert nullish_comparison or nullish_coalescing or explicit_null_and_undefined, (
+        "Indisponibilidade de restituição ST deve distinguir null/undefined do zero numérico"
+    )
 
 
 def test_external_fiscal_intelligence_trend_is_not_derived_from_unvalidated_global_score():
