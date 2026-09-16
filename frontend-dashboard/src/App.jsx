@@ -1502,7 +1502,12 @@ function App() {
                   : "Valor Tributário para Análise"}
             </span>
             <strong className="card-valor-impacto">
-              R$ {(impacto ?? 0).toLocaleString("pt-BR")}
+              {tipoPerfil === "empresa" &&
+              (data?.context_flags?.dados_incompletos === true ||
+                (data?.impacto_financeiro_anual == null &&
+                  data?.restituicao_st == null))
+                ? "N/D"
+                : `R$ ${(impacto ?? 0).toLocaleString("pt-BR")}`}
             </strong>
             <p className="card-sub">
               {tipoPerfil === "cpf"

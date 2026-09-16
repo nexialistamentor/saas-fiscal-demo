@@ -47,7 +47,11 @@ export default function useEmpresaDashboard(idPerfil) {
     ? -1
     : Math.min(100, data.risco_tributario_percentual)
   const pontuacao = data ? Math.min(100, Math.max(0, data.pontuacao_fiscal ?? 0)) : 0
-  const impacto = data?.impacto_financeiro_anual ?? (data?.restituicao_st ?? 0) * 12
+  const impacto = data?.impacto_financeiro_anual != null
+    ? data.impacto_financeiro_anual
+    : data?.restituicao_st != null
+      ? data.restituicao_st * 12
+      : null
   return {
     data,
     historico,
