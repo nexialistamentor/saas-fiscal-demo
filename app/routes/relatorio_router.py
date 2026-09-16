@@ -27,6 +27,14 @@ from app.services.insights_engine import InsightEngine
 from app.services.pdf_report_service import gerar_pdf_imposto, gerar_pdf_relatorio, gerar_pdf_memorial
 from app.services.imposto_service import calcular_imposto_simples
 from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
+from app.services.tax_report_acquisition_reader import (
+    TaxReportAcquisitionReader,
+    TaxReportAcquisitionReadError,
+)
+from app.services.tax_report_acquisition_pdf import (
+    TaxReportAcquisitionPdfRenderer,
+    TaxReportAcquisitionPdfError,
+)
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
 from app.services.context_flags_service import default_context_flags
@@ -419,6 +427,47 @@ def baixar_memorial_pdf(
         iter([pdf.getvalue()]),
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=memorial-{relatorio_id}.pdf"},
+    )
+
+
+@router.get("/empresas/{empresa_id}/acquisitions/{acquisition_id}/pdf")
+def baixar_aquisicao_pdf(
+    empresa_id: int,
+    acquisition_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    reader = TaxReportAcquisitionReader(db)
+    try:
+        acquisition = reader.read(
+            user_id=usuario_atual.id,
+            empresa_id=empresa_id,
+            acquisition_id=acquisition_id,
+        )
+    except TaxReportAcquisitionReadError:
+        raise HTTPException(
+            status_code=404,
+            detail="Aquisição indisponível.",
+        ) from None
+
+    try:
+        pdf = TaxReportAcquisitionPdfRenderer().render(
+            acquisition=acquisition,
+            empresa_id=empresa_id,
+        )
+    except TaxReportAcquisitionPdfError:
+        raise HTTPException(
+            status_code=409,
+            detail="Aquisição indisponível para renderização.",
+        ) from None
+
+    return StreamingResponse(
+        iter([pdf.getvalue()]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition":
+                f"attachment; filename=relatorio-fiscal-{acquisition_id}.pdf"
+        },
     )
 
 
