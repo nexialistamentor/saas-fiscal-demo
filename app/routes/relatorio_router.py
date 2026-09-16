@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import models
@@ -35,6 +38,10 @@ from app.services.tax_report_acquisition_pdf import (
     TaxReportAcquisitionPdfRenderer,
     TaxReportAcquisitionPdfError,
 )
+from app.services.tax_report_acquisition import (
+    TaxReportAcquisition,
+    TaxReportAcquisitionError,
+)
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
 from app.services.context_flags_service import default_context_flags
@@ -51,6 +58,16 @@ from app.services.analysis_types import (
 router = APIRouter()
 
 ANALYSIS_TYPES = ANALYSIS_TYPES_RELATORIO_GET  # mei_tax: use POST /mei_tax e GET /mei_tax/{id}
+
+
+class _TaxReportAcquisitionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    relatorio_id: Annotated[StrictInt, Field(gt=0)]
+    request_fingerprint: Annotated[
+        StrictStr,
+        Field(pattern=r"^[0-9a-f]{64}$"),
+    ]
 
 
 def _pagamento_confirmado(usuario: models.User, perfil_id: int, db: Session) -> bool:
@@ -428,6 +445,100 @@ def baixar_memorial_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=memorial-{relatorio_id}.pdf"},
     )
+
+
+@router.post("/empresas/{empresa_id}/acquisitions")
+def criar_aquisicao(
+    request: Request,
+    empresa_id: int,
+    body: _TaxReportAcquisitionRequest,
+    idempotency_key: Annotated[
+        str,
+        Header(
+            alias="Idempotency-Key",
+            min_length=1,
+            max_length=255,
+            pattern=r"^[\x21-\x7e]+$",
+        ),
+    ],
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    header_count = sum(
+        1
+        for name, _ in request.scope.get("headers", ())
+        if name.lower() == b"idempotency-key"
+    )
+    if header_count != 1:
+        raise HTTPException(
+            status_code=422,
+            detail="Idempotency-Key inválida.",
+        )
+
+    service = TaxReportAcquisition(db)
+    try:
+        binding = service.acquire(
+            user_id=usuario_atual.id,
+            empresa_id=empresa_id,
+            relatorio_id=body.relatorio_id,
+            idempotency_key=idempotency_key,
+            request_fingerprint=body.request_fingerprint,
+        )
+    except TaxReportAcquisitionError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Aquisição indisponível.",
+        ) from None
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Aquisição temporariamente indisponível.",
+        ) from None
+
+    if (
+        binding is None
+        or type(binding.relatorio_analise_id) is not int
+        or binding.relatorio_analise_id <= 0
+        or (
+            binding.id is not None
+            and (type(binding.id) is not int or binding.id <= 0)
+        )
+    ):
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Resposta de aquisição inválida.",
+        )
+
+    relatorio_analise_id = binding.relatorio_analise_id
+
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Aquisição temporariamente indisponível.",
+        ) from None
+
+    acquisition_id = binding.id
+    if (
+        type(acquisition_id) is not int
+        or acquisition_id <= 0
+        or type(relatorio_analise_id) is not int
+        or relatorio_analise_id <= 0
+    ):
+        raise HTTPException(
+            status_code=500,
+            detail="Resposta de aquisição inválida.",
+        )
+
+    return {
+        "acquisition_id": acquisition_id,
+        "relatorio_analise_id": relatorio_analise_id,
+    }
 
 
 @router.get("/empresas/{empresa_id}/acquisitions/{acquisition_id}/pdf")
