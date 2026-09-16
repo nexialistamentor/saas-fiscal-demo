@@ -848,11 +848,6 @@ function App() {
           ? "0"
           : `${data.total_insights}`,
     },
-    {
-      id: "estoque-fantasma",
-      titulo: "Estoque Fantasma",
-      valor: `${data?.estoque_fantasma ?? 0}`,
-    },
   ]
 
   async function enviarXML(files) {
