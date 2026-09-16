@@ -172,6 +172,22 @@ def test_estimated_st_restitution_is_not_presented_as_recovered_value():
     ), "Restituição ST estimada não pode ser apresentada externamente como Recuperação"
 
 
+def test_missing_estimated_st_restitution_is_not_presented_as_monetary_zero():
+    app = APP.read_text(encoding="utf-8")
+    st_card = re.search(
+        r'\{\s*id\s*:\s*["\']restituicao-st["\']'
+        r'[\s\S]*?titulo\s*:\s*["\']Valor estimado de ST para an.lise["\']'
+        r'(?P<body>[\s\S]*?)\n\s*\},',
+        app,
+    )
+
+    assert st_card is not None
+    assert not re.search(
+        r'data\?\.restituicao_st[\s\S]{0,100}?(?:\?\?|\|\|)\s*0\b',
+        st_card.group("body"),
+    ), "Ausência de restituição ST não pode ser convertida silenciosamente em zero monetário"
+
+
 def test_external_fiscal_intelligence_trend_is_not_derived_from_unvalidated_global_score():
     app = APP.read_text(encoding="utf-8")
     tendencia_service = TENDENCIA_SERVICE.read_text(encoding="utf-8")
