@@ -60,7 +60,12 @@ class TaxReportAcquisition:
                 request_fingerprint=request_fingerprint,
             )
 
-        relatorio = self._db.get(RelatorioAnalise, relatorio_id)
+        relatorio = self._db.scalar(
+            select(RelatorioAnalise)
+            .where(RelatorioAnalise.id == relatorio_id)
+            .with_for_update(of=RelatorioAnalise)
+            .execution_options(populate_existing=True)
+        )
         if (
             relatorio is None
             or relatorio.user_id != user_id

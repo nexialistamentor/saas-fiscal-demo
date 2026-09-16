@@ -366,6 +366,30 @@ def test_tax_report_persisted_result_acquisition_contract_red():
     # A selecao concorrente exige row lock antes do debito, verificado acima.
 
 
+def test_tax_report_is_locked_before_validation_and_grant_selection():
+    _, service_type, _ = _future_contract()
+    acquire_source = getsource(service_type.acquire)
+
+    assert "self._db.get(RelatorioAnalise, relatorio_id)" not in acquire_source
+
+    report_select = "select(RelatorioAnalise)"
+    report_lock = ".with_for_update(of=RelatorioAnalise)"
+    populate_existing = ".execution_options(populate_existing=True)"
+    provenance_check = "verificar_resultado_persistido(relatorio)"
+    grant_selection = "self._selecionar_grant_com_lock("
+
+    assert report_select in acquire_source
+    assert report_lock in acquire_source
+    assert populate_existing in acquire_source
+    assert acquire_source.index(report_select) < acquire_source.index(report_lock)
+    assert acquire_source.index(report_lock) < acquire_source.index(provenance_check)
+    assert acquire_source.index(report_lock) < acquire_source.index(grant_selection)
+
+    grant_source = getsource(service_type._selecionar_grant_com_lock)
+    assert ".with_for_update(of=CheckoutOfferGrant)" in grant_source
+    assert report_lock not in grant_source
+
+
 def test_tax_report_acquisition_orphan_consumption_replay_fails_closed():
     binding, service_type, error_type = _future_contract()
     engine = _schema(binding)
