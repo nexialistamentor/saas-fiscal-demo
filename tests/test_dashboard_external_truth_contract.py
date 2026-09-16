@@ -225,6 +225,64 @@ def test_missing_estimated_st_restitution_is_not_presented_as_monetary_zero():
     )
 
 
+def test_empresa_missing_impact_is_not_presented_as_monetary_zero_in_hero():
+    app = APP.read_text(encoding="utf-8")
+    hook = EMPRESA_HOOK.read_text(encoding="utf-8")
+
+    hook_fabricates_zero_for_missing_empresa_impact = re.search(
+        r'\bconst\s+impacto\s*=\s*data\?\.impacto_financeiro_anual'
+        r'\s*\?\?\s*\(data\?\.restituicao_st\s*\?\?\s*0\)\s*\*\s*12',
+        hook,
+    )
+    empresa_hero = re.search(
+        r'tipoPerfil\s*!==\s*["\']mei["\']\s*&&\s*'
+        r'<section\s+className=["\']impacto-hero["\']>'
+        r'(?P<body>[\s\S]{0,1500}?)</section>',
+        app,
+    )
+
+    assert empresa_hero is not None
+    hero_body = empresa_hero.group("body")
+    hero_fabricates_money_zero = re.search(
+        r'R\$\s*\{\s*\(\s*impacto\s*\?\?\s*0\s*\)'
+        r'\.toLocaleString\(\s*["\']pt-BR["\']\s*\)',
+        hero_body,
+    )
+    hero_distinguishes_missing_impact_from_zero = re.search(
+        r'impacto\s*(?:==|!=)\s*null\b|impacto\s*\?\?',
+        hero_body,
+    ) and not re.search(
+        r'(?:!\s*impacto\b|\bimpacto\s*(?:\?(?!\?)|&&|\|\|))',
+        hero_body,
+    )
+    empresa_uses_canonical_missing_signals = (
+        re.search(r'tipoPerfil\s*===\s*["\']empresa["\']', hero_body)
+        and re.search(r'data\?\.context_flags\?\.dados_incompletos\s*===\s*true', hero_body)
+        and re.search(r'data\?\.impacto_financeiro_anual\s*(?:==|!=)\s*null\b', hero_body)
+        and re.search(r'data\?\.restituicao_st\s*(?:==|!=)\s*null\b', hero_body)
+        and not re.search(
+            r'(?:!\s*data\?\.(?:impacto_financeiro_anual|restituicao_st)\b|'
+            r'data\?\.(?:impacto_financeiro_anual|restituicao_st)\s*'
+            r'(?:\?(?!\?)|&&|\|\|))',
+            hero_body,
+        )
+    )
+
+    assert not hook_fabricates_zero_for_missing_empresa_impact or (
+        empresa_uses_canonical_missing_signals
+    ), (
+        "A origem EMPRESA não pode fabricar zero quando impacto e restituição ST "
+        "estão ausentes, salvo se o hero consultar diretamente os sinais canónicos"
+    )
+    assert (
+        hero_distinguishes_missing_impact_from_zero
+        and not hero_fabricates_money_zero
+    ) or empresa_uses_canonical_missing_signals, (
+        "O hero EMPRESA deve distinguir ausência/null de zero numérico real; "
+        "corrigir somente o hook não torna a apresentação segura"
+    )
+
+
 def test_external_fiscal_intelligence_trend_is_not_derived_from_unvalidated_global_score():
     app = APP.read_text(encoding="utf-8")
     tendencia_service = TENDENCIA_SERVICE.read_text(encoding="utf-8")
