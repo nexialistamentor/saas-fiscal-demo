@@ -833,9 +833,11 @@ function App() {
     {
       id: "timeline-fiscal",
       titulo: "Eventos na Timeline",
-      valor: timelineFiscal.length
-        ? `${timelineFiscal.length} eventos (último: ${timelineFiscal[timelineFiscal.length - 1].data})`
-        : "Sem eventos",
+      valor: tipoPerfil === "empresa" && historico == null
+        ? "N/D"
+        : timelineFiscal.length
+          ? `${timelineFiscal.length} eventos (último: ${timelineFiscal[timelineFiscal.length - 1].data})`
+          : "Sem eventos",
     },
     {
       id: "percepcoes-fiscais",

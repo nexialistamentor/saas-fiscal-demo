@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { API_BASE, fetchAutenticado, isAuthenticated } from "../config"
 export default function useEmpresaDashboard(idPerfil) {
   const [data, setData] = useState(null)
-  const [historico, setHistorico] = useState([])
+  const [historico, setHistorico] = useState(null)
   const [tendencia, setTendencia] = useState(null)
   const [loading, setLoading] = useState(true)
   const carregar = useCallback(async () => {
@@ -24,16 +24,17 @@ export default function useEmpresaDashboard(idPerfil) {
         return
       }
       const mapaJson = await resMapa.json()
-      const historicoJson = resHistorico?.ok ? await resHistorico.json() : []
+      const historicoJson = resHistorico?.ok ? await resHistorico.json() : null
       const tendenciaJson = resTendencia?.ok ? await resTendencia.json() : null
       const mapaSeguro =
         mapaJson != null && typeof mapaJson === "object" && !Array.isArray(mapaJson)
           ? mapaJson : null
       setData(mapaSeguro ?? {})
-      setHistorico(Array.isArray(historicoJson) ? historicoJson : [])
+      setHistorico(Array.isArray(historicoJson) ? historicoJson : null)
       setTendencia(tendenciaJson ?? { tendencia: "insuficiente" })
     } catch (erro) {
       console.error("[Dashboard Empresa] erro:", erro)
+      setHistorico(null)
     } finally {
       setLoading(false)
     }
