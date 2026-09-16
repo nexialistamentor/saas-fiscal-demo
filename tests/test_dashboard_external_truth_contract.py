@@ -320,6 +320,243 @@ def test_external_fiscal_intelligence_trend_is_not_derived_from_unvalidated_glob
     )
 
 
+def test_empresa_timeline_unavailability_is_not_presented_as_valid_empty_history():
+    app = APP.read_text(encoding="utf-8")
+    hook = EMPRESA_HOOK.read_text(encoding="utf-8")
+
+    def contract_is_safe(hook_source, app_source):
+        card = re.search(
+            r'\{\s*id\s*:\s*["\']timeline-fiscal["\']'
+            r'(?P<body>[\s\S]*?)\n\s*\},',
+            app_source,
+        )
+        if card is None:
+            return False
+        card_body = card.group("body")
+
+        payload_names = set(
+            re.findall(
+                r'\b(?:const|let)\s+(\w+)\s*=\s*[^;\n]*?'
+                r'(?:await\s+)?resHistorico\.json\(\)',
+                hook_source,
+            )
+        )
+        unavailable_on_failed_response = set(
+            re.findall(
+                r'\b(?:const|let)\s+(\w+)\s*=\s*[^;\n]*?'
+                r'resHistorico\?*\.ok[^;\n]*?resHistorico\.json\(\)'
+                r'[^;\n]*?:\s*null\b',
+                hook_source,
+            )
+        )
+        array_checks = {
+            name
+            for name in payload_names
+            if re.search(rf'Array\.isArray\(\s*{re.escape(name)}\s*\)', hook_source)
+        }
+        valid_names = set(
+            re.findall(
+                r'\b(?:const|let)\s+(\w+)\s*=\s*'
+                r'Array\.isArray\(\s*(\w+)\s*\)',
+                hook_source,
+            )
+        )
+        valid_by_payload = {valid: payload for valid, payload in valid_names}
+
+        empty_array_is_preserved = any(
+            re.search(
+                rf'setHistorico\(\s*(?:Array\.isArray\(\s*{re.escape(payload)}\s*\)'
+                rf'|{re.escape(valid)})\s*\?\s*{re.escape(payload)}\b',
+                hook_source,
+            )
+            or re.search(
+                rf'if\s*\(\s*Array\.isArray\(\s*{re.escape(payload)}\s*\)\s*\)'
+                rf'[\s\S]{{0,200}}?setHistorico\(\s*{re.escape(payload)}\s*\)',
+                hook_source,
+            )
+            for payload in array_checks
+            for valid in ({name for name, source in valid_by_payload.items() if source == payload} | {""})
+        )
+
+        nullable_initial_state = re.search(
+            r'\[\s*historico\s*,\s*setHistorico\s*\]\s*=\s*useState\(\s*null\s*\)',
+            hook_source,
+        )
+        nullable_failure_paths = any(
+            payload in unavailable_on_failed_response
+            and re.search(
+                rf'resHistorico\?*\.ok[^;\n]*?resHistorico\.json\(\)\s*:\s*null\b',
+                hook_source,
+            )
+            and re.search(
+                rf'setHistorico\(\s*(?:Array\.isArray\(\s*{re.escape(payload)}\s*\)'
+                rf'|\w+)\s*\?\s*{re.escape(payload)}\s*:\s*null\s*\)',
+                hook_source,
+            )
+            for payload in array_checks
+        )
+        card_checks_nullable = re.search(
+            r'\bhistorico\s*(?:==|!=|===|!==)\s*null\b[\s\S]*?["\']Sem eventos["\']',
+            card_body,
+        )
+        nullable_contract = (
+            nullable_initial_state
+            and empty_array_is_preserved
+            and nullable_failure_paths
+            and card_checks_nullable
+        )
+
+        availability_states = re.findall(
+            r'\[\s*(\w*(?:dispon|status|erro)\w*)\s*,\s*(\w+)\s*\]'
+            r'\s*=\s*useState\(\s*(false|null|["\'][^"\']+["\'])\s*\)',
+            hook_source,
+            flags=re.IGNORECASE,
+        )
+        returned_block = re.search(r'\breturn\s*\{(?P<body>[\s\S]*?)\}', hook_source)
+
+        def flag_is_causal(flag, setter):
+            setter_arguments = re.findall(
+                rf'\b{re.escape(setter)}\(\s*([^;\n]+)\s*\)', hook_source
+            )
+            for argument in setter_arguments:
+                direct_response = re.search(r'\bresHistorico\?*\.ok\b', argument)
+                direct_array = any(
+                    re.search(rf'Array\.isArray\(\s*{re.escape(payload)}\s*\)', argument)
+                    for payload in array_checks
+                )
+                guarded_validity = any(
+                    re.search(rf'\b{re.escape(validity)}\b', argument)
+                    and payload in unavailable_on_failed_response
+                    for validity, payload in valid_by_payload.items()
+                )
+                direct_guarded_payload = any(
+                    payload in unavailable_on_failed_response
+                    and re.search(
+                        rf'Array\.isArray\(\s*{re.escape(payload)}\s*\)', argument
+                    )
+                    for payload in array_checks
+                )
+                if (direct_response and direct_array) or guarded_validity or direct_guarded_payload:
+                    return True
+            return False
+
+        def flag_is_refreshed_on_failure(setter):
+            setter_calls = list(
+                re.finditer(rf'\b{re.escape(setter)}\(\s*([^;\n]+)\s*\)', hook_source)
+            )
+            success_only_bodies = [
+                match.span("body")
+                for match in re.finditer(
+                    r'if\s*\((?:[^()]|\([^()]*\))*\)\s*\{(?P<body>[^{}]*)\}',
+                    hook_source,
+                )
+            ]
+            return any(
+                not any(start <= call.start() < end for start, end in success_only_bodies)
+                for call in setter_calls
+            )
+
+        explicit_contract = any(
+            empty_array_is_preserved
+            and flag_is_causal(flag, setter)
+            and flag_is_refreshed_on_failure(setter)
+            and returned_block is not None
+            and re.search(rf'\b{re.escape(flag)}\b', returned_block.group("body"))
+            and re.search(
+                rf'\b{re.escape(flag)}\b[\s\S]*?["\']Sem eventos["\']', card_body
+            )
+            for flag, setter, _initial in availability_states
+        )
+        return bool(nullable_contract or explicit_contract)
+
+    nullable_hook = """
+      const [outro, setOutro] = useState([])
+      const [historico, setHistorico] = useState(null)
+      const historicoJson = resHistorico?.ok ? await resHistorico.json() : null
+      setHistorico(Array.isArray(historicoJson) ? historicoJson : null)
+      return { historico }
+    """
+    nullable_app = """
+      { id: "timeline-fiscal", valor: historico == null ? "N/D" :
+          timelineFiscal.length ? "eventos" : "Sem eventos",
+      },
+    """
+    explicit_hook = """
+      const [historico, setHistorico] = useState([])
+      const [historicoDisponivel, setHistoricoDisponivel] = useState(false)
+      const payload = resHistorico?.ok ? await resHistorico.json() : null
+      const historicoValido = Array.isArray(payload)
+      setHistorico(historicoValido ? payload : [])
+      setHistoricoDisponivel(historicoValido)
+      return { historico, historicoDisponivel }
+    """
+    explicit_app = """
+      { id: "timeline-fiscal", valor: !historicoDisponivel ? "N/D" :
+          timelineFiscal.length ? "eventos" : "Sem eventos",
+      },
+    """
+    unsafe_empty_fallback_hook = """
+      const [historico, setHistorico] = useState([])
+      const payload = resHistorico?.ok ? await resHistorico.json() : []
+      setHistorico(Array.isArray(payload) ? payload : [])
+      return { historico }
+    """
+    unsafe_empty_fallback_app = """
+      { id: "timeline-fiscal", valor: timelineFiscal.length
+          ? "eventos" : "Sem eventos",
+      },
+    """
+    stale_flag_hook = explicit_hook.replace(
+        "setHistorico(historicoValido ? payload : [])\n"
+        "      setHistoricoDisponivel(historicoValido)",
+        "if (historicoValido) {\n"
+        "        setHistorico(historicoValido ? payload : [])\n"
+        "        setHistoricoDisponivel(historicoValido)\n"
+        "      }",
+    )
+    http_guarded_stale_flag_hook = explicit_hook.replace(
+        "setHistoricoDisponivel(historicoValido)",
+        "if (resHistorico?.ok) {\n"
+        "        setHistoricoDisponivel(historicoValido)\n"
+        "      }",
+    )
+
+    # Casos 2, 3 e 6: as duas estrategias preservam [] como historia valida.
+    assert contract_is_safe(nullable_hook, nullable_app)
+    assert contract_is_safe(explicit_hook, explicit_app)
+    # Casos 1, 4 e 5: fallback [], flag constante e null de outro estado nao bastam.
+    assert not contract_is_safe(unsafe_empty_fallback_hook, unsafe_empty_fallback_app)
+    assert not contract_is_safe(
+        explicit_hook.replace("setHistoricoDisponivel(historicoValido)", "setHistoricoDisponivel(true)"),
+        explicit_app,
+    )
+    assert not contract_is_safe(
+        explicit_hook.replace(
+            "resHistorico?.ok ? await resHistorico.json() : null",
+            "resHistorico?.ok ? await resHistorico.json() : []",
+        ),
+        explicit_app,
+    )
+    assert not contract_is_safe(
+        nullable_hook.replace(
+            "const [historico, setHistorico] = useState(null)",
+            "const [historico, setHistorico] = useState([])",
+        ),
+        nullable_app,
+    )
+    # Caso 7: sucesso anterior nao pode sobreviver como flag true a nova falha.
+    assert not contract_is_safe(stale_flag_hook, explicit_app)
+    # Caso 8: guarda HTTP sem reset de falha tambem preserva true stale.
+    assert not contract_is_safe(http_guarded_stale_flag_hook, explicit_app)
+
+    assert contract_is_safe(hook, app), (
+        "Ausencia, erro HTTP ou payload invalido do historico EMPRESA deve preservar "
+        "um sinal causal ate o card da timeline; HTTP OK com array, inclusive [], "
+        "deve permanecer historia valida, e somente historia valida vazia pode ser "
+        "apresentada como 'Sem eventos'"
+    )
+
+
 def test_raw_risk_with_arbitrary_normalization_is_not_exposed_as_percentage_or_severity():
     app = APP.read_text(encoding="utf-8")
     mapa_service = MAPA_SERVICE.read_text(encoding="utf-8")
