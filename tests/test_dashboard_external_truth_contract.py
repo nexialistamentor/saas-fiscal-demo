@@ -557,6 +557,71 @@ def test_empresa_timeline_unavailability_is_not_presented_as_valid_empty_history
     )
 
 
+def test_empresa_percepcoes_preserves_map_availability_and_real_zero():
+    app = APP.read_text(encoding="utf-8")
+    hook = EMPRESA_HOOK.read_text(encoding="utf-8")
+    mapa_service = MAPA_SERVICE.read_text(encoding="utf-8")
+
+    card = re.search(
+        r'\{\s*id\s*:\s*["\']percepcoes-fiscais["\']'
+        r'(?P<body>[\s\S]*?)\n\s*\},',
+        app,
+    )
+    assert card is not None
+    card_body = card.group("body")
+
+    missing_response = re.search(
+        r'if\s*\(\s*!resMapa\s*\)\s*\{(?P<body>[^{}]*)\}', hook
+    )
+    failed_response = re.search(
+        r'if\s*\(\s*!resMapa\.ok\s*\)\s*\{(?P<body>[^{}]*)\}', hook
+    )
+    catch_body = re.search(r'catch\s*\([^)]*\)\s*\{(?P<body>[^{}]*)\}', hook)
+    explicit_nullish = re.search(
+        r'data\?\.total_insights\s*(?:==|===)\s*null\b', card_body
+    )
+    truthiness = re.search(
+        r'(?:!\s*data\?\.total_insights\b|data\?\.total_insights\s*(?:\?(?!\?)|&&|\|\|))',
+        card_body,
+    )
+
+    cases = {
+        "A_B_backend_preserva_zero_e_positivo": (
+            'mapa["total_insights"] = len(mapa["insights"])' in mapa_service
+        ),
+        "C_resMapa_ausente_invalida_stale": bool(
+            missing_response and "setData(null)" in missing_response.group("body")
+        ),
+        "D_http_nao_ok_invalida_stale": bool(
+            failed_response and "setData(null)" in failed_response.group("body")
+        ),
+        "E_payload_invalido_permanece_null": bool(
+            re.search(
+                r'mapaJson\s*!=\s*null[\s\S]{0,150}?typeof\s+mapaJson\s*===\s*["\']object["\']'
+                r'[\s\S]{0,150}?!Array\.isArray\(mapaJson\)[\s\S]{0,150}?:\s*null',
+                hook,
+            )
+            and re.search(r'setData\(\s*mapaSeguro\s*\)', hook)
+        ),
+        "F_excecao_invalida_stale": bool(
+            catch_body and "setData(null)" in catch_body.group("body")
+        ),
+        "G_card_nao_fabrica_zero_para_ausencia": bool(
+            explicit_nullish and not re.search(r'total_insights\s*\?\?\s*0\b', card_body)
+        ),
+        "H_context_flags_nao_decide_contador": "context_flags" not in card_body,
+        "I_zero_real_nao_usa_truthiness": bool(explicit_nullish and not truthiness),
+        "J_contrato_restrito_a_empresa": bool(
+            re.search(r'tipoPerfil\s*===\s*["\']empresa["\']', card_body)
+        ),
+    }
+
+    assert all(cases.values()), (
+        "EMPRESA/Percepcoes deve distinguir mapa indisponivel de total_insights zero; "
+        f"casos RED: {[case for case, passed in cases.items() if not passed]}"
+    )
+
+
 def test_raw_risk_with_arbitrary_normalization_is_not_exposed_as_percentage_or_severity():
     app = APP.read_text(encoding="utf-8")
     mapa_service = MAPA_SERVICE.read_text(encoding="utf-8")
