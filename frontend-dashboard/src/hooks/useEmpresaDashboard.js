@@ -15,25 +15,28 @@ export default function useEmpresaDashboard(idPerfil) {
         fetchAutenticado(`${baseURL}/historico-inteligencia/${idPerfil}`),
         fetchAutenticado(`${baseURL}/tendencia-inteligencia/${idPerfil}`)
       ])
+      const historicoJson = resHistorico?.ok ? await resHistorico.json() : null
+      setHistorico(Array.isArray(historicoJson) ? historicoJson : null)
       if (!resMapa) {
+        setData(null)
         setLoading(false)
         return
       }
       if (!resMapa.ok) {
-        console.error(`[Dashboard Empresa] mapa falhou: ${resMapa.status}`)
+        setData(null)
+        console.error("[Dashboard Empresa] mapa falhou: " + resMapa.status)
         return
       }
       const mapaJson = await resMapa.json()
-      const historicoJson = resHistorico?.ok ? await resHistorico.json() : null
       const tendenciaJson = resTendencia?.ok ? await resTendencia.json() : null
       const mapaSeguro =
         mapaJson != null && typeof mapaJson === "object" && !Array.isArray(mapaJson)
           ? mapaJson : null
-      setData(mapaSeguro ?? {})
-      setHistorico(Array.isArray(historicoJson) ? historicoJson : null)
+      setData(mapaSeguro)
       setTendencia(tendenciaJson ?? { tendencia: "insuficiente" })
     } catch (erro) {
       console.error("[Dashboard Empresa] erro:", erro)
+      setData(null)
       setHistorico(null)
     } finally {
       setLoading(false)

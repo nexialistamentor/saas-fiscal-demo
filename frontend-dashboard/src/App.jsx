@@ -842,7 +842,11 @@ function App() {
     {
       id: "percepcoes-fiscais",
       titulo: "Percepções",
-      valor: `${data?.total_insights ?? 0}`,
+      valor: tipoPerfil === "empresa" && data?.total_insights == null
+        ? "N/D"
+        : data?.total_insights == null
+          ? "0"
+          : `${data.total_insights}`,
     },
     {
       id: "estoque-fantasma",
