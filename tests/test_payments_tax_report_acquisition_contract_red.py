@@ -70,6 +70,23 @@ def _seed(
     valid_provenance=True,
     grants=(),
 ):
+    offer = models.CheckoutOffer(
+        id=601,
+        codigo="tax-report-one-time-company",
+        nome_publico="Relatorio fiscal de teste",
+        vertical="tax",
+        commercial_model="one_time",
+        subject_type="company",
+        estado="published",
+        moeda="BRL",
+        preco=Decimal("49.90"),
+        billing_period=None,
+        usage_unit="report",
+        usage_limit=1,
+        contract_version=1,
+    )
+    db.add(offer)
+
     payload = {"tributo": "DAS", "total": 125.75}
     if valid_provenance:
         payload = selar_resultado_nao_mei(payload, producer_id="app.tax.engine")
@@ -101,11 +118,21 @@ def _seed(
             id=order_id,
             user_id=spec.get("user_id", 11),
             empresa_id=spec.get("empresa_id", 21),
-            offer_id=None,
+            plano_id=None,
+            offer_id=offer.id,
+            offer_code=offer.codigo,
+            contract_version=offer.contract_version,
+            vertical=offer.vertical,
+            commercial_model=offer.commercial_model,
+            subject_type=offer.subject_type,
+            subject_id=spec.get("empresa_id", 21),
             valor=Decimal("49.90"),
             moeda="BRL",
             estado=spec.get("order_state", "paid"),
             idempotency_key=f"order-{order_id}",
+            billing_period=None,
+            usage_unit="report",
+            usage_limit=spec.get("limit", 1),
         )
         grant = models.CheckoutOfferGrant(
             id=grant_id,
@@ -337,3 +364,49 @@ def test_tax_report_persisted_result_acquisition_contract_red():
     # Nova analise/snapshot nao herda aquisicao: relatorio e fingerprint fazem
     # parte da identidade idempotente e o binding congela ambos.
     # A selecao concorrente exige row lock antes do debito, verificado acima.
+
+
+def test_tax_report_acquisition_orphan_consumption_replay_fails_closed():
+    binding, service_type, error_type = _future_contract()
+    engine = _schema(binding)
+    try:
+        with Session(engine) as db:
+            _, fingerprint = _seed(
+                db,
+                grants=[{
+                    "grant_id": 840,
+                    "limit": 1,
+                    "consumed": 1,
+                    "state": "exhausted",
+                }],
+            )
+            db.add(models.CheckoutOfferGrantConsumption(
+                grant_id=840,
+                user_id=11,
+                empresa_id=21,
+                capability=CAPABILITY,
+                idempotency_key="orphan-replay",
+                request_fingerprint=fingerprint,
+                units=1,
+                usage_before=0,
+                usage_after=1,
+            ))
+            db.commit()
+
+            with pytest.raises(
+                error_type,
+                match="binding idempotente ausente ou ambiguo",
+            ):
+                _acquire(
+                    service_type,
+                    db,
+                    fingerprint=fingerprint,
+                    key="orphan-replay",
+                )
+
+            assert _counts(db, binding) == (1, 0)
+            grant = db.get(models.CheckoutOfferGrant, 840)
+            assert grant.usage_consumed == 1
+            assert grant.estado == "exhausted"
+    finally:
+        engine.dispose()

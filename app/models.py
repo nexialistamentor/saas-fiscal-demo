@@ -715,6 +715,47 @@ class CheckoutOfferGrantConsumption(Base):
     grant = relationship("CheckoutOfferGrant", back_populates="consumptions")
 
 
+class TaxReportAcquisitionBinding(Base):
+    __tablename__ = "tax_report_acquisition_bindings"
+
+    id = Column(Integer, primary_key=True)
+    consumption_id = Column(
+        Integer,
+        ForeignKey("checkout_offer_grant_consumptions.id"),
+        nullable=False,
+        unique=True,
+    )
+    relatorio_analise_id = Column(
+        Integer,
+        ForeignKey("relatorios_analise.id"),
+        nullable=False,
+        index=True,
+    )
+    fingerprint = Column(String(64), nullable=False)
+    resultado_json_snapshot = Column(JSON, nullable=False)
+    created_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
+    )
+
+
+def _reject_tax_report_acquisition_binding_mutation(
+    _mapper, _connection, _target
+) -> None:
+    raise InvalidRequestError("tax_report_acquisition_bindings is append-only")
+
+
+event.listen(
+    TaxReportAcquisitionBinding,
+    "before_update",
+    _reject_tax_report_acquisition_binding_mutation,
+)
+event.listen(
+    TaxReportAcquisitionBinding,
+    "before_delete",
+    _reject_tax_report_acquisition_binding_mutation,
+)
+
+
 def _reject_checkout_offer_grant_consumption_mutation(
     _mapper, _connection, _target
 ) -> None:
