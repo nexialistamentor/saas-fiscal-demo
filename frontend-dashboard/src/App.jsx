@@ -824,7 +824,11 @@ function App() {
     {
       id: "restituicao-st",
       titulo: "Valor estimado de ST para análise",
-      valor: `R$ ${(data?.restituicao_st ?? 0).toLocaleString("pt-BR")}`,
+      valor:
+        data?.context_flags?.dados_incompletos === true ||
+        data?.restituicao_st == null
+          ? "N/D"
+          : `R$ ${data.restituicao_st.toLocaleString("pt-BR")}`,
     },
     {
       id: "timeline-fiscal",
