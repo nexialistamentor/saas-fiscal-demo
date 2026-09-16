@@ -6,7 +6,7 @@ from decimal import Decimal
 from inspect import getsource, signature
 
 import pytest
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.orm import Session
 
 from app import models
@@ -212,6 +212,35 @@ def _assert_rejected_unchanged(reader_type, error_type, seed_options, read_optio
                 _read(reader_type, db, acquisition_id, **options)
             db.rollback()
             assert _state(db, grant.id) == before
+    finally:
+        engine.dispose()
+
+
+def test_tax_report_acquisition_read_does_not_autoflush_pending_entities():
+    reader_type, _ = _future_contract()
+    engine = _engine()
+    try:
+        with Session(engine) as db:
+            binding, _, _, _ = _seed(db)
+            acquisition_id = binding.id
+            pending_user = models.User(
+                id=901,
+                email="pending-reader-probe@example.test",
+                hashed_password="not-used",
+            )
+            db.add(pending_user)
+            assert pending_user in db.new
+
+            flushes = []
+
+            def record_flush(*_args):
+                flushes.append(True)
+
+            event.listen(db, "before_flush", record_flush)
+            _read(reader_type, db, acquisition_id)
+
+            assert flushes == []
+            assert pending_user in db.new
     finally:
         engine.dispose()
 
