@@ -117,13 +117,25 @@ async def gerar_relatorio(
             raise HTTPException(status_code=429, detail=str(e))
     else:
         analise = executar_analise_xml(xml_bytes)
+    if relatorio_obj is None or relatorio_obj.status != "ok":
+        raise HTTPException(
+            status_code=409,
+            detail="Relatório indisponível para aquisição.",
+        ) from None
+    try:
+        verificar_resultado_persistido(relatorio_obj)
+    except ResultadoProvenanceError:
+        raise HTTPException(
+            status_code=409,
+            detail="Relatório indisponível para aquisição.",
+        ) from None
     relatorio = _montar_relatorio(analise, empresa_id, db)
-    if relatorio_obj:
-        relatorio["relatorio_id"] = relatorio_obj.id
+    relatorio["relatorio_id"] = relatorio_obj.id
     return {
         "status": "processado",
         "mensagem": "Análise concluída. Desbloqueie o relatório completo para visualizar os detalhes.",
-        "relatorio_id": relatorio.get("relatorio_id"),
+        "relatorio_id": relatorio_obj.id,
+        "request_fingerprint": relatorio_obj.fingerprint,
     }
 
 
