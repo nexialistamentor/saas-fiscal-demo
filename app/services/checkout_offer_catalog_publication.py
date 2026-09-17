@@ -156,6 +156,94 @@ class CheckoutOfferCatalogPublicationAuthority:
         finally:
             self._fechar(sessao)
 
+    def revisar_rascunho(
+        self,
+        *,
+        codigo,
+        expected_contract_version,
+        nome_publico,
+        vertical,
+        commercial_model,
+        subject_type,
+        moeda,
+        preco,
+        billing_period,
+        usage_unit,
+        usage_limit,
+        capabilities,
+    ):
+        sessao = None
+        try:
+            sessao = self._abrir_sessao()
+            self._inteiro_positivo(expected_contract_version)
+            capacidades = self._validar_termos(
+                codigo=codigo,
+                nome_publico=nome_publico,
+                vertical=vertical,
+                commercial_model=commercial_model,
+                subject_type=subject_type,
+                moeda=moeda,
+                preco=preco,
+                billing_period=billing_period,
+                usage_unit=usage_unit,
+                usage_limit=usage_limit,
+                capabilities=capabilities,
+            )
+
+            oferta = sessao.scalar(
+                select(CheckoutOffer)
+                .options(selectinload(CheckoutOffer.capabilities))
+                .where(CheckoutOffer.codigo == codigo)
+                .with_for_update()
+            )
+            if oferta is None or oferta.estado != "draft":
+                raise CheckoutOfferCatalogPublicationError()
+            self._inteiro_positivo(oferta.contract_version)
+            if oferta.contract_version != expected_contract_version:
+                raise CheckoutOfferCatalogPublicationError()
+
+            oferta.nome_publico = nome_publico
+            oferta.vertical = vertical
+            oferta.commercial_model = commercial_model
+            oferta.subject_type = subject_type
+            oferta.moeda = moeda
+            oferta.preco = preco
+            oferta.billing_period = billing_period
+            oferta.usage_unit = usage_unit
+            oferta.usage_limit = usage_limit
+            oferta.contract_version = expected_contract_version + 1
+            oferta.atualizado_em = datetime.utcnow()
+
+            capacidades_atuais = {
+                capability.codigo: capability
+                for capability in oferta.capabilities
+            }
+            codigos_novos = set(capacidades)
+            for codigo_atual, capability in capacidades_atuais.items():
+                if codigo_atual not in codigos_novos:
+                    sessao.delete(capability)
+
+            sessao.flush()
+            sessao.expire(oferta, ["capabilities"])
+            codigos_preservados = {
+                capability.codigo for capability in oferta.capabilities
+            }
+            for capacidade in capacidades:
+                if capacidade not in codigos_preservados:
+                    oferta.capabilities.append(
+                        CheckoutOfferCapability(codigo=capacidade)
+                    )
+
+            sessao.flush()
+            resultado = _checkout_offer_draft_snapshot(oferta)
+            sessao.commit()
+            return resultado
+        except Exception:
+            self._rollback(sessao)
+            raise CheckoutOfferCatalogPublicationError() from None
+        finally:
+            self._fechar(sessao)
+
     def publicar_oferta(
         self,
         *,
