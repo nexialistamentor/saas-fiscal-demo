@@ -1,6 +1,7 @@
 from app.database import SessionLocal
 from app.models import Empresa
 from app.services.registro_analise_service import executar_e_registrar_analise_xml
+from app.services.resultado_provenance_service import verificar_resultado_persistido
 
 
 def processar_xml_job(xml_bytes: bytes, empresa_id: int):
@@ -16,8 +17,10 @@ def processar_xml_job(xml_bytes: bytes, empresa_id: int):
             user_id=emp.user_id,
             empresa_id=empresa_id,
         )
+        verificar_resultado_persistido(rel)
         return {
             "relatorio_id": rel.id,
+            "request_fingerprint": rel.fingerprint,
             "tem_resultado": True
         }
     finally:

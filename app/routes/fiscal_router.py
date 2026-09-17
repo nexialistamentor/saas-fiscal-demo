@@ -24,7 +24,7 @@ def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int, owner_id: int) -> dic
         resultado = processar_xml_job(conteudo, empresa_id)
         if not resultado:
             return {"job_id": None, "status": "erro", "detail": "Análise não pôde ser registrada"}
-        return {
+        resposta = {
             "job_id": _SYNC_JOB,
             "status": "finished",
             "result": {
@@ -32,6 +32,9 @@ def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int, owner_id: int) -> dic
                 "tem_resultado": bool(resultado.get("tem_resultado")),
             },
         }
+        if "request_fingerprint" in resultado:
+            resposta["result"]["request_fingerprint"] = resultado["request_fingerprint"]
+        return resposta
     try:
         from app.queue.redis_queue import analysis_queue, redis_conn
 
@@ -42,7 +45,7 @@ def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int, owner_id: int) -> dic
         resultado = processar_xml_job(conteudo, empresa_id)
         if not resultado:
             return {"job_id": None, "status": "erro", "detail": "Análise não pôde ser registrada"}
-        return {
+        resposta = {
             "job_id": _SYNC_JOB,
             "status": "finished",
             "result": {
@@ -50,6 +53,9 @@ def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int, owner_id: int) -> dic
                 "tem_resultado": bool(resultado.get("tem_resultado")),
             },
         }
+        if "request_fingerprint" in resultado:
+            resposta["result"]["request_fingerprint"] = resultado["request_fingerprint"]
+        return resposta
 
 
 @router.post("/analisar-xml")
@@ -93,7 +99,7 @@ def status_job(job_id: str, usuario_atual: models.User = Depends(get_usuario_atu
         raise HTTPException(status_code=403, detail="Acesso negado a este job")
 
     resultado = job.result or {}
-    return {
+    resposta = {
         "job_id": job.id,
         "status": job.get_status(),
         "result": {
@@ -101,6 +107,9 @@ def status_job(job_id: str, usuario_atual: models.User = Depends(get_usuario_atu
             "tem_resultado": True if resultado else False
         }
     }
+    if "request_fingerprint" in resultado:
+        resposta["result"]["request_fingerprint"] = resultado["request_fingerprint"]
+    return resposta
 
 
 @router.delete("/analise/cancelar/{job_id}")
