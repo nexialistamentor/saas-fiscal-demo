@@ -13,6 +13,29 @@ from app.services import checkout_offer_catalog as _catalog_contract
 _MENSAGEM_PUBLICA = "Nao foi possivel publicar a oferta"
 
 
+def _checkout_offer_draft_snapshot(oferta):
+    return SimpleNamespace(
+        id=oferta.id,
+        codigo=oferta.codigo,
+        nome_publico=oferta.nome_publico,
+        vertical=oferta.vertical,
+        commercial_model=oferta.commercial_model,
+        subject_type=oferta.subject_type,
+        estado=oferta.estado,
+        moeda=oferta.moeda,
+        preco=oferta.preco,
+        billing_period=oferta.billing_period,
+        usage_unit=oferta.usage_unit,
+        usage_limit=oferta.usage_limit,
+        contract_version=oferta.contract_version,
+        criado_em=oferta.criado_em,
+        atualizado_em=oferta.atualizado_em,
+        capabilities=tuple(
+            sorted(capability.codigo for capability in oferta.capabilities)
+        ),
+    )
+
+
 class CheckoutOfferCatalogPublicationError(Exception):
     """Erro de dominio deliberadamente opaco."""
 
@@ -25,6 +48,113 @@ class CheckoutOfferCatalogPublicationAuthority:
         if not callable(session_factory):
             raise CheckoutOfferCatalogPublicationError()
         self._session_factory = session_factory
+
+    def criar_rascunho(
+        self,
+        *,
+        codigo,
+        nome_publico,
+        vertical,
+        commercial_model,
+        subject_type,
+        moeda,
+        preco,
+        billing_period,
+        usage_unit,
+        usage_limit,
+        capabilities,
+    ):
+        sessao = None
+        try:
+            sessao = self._abrir_sessao()
+            capacidades = self._validar_termos(
+                codigo=codigo,
+                nome_publico=nome_publico,
+                vertical=vertical,
+                commercial_model=commercial_model,
+                subject_type=subject_type,
+                moeda=moeda,
+                preco=preco,
+                billing_period=billing_period,
+                usage_unit=usage_unit,
+                usage_limit=usage_limit,
+                capabilities=capabilities,
+            )
+
+            existente = sessao.scalar(
+                select(CheckoutOffer.id).where(CheckoutOffer.codigo == codigo)
+            )
+            if existente is not None:
+                raise CheckoutOfferCatalogPublicationError()
+
+            agora = datetime.utcnow()
+            oferta = CheckoutOffer(
+                codigo=codigo,
+                nome_publico=nome_publico,
+                vertical=vertical,
+                commercial_model=commercial_model,
+                subject_type=subject_type,
+                estado="draft",
+                moeda=moeda,
+                preco=preco,
+                billing_period=billing_period,
+                usage_unit=usage_unit,
+                usage_limit=usage_limit,
+                contract_version=1,
+                criado_em=agora,
+                atualizado_em=agora,
+                capabilities=[
+                    CheckoutOfferCapability(codigo=capacidade)
+                    for capacidade in capacidades
+                ],
+            )
+            sessao.add(oferta)
+            sessao.flush()
+            resultado = _checkout_offer_draft_snapshot(oferta)
+            sessao.commit()
+            return resultado
+        except Exception:
+            self._rollback(sessao)
+            raise CheckoutOfferCatalogPublicationError() from None
+        finally:
+            self._fechar(sessao)
+
+    def publicar_rascunho(
+        self,
+        *,
+        codigo,
+        expected_contract_version,
+    ):
+        sessao = None
+        try:
+            sessao = self._abrir_sessao()
+            self._inteiro_positivo(expected_contract_version)
+
+            oferta = sessao.scalar(
+                select(CheckoutOffer)
+                .options(selectinload(CheckoutOffer.capabilities))
+                .where(CheckoutOffer.codigo == codigo)
+                .with_for_update()
+            )
+            if oferta is None or oferta.estado != "draft":
+                raise CheckoutOfferCatalogPublicationError()
+            self._inteiro_positivo(oferta.contract_version)
+            if oferta.contract_version != expected_contract_version:
+                raise CheckoutOfferCatalogPublicationError()
+
+            oferta.estado = "published"
+            oferta.contract_version = expected_contract_version + 1
+            oferta.atualizado_em = datetime.utcnow()
+
+            sessao.flush()
+            resultado = _catalog_contract.checkout_offer_snapshot(oferta)
+            sessao.commit()
+            return resultado
+        except Exception:
+            self._rollback(sessao)
+            raise CheckoutOfferCatalogPublicationError() from None
+        finally:
+            self._fechar(sessao)
 
     def publicar_oferta(
         self,
