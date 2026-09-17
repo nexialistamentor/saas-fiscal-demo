@@ -867,6 +867,7 @@ function App() {
       if (data.status === "finished" && data.result?.relatorio_id != null) {
         setResultadoXML({
           relatorio_id: data.result.relatorio_id,
+          request_fingerprint: data.result.request_fingerprint,
           tem_resultado: data.result.tem_resultado,
           carregado: false
         })
@@ -885,6 +886,7 @@ function App() {
               clearInterval(intervalo)
               setResultadoXML({
                 relatorio_id: statusData.result?.relatorio_id,
+                request_fingerprint: statusData.result?.request_fingerprint,
                 tem_resultado: statusData.result?.tem_resultado,
                 carregado: false
               })
