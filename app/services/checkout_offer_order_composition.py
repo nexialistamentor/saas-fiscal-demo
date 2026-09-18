@@ -20,6 +20,9 @@ from app.services.checkout_offer_catalog import checkout_offer_snapshot
 from app.services.checkout_offer_campaign_reservation import (
     CheckoutOfferCampaignReservationAuthority,
 )
+from app.services.checkout_offer_prerequisite import (
+    CheckoutOfferPrerequisite,
+)
 
 
 _MENSAGEM_PUBLICA = "Nao foi possivel criar a ordem de checkout"
@@ -99,6 +102,13 @@ class CheckoutOfferOrderComposer:
                 or oferta.commercial_model not in {"monthly", "one_time"}
             ):
                 raise CheckoutOfferOrderCompositionError()
+
+            CheckoutOfferPrerequisite(sessao).require(
+                authenticated_user_id=authenticated_user_id,
+                empresa_id=empresa_id,
+                offer_code=offer_code,
+                idempotency_key=idempotency_key,
+            )
 
             ordem = OrdemCheckout(
                 user_id=user.id,
@@ -183,6 +193,13 @@ class CheckoutOfferOrderComposer:
             or ordem.offer_code != offer_code
         ):
             raise CheckoutOfferOrderCompositionError()
+
+        CheckoutOfferPrerequisite(sessao).require(
+            authenticated_user_id=user_id,
+            empresa_id=empresa_id,
+            offer_code=offer_code,
+            idempotency_key=ordem.idempotency_key,
+        )
 
         campaign_snapshot = (
             ordem.campaign_id,

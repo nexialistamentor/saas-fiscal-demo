@@ -187,6 +187,36 @@ function App() {
   const [simulacaoAberturaCarregando, setSimulacaoAberturaCarregando] = useState(false)
   const [simulacaoAberturaErro, setSimulacaoAberturaErro] = useState(null)
 
+  async function persistirTaxReportCheckoutIntent({
+    empresaId,
+    relatorioId,
+    requestFingerprint,
+    idempotencyKey,
+  }) {
+    const res = await fetch(
+      `${API_BASE}/relatorio/empresas/${empresaId}/checkout-intents`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify({
+          relatorio_id: relatorioId,
+          request_fingerprint: requestFingerprint,
+        }),
+      }
+    )
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(
+        err.detail || "Não foi possível preparar o checkout."
+      )
+    }
+  }
+
   async function iniciarCheckout(e) {
     e.preventDefault()
 
@@ -218,6 +248,13 @@ function App() {
     setCheckoutLoading(true)
     setCheckoutErro(null)
     try {
+      await persistirTaxReportCheckoutIntent({
+        empresaId: idPerfil,
+        relatorioId,
+        requestFingerprint,
+        idempotencyKey,
+      })
+
       const res = await fetch(`${API_BASE}/checkout/one-time`, {
         method: "POST",
         headers: {
