@@ -46,6 +46,12 @@ from app.services.tax_report_checkout_intent import (
     TaxReportCheckoutIntent,
     TaxReportCheckoutIntentError,
 )
+from app.services.tax_report_checkout_recovery import (
+    TaxReportCheckoutRecovery,
+    TaxReportCheckoutRecoveryConflictError,
+    TaxReportCheckoutRecoveryNotFoundError,
+    TaxReportCheckoutRecoveryStorageError,
+)
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.engine_resultado_service import EngineResultadoService
 from app.services.context_flags_service import default_context_flags
@@ -538,6 +544,43 @@ def criar_intencao_checkout_tax_report(
         ) from None
 
     return Response(status_code=204)
+
+
+@router.get("/empresas/{empresa_id}/checkout-recovery")
+def recuperar_checkout_tax_report(
+    empresa_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: models.User = Depends(get_usuario_atual),
+):
+    service = TaxReportCheckoutRecovery(db)
+    try:
+        result = service.resolve(
+            user_id=usuario_atual.id,
+            empresa_id=empresa_id,
+        )
+    except TaxReportCheckoutRecoveryNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="Checkout recuperável não encontrado.",
+        ) from None
+    except TaxReportCheckoutRecoveryConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail="Checkout indisponível para recuperação.",
+        ) from None
+    except TaxReportCheckoutRecoveryStorageError:
+        raise HTTPException(
+            status_code=503,
+            detail="Recuperação temporariamente indisponível.",
+        ) from None
+
+    return {
+        "estado": result.estado,
+        "checkout_idempotency_key": result.checkout_idempotency_key,
+        "relatorio_id": result.relatorio_id,
+        "request_fingerprint": result.request_fingerprint,
+        "checkout_url": result.checkout_url,
+    }
 
 
 @router.post("/empresas/{empresa_id}/acquisitions")

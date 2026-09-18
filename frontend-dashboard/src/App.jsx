@@ -151,13 +151,29 @@ function App() {
     taxReportAcquisitionEmpresaId,
     setTaxReportAcquisitionEmpresaId
   ] = useState(null)
+  const [
+    taxReportRecoveredCheckoutUrl,
+    setTaxReportRecoveredCheckoutUrl
+  ] = useState(null)
+  const [
+    taxReportRecoveredIdempotencyKey,
+    setTaxReportRecoveredIdempotencyKey
+  ] = useState(null)
+  const [
+    taxReportRecoveredPaid,
+    setTaxReportRecoveredPaid
+  ] = useState(false)
+  const [
+    taxReportRecoveryResolvedEmpresaId,
+    setTaxReportRecoveryResolvedEmpresaId
+  ] = useState(null)
 
   const mercadoPagoReturn =
     new URLSearchParams(window.location.search).get("mp_return")
 
   const taxReportCheckoutProcessing =
-    (mercadoPagoReturn === "success" ||
-      mercadoPagoReturn === "pending") &&
+    ((mercadoPagoReturn === "success" ||
+      mercadoPagoReturn === "pending") || taxReportRecoveredPaid) &&
     !(
       Number.isInteger(taxReportAcquisitionId) &&
       taxReportAcquisitionId > 0 &&
@@ -217,6 +233,150 @@ function App() {
     }
   }
 
+  async function recuperarTaxReportCheckoutDoServidor(empresaId) {
+    if (!Number.isInteger(empresaId) || empresaId <= 0) {
+      return
+    }
+
+    setTaxReportRecoveryResolvedEmpresaId(null)
+    setTaxReportRecoveredCheckoutUrl(null)
+    setTaxReportRecoveredIdempotencyKey(null)
+    setTaxReportRecoveredPaid(false)
+    setCheckoutErro(null)
+
+    const rawContext = sessionStorage.getItem(
+      "solveris.taxReportAcquisitionContext.v1"
+    )
+    let localContext = null
+    if (rawContext) {
+      try {
+        const parsedContext = JSON.parse(rawContext)
+        if (
+          parsedContext &&
+          typeof parsedContext === "object" &&
+          parsedContext.empresa_id === empresaId &&
+          Number.isInteger(parsedContext.relatorio_id) &&
+          parsedContext.relatorio_id > 0 &&
+          typeof parsedContext.request_fingerprint === "string" &&
+          /^[0-9a-f]{64}$/.test(parsedContext.request_fingerprint)
+        ) {
+          localContext = parsedContext
+          setResultadoXML({
+            relatorio_id: parsedContext.relatorio_id,
+            request_fingerprint: parsedContext.request_fingerprint,
+            tem_resultado: true,
+            carregado: false,
+          })
+        }
+      } catch {
+        localContext = null
+      }
+    }
+
+    let response
+    try {
+      response = await fetch(
+        `${API_BASE}/relatorio/empresas/${empresaId}/checkout-recovery`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${getToken()}` },
+        }
+      )
+    } catch {
+      setCheckoutErro("Não foi possível verificar a compra.")
+      return
+    }
+
+    if (response.status === 404) {
+      if (localContext) {
+        setCheckoutErro("Não foi possível verificar a compra.")
+        return
+      }
+      setTaxReportRecoveryResolvedEmpresaId(empresaId)
+      return
+    }
+
+    if (!response.ok) {
+      setCheckoutErro("Não foi possível verificar a compra.")
+      return
+    }
+
+    let payload
+    try {
+      payload = await response.json()
+    } catch {
+      setCheckoutErro("Não foi possível verificar a compra.")
+      return
+    }
+
+    if (!payload || typeof payload !== "object") {
+      setCheckoutErro("Não foi possível verificar a compra.")
+      return
+    }
+
+    let checkoutUrlIsValid = payload.checkout_url === null
+    if (payload.estado === "pending" && typeof payload.checkout_url === "string") {
+      try {
+        const checkoutUrl = new URL(payload.checkout_url)
+        checkoutUrlIsValid =
+          checkoutUrl.protocol === "https:" &&
+          Boolean(checkoutUrl.hostname) &&
+          !checkoutUrl.username &&
+          !checkoutUrl.password &&
+          !checkoutUrl.hash &&
+          !payload.checkout_url.includes("\r") &&
+          !payload.checkout_url.includes("\n")
+      } catch {
+        checkoutUrlIsValid = false
+      }
+    }
+
+    const payloadIsValid =
+      (payload.estado === "paid" || payload.estado === "pending") &&
+      Number.isInteger(payload.relatorio_id) &&
+      payload.relatorio_id > 0 &&
+      typeof payload.request_fingerprint === "string" &&
+      /^[0-9a-f]{64}$/.test(payload.request_fingerprint) &&
+      typeof payload.checkout_idempotency_key === "string" &&
+      /^[\x21-\x7e]{1,255}$/.test(payload.checkout_idempotency_key) &&
+      checkoutUrlIsValid &&
+      (payload.estado !== "paid" || payload.checkout_url === null)
+
+    if (!payloadIsValid) {
+      setCheckoutErro("Não foi possível verificar a compra.")
+      return
+    }
+
+    setResultadoXML({
+      relatorio_id: payload.relatorio_id,
+      request_fingerprint: payload.request_fingerprint,
+      tem_resultado: true,
+      carregado: false,
+    })
+
+    if (payload.estado === "paid") {
+      sessionStorage.setItem(
+        "solveris.taxReportAcquisitionContext.v1",
+        JSON.stringify({
+          empresa_id: empresaId,
+          relatorio_id: payload.relatorio_id,
+          request_fingerprint: payload.request_fingerprint,
+        })
+      )
+      setTaxReportRecoveredPaid(true)
+      setTaxReportRecoveredCheckoutUrl(null)
+      setTaxReportRecoveredIdempotencyKey(null)
+      setTaxReportRecoveryResolvedEmpresaId(empresaId)
+      await retomarAquisicaoTaxReport()
+      return
+    }
+
+    setTaxReportRecoveredPaid(false)
+    setTaxReportRecoveredCheckoutUrl(payload.checkout_url)
+    setTaxReportRecoveredIdempotencyKey(payload.checkout_idempotency_key)
+    setTaxReportRecoveryResolvedEmpresaId(empresaId)
+  }
+
   async function iniciarCheckout(e) {
     e.preventDefault()
 
@@ -232,6 +392,15 @@ function App() {
       return
     }
 
+    if (taxReportRecoveryResolvedEmpresaId !== idPerfil) {
+      return
+    }
+
+    if (taxReportRecoveredCheckoutUrl) {
+      window.location.href = taxReportRecoveredCheckoutUrl
+      return
+    }
+
     const relatorioId = resultadoXML?.relatorio_id
     const requestFingerprint = resultadoXML?.request_fingerprint
 
@@ -244,7 +413,8 @@ function App() {
       return
     }
 
-    const idempotencyKey = crypto.randomUUID()
+    const idempotencyKey =
+      taxReportRecoveredIdempotencyKey || crypto.randomUUID()
     setCheckoutLoading(true)
     setCheckoutErro(null)
     try {
@@ -450,6 +620,18 @@ function App() {
   useEffect(() => {
     void retomarAquisicaoTaxReport()
   }, [])
+
+  useEffect(() => {
+    if (
+      tipoPerfil !== "empresa" ||
+      !Number.isInteger(idPerfil) ||
+      idPerfil <= 0
+    ) {
+      return
+    }
+
+    void recuperarTaxReportCheckoutDoServidor(idPerfil)
+  }, [tipoPerfil, idPerfil])
 
   useEffect(() => {
     async function validarSessao() {
@@ -1737,9 +1919,14 @@ function App() {
                   type="button"
                   className="btn-desbloquear"
                   onClick={iniciarCheckout}
-                  disabled={checkoutLoading}
+                  disabled={
+                    checkoutLoading ||
+                    taxReportRecoveryResolvedEmpresaId !== idPerfil
+                  }
                 >
-                  {checkoutLoading
+                  {taxReportRecoveryResolvedEmpresaId !== idPerfil
+                    ? "Verificando compra..."
+                    : checkoutLoading
                     ? "Redirecionando..."
                     : "💳 Desbloquear diagnóstico completo"}
                 </button>
