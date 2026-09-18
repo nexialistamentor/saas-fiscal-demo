@@ -152,6 +152,19 @@ function App() {
     setTaxReportAcquisitionEmpresaId
   ] = useState(null)
 
+  const mercadoPagoReturn =
+    new URLSearchParams(window.location.search).get("mp_return")
+
+  const taxReportCheckoutProcessing =
+    (mercadoPagoReturn === "success" ||
+      mercadoPagoReturn === "pending") &&
+    !(
+      Number.isInteger(taxReportAcquisitionId) &&
+      taxReportAcquisitionId > 0 &&
+      Number.isInteger(taxReportAcquisitionEmpresaId) &&
+      taxReportAcquisitionEmpresaId > 0
+    )
+
   const [uploadRendimentoResposta, setUploadRendimentoResposta] = useState(null)
   const [formRendimento, setFormRendimento] = useState({
     tipo_rendimento: "salario",
@@ -176,6 +189,11 @@ function App() {
 
   async function iniciarCheckout(e) {
     e.preventDefault()
+
+    if (taxReportCheckoutProcessing) {
+      return
+    }
+
     if (
       tipoPerfil !== "empresa" ||
       !Number.isInteger(idPerfil) ||
@@ -1663,22 +1681,38 @@ function App() {
           !Number.isInteger(taxReportAcquisitionEmpresaId) ||
           taxReportAcquisitionEmpresaId <= 0
         ) && (
-          <div className="bloqueio-relatorio">
+          <div
+            className="bloqueio-relatorio"
+            data-section-label="Diagnóstico completo bloqueado"
+          >
             <span className="icone-bloqueio">🔒</span>
-            <h3>Diagnóstico completo bloqueado</h3>
-            <p>Realize o pagamento para acessar o relatório detalhado.</p>
-            <button
-              type="button"
-              className="btn-desbloquear"
-              onClick={iniciarCheckout}
-              disabled={checkoutLoading}
-            >
-              {checkoutLoading ? "Redirecionando..." : "💳 Desbloquear diagnóstico completo"}
-            </button>
-            {checkoutErro && (
-              <span className="relatorio-pdf-erro" style={{ marginTop: 8 }}>
-                {checkoutErro}
-              </span>
+
+            {taxReportCheckoutProcessing ? (
+              <>
+                <h3>Pagamento em processamento</h3>
+                <p>Estamos confirmando o pagamento e preparando seu relatório.</p>
+              </>
+            ) : (
+              <>
+                <h3>Diagnóstico completo bloqueado</h3>
+                <p>Realize o pagamento para acessar o relatório detalhado.</p>
+                <button
+                  type="button"
+                  className="btn-desbloquear"
+                  onClick={iniciarCheckout}
+                  disabled={checkoutLoading}
+                >
+                  {checkoutLoading
+                    ? "Redirecionando..."
+                    : "💳 Desbloquear diagnóstico completo"}
+                </button>
+
+                {checkoutErro && (
+                  <span className="relatorio-pdf-erro" style={{ marginTop: 8 }}>
+                    {checkoutErro}
+                  </span>
+                )}
+              </>
             )}
           </div>
         )}
