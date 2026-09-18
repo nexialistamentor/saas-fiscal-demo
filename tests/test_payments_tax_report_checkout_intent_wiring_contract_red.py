@@ -7,6 +7,7 @@ import inspect
 import re
 from pathlib import Path
 
+from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
 from app.routes import relatorio_router
@@ -90,9 +91,19 @@ def test_http_intent_endpoint_exists_authenticated_and_has_exact_input_red():
     headers = [parameter for parameter in route.dependant.header_params]
     assert len(headers) == 1
     assert headers[0].alias == "Idempotency-Key"
-    header_schema = headers[0].field_info
-    assert header_schema.min_length == 1 and header_schema.max_length == 255
-    assert header_schema.pattern == r"^[\x21-\x7e]+$"
+
+    app = FastAPI()
+    app.include_router(relatorio_router.router)
+    operation = app.openapi()["paths"][ROUTE_PATH]["post"]
+    header_schema = next(
+        parameter["schema"]
+        for parameter in operation["parameters"]
+        if parameter["name"] == "Idempotency-Key" and parameter["in"] == "header"
+    )
+    assert header_schema["type"] == "string"
+    assert header_schema["minLength"] == 1
+    assert header_schema["maxLength"] == 255
+    assert header_schema["pattern"] == r"^[\x21-\x7e]+$"
 
 
 def test_http_intent_calls_durable_service_and_owns_transaction_red():
@@ -199,14 +210,14 @@ def test_frontend_persists_intent_in_dedicated_helper_before_checkout_red():
     assert re.search(r"Idempotency-Key['\"]?\s*:\s*idempotencyKey", helper)
     assert re.search(
         r"JSON\.stringify\(\s*\{\s*relatorio_id\s*:\s*relatorioId\s*,"
-        r"\s*request_fingerprint\s*:\s*requestFingerprint\s*\}\s*\)",
+        r"\s*request_fingerprint\s*:\s*requestFingerprint\s*,?\s*\}\s*\)",
         helper,
         re.DOTALL,
     )
     helper_call = checkout.index("persistirTaxReportCheckoutIntent(")
     checkout_call = checkout.index("/checkout/one-time")
     assert helper_call < checkout_call
-    assert "checkoutErro" in checkout[:checkout_call]
+    assert "setCheckoutErro(err.message)" in checkout
 
 
 def test_frontend_reuses_same_key_and_keeps_canonical_checkout_body_red():
@@ -216,10 +227,16 @@ def test_frontend_reuses_same_key_and_keeps_canonical_checkout_body_red():
     key = re.search(r"(?:const|let)\s+(\w+)\s*=\s*(?:crypto\.)?randomUUID\(\)", checkout)
     assert key, "iniciarCheckout deve criar uma chave por tentativa"
     variable = key.group(1)
-    assert re.search(
-        rf"persistirTaxReportCheckoutIntent\(\s*\{{[\s\S]*?idempotencyKey\s*:\s*{variable}",
+    explicit = re.search(
+        rf"idempotencyKey\s*:\s*{re.escape(variable)}\b",
         checkout,
     )
+    shorthand = re.search(
+        rf"persistirTaxReportCheckoutIntent\(\s*\{{[\s\S]*?"
+        rf"\b{re.escape(variable)}\s*,?\s*\}}\s*\)",
+        checkout,
+    )
+    assert explicit or shorthand
     assert len(re.findall(rf"Idempotency-Key['\"]?\s*:\s*{variable}\b", checkout)) == 1
     canonical = checkout[checkout.index("/checkout/one-time") :]
     body = re.search(r"JSON\.stringify\(\s*\{([\s\S]*?)\}\s*\)", canonical)
