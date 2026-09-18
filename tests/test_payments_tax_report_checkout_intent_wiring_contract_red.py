@@ -37,15 +37,37 @@ def _route():
 def _block_after(source: str, marker: str) -> str:
     assert marker in source, f"ausente bloco frontend {marker!r}"
     start = source.index(marker)
-    brace = source.index("{", start)
+    signature_start = source.index("(", start)
+
+    paren_depth = 0
+    signature_end = None
+
+    for position in range(signature_start, len(source)):
+        character = source[position]
+        if character == "(":
+            paren_depth += 1
+        elif character == ")":
+            paren_depth -= 1
+            if paren_depth == 0:
+                signature_end = position
+                break
+
+    assert signature_end is not None, (
+        f"assinatura sem fechamento depois de {marker!r}"
+    )
+
+    brace = source.index("{", signature_end)
     depth = 0
+
     for position in range(brace, len(source)):
-        if source[position] == "{":
+        character = source[position]
+        if character == "{":
             depth += 1
-        elif source[position] == "}":
+        elif character == "}":
             depth -= 1
             if depth == 0:
                 return source[start : position + 1]
+
     raise AssertionError(f"bloco sem fechamento depois de {marker!r}")
 
 
@@ -53,7 +75,7 @@ def test_http_intent_endpoint_exists_authenticated_and_has_exact_input_red():
     route = _route()
     assert route is not None, f"ausente POST {ROUTE_PATH} no router de relatorio"
     assert route.status_code == 204
-    assert route.dependant.security_requirements or any(
+    assert any(
         dependency.call is relatorio_router.get_usuario_atual
         for dependency in route.dependant.dependencies
     ), "endpoint de intencao deve exigir usuario autenticado"
