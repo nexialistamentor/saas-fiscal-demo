@@ -224,8 +224,16 @@ def test_frontend_reuses_same_key_and_keeps_canonical_checkout_body_red():
     checkout = _block_after(
         APP.read_text(encoding="utf-8"), "async function iniciarCheckout("
     )
-    key = re.search(r"(?:const|let)\s+(\w+)\s*=\s*(?:crypto\.)?randomUUID\(\)", checkout)
-    assert key, "iniciarCheckout deve criar uma chave por tentativa"
+    key = re.search(
+        r"(?:const|let)\s+(\w+)\s*=\s*"
+        r"taxReportRecoveredIdempotencyKey\s*\|\|\s*"
+        r"(?:crypto\.)?randomUUID\(\)",
+        checkout,
+    )
+    assert key, (
+        "iniciarCheckout deve reutilizar a chave recuperada "
+        "ou criar uma nova por tentativa"
+    )
     variable = key.group(1)
     explicit = re.search(
         rf"idempotencyKey\s*:\s*{re.escape(variable)}\b",

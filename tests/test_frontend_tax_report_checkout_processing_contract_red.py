@@ -68,8 +68,9 @@ def test_reads_only_the_explicit_mercado_pago_return_query_marker() -> None:
 def test_processing_is_derived_only_from_return_ux_and_missing_acquisition() -> None:
     assert re.search(
         r"const\s+taxReportCheckoutProcessing\s*=\s*"
-        r"\(\s*mercadoPagoReturn\s*===\s*[\"']success[\"']\s*\|\|\s*"
-        r"mercadoPagoReturn\s*===\s*[\"']pending[\"']\s*\)\s*&&\s*!\s*\(\s*"
+        r"\(\s*\(\s*mercadoPagoReturn\s*===\s*[\"']success[\"']\s*\|\|\s*"
+        r"mercadoPagoReturn\s*===\s*[\"']pending[\"']\s*\)\s*\|\|\s*"
+        r"taxReportRecoveredPaid\s*\)\s*&&\s*!\s*\(\s*"
         r"Number\.isInteger\(taxReportAcquisitionId\)\s*&&\s*"
         r"taxReportAcquisitionId\s*>\s*0\s*&&\s*"
         r"Number\.isInteger\(taxReportAcquisitionEmpresaId\)\s*&&\s*"
