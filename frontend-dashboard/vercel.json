@@ -1,4 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  },
   "ignoreCommand": "p=$VERCEL_GIT_PREVIOUS_SHA;c=$VERCEL_GIT_COMMIT_SHA;git cat-file -e \"$p^{commit}\" 2>/dev/null&&git cat-file -e \"$c^{commit}\" 2>/dev/null&&git diff --quiet \"$p\" \"$c\" -- .||exit 1"
 }
