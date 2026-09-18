@@ -1,6 +1,6 @@
 # Config-as-code Railway — https://docs.railway.com/guides/config-as-code
 [build]
-builder = "nixpacks"
+builder = "railpack"
 
 [deploy]
 preDeployCommand = "ENVIRONMENT=production PGSSLROOTCERT=config/railway_postgres_root_ca.pem alembic upgrade head"
