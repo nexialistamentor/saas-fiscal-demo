@@ -179,6 +179,18 @@ function App() {
       return
     }
 
+    const relatorioId = resultadoXML?.relatorio_id
+    const requestFingerprint = resultadoXML?.request_fingerprint
+
+    if (
+      !Number.isInteger(relatorioId) ||
+      relatorioId <= 0 ||
+      typeof requestFingerprint !== "string" ||
+      !/^[0-9a-f]{64}$/.test(requestFingerprint)
+    ) {
+      return
+    }
+
     const idempotencyKey = crypto.randomUUID()
     setCheckoutLoading(true)
     setCheckoutErro(null)
@@ -200,6 +212,14 @@ function App() {
         throw new Error(err.detail || "Erro ao iniciar checkout.")
       }
       const { checkout_url } = await res.json()
+      sessionStorage.setItem(
+        "solveris.taxReportAcquisitionContext.v1",
+        JSON.stringify({
+          empresa_id: idPerfil,
+          relatorio_id: relatorioId,
+          request_fingerprint: requestFingerprint,
+        })
+      )
       window.location.href = checkout_url
     } catch (err) {
       setCheckoutErro(err.message)
