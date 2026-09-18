@@ -738,6 +738,50 @@ class TaxReportAcquisitionBinding(Base):
     )
 
 
+class TaxReportCheckoutIntent(Base):
+    __tablename__ = "tax_report_checkout_intents"
+
+    id = Column(Integer, primary_key=True)
+    checkout_idempotency_key = Column(
+        String(255), nullable=False, unique=True
+    )
+    user_id = Column(
+        Integer, ForeignKey("usuarios.id"), nullable=False, index=True
+    )
+    empresa_id = Column(
+        Integer, ForeignKey("empresas.id"), nullable=False, index=True
+    )
+    relatorio_analise_id = Column(
+        Integer,
+        ForeignKey("relatorios_analise.id"),
+        nullable=False,
+        index=True,
+    )
+    offer_code = Column(String(120), nullable=False)
+    request_fingerprint = Column(String(64), nullable=False)
+    created_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
+    )
+
+
+def _reject_tax_report_checkout_intent_mutation(
+    _mapper, _connection, _target
+) -> None:
+    raise InvalidRequestError("tax_report_checkout_intents is append-only")
+
+
+event.listen(
+    TaxReportCheckoutIntent,
+    "before_update",
+    _reject_tax_report_checkout_intent_mutation,
+)
+event.listen(
+    TaxReportCheckoutIntent,
+    "before_delete",
+    _reject_tax_report_checkout_intent_mutation,
+)
+
+
 def _reject_tax_report_acquisition_binding_mutation(
     _mapper, _connection, _target
 ) -> None:
