@@ -146,6 +146,7 @@ function App() {
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [checkoutErro, setCheckoutErro] = useState(null)
   const [resultadoXML, setResultadoXML] = useState(null)
+  const [taxReportAcquisitionId, setTaxReportAcquisitionId] = useState(null)
 
   const [uploadRendimentoResposta, setUploadRendimentoResposta] = useState(null)
   const [formRendimento, setFormRendimento] = useState({
@@ -228,6 +229,94 @@ function App() {
     }
   }
 
+  async function retomarAquisicaoTaxReport() {
+    const rawContext = sessionStorage.getItem(
+      "solveris.taxReportAcquisitionContext.v1"
+    )
+
+    if (!rawContext) {
+      return
+    }
+
+    let context
+    try {
+      context = JSON.parse(rawContext)
+    } catch {
+      sessionStorage.removeItem(
+        "solveris.taxReportAcquisitionContext.v1"
+      )
+      return
+    }
+
+    const contextIsValid =
+      context &&
+      typeof context === "object" &&
+      Number.isInteger(context.empresa_id) &&
+      context.empresa_id > 0 &&
+      Number.isInteger(context.relatorio_id) &&
+      context.relatorio_id > 0 &&
+      typeof context.request_fingerprint === "string" &&
+      /^[0-9a-f]{64}$/.test(context.request_fingerprint)
+
+    if (!contextIsValid) {
+      sessionStorage.removeItem(
+        "solveris.taxReportAcquisitionContext.v1"
+      )
+      return
+    }
+
+    const acquisitionIdempotencyKey =
+      `tax-report-acquisition:${context.empresa_id}:${context.relatorio_id}:${context.request_fingerprint}`
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      let res
+
+      try {
+        res = await fetch(
+          `${API_BASE}/relatorio/empresas/${context.empresa_id}/acquisitions`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${getToken()}`,
+              "Idempotency-Key": acquisitionIdempotencyKey,
+            },
+            body: JSON.stringify({
+              relatorio_id: context.relatorio_id,
+              request_fingerprint: context.request_fingerprint,
+            }),
+          }
+        )
+      } catch {
+        return
+      }
+
+      if (res.status === 409 || res.status === 503) {
+        if (attempt < 5) {
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+          continue
+        }
+        return
+      }
+
+      if (!res.ok) {
+        return
+      }
+
+      const { acquisition_id } = await res.json()
+
+      if (
+        !Number.isInteger(acquisition_id) ||
+        !(acquisition_id > 0)
+      ) {
+        return
+      }
+
+      setTaxReportAcquisitionId(acquisition_id)
+      return
+    }
+  }
+
   const handleLogin = async (e) => {
     e.preventDefault()
     setErroLogin(null)
@@ -297,6 +386,10 @@ function App() {
     await logout()
     window.location.reload()
   }
+
+  useEffect(() => {
+    void retomarAquisicaoTaxReport()
+  }, [])
 
   useEffect(() => {
     async function validarSessao() {
