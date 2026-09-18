@@ -171,26 +171,36 @@ function App() {
 
   async function iniciarCheckout(e) {
     e.preventDefault()
+    if (
+      tipoPerfil !== "empresa" ||
+      !Number.isInteger(idPerfil) ||
+      idPerfil <= 0
+    ) {
+      return
+    }
+
+    const idempotencyKey = crypto.randomUUID()
     setCheckoutLoading(true)
     setCheckoutErro(null)
     try {
-      const res = await fetch(`${API_BASE}/checkout/criar-pagamento`, {
+      const res = await fetch(`${API_BASE}/checkout/one-time`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
+          "Idempotency-Key": idempotencyKey,
         },
         body: JSON.stringify({
-          perfil_id: idPerfil,
-          tipo_perfil: tipoPerfil,
+          empresa_id: idPerfil,
+          offer_code: "tax-report-one-time-company",
         }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || "Erro ao iniciar checkout.")
       }
-      const { link_checkout } = await res.json()
-      window.location.href = link_checkout
+      const { checkout_url } = await res.json()
+      window.location.href = checkout_url
     } catch (err) {
       setCheckoutErro(err.message)
     } finally {
