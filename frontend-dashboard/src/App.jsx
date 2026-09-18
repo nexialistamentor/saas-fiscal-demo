@@ -147,6 +147,10 @@ function App() {
   const [checkoutErro, setCheckoutErro] = useState(null)
   const [resultadoXML, setResultadoXML] = useState(null)
   const [taxReportAcquisitionId, setTaxReportAcquisitionId] = useState(null)
+  const [
+    taxReportAcquisitionEmpresaId,
+    setTaxReportAcquisitionEmpresaId
+  ] = useState(null)
 
   const [uploadRendimentoResposta, setUploadRendimentoResposta] = useState(null)
   const [formRendimento, setFormRendimento] = useState({
@@ -313,6 +317,7 @@ function App() {
       }
 
       setTaxReportAcquisitionId(acquisition_id)
+      setTaxReportAcquisitionEmpresaId(context.empresa_id)
       return
     }
   }
@@ -1652,7 +1657,12 @@ function App() {
           ))}
         </section>
 
-        {!data?.consulta_paga && (
+        {(
+          !Number.isInteger(taxReportAcquisitionId) ||
+          taxReportAcquisitionId <= 0 ||
+          !Number.isInteger(taxReportAcquisitionEmpresaId) ||
+          taxReportAcquisitionEmpresaId <= 0
+        ) && (
           <div className="bloqueio-relatorio">
             <span className="icone-bloqueio">🔒</span>
             <h3>Diagnóstico completo bloqueado</h3>
@@ -1673,12 +1683,17 @@ function App() {
           </div>
         )}
 
-        {data?.consulta_paga && (
+        {Number.isInteger(taxReportAcquisitionId) &&
+          taxReportAcquisitionId > 0 &&
+          Number.isInteger(taxReportAcquisitionEmpresaId) &&
+          taxReportAcquisitionEmpresaId > 0 && (
           <div className="bloqueio-relatorio liberado">
             <h3>Diagnóstico completo disponível</h3>
             <p>Baixe o relatório detalhado em PDF.</p>
-            <RelatorioPDFButton idPerfil={idPerfil} />
-            <MemorialButton relatorioId={resultadoXML?.relatorio_id} />
+            <RelatorioPDFButton
+              empresaId={taxReportAcquisitionEmpresaId}
+              acquisitionId={taxReportAcquisitionId}
+            />
           </div>
         )}
 

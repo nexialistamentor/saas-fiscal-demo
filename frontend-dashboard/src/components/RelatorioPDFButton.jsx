@@ -1,7 +1,10 @@
 import React, { useState } from "react"
 import { API_BASE, getToken } from "../config"
 
-export default function RelatorioPDFButton({ idPerfil }) {
+export default function RelatorioPDFButton({
+  empresaId,
+  acquisitionId,
+}) {
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState(null)
 
@@ -9,22 +12,27 @@ export default function RelatorioPDFButton({ idPerfil }) {
     setLoading(true)
     setErro(null)
     try {
-      const TOKEN = getToken()
-      const res = await fetch(`${API_BASE}/relatorio/gerar`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${TOKEN}`,
-        },
-        body: JSON.stringify({ perfil_id: idPerfil }),
-      })
-      if (!res.ok) {
-        if (res.status === 402 || res.status === 403) {
-          const err = await res.json().catch(() => ({}))
-          setErro(err.detail || "Pagamento necessário para acessar o relatório.")
-        } else {
-          setErro("Não foi possível baixar o relatório.")
+      if (
+        !Number.isInteger(empresaId) ||
+        empresaId <= 0 ||
+        !Number.isInteger(acquisitionId) ||
+        acquisitionId <= 0
+      ) {
+        setErro("Relatório adquirido indisponível.")
+        return
+      }
+
+      const res = await fetch(
+        `${API_BASE}/relatorio/empresas/${empresaId}/acquisitions/${acquisitionId}/pdf`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
         }
+      )
+      if (!res.ok) {
+        setErro("Não foi possível baixar o relatório.")
         return
       }
       const blob = await res.blob()
