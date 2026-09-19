@@ -27,8 +27,10 @@ class StubResponse:
         self.status_code = status_code
         self._payload = payload
         self._json_error = json_error
+        self.json_calls = 0
 
     def json(self):
+        self.json_calls += 1
         if self._json_error is not None:
             raise self._json_error
         return self._payload
@@ -209,6 +211,33 @@ def test_invalid_responses_fail_closed_and_are_not_cached(response):
         "jwt_token": "recovered-jwt",
     }
     assert len(transport.calls) == 2
+
+
+def test_http_412_exposes_only_internal_provider_status_without_credentials_or_body():
+    private_body = "private-oauth-provider-body"
+    fictitious_token = "provider-error-token"
+    response = StubResponse(
+        status_code=412,
+        payload={"token": fictitious_token, "body": private_body},
+    )
+    transport = RecordingTransport([response])
+
+    with pytest.raises(OAuthSessionError) as caught:
+        make_session(transport).get_headers()
+
+    error = caught.value
+    assert str(error) == "resposta de autenticacao invalida"
+    assert error.provider_status_code == 412
+    rendered = f"{error!r} {error}"
+    for private_value in (
+        CONSUMER_KEY,
+        CONSUMER_SECRET,
+        fictitious_token,
+        private_body,
+        ENDPOINT,
+    ):
+        assert private_value not in rendered
+    assert response.json_calls == 0
 
 
 @pytest.mark.parametrize(

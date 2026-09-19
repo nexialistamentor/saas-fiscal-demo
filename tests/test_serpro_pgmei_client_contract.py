@@ -20,8 +20,10 @@ class StubResponse:
         self.status_code = status_code
         self._payload = payload
         self._json_error = json_error
+        self.json_calls = 0
 
     def json(self):
+        self.json_calls += 1
         if self._json_error is not None:
             raise self._json_error
         return self._payload
@@ -152,6 +154,23 @@ def test_invalid_responses_fail_closed(response, message):
         make_client(transport).request("GERARDASPDF21", CONTRIBUINTE, "202608")
     assert TOKEN not in repr(caught.value)
     assert TOKEN not in str(caught.value)
+
+
+def test_http_412_exposes_only_internal_provider_status_without_parsing_body():
+    private_body = "private-provider-body"
+    response = StubResponse(status_code=412, payload={"token": TOKEN, "body": private_body})
+    transport = RecordingTransport(response)
+
+    with pytest.raises(PgmeiClientError) as caught:
+        make_client(transport).request("GERARDASPDF21", CONTRIBUINTE, "202608")
+
+    error = caught.value
+    assert str(error) == "http status invalido"
+    assert error.provider_status_code == 412
+    rendered = f"{error!r} {error}"
+    for private_value in (TOKEN, private_body, ENDPOINT):
+        assert private_value not in rendered
+    assert response.json_calls == 0
 
 
 def test_authentication_never_enters_payload_and_result_repr_has_no_token():
