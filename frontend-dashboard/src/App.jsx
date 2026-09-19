@@ -891,7 +891,11 @@ function App() {
               <h1 style={{ marginBottom: 8 }}>SOLVERIS</h1>
               <p style={{ margin: 0 }}>Sua jornada MEI começa aqui.</p>
             </div>
-            <img className="solveris-logo" src="/solveris-logo.jpg" alt="SOLVERIS" />
+            <img
+              className="solveris-logo"
+              src={`${import.meta.env.BASE_URL}solveris-logo.jpg`}
+              alt="SOLVERIS"
+            />
           </header>
         )}
         {!mostrarRegisto ? (
@@ -927,44 +931,50 @@ function App() {
                 </div>
               </section>
             )}
-            <h2>Login</h2>
+            <section className="solveris-login-card">
+            <h2 className="solveris-login-title">
+              {isMeiPublicJourney ? "Entrar na SOLVERIS" : "Login"}
+            </h2>
 
-            <form onSubmit={handleLogin}>
+            <form className="solveris-login-form" onSubmit={handleLogin}>
               <input
+                className="solveris-login-field"
                 type="email"
                 placeholder="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
 
-              <div style={{ position: "relative", display: "inline-block" }}>
+              <div className="solveris-password-field">
                 <input
+                  className="solveris-login-field"
                   type={mostrarSenhaLogin ? "text" : "password"}
                   placeholder="senha"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
+                  className="solveris-password-toggle"
                   type="button"
                   onClick={() => setMostrarSenhaLogin(!mostrarSenhaLogin)}
-                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14 }}
                 >
                   {mostrarSenhaLogin ? "🙈" : "👁️"}
                 </button>
               </div>
 
-              <button type="submit">Entrar</button>
+              <button className="solveris-login-submit" type="submit">Entrar</button>
 
               {erroLogin && (
-                <p style={{ color: "#ef4444", fontSize: 13, marginTop: 6, padding: "6px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
+                <p className="solveris-login-error">
                   {erroLogin}
                 </p>
               )}
             </form>
 
-            <p style={{ marginTop: 16 }}>
+            <p className="solveris-account-callout">
               Não tem conta?{" "}
               <button
+                className="solveris-account-link"
                 type="button"
                 onClick={() => {
                   if (isMeiPublicJourney) {
@@ -974,16 +984,11 @@ function App() {
                   }
                   setMostrarRegisto(true)
                 }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textDecoration: "underline"
-                }}
               >
                 Criar conta
               </button>
             </p>
+            </section>
           </>
         ) : (
           <>

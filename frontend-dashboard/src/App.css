@@ -637,7 +637,7 @@ body{
 }
 
 .solveris-public-entry {
-  padding: clamp(24px, 6vw, 72px) !important;
+  padding: clamp(20px, 4vw, 48px) !important;
 }
 
 .solveris-brand-lockup {
@@ -675,6 +675,139 @@ body{
   border-radius: 24px;
   background: rgba(12,28,46,.72);
   box-shadow: 0 24px 64px rgba(6, 16, 28, .38);
+}
+
+.solveris-public-entry .solveris-login-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 40px);
+  border: 1px solid rgba(177,205,230,.14);
+  border-radius: 24px;
+  background: rgba(12,28,46,.72);
+  box-shadow: 0 24px 64px rgba(6, 16, 28, .38);
+}
+
+.solveris-public-entry .solveris-login-title {
+  margin: 0 0 22px;
+  color: #f4f7fb;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  letter-spacing: -.02em;
+}
+
+.solveris-public-entry .solveris-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.solveris-public-entry .solveris-login-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 15px;
+  border: 1px solid rgba(177,205,230,.14);
+  border-radius: 12px;
+  outline: none;
+  background: #091827;
+  color: #f4f7fb;
+  font: inherit;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.solveris-public-entry .solveris-login-field::placeholder {
+  color: #a8b7c8;
+  opacity: .82;
+}
+
+.solveris-public-entry .solveris-login-field:focus {
+  border-color: #6ee7f2;
+  box-shadow: 0 0 0 3px rgba(121, 168, 255, .2);
+}
+
+.solveris-public-entry .solveris-password-field {
+  position: relative;
+  width: 100%;
+}
+
+.solveris-public-entry .solveris-password-field .solveris-login-field {
+  padding-right: 52px;
+}
+
+.solveris-public-entry .solveris-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #6ee7f2;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.solveris-public-entry .solveris-password-toggle:hover,
+.solveris-public-entry .solveris-password-toggle:focus-visible {
+  background: #071320;
+  outline: 1px solid #79a8ff;
+}
+
+.solveris-public-entry .solveris-login-submit {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7cf7c2, #6ee7f2);
+  color: #06101c;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  box-shadow: 0 12px 28px rgba(6, 16, 28, .28);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.solveris-public-entry .solveris-login-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 32px rgba(6, 16, 28, .38);
+}
+
+.solveris-public-entry .solveris-account-callout {
+  margin: 18px 0 0;
+  color: #a8b7c8;
+  line-height: 1.5;
+}
+
+.solveris-public-entry .solveris-account-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7cf7c2;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.solveris-public-entry .solveris-account-link:hover,
+.solveris-public-entry .solveris-account-link:focus-visible {
+  color: #6ee7f2;
+}
+
+.solveris-public-entry .solveris-login-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(248, 113, 113, .42);
+  border-radius: 10px;
+  background: rgba(127, 29, 29, .24);
+  color: #fca5a5;
+  font-size: 13px;
 }
 
 .solveris-entry-card h2 {
@@ -752,13 +885,33 @@ body{
 }
 
 @media (max-width: 600px) {
+  .solveris-public-entry {
+    padding: 18px !important;
+  }
+
   .solveris-brand-lockup {
     align-items: flex-start;
+    gap: 16px;
   }
 
   .solveris-brand-lockup .solveris-logo {
     width: 76px;
     height: 76px;
     border-radius: 18px;
+  }
+
+  .solveris-entry-card,
+  .solveris-public-entry .solveris-login-card {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .solveris-entry-card > div {
+    flex-direction: column;
+  }
+
+  .solveris-primary-action,
+  .solveris-secondary-action {
+    width: 100%;
   }
 }

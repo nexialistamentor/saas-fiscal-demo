@@ -42,6 +42,9 @@ def test_solveris_terms_are_readable_before_acceptance() -> None:
 def test_solveris_mei_public_visual_identity_contract() -> None:
     assert SOLVERIS_LOGO.is_file()
     assert "solveris-mei-theme" in APP
+    assert "import.meta.env.BASE_URL" in APP
+    assert "solveris-logo.jpg" in APP
+    assert 'src="/solveris-logo.jpg"' not in APP
 
     for class_name in (
         "solveris-public-entry",
@@ -50,6 +53,15 @@ def test_solveris_mei_public_visual_identity_contract() -> None:
         "solveris-entry-card",
         "solveris-primary-action",
         "solveris-secondary-action",
+        "solveris-login-card",
+        "solveris-login-title",
+        "solveris-login-form",
+        "solveris-login-field",
+        "solveris-password-field",
+        "solveris-password-toggle",
+        "solveris-login-submit",
+        "solveris-account-callout",
+        "solveris-account-link",
     ):
         assert class_name in APP
 
@@ -83,6 +95,14 @@ def test_solveris_mei_public_visual_identity_contract() -> None:
         ".solveris-secondary-action",
         ".solveris-brand-lockup",
         ".solveris-logo",
+        ".solveris-public-entry .solveris-login-card",
+        ".solveris-public-entry .solveris-login-form",
+        ".solveris-public-entry .solveris-login-field",
+        ".solveris-public-entry .solveris-password-field",
+        ".solveris-public-entry .solveris-password-toggle",
+        ".solveris-public-entry .solveris-login-submit",
+        ".solveris-public-entry .solveris-account-callout",
+        ".solveris-public-entry .solveris-account-link",
     ):
         assert canonical_selector in APP_CSS
 
