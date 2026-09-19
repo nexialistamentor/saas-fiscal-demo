@@ -13,6 +13,8 @@ import {
   logout,
 } from "./config"
 function App() {
+  const isMeiPublicJourney = /^\/mei\/?$/.test(window.location.pathname)
+
   async function handleEmitirDasOficial(event) {
     event.preventDefault()
     setEmissaoErro("")
@@ -72,6 +74,7 @@ function App() {
   const [erroContadorVinculado, setErroContadorVinculado] = useState("")
 
   const [mostrarRegisto, setMostrarRegisto] = useState(false)
+  const [meiPublicIntent, setMeiPublicIntent] = useState(null)
   const [nomeRegisto, setNomeRegisto] = useState("")
   const [emailRegisto, setEmailRegisto] = useState("")
   const [passwordRegisto, setPasswordRegisto] = useState("")
@@ -181,6 +184,12 @@ function App() {
       taxReportAcquisitionEmpresaId > 0
     )
 
+  const taxReportPurchasable =
+    Number.isInteger(resultadoXML?.relatorio_id) &&
+    resultadoXML.relatorio_id > 0 &&
+    typeof resultadoXML?.request_fingerprint === "string" &&
+    /^[0-9a-f]{64}$/.test(resultadoXML.request_fingerprint)
+
   const [uploadRendimentoResposta, setUploadRendimentoResposta] = useState(null)
   const [formRendimento, setFormRendimento] = useState({
     tipo_rendimento: "salario",
@@ -197,7 +206,7 @@ function App() {
   const [formAberturaDescricao, setFormAberturaDescricao] = useState("")
   const [formAberturaFaturamento, setFormAberturaFaturamento] = useState("")
   const [formAberturaFolha, setFormAberturaFolha] = useState("")
-  const [formAberturaPorte, setFormAberturaPorte] = useState("me")
+  const [formAberturaPorte, setFormAberturaPorte] = useState("mei")
   const [formAberturaAtividade, setFormAberturaAtividade] = useState("servicos")
   const [simulacaoAberturaResultado, setSimulacaoAberturaResultado] = useState(null)
   const [simulacaoAberturaCarregando, setSimulacaoAberturaCarregando] = useState(false)
@@ -563,6 +572,15 @@ function App() {
     e.preventDefault()
     setErroRegisto(null)
 
+    if (
+      isMeiPublicJourney &&
+      meiPublicIntent === "existing" &&
+      !documentoRegisto.trim()
+    ) {
+      setErroRegisto("Informe o CNPJ do seu MEI.")
+      return
+    }
+
     try {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
@@ -833,16 +851,22 @@ function App() {
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
         <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "480px", width: "100%", textAlign: "center", border: "1px solid var(--border-color, #2a2d3e)" }}>
           <h2 style={{ color: "var(--text-primary, #fff)", marginBottom: "1rem", fontSize: "1.4rem" }}>Termos de Uso</h2>
-          <p style={{ color: "var(--text-secondary, #9ca3af)", marginBottom: "1.5rem", lineHeight: "1.6" }}>
-            Para utilizar a plataforma Tributaria L2, e necessario aceitar os Termos de Uso e a Politica de Privacidade.
-            Os seus dados fiscais serao tratados de forma soberana, auditavel e em conformidade com a LGPD.
-          </p>
-          <ul style={{ color: "var(--text-secondary, #9ca3af)", textAlign: "left", marginBottom: "1.5rem", paddingLeft: "1.2rem", lineHeight: "1.8" }}>
-            <li>Os seus documentos sao tratados de forma confidencial</li>
-            <li>Os calculos fiscais sao informativos — nao substituem parecer profissional</li>
-            <li>Pode solicitar a eliminacao dos seus dados a qualquer momento</li>
-            <li>O acesso a analises e pessoal e intransferivel</li>
-          </ul>
+          <details style={{ color: "var(--text-secondary, #9ca3af)", textAlign: "left", marginBottom: "1rem", lineHeight: "1.6" }}>
+            <summary style={{ cursor: "pointer", fontWeight: "600", color: "var(--text-primary, #fff)" }}>Ler Termos de Uso</summary>
+            <p>
+              Para utilizar a SOLVERIS, e necessario aceitar os Termos de Uso e a Politica de Privacidade.
+              Os seus dados fiscais serao tratados de forma soberana, auditavel e em conformidade com a LGPD.
+            </p>
+            <ul style={{ paddingLeft: "1.2rem", lineHeight: "1.8" }}>
+              <li>Os seus documentos sao tratados de forma confidencial</li>
+              <li>Os calculos fiscais sao informativos — nao substituem parecer profissional</li>
+              <li>Pode solicitar a eliminacao dos seus dados a qualquer momento</li>
+              <li>O acesso a analises e pessoal e intransferivel</li>
+            </ul>
+          </details>
+          <a href={`${API_BASE}/auth/privacy`} target="_blank" rel="noreferrer" style={{ color: "var(--accent-color, #6366f1)", display: "inline-block", marginBottom: "1.5rem" }}>
+            Pol?tica de Privacidade
+          </a>
           <button onClick={handleAceitarTermos} style={{ background: "var(--accent-color, #6366f1)", color: "#fff", border: "none", borderRadius: "8px", padding: "0.85rem 2rem", fontSize: "1rem", cursor: "pointer", width: "100%", fontWeight: "600" }}>
             Aceitar e continuar
           </button>
@@ -861,8 +885,43 @@ function App() {
   if (!isAuthenticated()) {
     return (
       <div style={{ padding: 40 }}>
+        {isMeiPublicJourney && (
+          <header style={{ marginBottom: 24 }}>
+            <h1 style={{ marginBottom: 8 }}>SOLVERIS</h1>
+            <p style={{ margin: 0 }}>Sua jornada MEI começa aqui.</p>
+          </header>
+        )}
         {!mostrarRegisto ? (
           <>
+            {isMeiPublicJourney && (
+              <section style={{ marginBottom: 28 }}>
+                <h2>Como podemos ajudar?</h2>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMeiPublicIntent("opening")
+                      setTipoRegisto("mei")
+                      setDocumentoRegisto("")
+                      setMostrarRegisto(true)
+                    }}
+                  >
+                    Quero abrir meu MEI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMeiPublicIntent("existing")
+                      setTipoRegisto("mei")
+                      setDocumentoRegisto("")
+                      setMostrarRegisto(true)
+                    }}
+                  >
+                    Já tenho MEI
+                  </button>
+                </div>
+              </section>
+            )}
             <h2>Login</h2>
 
             <form onSubmit={handleLogin}>
@@ -902,7 +961,14 @@ function App() {
               Não tem conta?{" "}
               <button
                 type="button"
-                onClick={() => setMostrarRegisto(true)}
+                onClick={() => {
+                  if (isMeiPublicJourney) {
+                    setMeiPublicIntent("opening")
+                    setTipoRegisto("mei")
+                    setDocumentoRegisto("")
+                  }
+                  setMostrarRegisto(true)
+                }}
                 style={{
                   background: "none",
                   border: "none",
@@ -916,9 +982,18 @@ function App() {
           </>
         ) : (
           <>
-            <h2>Criar conta</h2>
+            <h2>
+              {isMeiPublicJourney && meiPublicIntent === "existing"
+                ? "Criar conta para meu MEI"
+                : "Criar conta MEI"}
+            </h2>
+
+            {isMeiPublicJourney && meiPublicIntent !== "existing" && (
+              <p>Não precisa de CNPJ para começar.</p>
+            )}
 
             <form onSubmit={handleRegisto}>
+              {!isMeiPublicJourney && (
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 {["cpf", "mei", "empresa"].map((tipo) => (
                   <button
@@ -939,6 +1014,7 @@ function App() {
                   </button>
                 ))}
               </div>
+              )}
 
               {tipoRegisto !== "cpf" && (
                 <input
@@ -949,12 +1025,15 @@ function App() {
                 />
               )}
 
+              {(!isMeiPublicJourney || meiPublicIntent === "existing") && (
               <input
                 type="text"
                 placeholder={tipoRegisto === "cpf" ? "CPF (somente números)" : "CNPJ (somente números)"}
                 value={documentoRegisto}
                 onChange={(e) => setDocumentoRegisto(e.target.value)}
+                required={isMeiPublicJourney && meiPublicIntent === "existing"}
               />
+              )}
 
               <input
                 type="email"
@@ -1406,7 +1485,7 @@ function App() {
     <div className="app">
       <header className="topbar">
         <div className="hero">
-          <h1>Plataforma de Inteligência Tributária em Tempo Real</h1>
+          <h1>{isMeiPublicJourney ? "SOLVERIS / MEI" : "SOLVERIS"}</h1>
         </div>
 
         <button onClick={handleLogout}>Sair</button>
@@ -1894,7 +1973,7 @@ function App() {
           ))}
         </section>
 
-        {(
+        {taxReportPurchasable && (
           !Number.isInteger(taxReportAcquisitionId) ||
           taxReportAcquisitionId <= 0 ||
           !Number.isInteger(taxReportAcquisitionEmpresaId) ||
