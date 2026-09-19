@@ -865,7 +865,7 @@ function App() {
             </ul>
           </details>
           <a href={`${API_BASE}/auth/privacy`} target="_blank" rel="noreferrer" style={{ color: "var(--accent-color, #6366f1)", display: "inline-block", marginBottom: "1.5rem" }}>
-            Pol?tica de Privacidade
+            Política de Privacidade
           </a>
           <button onClick={handleAceitarTermos} style={{ background: "var(--accent-color, #6366f1)", color: "#fff", border: "none", borderRadius: "8px", padding: "0.85rem 2rem", fontSize: "1rem", cursor: "pointer", width: "100%", fontWeight: "600" }}>
             Aceitar e continuar
@@ -884,20 +884,24 @@ function App() {
 
   if (!isAuthenticated()) {
     return (
-      <div style={{ padding: 40 }}>
+      <div className={isMeiPublicJourney ? "solveris-mei-theme solveris-public-entry" : ""} style={{ padding: 40 }}>
         {isMeiPublicJourney && (
-          <header style={{ marginBottom: 24 }}>
-            <h1 style={{ marginBottom: 8 }}>SOLVERIS</h1>
-            <p style={{ margin: 0 }}>Sua jornada MEI começa aqui.</p>
+          <header className="solveris-brand-lockup" style={{ marginBottom: 24 }}>
+            <div>
+              <h1 style={{ marginBottom: 8 }}>SOLVERIS</h1>
+              <p style={{ margin: 0 }}>Sua jornada MEI começa aqui.</p>
+            </div>
+            <img className="solveris-logo" src="/solveris-logo.jpg" alt="SOLVERIS" />
           </header>
         )}
         {!mostrarRegisto ? (
           <>
             {isMeiPublicJourney && (
-              <section style={{ marginBottom: 28 }}>
+              <section className="solveris-entry-card" style={{ marginBottom: 28 }}>
                 <h2>Como podemos ajudar?</h2>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <button
+                    className="solveris-primary-action"
                     type="button"
                     onClick={() => {
                       setMeiPublicIntent("opening")
@@ -909,6 +913,7 @@ function App() {
                     Quero abrir meu MEI
                   </button>
                   <button
+                    className="solveris-secondary-action"
                     type="button"
                     onClick={() => {
                       setMeiPublicIntent("existing")
@@ -1482,7 +1487,7 @@ function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app${isMeiPublicJourney ? " solveris-mei-theme" : ""}`}>
       <header className="topbar">
         <div className="hero">
           <h1>{isMeiPublicJourney ? "SOLVERIS / MEI" : "SOLVERIS"}</h1>
