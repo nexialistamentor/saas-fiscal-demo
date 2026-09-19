@@ -29,3 +29,9 @@ def test_solveris_mei_public_user_journey_contract() -> None:
     assert "request_fingerprint" in APP
     assert "taxReportPurchasable" in APP
     assert "Diagnóstico completo bloqueado" in APP
+
+def test_solveris_terms_are_readable_before_acceptance() -> None:
+    assert "Ler Termos de Uso" in APP
+    assert "Pol?tica de Privacidade" in APP
+    assert '/auth/privacy' in APP
+    assert "Usoe" not in APP
