@@ -180,6 +180,7 @@ app.add_middleware(
         "https://fiscosoberano.com.br",
         "https://www.fiscosoberano.com.br",
         "https://app.fiscosoberano.com.br",
+        "https://solveris.ia.br",
     ],
     allow_origin_regex=r"https://(frontend-dashboard-.*|saas-fiscal-demo(-[a-z0-9]+)*(-nexialistamentors-projects)?)\.vercel\.app",
     allow_credentials=True,

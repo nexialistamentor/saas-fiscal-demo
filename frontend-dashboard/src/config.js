@@ -77,7 +77,7 @@ export async function fetchAutenticado(url, opcoes = {}) {
 
   if (res.status === 401) {
     clearToken()
-    window.location.href = '/login'
+    window.location.href = import.meta.env.BASE_URL
     return null
   }
 
