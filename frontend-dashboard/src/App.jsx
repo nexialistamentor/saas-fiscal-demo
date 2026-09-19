@@ -385,7 +385,7 @@ function App() {
     }
 
     if (
-      tipoPerfil !== "empresa" ||
+      (tipoPerfil !== "empresa" && tipoPerfil !== "mei") ||
       !Number.isInteger(idPerfil) ||
       idPerfil <= 0
     ) {
@@ -623,7 +623,7 @@ function App() {
 
   useEffect(() => {
     if (
-      tipoPerfil !== "empresa" ||
+      (tipoPerfil !== "empresa" && tipoPerfil !== "mei") ||
       !Number.isInteger(idPerfil) ||
       idPerfil <= 0
     ) {
