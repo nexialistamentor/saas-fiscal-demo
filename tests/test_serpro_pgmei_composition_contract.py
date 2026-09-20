@@ -329,8 +329,10 @@ def test_two_call_flow_uses_basic_then_session_bearer_and_same_mtls():
         "status": 200,
         "mensagens": [],
         "dados": "pgmei-result",
-        "sistema": "PGMEI",
-        "servico": service,
+        "pedidoDados": {
+            "idSistema": "PGMEI",
+            "idServico": service,
+        },
     }
     request = QueueRequest([oauth, Response(envelope)])
     client = compose_serpro_pgmei(enabled_config(), request=request)

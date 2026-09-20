@@ -47,8 +47,10 @@ def valid_envelope(service, data=None):
         "status": 200,
         "mensagens": [{"codigo": "SUCESSO", "texto": "Pedido processado"}],
         "dados": data if data is not None else "conteudo-nominal",
-        "sistema": "PGMEI",
-        "servico": service,
+        "pedidoDados": {
+            "idSistema": "PGMEI",
+            "idServico": service,
+        },
     }
 
 
@@ -143,8 +145,8 @@ def test_transport_failures_are_closed_and_sanitized(error):
         (StubResponse(status_code=503, payload={}), "http status invalido"),
         (StubResponse(json_error=ValueError("body secret")), "json invalido"),
         (StubResponse(payload={**valid_envelope("GERARDASPDF21"), "status": 500}), "status interno invalido"),
-        (StubResponse(payload={**valid_envelope("GERARDASPDF21"), "sistema": "OUTRO"}), "sistema divergente"),
-        (StubResponse(payload={**valid_envelope("GERARDASPDF21"), "servico": "GERARDASCODBARRA22"}), "servico divergente"),
+        (StubResponse(payload={**valid_envelope("GERARDASPDF21"), "pedidoDados": {"idSistema": "OUTRO", "idServico": "GERARDASPDF21"}}), "sistema divergente"),
+        (StubResponse(payload={**valid_envelope("GERARDASPDF21"), "pedidoDados": {"idSistema": "PGMEI", "idServico": "GERARDASCODBARRA22"}}), "servico divergente"),
         (StubResponse(payload={key: value for key, value in valid_envelope("GERARDASPDF21").items() if key != "dados"}), "dados ausentes"),
     ],
 )

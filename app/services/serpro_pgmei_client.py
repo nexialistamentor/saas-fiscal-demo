@@ -112,9 +112,12 @@ class SerproPgmeiClient:
             raise PgmeiClientError("json invalido")
         if envelope.get("status") != 200:
             raise PgmeiClientError("status interno invalido")
-        if envelope.get("sistema") != "PGMEI":
+        pedido_dados = envelope.get("pedidoDados")
+        if not isinstance(pedido_dados, Mapping):
             raise PgmeiClientError("sistema divergente")
-        if envelope.get("servico") != service:
+        if pedido_dados.get("idSistema") != "PGMEI":
+            raise PgmeiClientError("sistema divergente")
+        if pedido_dados.get("idServico") != service:
             raise PgmeiClientError("servico divergente")
         if "dados" not in envelope or envelope["dados"] is None:
             raise PgmeiClientError("dados ausentes")

@@ -58,8 +58,10 @@ def envelope():
         "status": 200,
         "mensagens": [],
         "dados": "nominal",
-        "sistema": "PGMEI",
-        "servico": SERVICE,
+        "pedidoDados": {
+            "idSistema": "PGMEI",
+            "idServico": SERVICE,
+        },
     }
 
 
