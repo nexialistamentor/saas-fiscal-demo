@@ -42,6 +42,11 @@ BLOCKED_502 = {
     "estado_l3": "bloqueado",
     "tipo_bloqueio": "AUTORIDADE_OFICIAL_MEI_FALHOU",
 }
+BLOCKED_CANARY = {
+    "bloqueado": True,
+    "estado_l3": "bloqueado",
+    "tipo_bloqueio": "SERPRO_PGMEI_CANARY_NAO_AUTORIZADO",
+}
 
 
 def _empresa(**overrides):
@@ -158,6 +163,7 @@ def isolated_route(monkeypatch):
 
     app.dependency_overrides[tenant_empresa] = lambda: _empresa()
     monkeypatch.delenv("SERPRO_PGMEI_ENABLED", raising=False)
+    monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", "12345678000190")
     limiter.enabled = False
     if hasattr(imposto_router, "_get_serpro_pgmei_client"):
         imposto_router._get_serpro_pgmei_client.cache_clear()
@@ -211,6 +217,79 @@ def test_route_exists_and_gate_is_default_off_without_transport(client):
         "estado_l3": "bloqueado",
         "tipo_bloqueio": "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL",
     }
+
+
+@pytest.mark.parametrize(
+    "configured_cnpj",
+    [
+        None,
+        "",
+        "1234567800019",
+        "2345678000190",
+        "12345678000190*",
+        "*",
+        "12345678000190,99999999000199",
+        "12.345.678/0001-90",
+        "abcdef12345678",
+        "AB.CDE.F12/3456-78",
+        "consumer-secret-classified",
+    ],
+)
+def test_canary_cnpj_denial_is_fail_closed_before_composition_or_io(
+    client, monkeypatch, isolated_route, configured_cnpj
+):
+    if configured_cnpj is None:
+        monkeypatch.delenv("SERPRO_PGMEI_CANARY_CNPJ", raising=False)
+    else:
+        monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", configured_cnpj)
+
+    stub = StubClient()
+    composed = _install_client(monkeypatch, isolated_route, stub)
+    response = client.post(ROUTE, json=VALID_BODY)
+
+    assert response.status_code == 403
+    assert _detail(response) == BLOCKED_CANARY
+    assert composed == []
+    assert stub.calls == []
+    _assert_private_data_absent(response)
+
+
+def test_exact_canonical_canary_cnpj_continues_existing_official_flow(
+    client, monkeypatch, isolated_route
+):
+    monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", "12345678000190")
+    stub = StubClient()
+    composed = _install_client(monkeypatch, isolated_route, stub)
+
+    response = client.post(ROUTE, json=VALID_BODY)
+
+    assert response.status_code == 200
+    assert composed == [True]
+    assert stub.calls == [("GERARDASPDF21", "12345678000190", "202607")]
+    _assert_private_data_absent(response)
+
+
+def test_exact_canonical_alphanumeric_canary_cnpj_continues_existing_official_flow(
+    client, monkeypatch, isolated_route
+):
+    app.dependency_overrides[tenant_empresa] = lambda: _empresa(
+        cnpj="ab.cde.f12/3456-78"
+    )
+    monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", "ABCDEF12345678")
+    stub = StubClient(data=_official_barcode_data(cnpjCompleto="ABCDEF12345678"))
+    composed = _install_client(monkeypatch, isolated_route, stub)
+
+    response = client.post(
+        ROUTE,
+        json={"periodo_apuracao": "202607", "formato": "codigo_barras"},
+    )
+
+    assert response.status_code == 200
+    assert composed == [True]
+    assert stub.calls == [
+        ("GERARDASCODBARRA22", "ABCDEF12345678", "202607")
+    ]
+    _assert_private_data_absent(response)
 
 
 def test_tenant_denial_precedes_composition_and_client(client, monkeypatch, isolated_route):
@@ -289,6 +368,7 @@ def test_identity_and_service_are_derived_and_official_response_is_normalized(
     client, monkeypatch, isolated_route, stored_cnpj, formato, service, canonical
 ):
     app.dependency_overrides[tenant_empresa] = lambda: _empresa(cnpj=stored_cnpj)
+    monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", canonical)
     official_data = (
         _official_pdf_data(cnpjCompleto=canonical)
         if formato == "pdf"

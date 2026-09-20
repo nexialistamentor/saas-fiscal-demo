@@ -154,10 +154,15 @@ def test_cross_tenant_denial_precedes_serpro_composition(client, _isolated_pgmei
 
 
 def test_owner_crosses_real_tenant_guard_and_publishes_path_identity(
-    client, _isolated_pgmei_boundary
+    client, _isolated_pgmei_boundary, monkeypatch
 ):
     email, headers = _register_login_and_accept_terms(client, "owner")
     empresa_id = _create_active_mei(email, "owner")
+    with _db_session() as db:
+        empresa = db.query(Empresa).filter(Empresa.id == empresa_id).one()
+        cnpj = empresa.cnpj
+
+    monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", cnpj)
 
     response = client.post(
         f"/imposto/mei/{empresa_id}/das",

@@ -4,6 +4,7 @@ from datetime import date, datetime
 from functools import lru_cache
 import json
 import math
+import os
 import re
 from typing import Literal
 
@@ -202,6 +203,14 @@ def obter_das_mei_oficial(
     cnpj = _cnpj_canonico(getattr(empresa, "cnpj", None))
     if cnpj is None:
         raise _bloqueio(422, "CNPJ_EMPRESA_INVALIDO")
+
+    canary_cnpj = os.environ.get("SERPRO_PGMEI_CANARY_CNPJ")
+    if (
+        type(canary_cnpj) is not str
+        or _CNPJ_CANONICO.fullmatch(canary_cnpj) is None
+        or cnpj != canary_cnpj
+    ):
+        raise _bloqueio(403, "SERPRO_PGMEI_CANARY_NAO_AUTORIZADO")
 
     try:
         client = _get_serpro_pgmei_client()
