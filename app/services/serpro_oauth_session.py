@@ -17,6 +17,15 @@ DEFAULT_ENDPOINT = "https://autenticacao.sapi.serpro.gov.br/authenticate"
 class OAuthSessionError(RuntimeError):
     """Sanitized public failure raised by the OAuth session."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        provider_status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.provider_status_code = provider_status_code
+
 
 @dataclass(frozen=True)
 class _Token:
@@ -109,8 +118,17 @@ class SerproOAuthSession:
         except Exception as exc:
             raise OAuthSessionError("falha na autenticacao SERPRO") from exc
 
-        if getattr(response, "status_code", None) != 200:
-            raise OAuthSessionError("resposta de autenticacao invalida")
+        status_code = getattr(response, "status_code", None)
+        if status_code != 200:
+            provider_status_code = (
+                int(status_code)
+                if isinstance(status_code, int) and not isinstance(status_code, bool)
+                else None
+            )
+            raise OAuthSessionError(
+                "resposta de autenticacao invalida",
+                provider_status_code=provider_status_code,
+            )
         try:
             payload = response.json()
         except Exception as exc:

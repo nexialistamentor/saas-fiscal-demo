@@ -13,6 +13,15 @@ _SUPPORTED_SERVICES = frozenset({"GERARDASPDF21", "GERARDASCODBARRA22"})
 class PgmeiClientError(RuntimeError):
     """Closed, deliberately sanitized failure exposed by the adapter."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        provider_status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.provider_status_code = provider_status_code
+
 
 @dataclass(frozen=True)
 class PgmeiResult:
@@ -84,8 +93,17 @@ class SerproPgmeiClient:
         except Exception as exc:
             raise PgmeiClientError("falha de transporte") from exc
 
-        if getattr(response, "status_code", None) != 200:
-            raise PgmeiClientError("http status invalido")
+        status_code = getattr(response, "status_code", None)
+        if status_code != 200:
+            provider_status_code = (
+                int(status_code)
+                if isinstance(status_code, int) and not isinstance(status_code, bool)
+                else None
+            )
+            raise PgmeiClientError(
+                "http status invalido",
+                provider_status_code=provider_status_code,
+            )
         try:
             envelope = response.json()
         except Exception as exc:
