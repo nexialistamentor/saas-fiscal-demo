@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import math
 import os
 from collections.abc import Callable, Mapping
@@ -25,7 +26,6 @@ DEFAULT_OAUTH_SAFE_WINDOW = 30.0
 _REQUIRED = (
     "SERPRO_CONSUMER_KEY",
     "SERPRO_CONSUMER_SECRET",
-    "SERPRO_PKCS12_FILE",
     "SERPRO_PKCS12_PASSWORD",
     "SERPRO_PGMEI_ENDPOINT",
     "SERPRO_CONTRATANTE",
@@ -63,6 +63,19 @@ def compose_serpro_pgmei(
 
     try:
         values = {name: _required_string(source, name) for name in _REQUIRED}
+        has_pkcs12_b64 = "SERPRO_PKCS12_B64" in source
+        has_pkcs12_file = "SERPRO_PKCS12_FILE" in source
+        if has_pkcs12_b64 == has_pkcs12_file:
+            raise ValueError
+        if has_pkcs12_b64:
+            encoded_pkcs12 = _required_string(source, "SERPRO_PKCS12_B64")
+            pkcs12_data = base64.b64decode(encoded_pkcs12, validate=True)
+            if not pkcs12_data:
+                raise ValueError
+            pkcs12_filename = None
+        else:
+            pkcs12_data = None
+            pkcs12_filename = _required_string(source, "SERPRO_PKCS12_FILE")
         oauth_timeout = _number(
             source.get("SERPRO_OAUTH_TIMEOUT", DEFAULT_OAUTH_TIMEOUT),
             allow_zero=False,
@@ -83,10 +96,17 @@ def compose_serpro_pgmei(
         raise SerproPgmeiCompositionError("configuracao SERPRO invalida") from None
 
     try:
-        identity = Pkcs12Identity(
-            pkcs12_filename=values["SERPRO_PKCS12_FILE"],
-            pkcs12_password=values["SERPRO_PKCS12_PASSWORD"],
-        )
+        if pkcs12_data is not None:
+            identity = Pkcs12Identity(
+                pkcs12_data=pkcs12_data,
+                pkcs12_filename=None,
+                pkcs12_password=values["SERPRO_PKCS12_PASSWORD"],
+            )
+        else:
+            identity = Pkcs12Identity(
+                pkcs12_filename=pkcs12_filename,
+                pkcs12_password=values["SERPRO_PKCS12_PASSWORD"],
+            )
         pkcs12_transport = SerproPkcs12Transport(
             mtls_identity=identity,
             request=request,
