@@ -16,6 +16,9 @@ SECRETS = {
     "SERPRO_CONTRATANTE": "CONTRATANTE-SYNTHETIC",
 }
 
+SYNTHETIC_PKCS12_BYTES = b"synthetic-pkcs12-content-not-a-real-certificate"
+SYNTHETIC_PKCS12_B64 = base64.b64encode(SYNTHETIC_PKCS12_BYTES).decode("ascii")
+
 
 def enabled_config():
     return {
@@ -25,6 +28,13 @@ def enabled_config():
         "SERPRO_PGMEI_TIMEOUT": "17.25",
         "SERPRO_OAUTH_SAFE_WINDOW": "4",
     }
+
+
+def in_memory_enabled_config():
+    config = enabled_config()
+    config.pop("SERPRO_PKCS12_FILE")
+    config["SERPRO_PKCS12_B64"] = SYNTHETIC_PKCS12_B64
+    return config
 
 
 class Response:
@@ -198,6 +208,109 @@ def test_nominal_offline_topology_by_identity_and_input_preservation():
     assert vars(session)["_safe_window"] == 4.0
     assert config == original
     assert request.calls == []
+
+
+def test_base64_certificate_is_decoded_only_into_in_memory_identity():
+    from app.services.serpro_pgmei_composition import compose_serpro_pgmei
+
+    client = compose_serpro_pgmei(
+        in_memory_enabled_config(), request=QueueRequest([])
+    )
+    authenticated = vars(client)["_transport"]
+    identity = vars(vars(authenticated)["_downstream"])["_mtls_identity"]
+
+    assert vars(identity)["pkcs12_data"] == SYNTHETIC_PKCS12_BYTES
+    assert vars(identity)["pkcs12_filename"] is None
+    assert vars(identity)["pkcs12_password"] == SECRETS["SERPRO_PKCS12_PASSWORD"]
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        "not-base64!",
+        "c3ludGhldGljCg==\n",
+        "c3ludGhldGlj IA==",
+        "c3ludGhldGlj=trailing",
+    ],
+)
+def test_base64_certificate_must_be_strict_and_fails_closed(encoded):
+    from app.services.serpro_pgmei_composition import (
+        SerproPgmeiCompositionError,
+        compose_serpro_pgmei,
+    )
+
+    config = in_memory_enabled_config()
+    config["SERPRO_PKCS12_B64"] = encoded
+
+    with pytest.raises(SerproPgmeiCompositionError) as caught:
+        compose_serpro_pgmei(config, request=QueueRequest([]))
+
+    assert caught.value.args == ("configuracao SERPRO invalida",)
+    assert caught.value.__cause__ is None
+
+
+def test_base64_certificate_must_decode_to_non_empty_bytes():
+    from app.services.serpro_pgmei_composition import (
+        SerproPgmeiCompositionError,
+        compose_serpro_pgmei,
+    )
+
+    config = in_memory_enabled_config()
+    config["SERPRO_PKCS12_B64"] = ""
+
+    with pytest.raises(SerproPgmeiCompositionError) as caught:
+        compose_serpro_pgmei(config, request=QueueRequest([]))
+
+    assert caught.value.args == ("configuracao SERPRO invalida",)
+    assert caught.value.__cause__ is None
+
+
+@pytest.mark.parametrize("source_count", [0, 2], ids=["neither", "both"])
+def test_exactly_one_pkcs12_source_is_required(source_count):
+    from app.services.serpro_pgmei_composition import (
+        SerproPgmeiCompositionError,
+        compose_serpro_pgmei,
+    )
+
+    config = enabled_config()
+    if source_count == 0:
+        config.pop("SERPRO_PKCS12_FILE")
+    else:
+        config["SERPRO_PKCS12_B64"] = SYNTHETIC_PKCS12_B64
+
+    with pytest.raises(SerproPgmeiCompositionError) as caught:
+        compose_serpro_pgmei(config, request=QueueRequest([]))
+    assert caught.value.args == ("configuracao SERPRO invalida",)
+    assert caught.value.__cause__ is None
+
+
+def test_in_memory_certificate_and_password_are_absent_from_composition_errors(
+    monkeypatch,
+):
+    import app.services.serpro_pgmei_composition as composition
+
+    def fail(**kwargs):
+        raise RuntimeError(
+            f"{SYNTHETIC_PKCS12_B64} {SYNTHETIC_PKCS12_BYTES!r} "
+            f"{SECRETS['SERPRO_PKCS12_PASSWORD']}"
+        )
+
+    monkeypatch.setattr(composition, "SerproPkcs12Transport", fail)
+
+    with pytest.raises(composition.SerproPgmeiCompositionError) as caught:
+        composition.compose_serpro_pgmei(
+            in_memory_enabled_config(), request=QueueRequest([])
+        )
+
+    rendered = f"{caught.value!r} {caught.value}"
+    assert caught.value.__cause__ is None
+    for secret in (
+        SYNTHETIC_PKCS12_B64,
+        SYNTHETIC_PKCS12_BYTES.decode("ascii"),
+        repr(SYNTHETIC_PKCS12_BYTES),
+        SECRETS["SERPRO_PKCS12_PASSWORD"],
+    ):
+        assert secret not in rendered
 
 
 def test_two_call_flow_uses_basic_then_session_bearer_and_same_mtls():
