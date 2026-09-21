@@ -13,6 +13,10 @@ from app.services.imposto_service import calcular_imposto_simples_nacional
 from app.services.insights_engine import InsightEngine
 from app.services.analysis_orchestrator import executar_analise
 from app.services.resultado_provenance_service import selar_resultado_nao_mei
+from app.services.source_authority_guard import (
+    carregar_binding_normativo_mei_das_2026,
+    validar_bindings_normativos,
+)
 from app.services.tax_engines.base_tax_engine import (
     AnexoSimplesNaoDeterminadoError,
     LimiteSimplesNacionalExcedidoError,
@@ -20,6 +24,7 @@ from app.services.tax_engines.base_tax_engine import (
 )
 from app.services.tax_engines.mei_constants import (
     ATIVIDADE_MEI_NORMALIZADA_POR_ALIAS,
+    MEI_LIMITE_ANUAL_FATURAMENTO,
     normalizar_atividade_mei,
 )
 
@@ -343,6 +348,66 @@ def _resposta_assistente_mei(pergunta: str) -> dict:
         "requires_payment": False,
         "analysis_type": "mei_tax",
         "modo": modo,
+    }
+
+
+def _resposta_limite_mei(pergunta: str) -> dict:
+    """Responde o limite MEI somente sob autoridade normativa vigente."""
+    ano_extraido = extrair_ano_referencia(pergunta)
+    if ano_extraido is None and re.search(r"\b20\d{2}\b", pergunta):
+        return {
+            "resposta": "Não foi possível determinar um único ano normativo MEI.",
+            "requires_payment": False,
+            "analysis_type": "mei_limit",
+            "bloqueado": True,
+            "tipo_bloqueio": "TEMPO_NORMATIVO_AMBIGUO",
+            "estado_l3": "bloqueado",
+        }
+
+    ano = ano_extraido or datetime.now().year
+    payload = carregar_binding_normativo_mei_das_2026()
+    contexto = payload.get("contexto")
+    if isinstance(contexto, dict):
+        contexto["data_referencia"] = f"{ano:04d}-01-01"
+
+    autoridade = validar_bindings_normativos(payload)
+    bindings = payload.get("bindings")
+    bindings_limite = (
+        [
+            binding
+            for binding in bindings
+            if isinstance(binding, dict)
+            and binding.get("dataset_id") == "MEI_LIMITE_ANUAL_FATURAMENTO"
+        ]
+        if isinstance(bindings, (list, tuple))
+        else []
+    )
+    if (
+        not autoridade.autorizado_fundamentar_decisao
+        or len(bindings_limite) != 1
+    ):
+        return {
+            "resposta": (
+                f"Não há autoridade normativa MEI válida para informar "
+                f"o limite no ano {ano}."
+            ),
+            "requires_payment": False,
+            "analysis_type": "mei_limit",
+            "bloqueado": True,
+            "tipo_bloqueio": "AUTORIDADE_NORMATIVA_MEI_INDISPONIVEL",
+            "estado_l3": "bloqueado",
+        }
+
+    limite_anual = float(MEI_LIMITE_ANUAL_FATURAMENTO)
+    media_mensal = limite_anual / 12
+    return {
+        "resposta": (
+            f"Em {ano}, o limite de receita bruta do MEI é de "
+            f"R$ {_fmt_br(limite_anual)} por ano. Isso equivale à média de "
+            f"R$ {_fmt_br(media_mensal)} por mês; o limite legal é anual."
+        ),
+        "requires_payment": False,
+        "analysis_type": "mei_limit",
     }
 
 
@@ -787,6 +852,9 @@ def responder_pergunta(
             }
 
     intencao = identificar_intencao(pergunta)
+    if intencao == "limite_mensal_mei":
+        return _resposta_limite_mei(pergunta)
+
     if intencao == "planejamento_tributario":
         dados_fiscais = _obter_dados_fiscais_planejamento(pergunta, usuario, db)
         if dados_fiscais:
