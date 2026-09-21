@@ -96,7 +96,7 @@ def identificar_intencao(pergunta: str) -> str:
         return "simulacao_mei"
 
     # Prioridade 4: dúvidas genéricas sobre imposto MEI
-    if "imposto mei" in p or "quanto paga mei" in p:
+    if "mei" in p and ("imposto" in p or re.search(r"\bdas\b", p)):
         return "imposto_mei"
 
     if "restituição" in p or "restituicao" in p:
