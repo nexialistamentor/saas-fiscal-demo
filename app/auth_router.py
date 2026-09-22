@@ -82,11 +82,17 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
             db.refresh(new_user)
     else:
         regime = "mei" if user.tipo_usuario == "mei" else "simples"
+        status_empresa = (
+            "em_abertura"
+            if user.tipo_usuario == "mei" and user.mei_intent == "opening"
+            else "ativa"
+        )
         emp = models.Empresa(
             razao_social=user.nome.strip() if user.nome else None,
             regime_tributario=regime,
             cnpj=user.documento.strip() if user.documento else None,
             user_id=new_user.id,
+            status_empresa=status_empresa,
         )
         db.add(emp)
         db.commit()

@@ -65,6 +65,8 @@ function App() {
   const [verificandoSessao, setVerificandoSessao] = useState(true)
   const [precisaAceitarTermos, setPrecisaAceitarTermos] = useState(false)
   const [erroTermos, setErroTermos] = useState("")
+  const [precisaConsentir, setPrecisaConsentir] = useState(false)
+  const [erroConsentimento, setErroConsentimento] = useState("")
   const [perfilContador, setPerfilContador] = useState(null)
   const [carregandoPerfilContador, setCarregandoPerfilContador] = useState(false)
   const [erroPerfilContador, setErroPerfilContador] = useState("")
@@ -590,6 +592,7 @@ function App() {
           password: passwordRegisto,
           nome: nomeRegisto,
           tipo_usuario: tipoRegisto,
+          mei_intent: tipoRegisto === "mei" ? meiPublicIntent : null,
           documento: documentoRegisto || null
         })
       })
@@ -627,6 +630,29 @@ function App() {
     } catch (e) {
       console.error("[Termos] Erro ao aceitar:", e)
       alert("Erro de rede. Verifique a ligacao e tente novamente.")
+    }
+  }
+
+  async function handleConsentirPrivacidade() {
+    setErroConsentimento("")
+    try {
+      const res = await fetch(`${API_BASE}/auth/consent`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` }
+      })
+      if (res.status === 401) {
+        clearToken()
+        window.location.reload()
+        return
+      }
+      if (!res.ok) {
+        setErroConsentimento("Não foi possível registrar o consentimento. Tente novamente.")
+        return
+      }
+      setPrecisaConsentir(false)
+      window.location.reload()
+    } catch {
+      setErroConsentimento("Erro de rede ao registrar o consentimento.")
     }
   }
 
@@ -703,6 +729,32 @@ function App() {
         }
 
         // Termos aceites — agora sim activar utilizador e carregar dashboard
+        try {
+          const consentRes = await fetch(`${API_BASE}/auth/has-consented`, {
+            headers: { Authorization: `Bearer ${getToken()}` }
+          })
+          if (consentRes.status === 401) {
+            clearToken()
+            setVerificandoSessao(false)
+            return
+          }
+          if (!consentRes.ok) {
+            setErroConsentimento("Não foi possível verificar o consentimento. Tente novamente.")
+            setVerificandoSessao(false)
+            return
+          }
+          const consentData = await consentRes.json()
+          if (!consentData.consented) {
+            setPrecisaConsentir(true)
+            setVerificandoSessao(false)
+            return
+          }
+        } catch {
+          setErroConsentimento("Erro de rede ao verificar o consentimento.")
+          setVerificandoSessao(false)
+          return
+        }
+
         setUsuario(usuarioJson)
         const er = await fetch(`${API_BASE}/empresas/`, {
           headers: { Authorization: `Bearer ${getToken()}` }
@@ -717,6 +769,7 @@ function App() {
             const perfil = {
               tipo: tipoDerivado,
               id: e.id,
+              status_empresa: e.status_empresa,
               nome:
                 e.regime_tributario === "mei"
                   ? `MEI - ${e.razao_social || `#${e.id}`}`
@@ -878,6 +931,37 @@ function App() {
     )
   }
 
+  if (erroConsentimento) {
+    return (
+      <div style={{ padding: 40 }}>
+        <p>{erroConsentimento}</p>
+        <button onClick={() => window.location.reload()}>Tentar novamente</button>
+        <button onClick={handleLogout}>Sair</button>
+      </div>
+    )
+  }
+
+  if (precisaConsentir) {
+    return (
+      <div style={{ padding: 40 }}>
+        <h2>Política de Privacidade</h2>
+        <p>
+          Antes de continuar, confirme o tratamento dos dados para a finalidade
+          informada na Política de Privacidade vigente.
+        </p>
+        <a href={`${API_BASE}/auth/privacy`} target="_blank" rel="noreferrer">
+          Ler Política de Privacidade
+        </a>
+        <div style={{ marginTop: 16 }}>
+          <button onClick={handleConsentirPrivacidade}>
+            Aceitar Política de Privacidade e continuar
+          </button>
+        </div>
+        <button onClick={handleLogout}>Sair</button>
+      </div>
+    )
+  }
+
   if (verificandoSessao) {
     return <p style={{ padding: 40 }}>Validando sessão...</p>
   }
@@ -978,9 +1062,7 @@ function App() {
                 type="button"
                 onClick={() => {
                   if (isMeiPublicJourney) {
-                    setMeiPublicIntent("opening")
-                    setTipoRegisto("mei")
-                    setDocumentoRegisto("")
+                    return
                   }
                   setMostrarRegisto(true)
                 }}
@@ -1856,7 +1938,9 @@ function App() {
               Selecione a competência e o formato para solicitar o documento oficial.
             </p>
 
-            {!Number.isInteger(idPerfil) || idPerfil <= 0 ? (
+            {perfilAtual.status_empresa !== "ativa" ||
+            !Number.isInteger(idPerfil) ||
+            idPerfil <= 0 ? (
               <p style={{ color: "#92400e", marginBottom: 0 }}>
                 Este perfil é apenas de orientação e não está vinculado a uma empresa real.
                 A emissão oficial não está disponível.

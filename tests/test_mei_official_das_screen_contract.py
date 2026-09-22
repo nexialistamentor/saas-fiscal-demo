@@ -30,34 +30,32 @@ def test_mei_screen_consumes_official_das_hook_safely():
     ):
         violations.append("App.jsx não obtém emitirDasOficial de useMeiDashboard")
 
-    handlers = list(
-        re.finditer(
-            r"(?:async\s+function|const|let)\s+([A-Za-z_$][\w$]*)(?:\s*=)?"
-            r"(?P<body>.*?emitirDasOficial\s*\([^)]*\).*?)(?=\n\s*(?:async\s+function|"
-            r"const|let)\s+[A-Za-z_$]|\n\s*(?:if|return)\s*\(|\Z)",
-            app,
-            re.DOTALL,
-        )
-    )
-    explicit_handler = next(
-        (
-            match
-            for match in handlers
-            if re.search(
-                rf"on(?:Click|Submit)\s*=\s*\{{(?:\([^}}]*\)\s*=>\s*)?"
-                rf"{re.escape(match.group(1))}\b",
-                app,
-            )
-        ),
-        None,
-    )
-    if explicit_handler is None:
+    handler_signature = "async function handleEmitirDasOficial(event)"
+    handler_start = app.find(handler_signature)
+
+    if handler_start == -1:
         violations.append(
-            "emitirDasOficial deve ser chamado somente por handler ligado a ação explícita"
+            "emitirDasOficial deve ser chamado somente por handler ligado a a??o expl?cita"
         )
         handler_body = ""
+        explicit_handler = None
     else:
-        handler_body = explicit_handler.group("body")
+        handler_end = app.find("\n\n  const [email", handler_start)
+
+        if handler_end == -1:
+            violations.append("handler de emiss?o DAS n?o p?de ser delimitado")
+            handler_body = ""
+            explicit_handler = None
+        else:
+            handler_body = app[handler_start:handler_end]
+            explicit_handler = re.search(
+                r"on(?:Click|Submit)\s*=\s*\{\s*handleEmitirDasOficial\s*\}",
+                app,
+            )
+            if explicit_handler is None:
+                violations.append(
+                    "emitirDasOficial deve ser chamado somente por handler ligado a a??o expl?cita"
+                )
 
     calls = list(re.finditer(r"\bemitirDasOficial\s*\(", app))
     if calls and (explicit_handler is None or len(calls) != 1):
