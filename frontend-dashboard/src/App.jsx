@@ -118,6 +118,67 @@ function App() {
   const [emitindoDas, setEmitindoDas] = useState(false)
   const [resultadoEmissao, setResultadoEmissao] = useState(null)
   const [emissaoErro, setEmissaoErro] = useState("")
+  const [cnpjMei, setCnpjMei] = useState("")
+  const [salvandoCnpjMei, setSalvandoCnpjMei] = useState(false)
+  const [erroCnpjMei, setErroCnpjMei] = useState("")
+
+  async function handleCompletarCnpjMei(event) {
+    event.preventDefault()
+    setErroCnpjMei("")
+
+    if (!Number.isInteger(idPerfil) || idPerfil <= 0) {
+      setErroCnpjMei("Perfil MEI inválido.")
+      return
+    }
+
+    const cnpj = cnpjMei.replace(/\D/g, "")
+    if (cnpj.length !== 14) {
+      setErroCnpjMei("Informe um CNPJ com 14 dígitos.")
+      return
+    }
+
+    setSalvandoCnpjMei(true)
+    try {
+      const res = await fetch(`${API_BASE}/empresas/${idPerfil}/cnpj`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({ cnpj })
+      })
+
+      if (res.status === 401) {
+        clearToken()
+        window.location.reload()
+        return
+      }
+
+      if (res.status === 409) {
+        setErroCnpjMei("Não foi possível vincular este CNPJ ao perfil.")
+        return
+      }
+
+      if (!res.ok) {
+        setErroCnpjMei("Não foi possível salvar o CNPJ. Verifique os dados e tente novamente.")
+        return
+      }
+
+      const atualizado = await res.json()
+      const proximoPerfil = {
+        ...perfilAtual,
+        cnpj: atualizado.cnpj
+      }
+
+      perfilEmpresaApiRef.current = proximoPerfil
+      setPerfilAtual(proximoPerfil)
+      setCnpjMei("")
+    } catch {
+      setErroCnpjMei("Erro de rede ao salvar o CNPJ.")
+    } finally {
+      setSalvandoCnpjMei(false)
+    }
+  }
 
   const meiResult = useMeiDashboard()
   const { emitirDasOficial } = meiResult
@@ -770,6 +831,7 @@ function App() {
               tipo: tipoDerivado,
               id: e.id,
               status_empresa: e.status_empresa,
+              cnpj: e.cnpj,
               nome:
                 e.regime_tributario === "mei"
                   ? `MEI - ${e.razao_social || `#${e.id}`}`
@@ -1938,7 +2000,44 @@ function App() {
               Selecione a competência e o formato para solicitar o documento oficial.
             </p>
 
+            {perfilAtual.status_empresa === "ativa" &&
+            Number.isInteger(idPerfil) &&
+            idPerfil > 0 &&
+            !perfilAtual.cnpj && (
+              <div style={{ display: "grid", gap: 12, maxWidth: 420, marginBottom: 16 }}>
+                <p style={{ color: "#92400e", marginBottom: 0 }}>
+                  Complete o CNPJ do seu MEI antes de solicitar o DAS oficial.
+                </p>
+
+                <form onSubmit={handleCompletarCnpjMei} style={{ display: "grid", gap: 12 }}>
+                  <label>
+                    <span>CNPJ</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={cnpjMei}
+                      onChange={(e) => setCnpjMei(e.target.value)}
+                      placeholder="00.000.000/0000-00"
+                      required
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={salvandoCnpjMei || !cnpjMei.trim()}
+                  >
+                    {salvandoCnpjMei ? "Salvando..." : "Salvar CNPJ"}
+                  </button>
+                </form>
+
+                {erroCnpjMei && (
+                  <p style={{ color: "#b91c1c", marginBottom: 0 }}>{erroCnpjMei}</p>
+                )}
+              </div>
+            )}
+
             {perfilAtual.status_empresa !== "ativa" ||
+            !perfilAtual.cnpj ||
             !Number.isInteger(idPerfil) ||
             idPerfil <= 0 ? (
               <p style={{ color: "#92400e", marginBottom: 0 }}>
