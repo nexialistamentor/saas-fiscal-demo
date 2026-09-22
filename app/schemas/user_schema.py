@@ -2,7 +2,7 @@ import unicodedata
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, ValidationInfo, field_validator, model_validator
 
 
 class UserCreate(BaseModel):
@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=8, max_length=64)
     nome: str | None = Field(default=None, max_length=100)
     tipo_usuario: Literal["cpf", "mei", "empresa"] = Field(default="mei")
+    mei_intent: Literal["opening", "existing"] | None = None
     documento: str | None = Field(default=None, max_length=20)
 
     @field_validator("documento")
@@ -24,6 +25,19 @@ class UserCreate(BaseModel):
         if tipo in ("mei", "empresa") and len(digits) != 14:
             raise ValueError("CNPJ deve ter 14 dígitos")
         return digits
+
+    @model_validator(mode="after")
+    def validar_intencao_mei(self):
+        if self.tipo_usuario != "mei":
+            return self
+
+        if self.mei_intent is None:
+            raise ValueError("Intenção MEI é obrigatória")
+
+        if self.mei_intent == "existing" and self.documento is None:
+            raise ValueError("CNPJ é obrigatório para MEI existente")
+
+        return self
 
     @field_validator("nome")
     @classmethod
