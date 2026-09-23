@@ -3,8 +3,32 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
+
+
+logger = logging.getLogger(__name__)
+_LOG_EVENT = "serpro_pgmei_failure"
+
+
+def _log_failure(stage: str, provider_status_code: int | None = None) -> None:
+    if (
+        isinstance(provider_status_code, int)
+        and not isinstance(provider_status_code, bool)
+    ):
+        logger.warning(
+            "%s stage=%s provider_status=%d",
+            _LOG_EVENT,
+            stage,
+            provider_status_code,
+        )
+        return
+    logger.warning(
+        "%s stage=%s provider_status=unknown",
+        _LOG_EVENT,
+        stage,
+    )
 
 
 _SUPPORTED_SERVICES = frozenset({"GERARDASPDF21", "GERARDASCODBARRA22"})
@@ -91,6 +115,7 @@ class SerproPgmeiClient:
                 timeout=self._timeout,
             )
         except Exception as exc:
+            _log_failure("pgmei_transport")
             raise PgmeiClientError("falha de transporte") from exc
 
         status_code = getattr(response, "status_code", None)
@@ -100,6 +125,7 @@ class SerproPgmeiClient:
                 if isinstance(status_code, int) and not isinstance(status_code, bool)
                 else None
             )
+            _log_failure("pgmei_http", provider_status_code)
             raise PgmeiClientError(
                 "http status invalido",
                 provider_status_code=provider_status_code,
@@ -107,19 +133,26 @@ class SerproPgmeiClient:
         try:
             envelope = response.json()
         except Exception as exc:
+            _log_failure("pgmei_response_json")
             raise PgmeiClientError("json invalido") from exc
         if not isinstance(envelope, dict):
+            _log_failure("pgmei_response_shape")
             raise PgmeiClientError("json invalido")
         if envelope.get("status") != 200:
+            _log_failure("pgmei_response_contract")
             raise PgmeiClientError("status interno invalido")
         pedido_dados = envelope.get("pedidoDados")
         if not isinstance(pedido_dados, Mapping):
+            _log_failure("pgmei_response_contract")
             raise PgmeiClientError("sistema divergente")
         if pedido_dados.get("idSistema") != "PGMEI":
+            _log_failure("pgmei_response_contract")
             raise PgmeiClientError("sistema divergente")
         if pedido_dados.get("idServico") != service:
+            _log_failure("pgmei_response_contract")
             raise PgmeiClientError("servico divergente")
         if "dados" not in envelope or envelope["dados"] is None:
+            _log_failure("pgmei_response_contract")
             raise PgmeiClientError("dados ausentes")
 
         return PgmeiResult(
