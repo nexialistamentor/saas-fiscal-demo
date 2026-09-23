@@ -3,12 +3,36 @@
 from __future__ import annotations
 
 import base64
+import logging
 import math
 import threading
 import time
 from dataclasses import dataclass, field
 from numbers import Real
 from typing import Any, Callable
+
+
+logger = logging.getLogger(__name__)
+_LOG_EVENT = "serpro_pgmei_failure"
+
+
+def _log_failure(stage: str, provider_status_code: int | None = None) -> None:
+    if (
+        isinstance(provider_status_code, int)
+        and not isinstance(provider_status_code, bool)
+    ):
+        logger.warning(
+            "%s stage=%s provider_status=%d",
+            _LOG_EVENT,
+            stage,
+            provider_status_code,
+        )
+        return
+    logger.warning(
+        "%s stage=%s provider_status=unknown",
+        _LOG_EVENT,
+        stage,
+    )
 
 
 DEFAULT_ENDPOINT = "https://autenticacao.sapi.serpro.gov.br/authenticate"
@@ -116,6 +140,7 @@ class SerproOAuthSession:
                 timeout=self._timeout,
             )
         except Exception as exc:
+            _log_failure("oauth_transport")
             raise OAuthSessionError("falha na autenticacao SERPRO") from exc
 
         status_code = getattr(response, "status_code", None)
@@ -125,6 +150,7 @@ class SerproOAuthSession:
                 if isinstance(status_code, int) and not isinstance(status_code, bool)
                 else None
             )
+            _log_failure("oauth_http", provider_status_code)
             raise OAuthSessionError(
                 "resposta de autenticacao invalida",
                 provider_status_code=provider_status_code,
@@ -132,8 +158,10 @@ class SerproOAuthSession:
         try:
             payload = response.json()
         except Exception as exc:
+            _log_failure("oauth_response_json")
             raise OAuthSessionError("resposta de autenticacao invalida") from exc
         if not isinstance(payload, dict):
+            _log_failure("oauth_response_shape")
             raise OAuthSessionError("resposta de autenticacao invalida")
 
         access_token = payload.get("access_token")
@@ -150,6 +178,7 @@ class SerproOAuthSession:
             and expires_in > 0
         )
         if not valid:
+            _log_failure("oauth_response_contract")
             raise OAuthSessionError("resposta de autenticacao invalida")
 
         return _Token(
