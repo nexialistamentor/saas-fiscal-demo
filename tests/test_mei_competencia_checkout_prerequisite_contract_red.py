@@ -120,12 +120,19 @@ def db():
         engine.dispose()
 
 
-def _require(db, *, key="mei-das-41-202609-v1", offer_code="mei-das-monthly-company"):
+def _require(
+    db,
+    *,
+    key="mei-das-41-202609-v1",
+    offer_code="mei-das-monthly-company",
+    capabilities=("mei.das",),
+):
     return CheckoutOfferPrerequisite(db).require(
         authenticated_user_id=1,
         empresa_id=41,
         offer_code=offer_code,
         idempotency_key=key,
+        capabilities=capabilities,
     )
 
 
@@ -185,4 +192,15 @@ def test_oferta_sem_mei_das_nao_exige_intencao_mei(db):
         db,
         key="document-without-mei-intent",
         offer_code="document-monthly-company",
+        capabilities=("document.validate",),
     ) is None
+
+
+def test_prerequisite_sem_snapshot_de_capabilities_falha_fechado(db):
+    with pytest.raises(CheckoutOfferPrerequisiteError):
+        CheckoutOfferPrerequisite(db).require(
+            authenticated_user_id=1,
+            empresa_id=41,
+            offer_code="document-monthly-company",
+            idempotency_key="missing-capability-snapshot",
+        )
