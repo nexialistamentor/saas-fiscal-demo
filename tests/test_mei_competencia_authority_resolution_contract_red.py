@@ -49,6 +49,30 @@ def db():
                 porte="mei",
             )
         )
+        session.add(
+            models.CheckoutOffer(
+                id=10,
+                codigo="mei-das-monthly-company",
+                nome_publico="MEI DAS",
+                vertical="tax",
+                commercial_model="monthly",
+                subject_type="company",
+                estado="published",
+                moeda="BRL",
+                preco=Decimal("39.90"),
+                billing_period="month",
+                usage_unit=None,
+                usage_limit=None,
+                contract_version=1,
+            )
+        )
+        session.flush()
+        session.add(
+            models.CheckoutOfferCapability(
+                offer_id=10,
+                codigo="mei.das",
+            )
+        )
         session.flush()
         yield session
     finally:
@@ -65,19 +89,44 @@ def _criar_autoridade(
     payment_status="approved",
     incluir_capability_ordem=True,
     grant_estado=None,
+    legacy=False,
 ):
-    ordem = models.OrdemCheckout(
-        user_id=1,
-        empresa_id=41,
-        plano_id=1,
-        valor=Decimal("39.90"),
-        moeda="BRL",
-        estado=estado,
-        idempotency_key=(
-            f"mei-authority-{estado}-{competencia}-{capability}-"
-            f"{payment_status}-{incluir_capability_ordem}-{grant_estado}"
-        ),
-    )
+    if legacy:
+        ordem = models.OrdemCheckout(
+            user_id=1,
+            empresa_id=41,
+            plano_id=1,
+            valor=Decimal("39.90"),
+            moeda="BRL",
+            estado=estado,
+            idempotency_key=(
+                f"mei-authority-legacy-{estado}-{competencia}-{capability}-"
+                f"{payment_status}-{incluir_capability_ordem}-{grant_estado}"
+            ),
+        )
+    else:
+        ordem = models.OrdemCheckout(
+            user_id=1,
+            empresa_id=41,
+            plano_id=None,
+            offer_id=10,
+            offer_code="mei-das-monthly-company",
+            contract_version=1,
+            vertical="tax",
+            commercial_model="monthly",
+            subject_type="company",
+            subject_id=41,
+            valor=Decimal("39.90"),
+            moeda="BRL",
+            estado=estado,
+            idempotency_key=(
+                f"mei-authority-offer-{estado}-{competencia}-{capability}-"
+                f"{payment_status}-{incluir_capability_ordem}-{grant_estado}"
+            ),
+            billing_period="month",
+            usage_unit=None,
+            usage_limit=None,
+        )
     db.add(ordem)
     db.flush()
 
@@ -202,6 +251,23 @@ def test_grant_revoked_nao_autoriza_mesmo_com_ordem_e_pagamento_validos(db):
         estado="paid",
         payment_status="approved",
         grant_estado="revoked",
+    )
+
+    assert tem_autoridade_economica_mei_competencia(
+        db,
+        empresa_id=41,
+        competencia="202609",
+        capability="mei.das",
+    ) is False
+
+
+def test_ordem_legacy_nao_autoriza_mesmo_com_pagamento_e_capability(db):
+    _criar_autoridade(
+        db,
+        estado="paid",
+        payment_status="approved",
+        incluir_capability_ordem=True,
+        legacy=True,
     )
 
     assert tem_autoridade_economica_mei_competencia(
