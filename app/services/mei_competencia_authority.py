@@ -3,7 +3,13 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import MeiCompetenciaAuthorityBinding, OrdemCheckout
+from app.models import (
+    CheckoutOfferGrant,
+    MeiCompetenciaAuthorityBinding,
+    OrdemCheckout,
+    OrdemCheckoutCapability,
+    Pagamento,
+)
 
 
 _CAPABILITY_MEI_DAS = "mei.das"
@@ -30,6 +36,36 @@ def tem_autoridade_economica_mei_competencia(
     ):
         return False
 
+    capability_exists = (
+        select(OrdemCheckoutCapability.id)
+        .where(
+            OrdemCheckoutCapability.ordem_id == OrdemCheckout.id,
+            OrdemCheckoutCapability.codigo == capability,
+        )
+        .exists()
+    )
+
+    approved_payment_exists = (
+        select(Pagamento.id)
+        .where(
+            Pagamento.ordem_checkout_id == OrdemCheckout.id,
+            Pagamento.user_id == OrdemCheckout.user_id,
+            Pagamento.status == "approved",
+            Pagamento.valor == OrdemCheckout.valor,
+            Pagamento.confirmado_em.is_not(None),
+        )
+        .exists()
+    )
+
+    revoked_grant_exists = (
+        select(CheckoutOfferGrant.id)
+        .where(
+            CheckoutOfferGrant.ordem_id == OrdemCheckout.id,
+            CheckoutOfferGrant.estado == "revoked",
+        )
+        .exists()
+    )
+
     statement = (
         select(MeiCompetenciaAuthorityBinding.id)
         .join(
@@ -42,6 +78,16 @@ def tem_autoridade_economica_mei_competencia(
             MeiCompetenciaAuthorityBinding.capability == capability,
             OrdemCheckout.empresa_id == empresa_id,
             OrdemCheckout.estado == "paid",
+            OrdemCheckout.offer_id.is_not(None),
+            OrdemCheckout.plano_id.is_(None),
+            OrdemCheckout.vertical == "tax",
+            OrdemCheckout.subject_type == "company",
+            OrdemCheckout.subject_id == empresa_id,
+            OrdemCheckout.contract_version.is_not(None),
+            OrdemCheckout.offer_code.is_not(None),
+            capability_exists,
+            approved_payment_exists,
+            ~revoked_grant_exists,
         )
         .limit(1)
     )
