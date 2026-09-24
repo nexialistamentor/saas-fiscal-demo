@@ -584,6 +584,82 @@ class OrdemCheckoutCapability(Base):
     ordem = relationship("OrdemCheckout", back_populates="capabilities")
 
 
+
+class MeiCompetenciaAuthorityBinding(Base):
+    """Autoridade comercial soberana para uma competencia/capability MEI."""
+
+    __tablename__ = "mei_competencia_authority_bindings"
+    __table_args__ = (
+        CheckConstraint(
+            "length(competencia) = 6",
+            name="ck_mei_competencia_authority_competencia_tamanho",
+        ),
+        CheckConstraint(
+            "substr(competencia, 1, 1) between '0' and '9' "
+            "AND substr(competencia, 2, 1) between '0' and '9' "
+            "AND substr(competencia, 3, 1) between '0' and '9' "
+            "AND substr(competencia, 4, 1) between '0' and '9' "
+            "AND substr(competencia, 5, 1) between '0' and '9' "
+            "AND substr(competencia, 6, 1) between '0' and '9' "
+            "AND substr(competencia, 5, 2) between '01' and '12'",
+            name="ck_mei_competencia_authority_competencia_yyyymm",
+        ),
+        CheckConstraint(
+            "capability = lower(capability) "
+            "AND capability = trim(capability) "
+            "AND length(capability) > 0",
+            name="ck_mei_competencia_authority_capability_canonica",
+        ),
+        UniqueConstraint(
+            "empresa_id",
+            "competencia",
+            "capability",
+            name="uq_mei_competencia_authority_scope",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    ordem_id = Column(
+        Integer,
+        ForeignKey("ordens_checkout.id"),
+        nullable=False,
+        index=True,
+    )
+    empresa_id = Column(
+        Integer,
+        ForeignKey("empresas.id"),
+        nullable=False,
+        index=True,
+    )
+    competencia = Column(String(6), nullable=False)
+    capability = Column(String(100), nullable=False)
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
+def _reject_mei_competencia_authority_binding_mutation(
+    mapper, connection, target
+):
+    raise InvalidRequestError(
+        "mei_competencia_authority_bindings is append-only"
+    )
+
+
+event.listen(
+    MeiCompetenciaAuthorityBinding,
+    "before_update",
+    _reject_mei_competencia_authority_binding_mutation,
+)
+event.listen(
+    MeiCompetenciaAuthorityBinding,
+    "before_delete",
+    _reject_mei_competencia_authority_binding_mutation,
+)
+
+
 class CheckoutOfferGrant(Base):
     __tablename__ = "checkout_offer_grants"
     __table_args__ = (
