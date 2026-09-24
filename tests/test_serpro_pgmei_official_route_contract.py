@@ -706,3 +706,66 @@ def test_existing_calcular_mei_contract_remains_blocked(client):
     assert detail["tipo_bloqueio"] == "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL"
     for forbidden in ("imposto_mensal", "imposto_anual", "das"):
         assert forbidden not in detail
+
+
+def test_competencia_sem_autoridade_bloqueia_antes_de_composicao_ou_io(
+    client, monkeypatch, isolated_route
+):
+    from app.database import SessionLocal
+    from app.models import CheckoutOfferGrantConsumption
+
+    autoridades = {
+        (41, "202609", "mei.das"),
+    }
+    authority_checks = []
+
+    def tem_autoridade(*, empresa_id, competencia, capability):
+        authority_checks.append((empresa_id, competencia, capability))
+        return (empresa_id, competencia, capability) in autoridades
+
+    monkeypatch.setattr(
+        isolated_route,
+        "_tem_autoridade_economica_mei_competencia",
+        tem_autoridade,
+        raising=False,
+    )
+
+    db = SessionLocal()
+    try:
+        consumo_antes = db.query(CheckoutOfferGrantConsumption).count()
+    finally:
+        db.close()
+
+    stub = StubClient(
+        data=_official_pdf_data(
+            detail_overrides={
+                "periodoApuracao": "202608",
+                "dataVencimento": "20260920",
+                "dataLimiteAcolhimento": "20260920",
+            }
+        )
+    )
+    composed = _install_client(monkeypatch, isolated_route, stub)
+
+    response = client.post(
+        ROUTE,
+        json={"periodo_apuracao": "202608", "formato": "pdf"},
+    )
+
+    assert response.status_code == 403
+    assert _detail(response) == {
+        "bloqueado": True,
+        "estado_l3": "bloqueado",
+        "tipo_bloqueio": "AUTORIDADE_ECONOMICA_MEI_COMPETENCIA_AUSENTE",
+    }
+    assert authority_checks == [(41, "202608", "mei.das")]
+    assert composed == []
+    assert stub.calls == []
+
+    db = SessionLocal()
+    try:
+        consumo_depois = db.query(CheckoutOfferGrantConsumption).count()
+    finally:
+        db.close()
+
+    assert consumo_depois == consumo_antes
