@@ -126,10 +126,13 @@ class CheckoutOfferOneTimeConfirmer:
                 CheckoutOfferCampaignReservationAuthority(
                     session
                 ).confirmar_para_ordem_bloqueada(ordem)
-                _, _, grant = self._validate_paid_commercial_state(
-                    session, ordem, capabilities
+                result = self._replay(
+                    session,
+                    ordem,
+                    notification_id,
+                    payment_id,
+                    capabilities,
                 )
-                result = self._projection(ordem, grant, capabilities)
                 session.commit()
                 return result
 
