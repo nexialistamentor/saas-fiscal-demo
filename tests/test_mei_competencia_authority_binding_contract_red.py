@@ -38,10 +38,17 @@ def test_mei_competencia_authority_binding_is_vertical_and_provider_agnostic():
     }
 
     assert (
+        "ordem_id",
         "empresa_id",
         "competencia",
         "capability",
     ) in uniques
+
+    assert (
+        "empresa_id",
+        "competencia",
+        "capability",
+    ) not in uniques
 
 
 def test_mei_competencia_authority_binding_rejeita_competencia_fora_de_yyyymm():
