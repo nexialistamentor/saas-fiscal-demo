@@ -1,4 +1,5 @@
-﻿from decimal import Decimal
+﻿from datetime import datetime
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import create_engine
@@ -61,6 +62,9 @@ def _criar_autoridade(
     estado="paid",
     competencia="202609",
     capability="mei.das",
+    payment_status="approved",
+    incluir_capability_ordem=True,
+    grant_estado=None,
 ):
     ordem = models.OrdemCheckout(
         user_id=1,
@@ -69,10 +73,45 @@ def _criar_autoridade(
         valor=Decimal("39.90"),
         moeda="BRL",
         estado=estado,
-        idempotency_key=f"mei-authority-{estado}-{competencia}-{capability}",
+        idempotency_key=(
+            f"mei-authority-{estado}-{competencia}-{capability}-"
+            f"{payment_status}-{incluir_capability_ordem}-{grant_estado}"
+        ),
     )
     db.add(ordem)
     db.flush()
+
+    if incluir_capability_ordem:
+        db.add(
+            models.OrdemCheckoutCapability(
+                ordem_id=ordem.id,
+                codigo=capability,
+            )
+        )
+
+    db.add(
+        models.Pagamento(
+            user_id=1,
+            plano_id=None,
+            ordem_checkout_id=ordem.id,
+            idempotency_key=f"mei-payment-{ordem.id}",
+            valor=Decimal("39.90"),
+            status=payment_status,
+            confirmado_em=datetime.utcnow(),
+            mp_payment_id=f"900000{ordem.id}",
+        )
+    )
+
+    if grant_estado is not None:
+        db.add(
+            models.CheckoutOfferGrant(
+                ordem_id=ordem.id,
+                usage_unit="competencia",
+                usage_limit=1,
+                usage_consumed=0,
+                estado=grant_estado,
+            )
+        )
 
     db.add(
         models.MeiCompetenciaAuthorityBinding(
@@ -119,6 +158,51 @@ def test_autoridade_nao_vaza_entre_competencias_ou_capabilities(
 
 def test_ordem_nao_paga_nao_autoriza(db):
     _criar_autoridade(db, estado="pending")
+
+    assert tem_autoridade_economica_mei_competencia(
+        db,
+        empresa_id=41,
+        competencia="202609",
+        capability="mei.das",
+    ) is False
+
+
+def test_ordem_paga_sem_capability_comercial_nao_autoriza(db):
+    _criar_autoridade(
+        db,
+        incluir_capability_ordem=False,
+    )
+
+    assert tem_autoridade_economica_mei_competencia(
+        db,
+        empresa_id=41,
+        competencia="202609",
+        capability="mei.das",
+    ) is False
+
+
+def test_pagamento_refunded_nao_autoriza_mesmo_com_ordem_paid(db):
+    _criar_autoridade(
+        db,
+        estado="paid",
+        payment_status="refunded",
+    )
+
+    assert tem_autoridade_economica_mei_competencia(
+        db,
+        empresa_id=41,
+        competencia="202609",
+        capability="mei.das",
+    ) is False
+
+
+def test_grant_revoked_nao_autoriza_mesmo_com_ordem_e_pagamento_validos(db):
+    _criar_autoridade(
+        db,
+        estado="paid",
+        payment_status="approved",
+        grant_estado="revoked",
+    )
 
     assert tem_autoridade_economica_mei_competencia(
         db,
