@@ -841,6 +841,78 @@ class TaxReportCheckoutIntent(Base):
     )
 
 
+class MeiCompetenciaCheckoutIntent(Base):
+    """Intencao comercial imutavel para uma competencia MEI especifica."""
+
+    __tablename__ = "mei_competencia_checkout_intents"
+    __table_args__ = (
+        CheckConstraint(
+            "length(competencia) = 6",
+            name="ck_mei_competencia_checkout_intent_competencia_tamanho",
+        ),
+        CheckConstraint(
+            "substr(competencia, 1, 1) between '0' and '9' "
+            "AND substr(competencia, 2, 1) between '0' and '9' "
+            "AND substr(competencia, 3, 1) between '0' and '9' "
+            "AND substr(competencia, 4, 1) between '0' and '9' "
+            "AND substr(competencia, 5, 1) between '0' and '9' "
+            "AND substr(competencia, 6, 1) between '0' and '9' "
+            "AND substr(competencia, 5, 2) between '01' and '12'",
+            name="ck_mei_competencia_checkout_intent_competencia_yyyymm",
+        ),
+        CheckConstraint(
+            "capability = 'mei.das'",
+            name="ck_mei_competencia_checkout_intent_capability",
+        ),
+        CheckConstraint(
+            "offer_code = lower(offer_code) "
+            "AND offer_code = trim(offer_code) "
+            "AND length(offer_code) > 0 "
+            "AND offer_code NOT LIKE '%--%'",
+            name="ck_mei_competencia_checkout_intent_offer_code_canonico",
+        ),
+        UniqueConstraint(
+            "checkout_idempotency_key",
+            name="uq_mei_competencia_checkout_intent_checkout_idempotency_key",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    checkout_idempotency_key = Column(String(255), nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("usuarios.id"), nullable=False, index=True
+    )
+    empresa_id = Column(
+        Integer, ForeignKey("empresas.id"), nullable=False, index=True
+    )
+    competencia = Column(String(6), nullable=False)
+    capability = Column(String(120), nullable=False)
+    offer_code = Column(String(120), nullable=False)
+    created_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, server_default=func.now()
+    )
+
+
+def _reject_mei_competencia_checkout_intent_mutation(
+    _mapper, _connection, _target
+) -> None:
+    raise InvalidRequestError(
+        "mei_competencia_checkout_intents is append-only"
+    )
+
+
+event.listen(
+    MeiCompetenciaCheckoutIntent,
+    "before_update",
+    _reject_mei_competencia_checkout_intent_mutation,
+)
+event.listen(
+    MeiCompetenciaCheckoutIntent,
+    "before_delete",
+    _reject_mei_competencia_checkout_intent_mutation,
+)
+
+
 def _reject_tax_report_checkout_intent_mutation(
     _mapper, _connection, _target
 ) -> None:
