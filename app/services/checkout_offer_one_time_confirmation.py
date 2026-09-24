@@ -17,6 +17,9 @@ from app import models
 from app.services.checkout_offer_campaign_reservation import (
     CheckoutOfferCampaignReservationAuthority,
 )
+from app.services.mei_competencia_authority_writer import (
+    MeiCompetenciaAuthorityWriter,
+)
 
 
 _PUBLIC_ERROR = "confirmacao recusada"
@@ -133,6 +136,10 @@ class CheckoutOfferOneTimeConfirmer:
                     payment_id,
                     capabilities,
                 )
+                if "mei.das" in capabilities:
+                    MeiCompetenciaAuthorityWriter(session).materialize(
+                        ordem_id=ordem.id
+                    )
                 session.commit()
                 return result
 
@@ -171,6 +178,10 @@ class CheckoutOfferOneTimeConfirmer:
             ]
             session.add_all((event, payment, grant))
             session.flush()
+            if "mei.das" in capabilities:
+                MeiCompetenciaAuthorityWriter(session).materialize(
+                    ordem_id=ordem.id
+                )
             result = self._projection(ordem, grant, capabilities)
             session.commit()
             return result
