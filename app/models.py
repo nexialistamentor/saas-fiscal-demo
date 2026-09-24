@@ -611,6 +611,7 @@ class MeiCompetenciaAuthorityBinding(Base):
             name="ck_mei_competencia_authority_capability_canonica",
         ),
         UniqueConstraint(
+            "ordem_id",
             "empresa_id",
             "competencia",
             "capability",

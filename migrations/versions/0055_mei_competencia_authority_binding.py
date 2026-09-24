@@ -63,6 +63,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
+            "ordem_id",
             "empresa_id",
             "competencia",
             "capability",
