@@ -5,9 +5,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app import models
-from app.services.checkout_offer_prerequisite import (
-    CheckoutOfferPrerequisite,
-    CheckoutOfferPrerequisiteError,
+from app.services.mei_competencia_checkout_prerequisite import (
+    MeiCompetenciaCheckoutPrerequisite,
+    MeiCompetenciaCheckoutPrerequisiteError,
 )
 
 
@@ -127,7 +127,7 @@ def _require(
     offer_code="mei-das-monthly-company",
     capabilities=("mei.das",),
 ):
-    return CheckoutOfferPrerequisite(db).require(
+    return MeiCompetenciaCheckoutPrerequisite(db).require(
         authenticated_user_id=1,
         empresa_id=41,
         offer_code=offer_code,
@@ -137,7 +137,7 @@ def _require(
 
 
 def test_oferta_mei_das_sem_intencao_falha_fechado(db):
-    with pytest.raises(CheckoutOfferPrerequisiteError):
+    with pytest.raises(MeiCompetenciaCheckoutPrerequisiteError):
         _require(db)
 
 
@@ -183,7 +183,7 @@ def test_intencao_mei_das_nao_vaza_entre_identidades(
     )
     db.commit()
 
-    with pytest.raises(CheckoutOfferPrerequisiteError):
+    with pytest.raises(MeiCompetenciaCheckoutPrerequisiteError):
         _require(db)
 
 
@@ -197,8 +197,8 @@ def test_oferta_sem_mei_das_nao_exige_intencao_mei(db):
 
 
 def test_prerequisite_sem_snapshot_de_capabilities_falha_fechado(db):
-    with pytest.raises(CheckoutOfferPrerequisiteError):
-        CheckoutOfferPrerequisite(db).require(
+    with pytest.raises(MeiCompetenciaCheckoutPrerequisiteError):
+        MeiCompetenciaCheckoutPrerequisite(db).require(
             authenticated_user_id=1,
             empresa_id=41,
             offer_code="document-monthly-company",

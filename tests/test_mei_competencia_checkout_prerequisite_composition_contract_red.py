@@ -5,7 +5,9 @@ from sqlalchemy.orm import sessionmaker
 
 from app import models
 from app.services import checkout_offer_order_composition as composition
-from app.services.checkout_offer_prerequisite import CheckoutOfferPrerequisite
+from app.services.mei_competencia_checkout_prerequisite import (
+    MeiCompetenciaCheckoutPrerequisite,
+)
 
 
 def test_composer_entrega_capability_snapshot_ao_prerequisite(monkeypatch):
@@ -88,7 +90,7 @@ def test_composer_entrega_capability_snapshot_ao_prerequisite(monkeypatch):
             )
 
         monkeypatch.setattr(
-            CheckoutOfferPrerequisite,
+            MeiCompetenciaCheckoutPrerequisite,
             "require",
             _require,
         )
