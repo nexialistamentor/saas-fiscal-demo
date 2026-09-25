@@ -6,17 +6,24 @@ import json
 import math
 import os
 import re
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, StrictStr, field_validator
 
-from app.database import SessionLocal
+from app.database import SessionLocal, get_db
 from app.rate_limit import limiter
-from app.security import tenant_empresa
+from app.security import get_usuario_atual, tenant_empresa
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from app.services.analysis_orchestrator import executar_analise
 from app.services.mei_competencia_authority import (
     tem_autoridade_economica_mei_competencia,
+)
+from app.services.mei_competencia_checkout_intent import (
+    MeiCompetenciaCheckoutIntent,
+    MeiCompetenciaCheckoutIntentError,
 )
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
 from app.services.serpro_pgmei_composition import compose_serpro_pgmei
@@ -208,6 +215,83 @@ def _motivo_nao_emissao(messages: object) -> str:
     if not isinstance(codigo, str) or codigo not in _MOTIVOS_NAO_EMISSAO:
         raise ValueError("mensagem oficial divergente")
     return _MOTIVOS_NAO_EMISSAO[codigo]
+
+
+class _MeiCompetenciaCheckoutIntentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    competencia: Annotated[
+        StrictStr,
+        Field(pattern=r"^[0-9]{4}(?:0[1-9]|1[0-2])$"),
+    ]
+    offer_code: Annotated[
+        StrictStr,
+        Field(
+            max_length=120,
+            pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)+$",
+        ),
+    ]
+
+
+@router.post("/mei/{empresa_id}/checkout-intents", status_code=204)
+def criar_intencao_checkout_mei_competencia(
+    request: Request,
+    empresa_id: int,
+    body: _MeiCompetenciaCheckoutIntentRequest,
+    idempotency_key: Annotated[
+        str,
+        Header(
+            alias="Idempotency-Key",
+            min_length=1,
+            max_length=255,
+            pattern=r"^[\x21-\x7e]+$",
+        ),
+    ],
+    db: Session = Depends(get_db),
+    usuario_atual=Depends(get_usuario_atual),
+):
+    header_count = sum(
+        1
+        for name, _ in request.scope.get("headers", ())
+        if name.lower() == b"idempotency-key"
+    )
+    if header_count != 1:
+        raise HTTPException(
+            status_code=422,
+            detail="Idempotency-Key invalida.",
+        )
+
+    try:
+        MeiCompetenciaCheckoutIntent(db).persist(
+            user_id=usuario_atual.id,
+            empresa_id=empresa_id,
+            competencia=body.competencia,
+            offer_code=body.offer_code,
+            checkout_idempotency_key=idempotency_key,
+        )
+    except MeiCompetenciaCheckoutIntentError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Intencao de checkout MEI indisponivel.",
+        ) from None
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Intencao de checkout MEI temporariamente indisponivel.",
+        ) from None
+
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Intencao de checkout MEI temporariamente indisponivel.",
+        ) from None
+
+    return Response(status_code=204)
 
 
 @router.post("/mei/{empresa_id}/das")
