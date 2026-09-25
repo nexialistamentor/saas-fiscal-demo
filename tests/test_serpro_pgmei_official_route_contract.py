@@ -164,6 +164,11 @@ def isolated_route(monkeypatch):
     app.dependency_overrides[tenant_empresa] = lambda: _empresa()
     monkeypatch.delenv("SERPRO_PGMEI_ENABLED", raising=False)
     monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", "12345678000190")
+    monkeypatch.setattr(
+        imposto_router,
+        "_tem_autoridade_economica_mei_competencia",
+        lambda **kwargs: True,
+    )
     limiter.enabled = False
     if hasattr(imposto_router, "_get_serpro_pgmei_client"):
         imposto_router._get_serpro_pgmei_client.cache_clear()

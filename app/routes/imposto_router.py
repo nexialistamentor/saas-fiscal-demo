@@ -11,9 +11,13 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
+from app.database import SessionLocal
 from app.rate_limit import limiter
 from app.security import tenant_empresa
 from app.services.analysis_orchestrator import executar_analise
+from app.services.mei_competencia_authority import (
+    tem_autoridade_economica_mei_competencia,
+)
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
 from app.services.serpro_pgmei_composition import compose_serpro_pgmei
 from app.services.tax_engines.base_tax_engine import (
@@ -70,6 +74,24 @@ class MeiDasOficialRequest(BaseModel):
 def _get_serpro_pgmei_client():
     """Compose lazily and retain the OAuth-backed client across requests."""
     return compose_serpro_pgmei()
+
+
+def _tem_autoridade_economica_mei_competencia(
+    *,
+    empresa_id: int,
+    competencia: str,
+    capability: str,
+) -> bool:
+    db = SessionLocal()
+    try:
+        return tem_autoridade_economica_mei_competencia(
+            db,
+            empresa_id=empresa_id,
+            competencia=competencia,
+            capability=capability,
+        )
+    finally:
+        db.close()
 
 
 def _bloqueio(status_code: int, tipo_bloqueio: str) -> HTTPException:
@@ -211,6 +233,21 @@ def obter_das_mei_oficial(
         or cnpj != canary_cnpj
     ):
         raise _bloqueio(403, "SERPRO_PGMEI_CANARY_NAO_AUTORIZADO")
+
+    try:
+        autorizado = _tem_autoridade_economica_mei_competencia(
+            empresa_id=empresa.id,
+            competencia=dados.periodo_apuracao,
+            capability="mei.das",
+        )
+    except Exception:
+        autorizado = False
+
+    if not autorizado:
+        raise _bloqueio(
+            403,
+            "AUTORIDADE_ECONOMICA_MEI_COMPETENCIA_AUSENTE",
+        )
 
     try:
         client = _get_serpro_pgmei_client()
