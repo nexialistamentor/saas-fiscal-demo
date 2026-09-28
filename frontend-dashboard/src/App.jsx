@@ -945,6 +945,23 @@ function App() {
   }, [tipoPerfil, data?.consulta_paga, resultadoXML?.relatorio_id, resultadoXML?.carregado])
 
   if (erroTermos) {
+    if (isMeiPublicJourney) {
+      return (
+        <div className="solveris-mei-theme solveris-consent-page">
+          <div className="solveris-consent-card solveris-consent-error">
+            <p className="solveris-consent-brand">SOLVERIS</p>
+            <h2>Verificação dos Termos indisponível</h2>
+            <p role="alert">{erroTermos}</p>
+            <button type="button" className="solveris-consent-primary" onClick={() => window.location.reload()}>
+              Tentar novamente
+            </button>
+            <button type="button" className="solveris-consent-exit" onClick={handleLogout}>
+              Sair
+            </button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
         <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "420px", width: "100%", textAlign: "center", border: "1px solid #ef4444" }}>
@@ -963,9 +980,16 @@ function App() {
 
   if (precisaAceitarTermos) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
-        <div style={{ background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "480px", width: "100%", textAlign: "center", border: "1px solid var(--border-color, #2a2d3e)" }}>
-          <h2 style={{ color: "var(--text-primary, #fff)", marginBottom: "1rem", fontSize: "1.4rem" }}>Termos de Uso</h2>
+      <div className={isMeiPublicJourney ? "solveris-mei-theme solveris-consent-page" : ""} style={isMeiPublicJourney ? undefined : { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary, #0f1117)", padding: "2rem" }}>
+        <div className={isMeiPublicJourney ? "solveris-consent-card" : ""} style={isMeiPublicJourney ? undefined : { background: "var(--bg-card, #1a1d2e)", borderRadius: "12px", padding: "2.5rem", maxWidth: "480px", width: "100%", textAlign: "center", border: "1px solid var(--border-color, #2a2d3e)" }}>
+          {isMeiPublicJourney && <p className="solveris-consent-brand">SOLVERIS</p>}
+          <h2 style={isMeiPublicJourney ? undefined : { color: "var(--text-primary, #fff)", marginBottom: "1rem", fontSize: "1.4rem" }}>Termos de Uso</h2>
+          {isMeiPublicJourney && (
+            <p className="solveris-consent-note">
+              A aceitação dos Termos de Uso e o consentimento de privacidade
+              são confirmações independentes. Cada uma é solicitada apenas quando pendente.
+            </p>
+          )}
           <details style={{ color: "var(--text-secondary, #9ca3af)", textAlign: "left", marginBottom: "1rem", lineHeight: "1.6" }}>
             <summary style={{ cursor: "pointer", fontWeight: "600", color: "var(--text-primary, #fff)" }}>Ler Termos de Uso</summary>
             <p>
@@ -979,13 +1003,13 @@ function App() {
               <li>O acesso a analises e pessoal e intransferivel</li>
             </ul>
           </details>
-          <a href={`${API_BASE}/auth/privacy`} target="_blank" rel="noreferrer" style={{ color: "var(--accent-color, #6366f1)", display: "inline-block", marginBottom: "1.5rem" }}>
+          <a href={`${API_BASE}/auth/privacy`} target="_blank" rel="noreferrer" className={isMeiPublicJourney ? "solveris-consent-link" : ""} style={isMeiPublicJourney ? undefined : { color: "var(--accent-color, #6366f1)", display: "inline-block", marginBottom: "1.5rem" }}>
             Política de Privacidade
           </a>
-          <button onClick={handleAceitarTermos} style={{ background: "var(--accent-color, #6366f1)", color: "#fff", border: "none", borderRadius: "8px", padding: "0.85rem 2rem", fontSize: "1rem", cursor: "pointer", width: "100%", fontWeight: "600" }}>
-            Aceitar e continuar
+          <button onClick={handleAceitarTermos} className={isMeiPublicJourney ? "solveris-consent-primary" : ""} style={isMeiPublicJourney ? undefined : { background: "var(--accent-color, #6366f1)", color: "#fff", border: "none", borderRadius: "8px", padding: "0.85rem 2rem", fontSize: "1rem", cursor: "pointer", width: "100%", fontWeight: "600" }}>
+            {isMeiPublicJourney ? "Aceitar Termos de Uso e continuar" : "Aceitar e continuar"}
           </button>
-          <button onClick={handleLogout} style={{ background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "none", marginTop: "0.75rem", cursor: "pointer", fontSize: "0.9rem", textDecoration: "underline" }}>
+          <button onClick={handleLogout} className={isMeiPublicJourney ? "solveris-consent-exit" : ""} style={isMeiPublicJourney ? undefined : { background: "transparent", color: "var(--text-secondary, #9ca3af)", border: "none", marginTop: "0.75rem", cursor: "pointer", fontSize: "0.9rem", textDecoration: "underline" }}>
             Sair
           </button>
         </div>
@@ -994,6 +1018,23 @@ function App() {
   }
 
   if (erroConsentimento) {
+    if (isMeiPublicJourney) {
+      return (
+        <div className="solveris-mei-theme solveris-consent-page">
+          <div className="solveris-consent-card solveris-consent-error">
+            <p className="solveris-consent-brand">SOLVERIS</p>
+            <h2>Consentimento de privacidade indisponível</h2>
+            <p role="alert">{erroConsentimento}</p>
+            <button type="button" className="solveris-consent-primary" onClick={() => window.location.reload()}>
+              Tentar novamente
+            </button>
+            <button type="button" className="solveris-consent-exit" onClick={handleLogout}>
+              Sair
+            </button>
+          </div>
+        </div>
+      )
+    }
     return (
       <div style={{ padding: 40 }}>
         <p>{erroConsentimento}</p>
@@ -1005,21 +1046,30 @@ function App() {
 
   if (precisaConsentir) {
     return (
-      <div style={{ padding: 40 }}>
+      <div className={isMeiPublicJourney ? "solveris-mei-theme solveris-consent-page" : ""} style={isMeiPublicJourney ? undefined : { padding: 40 }}>
+        <div className={isMeiPublicJourney ? "solveris-consent-card" : ""}>
+          {isMeiPublicJourney && <p className="solveris-consent-brand">SOLVERIS</p>}
         <h2>Política de Privacidade</h2>
+        {isMeiPublicJourney && (
+          <p className="solveris-consent-note">
+            Esta confirmação é separada da aceitação dos Termos de Uso.
+            Ela trata do consentimento para a finalidade informada na política vigente.
+          </p>
+        )}
         <p>
           Antes de continuar, confirme o tratamento dos dados para a finalidade
           informada na Política de Privacidade vigente.
         </p>
-        <a href={`${API_BASE}/auth/privacy`} target="_blank" rel="noreferrer">
+        <a href={`${API_BASE}/auth/privacy`} target="_blank" rel="noreferrer" className={isMeiPublicJourney ? "solveris-consent-link" : ""}>
           Ler Política de Privacidade
         </a>
         <div style={{ marginTop: 16 }}>
-          <button onClick={handleConsentirPrivacidade}>
-            Aceitar Política de Privacidade e continuar
+          <button onClick={handleConsentirPrivacidade} className={isMeiPublicJourney ? "solveris-consent-primary" : ""}>
+            {isMeiPublicJourney ? "Confirmar consentimento e continuar" : "Aceitar Política de Privacidade e continuar"}
           </button>
         </div>
-        <button onClick={handleLogout}>Sair</button>
+        <button onClick={handleLogout} className={isMeiPublicJourney ? "solveris-consent-exit" : ""}>Sair</button>
+        </div>
       </div>
     )
   }
@@ -1030,7 +1080,7 @@ function App() {
 
   if (!isAuthenticated()) {
     return (
-      <div className={isMeiPublicJourney ? "solveris-mei-theme solveris-public-entry" : ""} style={{ padding: 40 }}>
+      <div className={isMeiPublicJourney ? "solveris-mei-theme solveris-public-entry" : "solveris-legacy-entry"} style={{ padding: 40 }}>
         {isMeiPublicJourney && (
           <header className="solveris-brand-lockup" style={{ marginBottom: 24 }}>
             <div>
@@ -1083,17 +1133,23 @@ function App() {
             </h2>
 
             <form className="solveris-login-form" onSubmit={handleLogin}>
+              {isMeiPublicJourney && <label className="solveris-field-label" htmlFor="solveris-login-email">Email</label>}
               <input
                 className="solveris-login-field"
+                id="solveris-login-email"
                 type="email"
+                autoComplete="email"
                 placeholder="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
 
+              {isMeiPublicJourney && <label className="solveris-field-label" htmlFor="solveris-login-password">Senha</label>}
               <div className="solveris-password-field">
                 <input
                   className="solveris-login-field"
+                  id="solveris-login-password"
+                  autoComplete="current-password"
                   type={mostrarSenhaLogin ? "text" : "password"}
                   placeholder="senha"
                   value={password}
@@ -1103,8 +1159,9 @@ function App() {
                   className="solveris-password-toggle"
                   type="button"
                   onClick={() => setMostrarSenhaLogin(!mostrarSenhaLogin)}
+                  aria-label={mostrarSenhaLogin ? "Ocultar senha" : "Mostrar senha"}
                 >
-                  {mostrarSenhaLogin ? "🙈" : "👁️"}
+                  {isMeiPublicJourney ? (mostrarSenhaLogin ? "Ocultar" : "Mostrar") : (mostrarSenhaLogin ? "🙈" : "👁️")}
                 </button>
               </div>
 
@@ -1124,7 +1181,9 @@ function App() {
                 type="button"
                 onClick={() => {
                   if (isMeiPublicJourney) {
-                    return
+                    setMeiPublicIntent("opening")
+                    setTipoRegisto("mei")
+                    setDocumentoRegisto("")
                   }
                   setMostrarRegisto(true)
                 }}
@@ -1135,7 +1194,7 @@ function App() {
             </section>
           </>
         ) : (
-          <>
+          <section className="solveris-register-card">
             <h2>
               {isMeiPublicJourney && meiPublicIntent === "existing"
                 ? "Criar conta para meu MEI"
@@ -1146,7 +1205,7 @@ function App() {
               <p>Não precisa de CNPJ para começar.</p>
             )}
 
-            <form onSubmit={handleRegisto}>
+            <form className="solveris-register-form" onSubmit={handleRegisto}>
               {!isMeiPublicJourney && (
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 {["cpf", "mei", "empresa"].map((tipo) => (
@@ -1171,33 +1230,57 @@ function App() {
               )}
 
               {tipoRegisto !== "cpf" && (
+                <>
+                {isMeiPublicJourney && (
+                  <label className="solveris-field-label" htmlFor="solveris-register-name">
+                    {meiPublicIntent === "opening" ? "Nome de referência do negócio" : "Nome do seu MEI"}
+                    {meiPublicIntent === "opening" && <small>Não é a razão social nem formaliza a empresa.</small>}
+                  </label>
+                )}
                 <input
+                  className="solveris-register-field"
+                  id="solveris-register-name"
+                  autoComplete="organization"
                   type="text"
-                  placeholder="Nome da empresa"
+                  placeholder={isMeiPublicJourney && meiPublicIntent === "opening" ? "Ex.: meu futuro negócio" : "Nome da empresa"}
                   value={nomeRegisto}
                   onChange={(e) => setNomeRegisto(e.target.value)}
                 />
+                </>
               )}
 
               {(!isMeiPublicJourney || meiPublicIntent === "existing") && (
+              <>
+              {isMeiPublicJourney && <label className="solveris-field-label" htmlFor="solveris-register-document">CNPJ do seu MEI</label>}
               <input
+                className="solveris-register-field"
+                id="solveris-register-document"
+                inputMode="numeric"
                 type="text"
                 placeholder={tipoRegisto === "cpf" ? "CPF (somente números)" : "CNPJ (somente números)"}
                 value={documentoRegisto}
                 onChange={(e) => setDocumentoRegisto(e.target.value)}
                 required={isMeiPublicJourney && meiPublicIntent === "existing"}
               />
+              </>
               )}
 
+              {isMeiPublicJourney && <label className="solveris-field-label" htmlFor="solveris-register-email">Email para acesso</label>}
               <input
+                className="solveris-register-field"
+                id="solveris-register-email"
+                autoComplete="email"
                 type="email"
                 placeholder="email"
                 value={emailRegisto}
                 onChange={(e) => setEmailRegisto(e.target.value)}
               />
 
-              <div style={{ position: "relative", display: "inline-block" }}>
+              {isMeiPublicJourney && <label className="solveris-field-label" htmlFor="solveris-register-password">Crie uma senha</label>}
+              <div className="solveris-register-password-wrap">
                 <input
+                  className="solveris-register-field"
+                  id="solveris-register-password"
                   type={mostrarSenhaRegisto ? "text" : "password"}
                   placeholder="senha"
                   value={passwordRegisto}
@@ -1206,29 +1289,27 @@ function App() {
                   autoComplete="new-password"
                 />
                 <button
+                  className="solveris-register-password-toggle"
                   type="button"
                   onClick={() => setMostrarSenhaRegisto(!mostrarSenhaRegisto)}
-                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14 }}
+                  aria-label={mostrarSenhaRegisto ? "Ocultar senha" : "Mostrar senha"}
                 >
-                  {mostrarSenhaRegisto ? "🙈" : "👁️"}
+                  {isMeiPublicJourney ? (mostrarSenhaRegisto ? "Ocultar" : "Mostrar") : (mostrarSenhaRegisto ? "🙈" : "👁️")}
                 </button>
               </div>
-              <p
-                id="hint-password-registo"
-                style={{ margin: "4px 0 0", fontSize: 12, color: "#555" }}
-              >
+              <p id="hint-password-registo" className="solveris-register-hint">
                 Mínimo de 8 caracteres.
               </p>
 
-              <button type="submit">Registar</button>
+              <button className="solveris-register-submit" type="submit">{isMeiPublicJourney ? "Criar conta" : "Registar"}</button>
 
               {erroRegisto && (
                 <div style={{ marginTop: 6 }}>
-                  <p style={{ color: "#ef4444", fontSize: 13, padding: "6px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca", margin: 0 }}>
+                  <p role="alert" className={isMeiPublicJourney ? "solveris-register-error" : ""} style={isMeiPublicJourney ? undefined : { color: "#ef4444", fontSize: 13, padding: "6px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca", margin: 0 }}>
                     {erroRegisto}
                   </p>
                   {erroRegisto.toLowerCase().includes("cadastrado") && (
-                    <p style={{ fontSize: 12, marginTop: 6, color: "#555" }}>
+                    <p className="solveris-register-duplicate">
                       Este email já tem conta.{" "}
                       <button
                         type="button"
@@ -1238,7 +1319,7 @@ function App() {
                           setErroLogin(null)
                           setMostrarRegisto(false)
                         }}
-                        style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 12 }}
+                        className="solveris-register-login-link"
                       >
                         Fazer login aqui
                       </button>
@@ -1253,17 +1334,12 @@ function App() {
               <button
                 type="button"
                 onClick={() => setMostrarRegisto(false)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textDecoration: "underline"
-                }}
+                className="solveris-register-login-link"
               >
                 Fazer login
               </button>
             </p>
-          </>
+          </section>
         )}
       </div>
     )
@@ -1709,7 +1785,11 @@ function App() {
         className="card"
         style={{ margin: "20px 24px 0", maxWidth: 560, padding: 20, border: "1px solid #6366f1" }}
       >
-        <h3 style={{ marginTop: 0, color: "var(--text-primary, #fff)" }}>Simular abertura de empresa</h3>
+        <h3 style={{ marginTop: 0, color: "var(--text-primary, #fff)" }}>
+          {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura"
+            ? "Primeiro passo: simular sua abertura MEI"
+            : "Simular abertura de empresa"}
+        </h3>
         <p style={{ fontSize: 14, color: "var(--text-secondary, #9ca3af)", marginBottom: 12 }}>
           Não precisas de CNPJ para simular. Contador só entra quando a lei,
           obrigação técnica, risco fiscal ou a tua escolha exigirem.
@@ -1989,11 +2069,21 @@ function App() {
 
       <main className="dashboard">
         <section className="hero-card">
-          <h2>Visão Geral</h2>
-          <p>Acompanhe oportunidades, riscos e indicadores fiscais da empresa.</p>
+          <h2>{perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" ? "Orientação para abrir seu MEI" : "Visão Geral"}</h2>
+          <p>{perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura"
+            ? "Comece pela simulação de abertura acima. Ainda não há resultados fiscais de uma empresa ativa."
+            : "Acompanhe oportunidades, riscos e indicadores fiscais da empresa."}</p>
         </section>
 
-        {perfilAtual.tipo === "mei" && (
+        {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && (
+          <section className="card solveris-opening-status" style={{ marginBottom: 20 }}>
+            <h3>Seu MEI está em fase de abertura</h3>
+            <p>Esta é uma área de orientação. A simulação acima não formaliza a empresa nem emite documentos oficiais.</p>
+            <p>A emissão de DAS oficial só ficará disponível após o vínculo com um MEI ativo e a validação dos requisitos.</p>
+          </section>
+        )}
+
+        {perfilAtual.tipo === "mei" && perfilAtual.status_empresa !== "em_abertura" && (
           <section className="card" style={{ marginBottom: 20 }}>
             <h3>Emitir DAS oficial</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
@@ -2157,6 +2247,7 @@ function App() {
           </article>
         </section>}
 
+        {!(perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && data == null) && (
         <section className="cards-grid">
           {cardsDashboard.map((card) => (
             <article className="card" key={card.id} data-card-id={card.id}>
@@ -2165,6 +2256,7 @@ function App() {
             </article>
           ))}
         </section>
+        )}
 
         {taxReportPurchasable && (
           !Number.isInteger(taxReportAcquisitionId) ||
