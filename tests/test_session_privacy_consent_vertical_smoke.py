@@ -6,7 +6,8 @@ from app.constants import (
     VERSAO_POLITICA_PRIVACIDADE,
 )
 from app.database import get_db
-from app.models import ConsentimentoLGPD, User
+from app.models import ConsentimentoLGPD, Empresa, Plano, User
+from app.security import hash_senha
 
 
 @contextmanager
@@ -26,18 +27,28 @@ def test_consentimento_privacidade_persiste_e_libera_estado_real(client):
     email = f"mei_consent_smoke_{uuid.uuid4().hex}@example.com"
     password = "SenhaSegura123!"
 
-    registered = client.post(
-        "/auth/register",
-        json={
-            "email": email,
-            "password": password,
-            "nome": "MEI consent smoke",
-            "tipo_usuario": "mei",
-            "mei_intent": "opening",
-            "documento": None,
-        },
-    )
-    assert registered.status_code in (200, 201), registered.text
+    # Conta MEI legada criada apenas na fixture isolada.
+    with _db_session() as db:
+        plano = db.query(Plano).filter(Plano.nome == "Basico").one()
+
+        owner = User(
+            email=email,
+            hashed_password=hash_senha(password),
+            plano_id=plano.id,
+            consulta_paga=False,
+        )
+        db.add(owner)
+        db.flush()
+
+        empresa = Empresa(
+            razao_social="MEI consent smoke",
+            regime_tributario="mei",
+            cnpj=None,
+            user_id=owner.id,
+            status_empresa="em_abertura",
+        )
+        db.add(empresa)
+        db.commit()
 
     logged_in = client.post(
         "/auth/login",

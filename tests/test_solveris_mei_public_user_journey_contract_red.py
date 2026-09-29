@@ -13,12 +13,12 @@ def test_solveris_mei_public_user_journey_contract() -> None:
     assert "Plataforma Tributária L2" not in APP
     assert "Plataforma de Inteligência Tributária em Tempo Real" not in APP
 
-    # /mei deve separar claramente as duas intenções do usuário.
-    assert "Quero abrir meu MEI" in APP
+    # Public release: existing MEI only.
+    assert "Quero abrir meu MEI" not in APP
     assert "Já tenho MEI" in APP
 
-    # O fluxo de quem quer abrir MEI não pode exigir CNPJ.
-    assert "Não precisa de CNPJ para começar" in APP
+    # Existing opening-state accounts remain supported.
+    assert 'if (isOpeningMei) {' in APP
 
     # A simulação MEI deve nascer coerente com o próprio MEI.
     assert (
@@ -51,7 +51,7 @@ def test_solveris_mei_public_visual_identity_contract() -> None:
         "solveris-brand-lockup",
         "solveris-logo",
         "solveris-entry-card",
-        "solveris-primary-action",
+
         "solveris-secondary-action",
         "solveris-login-card",
         "solveris-login-title",

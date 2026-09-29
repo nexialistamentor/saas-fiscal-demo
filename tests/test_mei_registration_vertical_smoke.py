@@ -2,7 +2,8 @@
 from contextlib import contextmanager
 
 from app.database import get_db
-from app.models import Empresa, User
+from app.models import Empresa, Plano, User
+from app.security import hash_senha
 
 
 @contextmanager
@@ -93,33 +94,32 @@ def test_existing_com_cnpj_persiste_identidade_e_owner(client):
         assert empresa.regime_tributario == "mei"
 
 
-def test_opening_sem_cnpj_cria_apenas_estado_de_onboarding(client):
-    email = _email("opening")
+def test_opening_sem_cnpj_falha_sem_persistencia(client):
+    email = _email("opening_bloqueado")
+    nome = "MEI release " + uuid.uuid4().hex
 
     response = client.post(
         "/auth/register",
         json={
             "email": email,
             "password": "SenhaSegura123!",
-            "nome": "MEI em abertura smoke",
+            "nome": nome,
             "tipo_usuario": "mei",
             "mei_intent": "opening",
             "documento": None,
         },
     )
 
-    assert response.status_code in (200, 201), response.text
-
-    body = response.json()
+    assert response.status_code == 409, response.text
 
     with _db_session() as db:
-        user = db.query(User).filter(User.email == email).one()
-        empresa = db.query(Empresa).filter(Empresa.id == body["empresa_id"]).one()
-
-        assert empresa.user_id == user.id
-        assert empresa.regime_tributario == "mei"
-        assert empresa.status_empresa == "em_abertura"
-        assert empresa.cnpj is None
+        assert db.query(User).filter(User.email == email).first() is None
+        assert (
+            db.query(Empresa)
+            .filter(Empresa.razao_social == nome)
+            .first()
+            is None
+        )
 
 
 def test_opening_real_fica_bloqueado_antes_de_serpro(client, monkeypatch):
@@ -128,18 +128,28 @@ def test_opening_real_fica_bloqueado_antes_de_serpro(client, monkeypatch):
     email = _email("opening_das_block")
     password = "SenhaSegura123!"
 
-    registered = client.post(
-        "/auth/register",
-        json={
-            "email": email,
-            "password": password,
-            "nome": "MEI abertura bloqueio DAS",
-            "tipo_usuario": "mei",
-            "mei_intent": "opening",
-            "documento": None,
-        },
-    )
-    assert registered.status_code in (200, 201), registered.text
+    # Conta anterior ao fechamento do cadastro publico.
+    with _db_session() as db:
+        plano = db.query(Plano).filter(Plano.nome == "Basico").one()
+
+        owner = User(
+            email=email,
+            hashed_password=hash_senha(password),
+            plano_id=plano.id,
+            consulta_paga=False,
+        )
+        db.add(owner)
+        db.flush()
+
+        empresa_legada = Empresa(
+            razao_social="MEI abertura bloqueio DAS",
+            regime_tributario="mei",
+            cnpj=None,
+            user_id=owner.id,
+            status_empresa="em_abertura",
+        )
+        db.add(empresa_legada)
+        db.commit()
 
     logged_in = client.post(
         "/auth/login",

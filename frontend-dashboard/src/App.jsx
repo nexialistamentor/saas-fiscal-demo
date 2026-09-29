@@ -643,6 +643,11 @@ function App() {
     e.preventDefault()
     setErroRegisto(null)
 
+    if (isMeiPublicJourney && meiPublicIntent !== "existing") {
+      setErroRegisto("Cadastro para abertura ainda n\u00e3o est\u00e1 dispon\u00edvel.")
+      return
+    }
+
     if (
       isMeiPublicJourney &&
       meiPublicIntent === "existing" &&
@@ -1109,18 +1114,6 @@ function App() {
                 <h2>Como podemos ajudar?</h2>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <button
-                    className="solveris-primary-action"
-                    type="button"
-                    onClick={() => {
-                      setMeiPublicIntent("opening")
-                      setTipoRegisto("mei")
-                      setDocumentoRegisto("")
-                      setMostrarRegisto(true)
-                    }}
-                  >
-                    Quero abrir meu MEI
-                  </button>
-                  <button
                     className="solveris-secondary-action"
                     type="button"
                     onClick={() => {
@@ -1189,7 +1182,7 @@ function App() {
                 type="button"
                 onClick={() => {
                   if (isMeiPublicJourney) {
-                    setMeiPublicIntent("opening")
+                    setMeiPublicIntent("existing")
                     setTipoRegisto("mei")
                     setDocumentoRegisto("")
                   }

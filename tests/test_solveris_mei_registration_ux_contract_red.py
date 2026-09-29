@@ -11,10 +11,28 @@ def test_mei_public_create_account_link_is_actionable():
     link = APP[start:end]
 
     assert "setMostrarRegisto(true)" in link
-    assert 'setMeiPublicIntent("opening")' in link
+    assert 'setMeiPublicIntent("existing")' in link
     assert 'setTipoRegisto("mei")' in link
     assert 'setDocumentoRegisto("")' in link
     assert "if (isMeiPublicJourney) {\n                    return" not in link
+
+
+
+def test_public_release_only_offers_existing_mei():
+    start = APP.index('className="solveris-entry-card"')
+    end = APP.index("</section>", start)
+    entry = APP[start:end]
+
+    assert "tenho MEI" in entry
+    assert 'setMeiPublicIntent("existing")' in entry
+    assert "Quero abrir meu MEI" not in entry
+    assert 'setMeiPublicIntent("opening")' not in entry
+
+    # Contas em abertura anteriores continuam preservadas.
+    assert 'if (isOpeningMei) {' in APP
+
+    # Cadastro p?blico n?o aceita uma inten??o indeterminada.
+    assert 'if (isMeiPublicJourney && meiPublicIntent !== "existing")' in APP
 
 
 def test_mei_registration_has_mobile_first_visual_structure():
