@@ -1,3 +1,27 @@
+
+/* Encerramento da jornada opening: escopo exclusivo da rota publica e status em_abertura. */
+.app.solveris-mei-theme .solveris-opening-guide {
+  margin: 20px 24px 0;
+  max-width: 680px;
+  padding: 24px;
+  border-color: rgba(121,168,255,.45);
+}
+.app.solveris-mei-theme .solveris-opening-guide h2 { color: #f4f7fb; margin: 8px 0 12px; }
+.app.solveris-mei-theme .solveris-opening-guide p { color: #d0deed; line-height: 1.6; }
+.app.solveris-mei-theme .solveris-opening-kicker { color: #7cf7c2; font-weight: 700; }
+.app.solveris-mei-theme .solveris-opening-cta {
+  display: inline-block; box-sizing: border-box; max-width: 100%;
+  padding: 12px 18px; margin: 6px 0; border-radius: 9px;
+  background: #79a8ff; color: #06101c; font-weight: 700;
+  text-decoration: none; overflow-wrap: anywhere;
+}
+.app.solveris-mei-theme .solveris-opening-cta:hover,
+.app.solveris-mei-theme .solveris-opening-cta:focus-visible { background: #a8c6ff; outline: 2px solid #7cf7c2; outline-offset: 2px; }
+.app.solveris-mei-theme .solveris-opening-guide .solveris-opening-note { font-size: 13px; color: #a8b7c8; }
+@media (max-width: 600px) {
+  .app.solveris-mei-theme .solveris-opening-guide { margin: 16px 0 0; padding: 18px; }
+  .app.solveris-mei-theme .solveris-opening-cta { display: block; text-align: center; }
+}
 body{
   margin:0;
   background:#f4f6fb;
@@ -1295,3 +1319,82 @@ body{
     width: 100%;
   }
 }
+
+/* Jornada de abertura MEI isolada do dashboard fiscal genérico. */
+.app.solveris-opening-app { min-height: 100vh; background: #071320; color: #f4f7fb; }
+.solveris-opening-topbar { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:20px clamp(16px,4vw,44px); border-bottom:1px solid rgba(177,205,230,.14); }
+.solveris-opening-topbar strong { letter-spacing:.06em; }
+.solveris-opening-topbar button { border:1px solid rgba(177,205,230,.32); border-radius:10px; color:#f4f7fb; background:transparent; padding:10px 16px; cursor:pointer; }
+.solveris-opening-main { width:min(100% - 32px, 900px); margin:0 auto; padding:28px 0 52px; display:grid; gap:20px; }
+.solveris-opening-welcome, .solveris-opening-steps, .solveris-opening-next { border:1px solid rgba(177,205,230,.18); border-radius:18px; background:#0b2034; padding:clamp(20px,4vw,32px); }
+.solveris-opening-welcome h1 { font-size:clamp(1.7rem,5vw,2.5rem); line-height:1.15; margin:12px 0; }
+.solveris-opening-welcome p, .solveris-opening-next p { line-height:1.6; color:#d4e1ee; }
+.solveris-opening-status-line { background:rgba(121,168,255,.11); border:1px solid rgba(121,168,255,.3); padding:12px 14px; border-radius:10px; }
+.solveris-opening-steps h2, .solveris-opening-next h2 { margin:0 0 16px; }
+.solveris-opening-steps ol { list-style:none; margin:0; padding:0; display:grid; gap:12px; counter-reset:passo; }
+.solveris-opening-steps li { counter-increment:passo; display:grid; grid-template-columns:34px minmax(0,1fr); column-gap:12px; align-items:start; }
+.solveris-opening-steps li::before { content:counter(passo); width:32px; height:32px; display:grid; place-items:center; background:#79a8ff; color:#06101c; border-radius:50%; font-weight:700; grid-row:span 2; }
+.solveris-opening-steps li strong { display:block; line-height:1.35; }
+.solveris-opening-steps li span { color:#d4e1ee; line-height:1.45; }
+@media (max-width:390px) { .solveris-opening-main { width:calc(100% - 24px); padding-top:16px; } .solveris-opening-topbar { padding:16px 12px; } }
+
+/* Contraste e navegação da jornada autenticada de abertura. */
+.app.solveris-opening-app .solveris-opening-welcome h1,
+.app.solveris-opening-app .solveris-opening-steps h2,
+.app.solveris-opening-app .solveris-opening-next h2 { color:#f4f7fb; }
+.app.solveris-opening-app .solveris-opening-panel { display:grid; gap:14px; color:#e5eef9; }
+.app.solveris-opening-app .solveris-opening-panel p { color:#e5eef9; line-height:1.55; margin:0; }
+.app.solveris-opening-app .solveris-opening-progress { color:#9dc0ff; font-weight:700; }
+.app.solveris-opening-app .solveris-opening-panel label { font-weight:650; color:#f4f7fb; }
+.app.solveris-opening-app .solveris-opening-panel input[type="text"] { width:100%; box-sizing:border-box; min-height:48px; padding:12px; border-radius:10px; border:1px solid #83a7db; background:#091827; color:#fff; font:inherit; }
+.app.solveris-opening-app .solveris-opening-panel input:focus-visible,
+.app.solveris-opening-app .solveris-opening-panel button:focus-visible { outline:3px solid #a5d3ff; outline-offset:3px; }
+.app.solveris-opening-app .solveris-opening-check { display:flex; gap:12px; align-items:flex-start; font-weight:400; }
+.app.solveris-opening-app .solveris-opening-check input { width:20px; height:20px; flex:0 0 auto; }
+.app.solveris-opening-app .solveris-opening-action,
+.app.solveris-opening-app .solveris-opening-secondary { min-height:48px; border-radius:10px; padding:12px 18px; font:inherit; font-weight:700; cursor:pointer; }
+.app.solveris-opening-app .solveris-opening-action { background:#afd0ff; color:#071320; border:1px solid #afd0ff; }
+.app.solveris-opening-app .solveris-opening-secondary { background:transparent; color:#f4f7fb; border:1px solid #83a7db; }
+.app.solveris-opening-app .solveris-opening-action:disabled { opacity:.55; cursor:not-allowed; }
+.app.solveris-opening-app .solveris-opening-buttons { display:flex; flex-wrap:wrap; gap:12px; }
+.app.solveris-opening-app .solveris-opening-note { font-size:.9rem; color:#c7d9ee; }
+@media(max-width:480px) { .app.solveris-opening-app .solveris-opening-buttons button, .app.solveris-opening-app .solveris-opening-action { width:100%; } }
+
+/* SOLVERIS MEI: cadastro claro e experiencia de MEI existente (rota publica). */
+.solveris-public-entry .solveris-register-card h2,
+.solveris-public-entry .solveris-register-card > p,
+.solveris-public-entry .solveris-register-form .solveris-field-label { color:#f4f7fb; }
+.solveris-public-entry .solveris-register-hint { color:#cbdcf0; }
+.app.solveris-existing-app { min-height:100vh; background:#071320; color:#f4f7fb; }
+.app.solveris-existing-app .topbar, .app.solveris-existing-app .hero,
+.app.solveris-existing-app .dashboard { color:#f4f7fb; }
+.app.solveris-existing-app .hero-card h2,
+.app.solveris-existing-app .card h2,
+.app.solveris-existing-app .card h3,
+.app.solveris-existing-app .solveris-existing-overview h1,
+.app.solveris-existing-app .solveris-existing-overview h2 { color:#f4f7fb; }
+.app.solveris-existing-app .hero-card p,
+.app.solveris-existing-app .card p { color:#d5e3f1; }
+.app.solveris-existing-app .solveris-existing-overview,
+.app.solveris-existing-app .solveris-existing-files {
+  box-sizing:border-box; width:min(100% - 32px, 900px); margin:20px auto;
+  padding:clamp(20px,4vw,32px); background:#0b2034;
+  border:1px solid rgba(177,205,230,.28); border-radius:18px;
+}
+.app.solveris-existing-app .solveris-existing-overview h2 { font-size:clamp(1.5rem,4vw,2rem);margin:10px 0; }
+.app.solveris-existing-app .solveris-existing-overview p,
+.app.solveris-existing-app .solveris-existing-files p { color:#d5e3f1;line-height:1.55; }
+.app.solveris-existing-app .solveris-existing-status { padding:12px;border:1px solid #607fa8;border-radius:9px;background:#162e49; }
+.app.solveris-existing-app .solveris-existing-actions { display:flex;flex-wrap:wrap;gap:10px;margin-top:20px; }
+.app.solveris-existing-app .solveris-existing-actions a {
+  box-sizing:border-box;min-height:46px;display:inline-flex;align-items:center;justify-content:center;
+  flex:1 1 160px;padding:10px 14px;border-radius:10px;text-align:center;
+  background:#afd0ff;border:1px solid #afd0ff;color:#081625;font-weight:800;text-decoration:none;
+}
+.app.solveris-existing-app .solveris-existing-actions a:focus-visible { outline:3px solid #fff;outline-offset:3px; }
+.app.solveris-existing-app .solveris-existing-files input[type="file"] { max-width:100%;color:#f4f7fb; }
+.app.solveris-existing-app .solveris-existing-diagnostic-heading { margin:14px 24px; }
+.app.solveris-existing-app .solveris-existing-diagnostic-heading h2 { color:#f4f7fb; }
+.app.solveris-existing-app .solveris-existing-diagnostic-heading p { color:#cbdcf0; }
+.app.solveris-existing-app [id^="mei-"] { scroll-margin-top:24px; }
+@media(max-width:480px){ .app.solveris-existing-app .solveris-existing-actions { flex-direction:column; } }

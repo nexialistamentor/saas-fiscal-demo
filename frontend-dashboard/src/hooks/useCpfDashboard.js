@@ -8,9 +8,10 @@ export default function useCpfDashboard(contexto = {}) {
 
   const faturamentoMensal = Number(contexto.faturamento_mensal || 0)
   const despesasMensais = Number(contexto.despesas || 0)
+  const enabled = contexto.enabled !== false
 
   const carregar = useCallback(async () => {
-    if (!isAuthenticated()) { setLoading(false); return }
+    if (!enabled || !isAuthenticated()) { setLoading(false); return }
     try {
       const res = await fetchAutenticado(`${API_BASE}/cpf/dashboard`, {
         method: "POST",
@@ -42,7 +43,7 @@ export default function useCpfDashboard(contexto = {}) {
     } finally {
       setLoading(false)
     }
-  }, [faturamentoMensal, despesasMensais])
+  }, [enabled, faturamentoMensal, despesasMensais])
 
   useEffect(() => {
     carregar()

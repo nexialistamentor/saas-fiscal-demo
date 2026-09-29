@@ -110,6 +110,13 @@ function App() {
 
   const tipoPerfil = perfilAtual.tipo
   const idPerfil = perfilAtual.id
+  const isOpeningMei = isMeiPublicJourney && tipoPerfil === "mei" && perfilAtual.status_empresa === "em_abertura"
+  const isExistingMei = isMeiPublicJourney && tipoPerfil === "mei" &&
+    perfilAtual.status_empresa !== "em_abertura" && Number.isInteger(idPerfil) && idPerfil > 0
+  // Navegação de orientação local; não constitui nem ativa uma empresa.
+  const [openingStep, setOpeningStep] = useState(0)
+  const [openingActivity, setOpeningActivity] = useState("")
+  const [openingReadiness, setOpeningReadiness] = useState(false)
 
   const [cpfFaturamentoMensal, setCpfFaturamentoMensal] = useState("")
   const [cpfDespesasMensais, setCpfDespesasMensais] = useState("")
@@ -184,7 +191,8 @@ function App() {
   const { emitirDasOficial } = meiResult
   const cpfResult = useCpfDashboard({
     faturamento_mensal: cpfFaturamentoMensal,
-    despesas: cpfDespesasMensais
+    despesas: cpfDespesasMensais,
+    enabled: tipoPerfil === "cpf" && !isOpeningMei
   })
   const empresaResult = useEmpresaDashboard(
     tipoPerfil === "empresa" ? idPerfil : null
@@ -735,8 +743,8 @@ function App() {
       return
     }
 
-    void recuperarTaxReportCheckoutDoServidor(idPerfil)
-  }, [tipoPerfil, idPerfil])
+    if (!isOpeningMei) void recuperarTaxReportCheckoutDoServidor(idPerfil)
+  }, [tipoPerfil, idPerfil, isOpeningMei])
 
   useEffect(() => {
     async function validarSessao() {
@@ -1711,8 +1719,80 @@ function App() {
     }
   }
 
+  if (isOpeningMei) {
+    return (
+      <div className="app solveris-mei-theme solveris-opening-app">
+        <header className="solveris-opening-topbar">
+          <strong>SOLVERIS / MEI</strong>
+          <button type="button" onClick={handleLogout}>Sair</button>
+        </header>
+        <main className="solveris-opening-main">
+          <section className="solveris-opening-welcome" aria-labelledby="solveris-opening-heading">
+            <span className="solveris-opening-kicker">Sua jornada na SOLVERIS</span>
+            <h1 id="solveris-opening-heading">Seu negócio começa aqui.</h1>
+            <p>O MEI é só o início. A SOLVERIS acompanha você até o próximo nível.</p>
+            <p className="solveris-opening-status-line">Situação: sua empresa está em fase de abertura. Ainda não há CNPJ vinculado nem DAS disponível.</p>
+          </section>
+          <section className="solveris-opening-steps" aria-labelledby="solveris-steps-heading">
+            <h2 id="solveris-steps-heading">Vamos abrir seu MEI juntos</h2>
+            {openingStep === 0 && (
+              <div className="solveris-opening-panel">
+                <p>Seu acesso está pronto. Vamos começar pela sua atividade, sem simuladores ou questionários extensos.</p>
+                <button type="button" className="solveris-opening-action" onClick={() => setOpeningStep(1)}>Começar minha abertura</button>
+              </div>
+            )}
+            {openingStep === 1 && (
+              <div className="solveris-opening-panel">
+                <p className="solveris-opening-progress">Etapa 1 de 3 — Seu negócio</p>
+                <label htmlFor="opening-activity">O que você pretende fazer no seu negócio?</label>
+                <input id="opening-activity" type="text" maxLength={160} value={openingActivity} onChange={(event) => setOpeningActivity(event.target.value)} placeholder="Ex.: vender roupas, fazer bolos, consertar computadores" />
+                <p className="solveris-opening-note">Esta descrição orienta a conversa; não determina CNAE ou elegibilidade oficial.</p>
+                <button type="button" className="solveris-opening-action" disabled={!openingActivity.trim()} onClick={() => setOpeningStep(2)}>Continuar</button>
+              </div>
+            )}
+            {openingStep === 2 && (
+              <div className="solveris-opening-panel">
+                <p className="solveris-opening-progress">Etapa 2 de 3 — Preparação</p>
+                <p><strong>Sua atividade informada:</strong> {openingActivity}</p>
+                <p>Antes da formalização, confira se a ocupação consta entre as permitidas, os requisitos pessoais e as condições do enquadramento MEI. Esta tela não confirma sua elegibilidade.</p>
+                <label className="solveris-opening-check"><input type="checkbox" checked={openingReadiness} onChange={(event) => setOpeningReadiness(event.target.checked)} /> Entendi que os requisitos e a ocupação precisam de confirmação oficial.</label>
+                <div className="solveris-opening-buttons"><button type="button" className="solveris-opening-secondary" onClick={() => setOpeningStep(1)}>Voltar</button><button type="button" className="solveris-opening-action" disabled={!openingReadiness} onClick={() => setOpeningStep(3)}>Continuar</button></div>
+              </div>
+            )}
+            {openingStep === 3 && (
+              <div className="solveris-opening-panel">
+                <p className="solveris-opening-progress">Etapa 3 de 3 — Formalização</p>
+                <p>A SOLVERIS acompanha sua preparação. A constituição oficial do MEI depende da confirmação pelo serviço governamental competente, com a autenticação exigida.</p>
+                <p>Seu perfil continuará em abertura. Não solicitaremos CNPJ como se já existisse, nem liberaremos DAS antes da validação do registro.</p>
+                <p className="solveris-opening-note">A integração para executar o registro governamental dentro da SOLVERIS ainda não está homologada. Não há abertura oficial automática nesta tela.</p>
+                <button type="button" className="solveris-opening-secondary" onClick={() => setOpeningStep(2)}>Rever preparação</button>
+              </div>
+            )}
+          </section>
+          <section className="solveris-opening-next" aria-labelledby="solveris-next-heading">
+            <h2 id="solveris-next-heading">Seu próximo nível</h2>
+            <p>Quando sua empresa estiver habilitada, você poderá acompanhar os serviços disponíveis na SOLVERIS. Orientações por ramo e acompanhamento com avatares fazem parte da evolução planejada do produto.</p>
+          </section>
+        </main>
+      </div>
+    )
+  }
+
+  if (isMeiPublicJourney && !isExistingMei) {
+    return (
+      <div className="app solveris-mei-theme solveris-existing-app">
+        <header className="solveris-opening-topbar"><strong>SOLVERIS / MEI</strong><button type="button" onClick={handleLogout}>Sair</button></header>
+        <main className="solveris-opening-main"><section className="solveris-existing-overview" role="alert">
+          <h1>Seu acesso MEI precisa de confirmação</h1>
+          <p>Não encontramos um perfil de MEI existente válido nesta sessão. Entre novamente ou procure o atendimento SOLVERIS. Nenhum serviço fiscal foi liberado.</p>
+          <button className="solveris-opening-secondary" type="button" onClick={() => window.location.reload()}>Verificar novamente</button>
+        </section></main>
+      </div>
+    )
+  }
+
   return (
-    <div className={`app${isMeiPublicJourney ? " solveris-mei-theme" : ""}`}>
+    <div className={`app${isMeiPublicJourney ? " solveris-mei-theme solveris-existing-app" : ""}`}>
       <header className="topbar">
         <div className="hero">
           <h1>{isMeiPublicJourney ? "SOLVERIS / MEI" : "SOLVERIS"}</h1>
@@ -1721,17 +1801,33 @@ function App() {
         <button onClick={handleLogout}>Sair</button>
       </header>
 
-      <div className="profile-toggle">
-        {perfisDisponiveis.map((p) => (
-          <button
-            key={p.tipo}
-            className={perfilAtual.tipo === p.tipo ? "active" : ""}
-            onClick={() => setPerfilAtual(p)}
-          >
-            {p.nome}
-          </button>
-        ))}
-      </div>
+      {!isMeiPublicJourney && (
+        <div className="profile-toggle">
+          {perfisDisponiveis.map((p) => (
+            <button
+              key={p.tipo}
+              className={perfilAtual.tipo === p.tipo ? "active" : ""}
+              onClick={() => setPerfilAtual(p)}
+            >
+              {p.nome}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isExistingMei && (
+        <section className="solveris-existing-overview" aria-labelledby="solveris-existing-title">
+          <span className="solveris-opening-kicker">Seu negócio na SOLVERIS</span>
+          <h2 id="solveris-existing-title">Meu MEI</h2>
+          <p>Encontre seus serviços sem preencher um simulador de abertura.</p>
+          <p className="solveris-existing-status">Situação cadastrada: {perfilAtual.status_empresa || "não informada"}. Os serviços oficiais dependem de validação dos requisitos.</p>
+          <nav className="solveris-existing-actions" aria-label="Serviços do MEI">
+            <a href="#mei-das-oficial">DAS oficial</a>
+            <a href="#mei-documentos">Documentos fiscais</a>
+            <a href="#mei-diagnostico">Diagnóstico fiscal</a>
+          </nav>
+        </section>
+      )}
 
       {tipoPerfil === "empresa" && idPerfil && (
         <div
@@ -1780,111 +1876,111 @@ function App() {
         </div>
       )}
 
-      {/* B13-01: Card Simular Abertura Soberana */}
-      <div
-        className="card"
-        style={{ margin: "20px 24px 0", maxWidth: 560, padding: 20, border: "1px solid #6366f1" }}
-      >
-        <h3 style={{ marginTop: 0, color: "var(--text-primary, #fff)" }}>
-          {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura"
-            ? "Primeiro passo: simular sua abertura MEI"
-            : "Simular abertura de empresa"}
-        </h3>
-        <p style={{ fontSize: 14, color: "var(--text-secondary, #9ca3af)", marginBottom: 12 }}>
-          Não precisas de CNPJ para simular. Contador só entra quando a lei,
-          obrigação técnica, risco fiscal ou a tua escolha exigirem.
-        </p>
-        <form onSubmit={simularAbertura} style={{ display: "grid", gap: 10 }}>
-          <label>
-            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Descrição da actividade</span>
-            <input
-              type="text"
-              placeholder="Ex: plataforma SaaS de inteligência tributária"
-              value={formAberturaDescricao}
-              onChange={(e) => setFormAberturaDescricao(e.target.value)}
-              required
-              style={{ width: "100%", marginTop: 4 }}
-            />
-          </label>
-          <label>
-            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Tipo de actividade</span>
-            <select
-              value={formAberturaAtividade}
-              onChange={(e) => setFormAberturaAtividade(e.target.value)}
-              style={{ width: "100%", marginTop: 4 }}
-            >
-              <option value="servicos">Serviços</option>
-              <option value="comercio">Comércio</option>
-              <option value="industria">Indústria</option>
-              <option value="misto">Misto (serviços + comércio)</option>
-            </select>
-          </label>
-          <label>
-            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Porte pretendido</span>
-            <select
-              value={formAberturaPorte}
-              onChange={(e) => setFormAberturaPorte(e.target.value)}
-              style={{ width: "100%", marginTop: 4 }}
-            >
-              <option value="mei">MEI</option>
-              <option value="me">ME (Microempresa)</option>
-              <option value="epp">EPP</option>
-            </select>
-          </label>
-          <label>
-            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Faturamento anual esperado (R$)</span>
-            <input
-              type="number"
-              min="0"
-              step="1000"
-              placeholder="Ex: 120000"
-              value={formAberturaFaturamento}
-              onChange={(e) => setFormAberturaFaturamento(e.target.value)}
-              style={{ width: "100%", marginTop: 4 }}
-            />
-          </label>
-          <label>
-            <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Folha salarial anual estimada (R$, opcional)</span>
-            <input
-              type="number"
-              min="0"
-              step="1000"
-              placeholder="Ex: 0 (sem funcionários)"
-              value={formAberturaFolha}
-              onChange={(e) => setFormAberturaFolha(e.target.value)}
-              style={{ width: "100%", marginTop: 4 }}
-            />
-          </label>
-          <button type="submit" disabled={simulacaoAberturaCarregando || !formAberturaDescricao}>
-            {simulacaoAberturaCarregando ? "A simular…" : "Simular abertura"}
-          </button>
-        </form>
-        {simulacaoAberturaErro && (
-          <p style={{ color: "#ef4444", marginTop: 8, fontSize: 13 }}>{simulacaoAberturaErro}</p>
-        )}
-        {simulacaoAberturaResultado && (
-          <div style={{ marginTop: 16, padding: 12, background: "var(--bg-primary, #0f1117)", borderRadius: 8 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 13 }}>
-              <strong>CNAE recomendado:</strong> {simulacaoAberturaResultado.cnae_recomendado?.codigo} — {simulacaoAberturaResultado.cnae_recomendado?.descricao}
-            </p>
-            <p style={{ margin: "0 0 6px", fontSize: 13 }}>
-              <strong>Permite MEI:</strong> {simulacaoAberturaResultado.permite_mei ? "Sim" : "Não"}
-              {simulacaoAberturaResultado.motivo_nao_mei ? ` — ${simulacaoAberturaResultado.motivo_nao_mei}` : ""}
-            </p>
-            <p style={{ margin: "0 0 6px", fontSize: 13 }}>
-              <strong>Regime recomendado:</strong> {simulacaoAberturaResultado.regime_recomendado}
-            </p>
-            <p style={{ margin: "0 0 6px", fontSize: 13 }}>
-              <strong>Economia vs pior regime:</strong> R$ {Number(simulacaoAberturaResultado.economia_anual_vs_pior || 0).toLocaleString("pt-BR")}
-            </p>
-            {simulacaoAberturaResultado.justificativa_cnae?.length > 0 && (
-              <p style={{ margin: "0", fontSize: 12, color: "var(--text-secondary, #9ca3af)" }}>
-                {simulacaoAberturaResultado.justificativa_cnae.join(" · ")}
+        {/* A simulação permanece no painel genérico; não integra a jornada pública MEI. */}
+        {!isMeiPublicJourney && (
+        <div
+          className="card"
+          style={{ margin: "20px 24px 0", maxWidth: 560, padding: 20, border: "1px solid #6366f1" }}
+        >
+          <h3 style={{ marginTop: 0, color: "var(--text-primary, #fff)" }}>
+            Simular abertura de empresa
+          </h3>
+          <p style={{ fontSize: 14, color: "var(--text-secondary, #9ca3af)", marginBottom: 12 }}>
+            Não precisas de CNPJ para simular. Contador só entra quando a lei,
+            obrigação técnica, risco fiscal ou a tua escolha exigirem.
+          </p>
+          <form onSubmit={simularAbertura} style={{ display: "grid", gap: 10 }}>
+            <label>
+              <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Descrição da actividade</span>
+              <input
+                type="text"
+                placeholder="Ex: plataforma SaaS de inteligência tributária"
+                value={formAberturaDescricao}
+                onChange={(e) => setFormAberturaDescricao(e.target.value)}
+                required
+                style={{ width: "100%", marginTop: 4 }}
+              />
+            </label>
+            <label>
+              <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Tipo de actividade</span>
+              <select
+                value={formAberturaAtividade}
+                onChange={(e) => setFormAberturaAtividade(e.target.value)}
+                style={{ width: "100%", marginTop: 4 }}
+              >
+                <option value="servicos">Serviços</option>
+                <option value="comercio">Comércio</option>
+                <option value="industria">Indústria</option>
+                <option value="misto">Misto (serviços + comércio)</option>
+              </select>
+            </label>
+            <label>
+              <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Porte pretendido</span>
+              <select
+                value={formAberturaPorte}
+                onChange={(e) => setFormAberturaPorte(e.target.value)}
+                style={{ width: "100%", marginTop: 4 }}
+              >
+                <option value="mei">MEI</option>
+                <option value="me">ME (Microempresa)</option>
+                <option value="epp">EPP</option>
+              </select>
+            </label>
+            <label>
+              <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Faturamento anual esperado (R$)</span>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                placeholder="Ex: 120000"
+                value={formAberturaFaturamento}
+                onChange={(e) => setFormAberturaFaturamento(e.target.value)}
+                style={{ width: "100%", marginTop: 4 }}
+              />
+            </label>
+            <label>
+              <span style={{ fontSize: 13, color: "var(--text-secondary, #9ca3af)" }}>Folha salarial anual estimada (R$, opcional)</span>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                placeholder="Ex: 0 (sem funcionários)"
+                value={formAberturaFolha}
+                onChange={(e) => setFormAberturaFolha(e.target.value)}
+                style={{ width: "100%", marginTop: 4 }}
+              />
+            </label>
+            <button type="submit" disabled={simulacaoAberturaCarregando || !formAberturaDescricao}>
+              {simulacaoAberturaCarregando ? "A simular…" : "Simular abertura"}
+            </button>
+          </form>
+          {simulacaoAberturaErro && (
+            <p style={{ color: "#ef4444", marginTop: 8, fontSize: 13 }}>{simulacaoAberturaErro}</p>
+          )}
+          {simulacaoAberturaResultado && (
+            <div style={{ marginTop: 16, padding: 12, background: "var(--bg-primary, #0f1117)", borderRadius: 8 }}>
+              <p style={{ margin: "0 0 6px", fontSize: 13 }}>
+                <strong>CNAE recomendado:</strong> {simulacaoAberturaResultado.cnae_recomendado?.codigo} — {simulacaoAberturaResultado.cnae_recomendado?.descricao}
               </p>
-            )}
-          </div>
+              <p style={{ margin: "0 0 6px", fontSize: 13 }}>
+                <strong>Permite MEI:</strong> {simulacaoAberturaResultado.permite_mei ? "Sim" : "Não"}
+                {simulacaoAberturaResultado.motivo_nao_mei ? ` — ${simulacaoAberturaResultado.motivo_nao_mei}` : ""}
+              </p>
+              <p style={{ margin: "0 0 6px", fontSize: 13 }}>
+                <strong>Regime recomendado:</strong> {simulacaoAberturaResultado.regime_recomendado}
+              </p>
+              <p style={{ margin: "0 0 6px", fontSize: 13 }}>
+                <strong>Economia vs pior regime:</strong> R$ {Number(simulacaoAberturaResultado.economia_anual_vs_pior || 0).toLocaleString("pt-BR")}
+              </p>
+              {simulacaoAberturaResultado.justificativa_cnae?.length > 0 && (
+                <p style={{ margin: "0", fontSize: 12, color: "var(--text-secondary, #9ca3af)" }}>
+                  {simulacaoAberturaResultado.justificativa_cnae.join(" · ")}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
         )}
-      </div>
 
       {tipoPerfil === "cpf" && podeUploadXML && (
         <div
@@ -2013,18 +2109,25 @@ function App() {
       )}
 
       {tipoPerfil !== "cpf" && podeUploadXML && (
-        <input
-          type="file"
-          accept=".xml"
-          multiple
-          onChange={(e) => enviarXML(Array.from(e.target.files ?? []))}
-        />
+        <section id={isExistingMei ? "mei-documentos" : undefined} className={isExistingMei ? "solveris-existing-files" : undefined}>
+          {isExistingMei && (
+            <><h2>Documentos fiscais</h2><p>Se desejar uma análise fiscal, selecione seus arquivos XML. A contratação de relatórios é apresentada separadamente.</p></>
+          )}
+          <input
+            type="file"
+            accept=".xml"
+            multiple
+            aria-label="Selecionar arquivos XML para análise fiscal"
+            onChange={(e) => enviarXML(Array.from(e.target.files ?? []))}
+          />
+        </section>
       )}
 
       {tipoPerfil !== "cpf" && !podeUploadXML && (
-        <div style={{ marginTop: 20 }}>
-          <p>Upload de XML disponível apenas em planos superiores.</p>
-        </div>
+        <section id={isExistingMei ? "mei-documentos" : undefined} className={isExistingMei ? "solveris-existing-files" : undefined}>
+          <h2>Documentos fiscais</h2>
+          <p>O envio de XML está disponível apenas nos planos habilitados.</p>
+        </section>
       )}
 
       {tipoPerfil !== "cpf" && resultadoXML && !data?.consulta_paga && (
@@ -2071,20 +2174,20 @@ function App() {
         <section className="hero-card">
           <h2>{perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" ? "Orientação para abrir seu MEI" : "Visão Geral"}</h2>
           <p>{perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura"
-            ? "Comece pela simulação de abertura acima. Ainda não há resultados fiscais de uma empresa ativa."
+            ? "Continue a abertura pelo canal oficial. Ainda não há resultados fiscais de uma empresa ativa."
             : "Acompanhe oportunidades, riscos e indicadores fiscais da empresa."}</p>
         </section>
 
         {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && (
           <section className="card solveris-opening-status" style={{ marginBottom: 20 }}>
             <h3>Seu MEI está em fase de abertura</h3>
-            <p>Esta é uma área de orientação. A simulação acima não formaliza a empresa nem emite documentos oficiais.</p>
+            <p>Esta é uma área de orientação. A SOLVERIS não formaliza a empresa nem emite documentos oficiais nesta etapa.</p>
             <p>A emissão de DAS oficial só ficará disponível após o vínculo com um MEI ativo e a validação dos requisitos.</p>
           </section>
         )}
 
         {perfilAtual.tipo === "mei" && perfilAtual.status_empresa !== "em_abertura" && (
-          <section className="card" style={{ marginBottom: 20 }}>
+          <section id={isExistingMei ? "mei-das-oficial" : undefined} className="card" style={{ marginBottom: 20 }}>
             <h3>Emitir DAS oficial</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
               Selecione a competência e o formato para solicitar o documento oficial.
@@ -2247,7 +2350,7 @@ function App() {
           </article>
         </section>}
 
-        {!(perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && data == null) && (
+        {!(perfilAtual.status_empresa === "em_abertura" && data == null) && !(tipoPerfil === "mei" && data == null) && (
         <section className="cards-grid">
           {cardsDashboard.map((card) => (
             <article className="card" key={card.id} data-card-id={card.id}>
@@ -2258,6 +2361,9 @@ function App() {
         </section>
         )}
 
+        <div id={isExistingMei ? "mei-diagnostico" : undefined} className="solveris-existing-diagnostic-heading">
+          {isExistingMei && <><h2>Diagnóstico fiscal</h2><p>Consulte o resultado da análise ou as condições de aquisição do relatório, quando disponíveis.</p></>}
+        </div>
         {taxReportPurchasable && (
           !Number.isInteger(taxReportAcquisitionId) ||
           taxReportAcquisitionId <= 0 ||
