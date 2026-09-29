@@ -23,6 +23,9 @@ from app.services.checkout_offer_campaign_reservation import (
 from app.services.checkout_offer_prerequisite import (
     CheckoutOfferPrerequisite,
 )
+from app.services.mei_competencia_checkout_prerequisite import (
+    MeiCompetenciaCheckoutPrerequisite,
+)
 
 
 _MENSAGEM_PUBLICA = "Nao foi possivel criar a ordem de checkout"
@@ -108,6 +111,13 @@ class CheckoutOfferOrderComposer:
                 empresa_id=empresa_id,
                 offer_code=offer_code,
                 idempotency_key=idempotency_key,
+            )
+            MeiCompetenciaCheckoutPrerequisite(sessao).require(
+                authenticated_user_id=authenticated_user_id,
+                empresa_id=empresa_id,
+                offer_code=offer_code,
+                idempotency_key=idempotency_key,
+                capabilities=tuple(oferta.capabilities),
             )
 
             ordem = OrdemCheckout(
@@ -199,6 +209,15 @@ class CheckoutOfferOrderComposer:
             empresa_id=empresa_id,
             offer_code=offer_code,
             idempotency_key=ordem.idempotency_key,
+        )
+        MeiCompetenciaCheckoutPrerequisite(sessao).require(
+            authenticated_user_id=user_id,
+            empresa_id=empresa_id,
+            offer_code=offer_code,
+            idempotency_key=ordem.idempotency_key,
+            capabilities=tuple(
+                capability.codigo for capability in ordem.capabilities
+            ),
         )
 
         campaign_snapshot = (

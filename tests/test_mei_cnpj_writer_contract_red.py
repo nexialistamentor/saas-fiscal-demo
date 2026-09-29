@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from contextlib import contextmanager
 
 from app.database import get_db
@@ -26,23 +26,34 @@ def _registrar_mei_abertura(client):
     email = f"mei_cnpj_writer_{uuid.uuid4().hex}@example.com"
     password = "SenhaSegura123!"
 
-    response = client.post(
-        "/auth/register",
-        json={
-            "email": email,
-            "password": password,
-            "nome": "MEI legado writer",
-            "tipo_usuario": "mei",
-            "mei_intent": "opening",
-            "documento": None,
-        },
-    )
-    assert response.status_code in (200, 201), response.text
-
-    empresa_id = response.json()["empresa_id"]
+    # Preparacao isolada de conta legada; nao reabre cadastro publico.
+    from app.models import Plano
+    from app.security import hash_senha
 
     with _db_session() as db:
-        empresa = db.query(Empresa).filter(Empresa.id == empresa_id).one()
+        plano = db.query(Plano).filter(Plano.nome == "Basico").one()
+
+        owner = User(
+            email=email,
+            hashed_password=hash_senha(password),
+            plano_id=plano.id,
+            consulta_paga=False,
+        )
+        db.add(owner)
+        db.flush()
+
+        empresa = Empresa(
+            razao_social="MEI legado writer",
+            regime_tributario="mei",
+            cnpj=None,
+            user_id=owner.id,
+            status_empresa="em_abertura",
+        )
+        db.add(empresa)
+        db.commit()
+        empresa_id = empresa.id
+
+        # Preserva o estado usado pelos contratos originais do writer.
         empresa.status_empresa = "ativa"
         empresa.optante_mei = False
         db.commit()

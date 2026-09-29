@@ -44,6 +44,12 @@ def _consulta_liberada_no_registro() -> bool:
 @limiter.limit("3/minute")
 def register_user(request: Request, user: UserCreate, db: Session = Depends(get_db)) -> UserResponse:
 
+    if user.tipo_usuario == "mei" and user.mei_intent == "opening":
+        raise HTTPException(
+            status_code=409,
+            detail="Cadastro de MEI em abertura indisponivel nesta versao.",
+        )
+
     existing_user = db.query(models.User).filter(
         models.User.email == user.email
     ).first()
