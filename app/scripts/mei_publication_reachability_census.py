@@ -198,7 +198,7 @@ def _parse_app() -> dict[str, ModuleInfo]:
     for path in sorted(app_root.rglob("*.py")):
         relative = str(path.relative_to(ROOT)).replace("\\", "/")
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
         except (OSError, UnicodeDecodeError, SyntaxError) as exc:
             raise RuntimeError(
                 f"MEI_REACHABILITY_SCAN_FAILED:{relative}:{type(exc).__name__}:{exc}"
@@ -1144,7 +1144,7 @@ def _app_class_defines_method(class_id: str, method_name: str) -> bool:
         return False
 
     try:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
     except (OSError, UnicodeDecodeError, SyntaxError) as exc:
         raise RuntimeError(
             f"MEI_REACHABILITY_CLASS_SCAN_FAILED:{class_id}:{type(exc).__name__}:{exc}"
