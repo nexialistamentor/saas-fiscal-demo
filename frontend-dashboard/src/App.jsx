@@ -79,6 +79,7 @@ function App() {
   const [meiPublicIntent, setMeiPublicIntent] = useState(null)
   const [nomeRegisto, setNomeRegisto] = useState("")
   const [emailRegisto, setEmailRegisto] = useState("")
+  const [erroEmailRegisto, setErroEmailRegisto] = useState("")
   const [passwordRegisto, setPasswordRegisto] = useState("")
   const [tipoRegisto, setTipoRegisto] = useState("mei")
   const [documentoRegisto, setDocumentoRegisto] = useState("")
@@ -1246,6 +1247,7 @@ function App() {
                   placeholder={isMeiPublicJourney && meiPublicIntent === "opening" ? "Ex.: meu futuro negócio" : "Nome da empresa"}
                   value={nomeRegisto}
                   onChange={(e) => setNomeRegisto(e.target.value)}
+                  required={isMeiPublicJourney && meiPublicIntent === "existing"}
                 />
                 </>
               )}
@@ -1274,8 +1276,30 @@ function App() {
                 type="email"
                 placeholder="email"
                 value={emailRegisto}
-                onChange={(e) => setEmailRegisto(e.target.value)}
+                onChange={(e) => {
+                  setEmailRegisto(e.target.value)
+                  setErroEmailRegisto("")
+                }}
+                required={isMeiPublicJourney && meiPublicIntent === "existing"}
+                onBlur={(e) => {
+                  if (isMeiPublicJourney && meiPublicIntent === "existing") {
+                    setErroEmailRegisto(
+                      e.target.validity.valueMissing
+                        ? "Informe o email para acesso."
+                        : e.target.validity.typeMismatch
+                          ? "Informe um email válido."
+                          : ""
+                    )
+                  }
+                }}
+                aria-invalid={Boolean(erroEmailRegisto)}
+                aria-describedby={erroEmailRegisto ? "solveris-register-email-error" : undefined}
               />
+              {erroEmailRegisto && (
+                <p id="solveris-register-email-error" role="alert" className="solveris-register-error">
+                  {erroEmailRegisto}
+                </p>
+              )}
 
               {isMeiPublicJourney && <label className="solveris-field-label" htmlFor="solveris-register-password">Crie uma senha</label>}
               <div className="solveris-register-password-wrap">
@@ -1286,6 +1310,8 @@ function App() {
                   placeholder="senha"
                   value={passwordRegisto}
                   onChange={(e) => setPasswordRegisto(e.target.value)}
+                  required={isMeiPublicJourney && meiPublicIntent === "existing"}
+                  minLength={8}
                   aria-describedby="hint-password-registo"
                   autoComplete="new-password"
                 />

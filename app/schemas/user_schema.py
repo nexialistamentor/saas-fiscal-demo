@@ -37,6 +37,24 @@ class UserCreate(BaseModel):
         if self.mei_intent == "existing" and self.documento is None:
             raise ValueError("CNPJ é obrigatório para MEI existente")
 
+        if self.mei_intent == "existing":
+            if not self.nome:
+                raise ValueError("Nome é obrigatório para MEI existente")
+
+            cnpj = self.documento
+            if not cnpj.isascii() or len(set(cnpj)) == 1:
+                raise ValueError("CNPJ inválido para MEI existente")
+
+            base = cnpj[:12]
+            for weights in (
+                (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2),
+                (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2),
+            ):
+                remainder = sum(int(digit) * weight for digit, weight in zip(base, weights)) % 11
+                base += str(0 if remainder < 2 else 11 - remainder)
+            if cnpj != base:
+                raise ValueError("CNPJ inválido para MEI existente")
+
         return self
 
     @field_validator("nome")

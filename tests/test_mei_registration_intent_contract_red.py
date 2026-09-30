@@ -37,10 +37,10 @@ def test_mei_existing_com_cnpj_preserva_documento_canonico():
         nome="MEI existente",
         tipo_usuario="mei",
         mei_intent="existing",
-        documento="12.345.678/0001-90",
+        documento="12.345.678/0001-95",
     )
 
-    assert payload.documento == "12345678000190"
+    assert payload.documento == "12345678000195"
 
 def test_mei_sem_intencao_deve_falhar_fechado():
     with pytest.raises(ValidationError):
@@ -72,7 +72,7 @@ def test_mei_existing_preserva_intencao_no_contrato():
         nome="MEI existente",
         tipo_usuario="mei",
         mei_intent="existing",
-        documento="12.345.678/0001-90",
+        documento="12.345.678/0001-95",
     )
 
     assert payload.mei_intent == "existing"

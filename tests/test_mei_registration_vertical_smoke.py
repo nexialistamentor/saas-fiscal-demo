@@ -75,7 +75,7 @@ def test_existing_com_cnpj_persiste_identidade_e_owner(client):
             "nome": "MEI existente smoke",
             "tipo_usuario": "mei",
             "mei_intent": "existing",
-            "documento": "12.345.678/0001-90",
+            "documento": "12.345.678/0001-95",
         },
     )
 
@@ -90,7 +90,7 @@ def test_existing_com_cnpj_persiste_identidade_e_owner(client):
         empresa = db.query(Empresa).filter(Empresa.id == body["empresa_id"]).one()
 
         assert empresa.user_id == user.id
-        assert empresa.cnpj == "12345678000190"
+        assert empresa.cnpj == "12345678000195"
         assert empresa.regime_tributario == "mei"
 
 
