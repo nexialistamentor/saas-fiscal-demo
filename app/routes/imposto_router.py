@@ -310,13 +310,17 @@ def obter_das_mei_oficial(
     if cnpj is None:
         raise _bloqueio(422, "CNPJ_EMPRESA_INVALIDO")
 
-    canary_cnpj = os.environ.get("SERPRO_PGMEI_CANARY_CNPJ")
-    if (
-        type(canary_cnpj) is not str
-        or _CNPJ_CANONICO.fullmatch(canary_cnpj) is None
-        or cnpj != canary_cnpj
-    ):
-        raise _bloqueio(403, "SERPRO_PGMEI_CANARY_NAO_AUTORIZADO")
+    access_mode = os.environ.get("SERPRO_PGMEI_ACCESS_MODE", "canary")
+    if access_mode == "canary":
+        canary_cnpj = os.environ.get("SERPRO_PGMEI_CANARY_CNPJ")
+        if (
+            type(canary_cnpj) is not str
+            or _CNPJ_CANONICO.fullmatch(canary_cnpj) is None
+            or cnpj != canary_cnpj
+        ):
+            raise _bloqueio(403, "SERPRO_PGMEI_CANARY_NAO_AUTORIZADO")
+    elif access_mode != "tenant":
+        raise _bloqueio(403, "SERPRO_PGMEI_MODO_ACESSO_INVALIDO")
 
     try:
         autorizado = _tem_autoridade_economica_mei_competencia(
