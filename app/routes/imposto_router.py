@@ -25,6 +25,12 @@ from app.services.mei_competencia_checkout_intent import (
     MeiCompetenciaCheckoutIntent,
     MeiCompetenciaCheckoutIntentError,
 )
+from app.services.mei_competencia_checkout_recovery import (
+    MeiCompetenciaCheckoutRecovery,
+    MeiCompetenciaCheckoutRecoveryNotFoundError,
+    MeiCompetenciaCheckoutRecoveryConflictError,
+    MeiCompetenciaCheckoutRecoveryStorageError,
+)
 from app.services.imposto_service import calcular_imposto_simples, calcular_imposto_simples_nacional
 from app.services.serpro_pgmei_composition import compose_serpro_pgmei
 from app.services.tax_engines.base_tax_engine import (
@@ -292,6 +298,27 @@ def criar_intencao_checkout_mei_competencia(
         ) from None
 
     return Response(status_code=204)
+
+
+@router.get("/mei/{empresa_id}/checkout-recovery")
+def recuperar_checkout_mei_competencia(
+    empresa_id: int,
+    competencia: str,
+    db: Session = Depends(get_db),
+    usuario_atual=Depends(get_usuario_atual),
+):
+    try:
+        return MeiCompetenciaCheckoutRecovery(db).resolve(
+            user_id=usuario_atual.id,
+            empresa_id=empresa_id,
+            competencia=competencia,
+        )
+    except MeiCompetenciaCheckoutRecoveryNotFoundError:
+        raise HTTPException(status_code=404, detail="Compra MEI nao encontrada.") from None
+    except MeiCompetenciaCheckoutRecoveryConflictError:
+        raise HTTPException(status_code=409, detail="Compra MEI indisponivel.") from None
+    except MeiCompetenciaCheckoutRecoveryStorageError:
+        raise HTTPException(status_code=503, detail="Recuperacao MEI temporariamente indisponivel.") from None
 
 
 @router.post("/mei/{empresa_id}/das")

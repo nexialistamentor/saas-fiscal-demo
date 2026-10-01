@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
 import "./App.css"
 import useMeiDashboard from "./hooks/useMeiDashboard"
+import useMeiCompetenciaCheckout from "./hooks/useMeiCompetenciaCheckout"
 import useCpfDashboard from "./hooks/useCpfDashboard"
 import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
 import RelatorioPDFButton from "./components/RelatorioPDFButton"
@@ -22,6 +23,11 @@ function App() {
 
     if (!Number.isInteger(idPerfil) || idPerfil <= 0) {
       setEmissaoErro("A emissão oficial requer um perfil MEI vinculado a uma empresa real.")
+      return
+    }
+
+    if (!compraDasAutorizada) {
+      setEmissaoErro("Confirme a compra do serviço para esta competência antes de solicitar o DAS.")
       return
     }
 
@@ -129,6 +135,41 @@ function App() {
   const [cnpjMei, setCnpjMei] = useState("")
   const [salvandoCnpjMei, setSalvandoCnpjMei] = useState(false)
   const [erroCnpjMei, setErroCnpjMei] = useState("")
+
+  const checkoutMei = useMeiCompetenciaCheckout({
+    empresaId: idPerfil,
+    competencia: competenciaDas.replace("-", ""),
+    enabled: Boolean(usuario && tipoPerfil === "mei" && perfilAtual.status_empresa === "ativa"
+      && perfilAtual.cnpj && Number.isInteger(idPerfil) && idPerfil > 0),
+  })
+  const compraDasAutorizada = checkoutMei.autorizado
+
+  useEffect(() => {
+    let selecionada = ""
+    try {
+      const salva = localStorage.getItem(`solveris.meiCompetenciaSelecionada.v1:${idPerfil}`)
+      if (typeof salva === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(salva)) selecionada = salva
+    } catch { /* A seleção pode ser feita novamente sem depender do navegador. */ }
+    setCompetenciaDas(selecionada)
+    setResultadoEmissao(null)
+    setEmissaoErro("")
+  }, [idPerfil])
+
+  function selecionarCompetenciaDas(value) {
+    setCompetenciaDas(value)
+    setResultadoEmissao(null)
+    setEmissaoErro("")
+    try {
+      localStorage.setItem(`solveris.meiCompetenciaSelecionada.v1:${idPerfil}`, value)
+    } catch { /* O servidor continua sendo a autoridade da compra. */ }
+  }
+
+  async function handleComprarCompetenciaMei() {
+    const compra = await checkoutMei.iniciar()
+    if (compra?.estado === "pending" && compra.checkout_url) {
+      window.location.assign(compra.checkout_url)
+    }
+  }
 
   async function handleCompletarCnpjMei(event) {
     event.preventDefault()
@@ -254,7 +295,7 @@ function App() {
       taxReportAcquisitionId > 0 &&
       Number.isInteger(taxReportAcquisitionEmpresaId) &&
       taxReportAcquisitionEmpresaId > 0
-    )
+    ) && !(tipoPerfil === "mei" && checkoutMei.compra && !taxReportRecoveredPaid)
 
   const taxReportPurchasable =
     Number.isInteger(resultadoXML?.relatorio_id) &&
@@ -2264,22 +2305,59 @@ function App() {
                   type="month"
                   value={competenciaDas}
                   required
-                  onChange={(e) => setCompetenciaDas(e.target.value)}
+                  onChange={(e) => selecionarCompetenciaDas(e.target.value)}
+                  disabled={checkoutMei.loading || emitindoDas}
                 />
               </label>
 
               <label>
                 <span>Formato</span>
-                <select value={formatoDas} onChange={(e) => setFormatoDas(e.target.value)}>
+                <select value={formatoDas} onChange={(e) => {
+                  setFormatoDas(e.target.value)
+                  setResultadoEmissao(null)
+                }} disabled={emitindoDas}>
                   <option value="pdf">PDF</option>
                   <option value="codigo_barras">Código de barras</option>
                 </select>
               </label>
 
+              <div role="status" aria-live="polite">
+                {checkoutMei.loading && <p>Verificando a compra desta competência...</p>}
+                {compraDasAutorizada && (
+                  <p>Compra do serviço confirmada para esta competência. O pagamento do tributo é separado.</p>
+                )}
+                {!checkoutMei.loading && !compraDasAutorizada && checkoutMei.oferta && (
+                  <p>Serviço SOLVERIS para a competência selecionada: R$ 39,90.
+                    O tributo do DAS é pago separadamente. Sem renovação automática.</p>
+                )}
+                {!checkoutMei.loading && !compraDasAutorizada && checkoutMei.compra?.checkout_url && (
+                  <p>Existe um checkout pendente para esta competência. Retome a tentativa e confira o valor antes de confirmar o pagamento.</p>
+                )}
+                {competenciaDas && !checkoutMei.loading && !compraDasAutorizada
+                  && !checkoutMei.oferta && !checkoutMei.compra?.checkout_url && !checkoutMei.erro && (
+                  <p>A oferta para esta competência ainda não está disponível para compra.</p>
+                )}
+              </div>
+
+              {!compraDasAutorizada && (checkoutMei.oferta || checkoutMei.compra?.checkout_url) && (
+                <button type="button" onClick={handleComprarCompetenciaMei}
+                  disabled={checkoutMei.loading || Boolean(checkoutMei.erro) || emitindoDas || !competenciaDas}>
+                  {checkoutMei.compra?.checkout_url ? "Retomar pagamento" : "Pagar serviço — R$ 39,90"}
+                </button>
+              )}
+
+              {competenciaDas && (
+                <button type="button" onClick={checkoutMei.atualizar} disabled={checkoutMei.loading || emitindoDas}>
+                  Atualizar confirmação da compra
+                </button>
+              )}
+
+              {checkoutMei.erro && <p role="alert" style={{ color: "#b91c1c" }}>{checkoutMei.erro}</p>}
+
               <button
                 type="button"
                 onClick={handleEmitirDasOficial}
-                disabled={emitindoDas || !competenciaDas}
+                disabled={emitindoDas || !competenciaDas || checkoutMei.loading || !compraDasAutorizada}
               >
                 {emitindoDas ? "Emissão em curso..." : "Emitir DAS oficial"}
               </button>
