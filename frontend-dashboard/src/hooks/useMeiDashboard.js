@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { API_BASE, fetchAutenticado, isAuthenticated } from "../config"
 
+import { criarLeitorDashboardMei } from "../services/meiDashboard"
+
 export default function useMeiDashboard(contexto = {}) {
   const [data] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  const carregar = useCallback(async () => {
-    if (!isAuthenticated()) { setLoading(false); return }
-    setLoading(false)
-  }, [])
+  const { empresaId, enabled = false } = contexto
+  const [snapshot, setSnapshot] = useState(null)
+  const leitor = useMemo(() => criarLeitorDashboardMei({
+    baseUrl: API_BASE, fetchAutenticado, onState: setSnapshot,
+  }), [])
+  const carregar = useCallback(() => leitor.carregar({
+    empresaId, enabled: enabled && isAuthenticated(),
+  }), [leitor, empresaId, enabled])
+  const state = enabled && snapshot?.empresaId === empresaId ? snapshot : null
 
   const emitirDasOficial = useCallback(async (empresaId, periodoApuracao, formato) => {
     if (!Number.isInteger(empresaId) || empresaId <= 0) {
@@ -43,8 +48,9 @@ export default function useMeiDashboard(contexto = {}) {
   }, [])
 
   useEffect(() => {
-    carregar()
-  }, [carregar])
+    void carregar()
+    return leitor.invalidar
+  }, [carregar, leitor])
 
   // -1 sentinela de indisponivel - App.jsx detecta e mostra "N/D"
   const risco = data
@@ -61,7 +67,12 @@ export default function useMeiDashboard(contexto = {}) {
     data,
     historico: [],
     tendencia: { tendencia: "insuficiente" },
-    loading,
+    // Loading the metadata panel must not hide the DAS/checkout journey.
+    loading: false,
+    dashboardLoading: state?.loading ?? Boolean(enabled),
+    analises: state?.analises ?? [],
+    alertas: state?.alertas ?? [],
+    erroDashboard: state?.erro ?? "",
     risco,
     pontuacao,
     impacto,
