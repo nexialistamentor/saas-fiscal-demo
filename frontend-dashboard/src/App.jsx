@@ -2326,6 +2326,11 @@ function App() {
                 {compraDasAutorizada && (
                   <p>Compra do serviço confirmada para esta competência. O pagamento do tributo é separado.</p>
                 )}
+                {competenciaDas && !checkoutMei.loading && !checkoutMei.erro
+                  && checkoutMei.compra === null && checkoutMei.oferta && (
+                  <p>Nenhuma compra encontrada para esta competência. Para emitir o DAS,
+                    contrate o serviço de R$ 39,90; o tributo é pago separadamente.</p>
+                )}
                 {!checkoutMei.loading && !compraDasAutorizada && checkoutMei.oferta && (
                   <p>Serviço SOLVERIS para a competência selecionada: R$ 39,90.
                     O tributo do DAS é pago separadamente. Sem renovação automática.</p>
