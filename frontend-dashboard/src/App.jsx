@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
 import "./App.css"
 import useMeiDashboard from "./hooks/useMeiDashboard"
+import MeiHistoricoAlertas from "./components/MeiHistoricoAlertas"
 import useMeiCompetenciaCheckout from "./hooks/useMeiCompetenciaCheckout"
 import useCpfDashboard from "./hooks/useCpfDashboard"
 import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
@@ -229,7 +230,11 @@ function App() {
     }
   }
 
-  const meiResult = useMeiDashboard()
+  const meiResult = useMeiDashboard({
+    empresaId: idPerfil,
+    enabled: Boolean(usuario && tipoPerfil === "mei" && perfilAtual.status_empresa === "ativa"
+      && Number.isInteger(idPerfil) && idPerfil > 0),
+  })
   const { emitirDasOficial } = meiResult
   const cpfResult = useCpfDashboard({
     faturamento_mensal: cpfFaturamentoMensal,
@@ -2237,6 +2242,15 @@ function App() {
             ? "Continue a abertura pelo canal oficial. Ainda não há resultados fiscais de uma empresa ativa."
             : "Acompanhe oportunidades, riscos e indicadores fiscais da empresa."}</p>
         </section>
+
+        {usuario && tipoPerfil === "mei" && perfilAtual.status_empresa === "ativa"
+          && Number.isInteger(idPerfil) && idPerfil > 0 && (
+          <MeiHistoricoAlertas
+            analises={meiResult.analises} alertas={meiResult.alertas}
+            loading={meiResult.dashboardLoading} erro={meiResult.erroDashboard}
+            atualizar={meiResult.refetch}
+          />
+        )}
 
         {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && (
           <section className="card solveris-opening-status" style={{ marginBottom: 20 }}>
