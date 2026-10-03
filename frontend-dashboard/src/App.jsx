@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import "./App.css"
 import useMeiDashboard from "./hooks/useMeiDashboard"
 import MeiHistoricoAlertas from "./components/MeiHistoricoAlertas"
+import MeiAssistente from "./components/MeiAssistente"
 import useMeiCompetenciaCheckout from "./hooks/useMeiCompetenciaCheckout"
 import useCpfDashboard from "./hooks/useCpfDashboard"
 import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
@@ -2250,6 +2251,11 @@ function App() {
             loading={meiResult.dashboardLoading} erro={meiResult.erroDashboard}
             atualizar={meiResult.refetch}
           />
+        )}
+
+        {usuario && tipoPerfil === "mei" && perfilAtual.status_empresa === "ativa"
+          && Number.isInteger(idPerfil) && idPerfil > 0 && (
+          <MeiAssistente key={idPerfil} empresaId={idPerfil} />
         )}
 
         {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && (
