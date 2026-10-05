@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
 import "./App.css"
 import useMeiDashboard from "./hooks/useMeiDashboard"
+import MeiHistoricoAlertas from "./components/MeiHistoricoAlertas"
 import useMeiCompetenciaCheckout from "./hooks/useMeiCompetenciaCheckout"
 import useCpfDashboard from "./hooks/useCpfDashboard"
 import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
@@ -229,7 +230,11 @@ function App() {
     }
   }
 
-  const meiResult = useMeiDashboard()
+  const meiResult = useMeiDashboard({
+    empresaId: idPerfil,
+    enabled: Boolean(usuario && tipoPerfil === "mei" && perfilAtual.status_empresa === "ativa"
+      && Number.isInteger(idPerfil) && idPerfil > 0),
+  })
   const { emitirDasOficial } = meiResult
   const cpfResult = useCpfDashboard({
     faturamento_mensal: cpfFaturamentoMensal,
@@ -2238,6 +2243,15 @@ function App() {
             : "Acompanhe oportunidades, riscos e indicadores fiscais da empresa."}</p>
         </section>
 
+        {usuario && tipoPerfil === "mei" && perfilAtual.status_empresa === "ativa"
+          && Number.isInteger(idPerfil) && idPerfil > 0 && (
+          <MeiHistoricoAlertas
+            analises={meiResult.analises} alertas={meiResult.alertas}
+            loading={meiResult.dashboardLoading} erro={meiResult.erroDashboard}
+            atualizar={meiResult.refetch}
+          />
+        )}
+
         {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && (
           <section className="card solveris-opening-status" style={{ marginBottom: 20 }}>
             <h3>Seu MEI está em fase de abertura</h3>
@@ -2325,6 +2339,11 @@ function App() {
                 {checkoutMei.loading && <p>Verificando a compra desta competência...</p>}
                 {compraDasAutorizada && (
                   <p>Compra do serviço confirmada para esta competência. O pagamento do tributo é separado.</p>
+                )}
+                {competenciaDas && !checkoutMei.loading && !checkoutMei.erro
+                  && checkoutMei.compra === null && checkoutMei.oferta && (
+                  <p>Nenhuma compra encontrada para esta competência. Para emitir o DAS,
+                    contrate o serviço de R$ 39,90; o tributo é pago separadamente.</p>
                 )}
                 {!checkoutMei.loading && !compraDasAutorizada && checkoutMei.oferta && (
                   <p>Serviço SOLVERIS para a competência selecionada: R$ 39,90.
