@@ -35,7 +35,17 @@ def ready(url, process):
 def main():
     assert (REPO/'frontend-dashboard/package.json').is_file(), 'REPOSITORY_NOT_FOUND'
     head = command(['git','-C',str(REPO),'rev-parse','HEAD']).stdout.strip()
-    assert head in EXPECTED, f'UNREVIEWED_HEAD: {head}'
+    baseline = '4ab12627817fab5f3b9b8f435bbda4c27e4e130e'
+    paths = ['app', 'frontend-dashboard']
+    committed = subprocess.run(
+        ['git', '-C', str(REPO), 'diff', '--quiet', baseline, 'HEAD', '--', *paths]
+    )
+    assert committed.returncode == 0, 'APPLICATION_DIFF_REQUIRES_REVIEW'
+    working = subprocess.run(
+        ['git', '-C', str(REPO), 'diff', '--quiet', 'HEAD', '--', *paths]
+    )
+    assert working.returncode == 0, 'LOCAL_APPLICATION_DIFF_REQUIRES_REVIEW'
+
     for port in (8766,5175):
         with socket.socket() as probe:
             probe.bind(('127.0.0.1',port))

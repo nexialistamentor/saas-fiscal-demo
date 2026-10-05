@@ -27,7 +27,7 @@ Termos e consentimento sao aceites por HTTP nesta conta sintetica.
 - Nao modifica repositorio, flags, deployments ou dominios.
 - Rede do backend bloqueada fora de loopback; browser bloqueia externos, exceto
   pagina virtual interceptada de checkout.example.invalid (sem rede externa).
-- Fail-closed: HEAD diferente dos dois SHAs revistos ou portas ocupadas abortam.
+- Fail-closed: Diferencas na aplicacao frente ao baseline revisto, alteracoes locais na aplicacao ou portas ocupadas abortam.
 
 ## Executar
 

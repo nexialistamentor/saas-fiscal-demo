@@ -19,3 +19,11 @@ Evidências locais: C:\dev\solveris-mei-evidencias\2026-10-05-smoke-simulado
 - `server.py`: `2a50a9001461927a47f40c41c935a3ac44b511c4f70dcf3b81c790d08f9f8e22`
 - `browser.cjs`: `9250a3c494d62d551edf2ec61ec26f2d1ec8766afa6c676704b546bd9643f431`
 - `LEIA-ME.md`: `75b56555bcbf49971e71f0e20f7aa41cb37050b8f764c353a092ef65be1208d8`
+
+## Reexecucao a partir do repositorio
+
+Desktop 1280px e mobile 390px: SMOKE_SIMULADO=PASS.
+Executor ajustado para comparar app e frontend-dashboard com o baseline revisto, permitindo commits apenas de testes/documentacao.
+Evidencias: C:\dev\solveris-mei-evidencias\2026-10-05-smoke-repositorio
+SHA256 de run.py nesta reexecucao: `3b7965a3515a4ba57c3a91bcca3ef603d8e709c2a771d4b94088cac801793601`
+Webhooks, pagamentos e SERPRO reais continuam nao testados.
