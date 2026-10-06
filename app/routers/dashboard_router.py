@@ -16,6 +16,7 @@ from app.services.analysis_types import ANALYSIS_TYPE_MEI_TAX
 from app.services.mei_receita_documental_selection import (
     selecionar_documentos_para_conferencia,
 )
+from app.services.mei_emitente_observation import comparar_emitente_observado
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -68,6 +69,14 @@ def listar_documentos_para_conferencia_mei(
         raise HTTPException(
             status_code=503, detail="CONFERENCIA_DOCUMENTAL_INDISPONIVEL"
         ) from None
+    resultado["observacoes_emitente"] = [
+        comparar_emitente_observado(
+            documento_id=documento.id,
+            cnpj_empresa=empresa.cnpj,
+            cnpj_emitente=documento.cnpj_emitente,
+        )
+        for documento in documentos
+    ]
     response.headers["Cache-Control"] = "private, no-store"
     return resultado
 
