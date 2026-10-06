@@ -227,6 +227,7 @@ def ensure_sqlite_schema_compat() -> None:
     _sqlite_add_missing_columns(models.TabelaPMPF)
     _sqlite_add_missing_columns(models.ContadorEmpresaVinculo)
     _sqlite_add_missing_columns(models.AlertaFiscal)
+    _sqlite_add_missing_columns(models.DocumentoFiscal)
     _sqlite_ensure_alert_effect_idempotency_unique()
 
 

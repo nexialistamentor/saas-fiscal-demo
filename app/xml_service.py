@@ -332,6 +332,7 @@ def persistir_documento_fiscal(
         conteudo_sha256=conteudo_sha256,
         chave_nfe=chave_nfe.strip() if chave_nfe else chave_nfe,
         numero_nota=dados.get("numero_nota"),
+        cnpj_emitente=dados.get("cnpj"),
         data_emissao=data_emissao,
         tipo=dados.get("tipo"),
         valor_total=dados.get("valor_total"),
@@ -391,4 +392,3 @@ def persistir_documento_fiscal(
     db.commit()
 
     return documento
-
