@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app import models
@@ -10,8 +13,63 @@ from app.services.resultado_provenance_service import (
     verificar_resultado_persistido,
 )
 from app.services.analysis_types import ANALYSIS_TYPE_MEI_TAX
+from app.services.mei_receita_documental_selection import (
+    selecionar_documentos_para_conferencia,
+)
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+
+
+@router.get("/mei/{empresa_id}/conferencia-documental")
+def listar_documentos_para_conferencia_mei(
+    response: Response,
+    ano_calendario: int = Query(..., ge=1900, le=9999),
+    empresa: models.Empresa = Depends(tenant_empresa),
+    db: Session = Depends(get_db),
+):
+    """Read owned documentary observations without certifying revenue."""
+    documentos = (
+        db.query(models.DocumentoFiscal)
+        .filter(
+            models.DocumentoFiscal.empresa_id == empresa.id,
+            or_(
+                models.DocumentoFiscal.data_emissao.is_(None),
+                models.DocumentoFiscal.data_emissao.between(
+                    date(ano_calendario, 1, 1), date(ano_calendario, 12, 31)
+                ),
+            ),
+        )
+        .order_by(models.DocumentoFiscal.id)
+        .limit(100001)
+        .all()
+    )
+    if len(documentos) > 100000:
+        raise HTTPException(status_code=503, detail="CONFERENCIA_DOCUMENTAL_INDISPONIVEL")
+    metadados = [
+        {
+            "id": documento.id,
+            "empresa_id": documento.empresa_id,
+            "data_emissao": documento.data_emissao.isoformat()
+            if documento.data_emissao is not None else None,
+            "tipo": documento.tipo,
+            "valor_total": documento.valor_total,
+            "chave_nfe": documento.chave_nfe,
+            "conteudo_sha256": documento.conteudo_sha256,
+        }
+        for documento in documentos
+    ]
+    try:
+        resultado = selecionar_documentos_para_conferencia(
+            empresa_id=empresa.id,
+            ano_calendario=ano_calendario,
+            documentos=metadados,
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=503, detail="CONFERENCIA_DOCUMENTAL_INDISPONIVEL"
+        ) from None
+    response.headers["Cache-Control"] = "private, no-store"
+    return resultado
 
 
 @router.get("/analises/{empresa_id}")
