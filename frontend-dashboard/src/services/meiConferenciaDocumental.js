@@ -39,6 +39,23 @@ function validar(body, empresaId, ano) {
       vistos.add(observacao.documento_id)
     }
   }
+  if (Object.hasOwn(body, 'observacoes_operacao')) {
+    if (!Array.isArray(body.observacoes_operacao) || body.observacoes_operacao.length !== ids.size) throw Error('Operações inválidas')
+    const documentosVistos = new Set(), itensVistos = new Set()
+    for (const observacao of body.observacoes_operacao) {
+      if (!observacao || !ids.has(observacao.documento_id) || documentosVistos.has(observacao.documento_id)
+          || !Array.isArray(observacao.itens)) throw Error('Operação inválida')
+      for (const campo of ['natureza_operacao_observada', 'finalidade_emissao_observada']) {
+        if (observacao[campo] !== null && typeof observacao[campo] !== 'string') throw Error('Operação inválida')
+      }
+      for (const item of observacao.itens) {
+        if (!Number.isSafeInteger(item?.item_id) || item.item_id <= 0 || itensVistos.has(item.item_id)
+            || (item.cfop_observado !== null && typeof item.cfop_observado !== 'string')) throw Error('Item inválido')
+        itensVistos.add(item.item_id)
+      }
+      documentosVistos.add(observacao.documento_id)
+    }
+  }
   return body
 }
 export function criarLeitorConferenciaDocumentalMei({ baseUrl, fetchAutenticado, onState }) {

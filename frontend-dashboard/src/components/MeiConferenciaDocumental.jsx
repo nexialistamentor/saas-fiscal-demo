@@ -18,12 +18,19 @@ const estadosEmitente = {
   invalido: 'CNPJ observado fora do formato comparável',
   empresa_sem_cnpj_comparavel: 'Empresa sem CNPJ comparável',
 }
-function Documentos({ itens, observacoes = [] }) {
+function Documentos({ itens, observacoes = [], operacoes = [] }) {
+  const operacoesPorDocumento = new Map(operacoes.map(item => [item.documento_id, item]))
   const porDocumento = new Map(observacoes.map(item => [item.documento_id, item]))
   return <ul>{itens.map(item => <li key={item.documento_id}>
     <strong>Documento #{item.documento_id}</strong>
     <p>Emitente observado: {porDocumento.get(item.documento_id)?.cnpj_emitente_observado || 'não informado'}.
       {' '}{estadosEmitente[porDocumento.get(item.documento_id)?.estado] || 'Comparação do emitente indisponível'}.</p>
+    <p>Natureza observada: {operacoesPorDocumento.get(item.documento_id)?.natureza_operacao_observada || 'não informada'}.</p>
+    <p>Finalidade observada: {operacoesPorDocumento.get(item.documento_id)?.finalidade_emissao_observada || 'não informada'}.</p>
+    {operacoesPorDocumento.get(item.documento_id)?.itens.length
+      ? <ul>{operacoesPorDocumento.get(item.documento_id).itens.map(observado =>
+        <li key={observado.item_id}>Item #{observado.item_id} — CFOP observado: {observado.cfop_observado || 'não informado'}.</li>)}</ul>
+      : <p>Nenhum item observado disponível.</p>}
     <p>Emissão: {item.metadados.data_emissao || 'não informada'}. Valor registrado: {item.metadados.valor_total === null ? 'não informado' : item.metadados.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.</p>
     <p>{item.motivos.map(motivo => motivos[motivo] || 'Informação documental pendente').join('; ')}.</p>
   </li>)}</ul>
@@ -42,15 +49,16 @@ export default function MeiConferenciaDocumental({ empresaId }) {
     <h3 id="mei-conferencia-titulo">Documentos para conferência anual</h3>
     <p>Este inventário não comprova a receita anual completa. Os valores dos documentos ainda não são receitas confirmadas. A conferência automática dessas pendências ainda não está disponível.</p>
     <p>A comparação de CNPJ não comprova autenticidade nem confirma receita.</p>
+    <p>A natureza, a finalidade e os CFOPs são informações observadas no documento; sua apresentação não confirma receita nem situação fiscal.</p>
     <label>Ano de referência <input type="number" min="1900" max="9999" step="1" value={ano} onChange={event => { client.invalidar(); setState({ resultado: null, loading: false, erro: '' }); setAno(event.target.value) }} /></label>
     <button type="button" disabled={state.loading || !Number.isInteger(anoCalendario) || anoCalendario < 1900 || anoCalendario > 9999} onClick={() => client.carregar({ empresaId, anoCalendario, enabled: true })}>Atualizar documentos</button>
     {state.loading && <p role="status">Carregando documentos...</p>}
     {state.erro && <p role="alert">{state.erro}</p>}
     {resultado && <>
       <h4>Documentos do ano selecionado</h4>
-      {resultado.documentos_para_revisao.length ? <Documentos itens={resultado.documentos_para_revisao} observacoes={resultado.observacoes_emitente} /> : <p>Nenhum documento encontrado para este ano. Isso não significa receita anual zero.</p>}
+      {resultado.documentos_para_revisao.length ? <Documentos itens={resultado.documentos_para_revisao} observacoes={resultado.observacoes_emitente} operacoes={resultado.observacoes_operacao} /> : <p>Nenhum documento encontrado para este ano. Isso não significa receita anual zero.</p>}
       <h4>Documentos sem período comprovado</h4>
-      {resultado.documentos_sem_periodo.length ? <Documentos itens={resultado.documentos_sem_periodo} observacoes={resultado.observacoes_emitente} /> : <p>Nenhum documento sem data encontrado.</p>}
+      {resultado.documentos_sem_periodo.length ? <Documentos itens={resultado.documentos_sem_periodo} observacoes={resultado.observacoes_emitente} operacoes={resultado.observacoes_operacao} /> : <p>Nenhum documento sem data encontrado.</p>}
     </>}
   </section>
 }
