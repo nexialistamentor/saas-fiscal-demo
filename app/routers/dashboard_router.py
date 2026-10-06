@@ -77,6 +77,41 @@ def listar_documentos_para_conferencia_mei(
         )
         for documento in documentos
     ]
+    itens = (
+        db.query(models.ItemFiscal)
+        .join(models.DocumentoFiscal,
+              models.ItemFiscal.documento_id == models.DocumentoFiscal.id)
+        .filter(
+            models.DocumentoFiscal.empresa_id == empresa.id,
+            or_(
+                models.DocumentoFiscal.data_emissao.is_(None),
+                models.DocumentoFiscal.data_emissao.between(
+                    date(ano_calendario, 1, 1), date(ano_calendario, 12, 31)
+                ),
+            ),
+        )
+        .order_by(models.ItemFiscal.documento_id, models.ItemFiscal.id)
+        .limit(100001)
+        .all()
+    )
+    if len(itens) > 100000:
+        raise HTTPException(status_code=503, detail="CONFERENCIA_DOCUMENTAL_INDISPONIVEL")
+    itens_por_documento = {documento.id: [] for documento in documentos}
+    for item in itens:
+        if item.documento_id not in itens_por_documento:
+            raise HTTPException(status_code=503, detail="CONFERENCIA_DOCUMENTAL_INDISPONIVEL")
+        itens_por_documento[item.documento_id].append(
+            {"item_id": item.id, "cfop_observado": item.cfop}
+        )
+    resultado["observacoes_operacao"] = [
+        {
+            "documento_id": documento.id,
+            "natureza_operacao_observada": documento.natureza_operacao_observada,
+            "finalidade_emissao_observada": documento.finalidade_emissao_observada,
+            "itens": itens_por_documento[documento.id],
+        }
+        for documento in documentos
+    ]
     response.headers["Cache-Control"] = "private, no-store"
     return resultado
 
