@@ -22,6 +22,23 @@ function validar(body, empresaId, ano) {
       ids.add(item.documento_id)
     }
   }
+  // Older inventories carry no emitter observations. Never invent them.
+  if (Object.hasOwn(body, 'observacoes_emitente')) {
+    if (!Array.isArray(body.observacoes_emitente) || body.observacoes_emitente.length !== ids.size) throw Error('Observações inválidas')
+    const vistos = new Set()
+    for (const observacao of body.observacoes_emitente) {
+      if (!observacao || !ids.has(observacao.documento_id) || vistos.has(observacao.documento_id)
+          || !['coincidente', 'divergente', 'ausente', 'invalido', 'empresa_sem_cnpj_comparavel'].includes(observacao.estado)) throw Error('Observação inválida')
+      const cnpj = observacao.cnpj_emitente_observado
+      const comparavel = typeof cnpj === 'string' && /^[0-9]{14}$/.test(cnpj)
+      if (observacao.estado === 'ausente') {
+        if (cnpj !== null && cnpj !== '') throw Error('Observação incoerente')
+      } else if (observacao.estado === 'invalido') {
+        if (typeof cnpj !== 'string' || cnpj === '' || comparavel) throw Error('Observação incoerente')
+      } else if (!comparavel) throw Error('Observação incoerente')
+      vistos.add(observacao.documento_id)
+    }
+  }
   return body
 }
 export function criarLeitorConferenciaDocumentalMei({ baseUrl, fetchAutenticado, onState }) {
