@@ -154,6 +154,8 @@ def ler_xml_unico(caminho_xml: str = None, xml_bytes: bytes = None):
     resultado = {
         "chave_nfe": chave_nfe,
         "numero_nota": numero_nota,
+        "natureza_operacao_observada": _extrair_texto(ide, "nfe:natOp", ns),
+        "finalidade_emissao_observada": _extrair_texto(ide, "nfe:finNFe", ns),
         "tipo": tipo,
         "cnpj": cnpj,
         "razao_social": razao_social,
@@ -333,6 +335,8 @@ def persistir_documento_fiscal(
         chave_nfe=chave_nfe.strip() if chave_nfe else chave_nfe,
         numero_nota=dados.get("numero_nota"),
         cnpj_emitente=dados.get("cnpj"),
+        natureza_operacao_observada=dados.get("natureza_operacao_observada"),
+        finalidade_emissao_observada=dados.get("finalidade_emissao_observada"),
         data_emissao=data_emissao,
         tipo=dados.get("tipo"),
         valor_total=dados.get("valor_total"),
