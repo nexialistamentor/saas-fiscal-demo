@@ -1254,6 +1254,10 @@ class DocumentoFiscal(Base):
     conteudo_sha256 = Column(String(64), nullable=True)
     chave_nfe = Column(String, nullable=True)
     numero_nota = Column(String, nullable=True)
+    # Observation from parsed XML, not proof of authenticity or revenue.
+    cnpj_emitente = Column(String, nullable=True)
+    natureza_operacao_observada = Column(String, nullable=True)
+    finalidade_emissao_observada = Column(String, nullable=True)
     data_emissao = Column(Date, nullable=True)
     tipo = Column(String, nullable=True)
     valor_total = Column(Float, nullable=True)

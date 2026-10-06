@@ -3,6 +3,7 @@ import "./App.css"
 import useMeiDashboard from "./hooks/useMeiDashboard"
 import MeiHistoricoAlertas from "./components/MeiHistoricoAlertas"
 import MeiAssistente from "./components/MeiAssistente"
+import MeiConferenciaDocumental from "./components/MeiConferenciaDocumental"
 import useMeiCompetenciaCheckout from "./hooks/useMeiCompetenciaCheckout"
 import useCpfDashboard from "./hooks/useCpfDashboard"
 import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
@@ -2256,6 +2257,10 @@ function App() {
         {usuario && tipoPerfil === "mei" && perfilAtual.status_empresa === "ativa"
           && Number.isInteger(idPerfil) && idPerfil > 0 && (
           <MeiAssistente key={idPerfil} empresaId={idPerfil} />
+        )}
+
+        {isExistingMei && (
+          <MeiConferenciaDocumental key={idPerfil} empresaId={idPerfil} />
         )}
 
         {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && (

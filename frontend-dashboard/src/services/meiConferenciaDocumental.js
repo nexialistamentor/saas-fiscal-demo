@@ -1,0 +1,83 @@
+function validar(body, empresaId, ano) {
+  if (!body || body.empresa_id !== empresaId || body.ano_calendario !== ano
+      || body.completude_anual_comprovada !== false || body.total_receita_confirmada !== null
+      || !Array.isArray(body.receitas_confirmadas) || body.receitas_confirmadas.length
+      || !Number.isInteger(body.duplicatas_ignoradas) || body.duplicatas_ignoradas < 0) throw Error('Contrato inválido')
+  const ids = new Set()
+  for (const campo of ['documentos_para_revisao', 'documentos_sem_periodo']) {
+    if (!Array.isArray(body[campo])) throw Error('Contrato inválido')
+    for (const item of body[campo]) {
+      const m = item?.metadados
+      if (!Number.isInteger(item?.documento_id) || item.documento_id <= 0 || ids.has(item.documento_id)
+          || item.categoria_receita !== null || !m || m.id !== item.documento_id || m.empresa_id !== empresaId
+          || !Array.isArray(item.motivos) || item.motivos.some(x => typeof x !== 'string' || !x)
+          || !['EMITENTE_NAO_COMPROVADO', 'NATUREZA_OPERACAO_NAO_COMPROVADA', 'ESTADO_FISCAL_NAO_COMPROVADO'].every(x => item.motivos.includes(x))) throw Error('Documento inválido')
+      if (campo === 'documentos_sem_periodo') {
+        if (m.data_emissao !== null || !item.motivos.includes('PERIODO_NAO_COMPROVADO')) throw Error('Período inválido')
+      } else if (typeof m.data_emissao !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(m.data_emissao)
+          || Number(m.data_emissao.slice(0, 4)) !== ano
+          || new Date(m.data_emissao + 'T00:00:00Z').toISOString().slice(0, 10) !== m.data_emissao) throw Error('Período inválido')
+      if (m.valor_total !== null && (typeof m.valor_total !== 'number' || !Number.isFinite(m.valor_total) || m.valor_total < 0)) throw Error('Valor inválido')
+      if (m.tipo !== null && !['entrada', 'saida'].includes(m.tipo)) throw Error('Tipo inválido')
+      ids.add(item.documento_id)
+    }
+  }
+  // Older inventories carry no emitter observations. Never invent them.
+  if (Object.hasOwn(body, 'observacoes_emitente')) {
+    if (!Array.isArray(body.observacoes_emitente) || body.observacoes_emitente.length !== ids.size) throw Error('Observações inválidas')
+    const vistos = new Set()
+    for (const observacao of body.observacoes_emitente) {
+      if (!observacao || !ids.has(observacao.documento_id) || vistos.has(observacao.documento_id)
+          || !['coincidente', 'divergente', 'ausente', 'invalido', 'empresa_sem_cnpj_comparavel'].includes(observacao.estado)) throw Error('Observação inválida')
+      const cnpj = observacao.cnpj_emitente_observado
+      const comparavel = typeof cnpj === 'string' && /^[0-9]{14}$/.test(cnpj)
+      if (observacao.estado === 'ausente') {
+        if (cnpj !== null && cnpj !== '') throw Error('Observação incoerente')
+      } else if (observacao.estado === 'invalido') {
+        if (typeof cnpj !== 'string' || cnpj === '' || comparavel) throw Error('Observação incoerente')
+      } else if (!comparavel) throw Error('Observação incoerente')
+      vistos.add(observacao.documento_id)
+    }
+  }
+  if (Object.hasOwn(body, 'observacoes_operacao')) {
+    if (!Array.isArray(body.observacoes_operacao) || body.observacoes_operacao.length !== ids.size) throw Error('Operações inválidas')
+    const documentosVistos = new Set(), itensVistos = new Set()
+    for (const observacao of body.observacoes_operacao) {
+      if (!observacao || !ids.has(observacao.documento_id) || documentosVistos.has(observacao.documento_id)
+          || !Array.isArray(observacao.itens)) throw Error('Operação inválida')
+      for (const campo of ['natureza_operacao_observada', 'finalidade_emissao_observada']) {
+        if (observacao[campo] !== null && typeof observacao[campo] !== 'string') throw Error('Operação inválida')
+      }
+      for (const item of observacao.itens) {
+        if (!Number.isSafeInteger(item?.item_id) || item.item_id <= 0 || itensVistos.has(item.item_id)
+            || (item.cfop_observado !== null && typeof item.cfop_observado !== 'string')) throw Error('Item inválido')
+        itensVistos.add(item.item_id)
+      }
+      documentosVistos.add(observacao.documento_id)
+    }
+  }
+  return body
+}
+export function criarLeitorConferenciaDocumentalMei({ baseUrl, fetchAutenticado, onState }) {
+  let sequence = 0, controller = null
+  function invalidar() { sequence++; controller?.abort(); controller = null }
+  async function carregar({ empresaId, anoCalendario, enabled }) {
+    invalidar()
+    const ticket = sequence
+    const vazio = { empresaId, anoCalendario, loading: false, resultado: null, erro: '' }
+    if (enabled !== true || !Number.isInteger(empresaId) || empresaId <= 0 || !Number.isInteger(anoCalendario)
+        || anoCalendario < 1900 || anoCalendario > 9999) { onState(vazio); return }
+    onState({ ...vazio, loading: true })
+    const request = new AbortController(); controller = request
+    const timeout = setTimeout(() => request.abort(), 15000)
+    try {
+      const response = await fetchAutenticado(`${baseUrl}/dashboard/mei/${empresaId}/conferencia-documental?ano_calendario=${anoCalendario}`, { method: 'GET', cache: 'no-store', signal: request.signal })
+      if (!response?.ok) throw Error('Indisponível')
+      const resultado = validar(await response.json(), empresaId, anoCalendario)
+      if (ticket === sequence) onState({ ...vazio, resultado })
+    } catch {
+      if (ticket === sequence) onState({ ...vazio, erro: 'Não foi possível carregar os documentos. Atualize ou entre novamente se a sessão expirou.' })
+    } finally { clearTimeout(timeout); request.abort() }
+  }
+  return { carregar, invalidar }
+}
