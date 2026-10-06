@@ -21,7 +21,8 @@ from app.routers.dashboard_router import router
 from app.security import criar_token
 
 Base.metadata.create_all(engine, tables=[models.Plano.__table__,
-    models.User.__table__, models.Empresa.__table__, models.DocumentoFiscal.__table__])
+    models.User.__table__, models.Empresa.__table__, models.DocumentoFiscal.__table__,
+    models.ItemFiscal.__table__])
 with SessionLocal() as db:
     db.add_all([models.User(id=1, email="owner@example.invalid", hashed_password="unused"),
                 models.User(id=2, email="other@example.invalid", hashed_password="unused")])
