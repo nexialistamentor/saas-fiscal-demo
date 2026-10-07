@@ -491,7 +491,7 @@ def test_malformed_official_shapes_fail_closed_and_sanitized(
             _mutated_data(
                 _official_pdf_data(),
                 lambda document: document.update(
-                    {"detalhamento": [document["detalhamento"]]}
+                    {"detalhamento": [document["detalhamento"], document["detalhamento"]]}
                 ),
             ),
         ),
@@ -774,3 +774,59 @@ def test_competencia_sem_autoridade_bloqueia_antes_de_composicao_ou_io(
         db.close()
 
     assert consumo_depois == consumo_antes
+
+
+def _pdf_with_singleton_detail(**kwargs):
+    document = json.loads(_official_pdf_data(**kwargs))[0]
+    document["detalhamento"] = [document["detalhamento"]]
+    return json.dumps([document], separators=(",", ":"))
+
+
+def test_pdf_singleton_detail_preserves_exact_official_document(
+    client, monkeypatch, isolated_route
+):
+    stub = StubClient(data=_pdf_with_singleton_detail())
+    _install_client(monkeypatch, isolated_route, stub)
+    response = client.post(ROUTE, json=VALID_BODY)
+    assert response.status_code == 200, response.text
+    assert response.json() == {
+        "empresa_id": 41,
+        "periodo_apuracao": "202607",
+        "formato": "pdf",
+        "servico": "GERARDASPDF21",
+        "origem_oficial": "SERPRO_PGMEI",
+        "estado_oficial": "emitido",
+        "documento": {
+            "cnpj": "12345678000190",
+            "periodo_apuracao": "202607",
+            "numero_documento": "12345678901234567",
+            "data_vencimento": "20260820",
+            "data_limite_acolhimento": "20260820",
+            "valor_total": 86.05,
+            "pdf_base64": PDF_BASE64,
+        },
+    }
+    _assert_private_data_absent(response)
+
+
+@pytest.mark.parametrize("detail", [[], [None], ["private-official-text"], [{}]])
+def test_pdf_invalid_singleton_details_remain_closed(
+    client, monkeypatch, isolated_route, detail
+):
+    stub = StubClient(data=_official_pdf_data(detalhamento=detail))
+    _install_client(monkeypatch, isolated_route, stub)
+    _assert_sanitized_502(client.post(ROUTE, json=VALID_BODY))
+
+
+@pytest.mark.parametrize("overrides", [
+    {"cnpjCompleto": "99999999000199"},
+    {"detail_overrides": {"periodoApuracao": "202608"}},
+    {"detail_overrides": {"valores": {"total": -1}}},
+    {"pdf": "bm90IGEgUERG"},
+])
+def test_pdf_singleton_detail_keeps_identity_period_amount_and_pdf_guards(
+    client, monkeypatch, isolated_route, overrides
+):
+    stub = StubClient(data=_pdf_with_singleton_detail(**overrides))
+    _install_client(monkeypatch, isolated_route, stub)
+    _assert_sanitized_502(client.post(ROUTE, json=VALID_BODY))

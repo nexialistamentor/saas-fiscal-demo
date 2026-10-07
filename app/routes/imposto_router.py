@@ -185,6 +185,10 @@ def _normalizar_documento_oficial(
 
     detalhamento = documento.get("detalhamento")
     if formato == "pdf":
+        if type(detalhamento) is list:
+            if len(detalhamento) != 1 or type(detalhamento[0]) is not dict:
+                raise ValueError("detalhamento oficial divergente")
+            detalhamento = detalhamento[0]
         if type(detalhamento) is not dict:
             raise ValueError("detalhamento oficial divergente")
     else:
