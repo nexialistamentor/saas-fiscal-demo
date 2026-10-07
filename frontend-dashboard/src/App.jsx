@@ -1788,57 +1788,16 @@ function App() {
 
   if (isOpeningMei) {
     return (
-      <div className="app solveris-mei-theme solveris-opening-app">
+      <div className="app solveris-mei-theme solveris-existing-app">
         <header className="solveris-opening-topbar">
           <strong>SOLVERIS / MEI</strong>
           <button type="button" onClick={handleLogout}>Sair</button>
         </header>
         <main className="solveris-opening-main">
-          <section className="solveris-opening-welcome" aria-labelledby="solveris-opening-heading">
-            <span className="solveris-opening-kicker">Sua jornada na SOLVERIS</span>
-            <h1 id="solveris-opening-heading">Seu negócio começa aqui.</h1>
-            <p>O MEI é só o início. A SOLVERIS acompanha você até o próximo nível.</p>
-            <p className="solveris-opening-status-line">Situação: sua empresa está em fase de abertura. Ainda não há CNPJ vinculado nem DAS disponível.</p>
-          </section>
-          <section className="solveris-opening-steps" aria-labelledby="solveris-steps-heading">
-            <h2 id="solveris-steps-heading">Vamos abrir seu MEI juntos</h2>
-            {openingStep === 0 && (
-              <div className="solveris-opening-panel">
-                <p>Seu acesso está pronto. Vamos começar pela sua atividade, sem simuladores ou questionários extensos.</p>
-                <button type="button" className="solveris-opening-action" onClick={() => setOpeningStep(1)}>Começar minha abertura</button>
-              </div>
-            )}
-            {openingStep === 1 && (
-              <div className="solveris-opening-panel">
-                <p className="solveris-opening-progress">Etapa 1 de 3 — Seu negócio</p>
-                <label htmlFor="opening-activity">O que você pretende fazer no seu negócio?</label>
-                <input id="opening-activity" type="text" maxLength={160} value={openingActivity} onChange={(event) => setOpeningActivity(event.target.value)} placeholder="Ex.: vender roupas, fazer bolos, consertar computadores" />
-                <p className="solveris-opening-note">Esta descrição orienta a conversa; não determina CNAE ou elegibilidade oficial.</p>
-                <button type="button" className="solveris-opening-action" disabled={!openingActivity.trim()} onClick={() => setOpeningStep(2)}>Continuar</button>
-              </div>
-            )}
-            {openingStep === 2 && (
-              <div className="solveris-opening-panel">
-                <p className="solveris-opening-progress">Etapa 2 de 3 — Preparação</p>
-                <p><strong>Sua atividade informada:</strong> {openingActivity}</p>
-                <p>Antes da formalização, confira se a ocupação consta entre as permitidas, os requisitos pessoais e as condições do enquadramento MEI. Esta tela não confirma sua elegibilidade.</p>
-                <label className="solveris-opening-check"><input type="checkbox" checked={openingReadiness} onChange={(event) => setOpeningReadiness(event.target.checked)} /> Entendi que os requisitos e a ocupação precisam de confirmação oficial.</label>
-                <div className="solveris-opening-buttons"><button type="button" className="solveris-opening-secondary" onClick={() => setOpeningStep(1)}>Voltar</button><button type="button" className="solveris-opening-action" disabled={!openingReadiness} onClick={() => setOpeningStep(3)}>Continuar</button></div>
-              </div>
-            )}
-            {openingStep === 3 && (
-              <div className="solveris-opening-panel">
-                <p className="solveris-opening-progress">Etapa 3 de 3 — Formalização</p>
-                <p>A SOLVERIS acompanha sua preparação. A constituição oficial do MEI depende da confirmação pelo serviço governamental competente, com a autenticação exigida.</p>
-                <p>Seu perfil continuará em abertura. Não solicitaremos CNPJ como se já existisse, nem liberaremos DAS antes da validação do registro.</p>
-                <p className="solveris-opening-note">A integração para executar o registro governamental dentro da SOLVERIS ainda não está homologada. Não há abertura oficial automática nesta tela.</p>
-                <button type="button" className="solveris-opening-secondary" onClick={() => setOpeningStep(2)}>Rever preparação</button>
-              </div>
-            )}
-          </section>
-          <section className="solveris-opening-next" aria-labelledby="solveris-next-heading">
-            <h2 id="solveris-next-heading">Seu próximo nível</h2>
-            <p>Quando sua empresa estiver habilitada, você poderá acompanhar os serviços disponíveis na SOLVERIS. Orientações por ramo e acompanhamento com avatares fazem parte da evolução planejada do produto.</p>
+          <section className="solveris-existing-overview" role="alert">
+            <h1>Seu acesso MEI precisa de confirmação</h1>
+            <p>Este cadastro ainda não está habilitado para os serviços de MEI existente. Procure o atendimento SOLVERIS para verificar o cadastro.</p>
+            <p>A SOLVERIS não oferece abertura de MEI nesta jornada. Nenhum serviço fiscal foi liberado.</p>
           </section>
         </main>
       </div>
