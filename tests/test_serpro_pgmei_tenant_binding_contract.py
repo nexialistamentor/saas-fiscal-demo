@@ -2,13 +2,19 @@ import base64
 import json
 import uuid
 from contextlib import contextmanager
+from datetime import datetime
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
 
 from app.database import get_db
 from app.main import app
+from app import models
 from app.models import Empresa, User
+from app.services.mei_competencia_authority import tem_autoridade_economica_mei_competencia
+from app.services.mei_competencia_authority_writer import MeiCompetenciaAuthorityWriter
+from app.services.mei_competencia_checkout_intent import MeiCompetenciaCheckoutIntent
 from app.rate_limit import limiter
 
 
@@ -83,6 +89,58 @@ def _create_active_mei(email: str, label: str) -> int:
         db.commit()
         db.refresh(empresa)
         return empresa.id
+
+
+def _prepare_paid_competence(empresa_id: int, competencia: str) -> None:
+    """Synthetic local purchase, materialized through the canonical writers."""
+    with _db_session() as db:
+        empresa = db.query(Empresa).filter(Empresa.id == empresa_id).one()
+        key = "tenant-test-" + uuid.uuid4().hex
+        offer = models.CheckoutOffer(
+            codigo="mei-das-tenant-test-" + uuid.uuid4().hex,
+            nome_publico="Synthetic MEI DAS test",
+            vertical="tax", commercial_model="one_time",
+            subject_type="company", estado="published", moeda="BRL",
+            preco=Decimal("39.90"), billing_period=None,
+            usage_unit="competence", usage_limit=1, contract_version=1,
+        )
+        offer.capabilities = [models.CheckoutOfferCapability(codigo="mei.das")]
+        db.add(offer)
+        db.flush()
+        MeiCompetenciaCheckoutIntent(db).persist(
+            user_id=empresa.user_id, empresa_id=empresa_id,
+            competencia=competencia, offer_code=offer.codigo,
+            checkout_idempotency_key=key,
+        )
+        order = models.OrdemCheckout(
+            user_id=empresa.user_id, empresa_id=empresa_id, plano_id=None,
+            offer_id=offer.id, offer_code=offer.codigo, contract_version=1,
+            vertical="tax", commercial_model="one_time",
+            subject_type="company", subject_id=empresa_id,
+            valor=Decimal("39.90"), moeda="BRL", billing_period=None,
+            usage_unit="competence", usage_limit=1,
+            idempotency_key=key, estado="paid", payment_id="synthetic-" + key,
+        )
+        order.capabilities = [models.OrdemCheckoutCapability(codigo="mei.das")]
+        db.add(order)
+        db.flush()
+        db.add(models.Pagamento(
+            ordem_checkout_id=order.id, user_id=empresa.user_id, plano_id=None,
+            idempotency_key="notification-" + key, valor=Decimal("39.90"),
+            mp_payment_id=order.payment_id, status="approved",
+            confirmado_em=datetime.utcnow(),
+        ))
+        db.flush()
+        binding = MeiCompetenciaAuthorityWriter(db).materialize(order.id)
+        assert binding.empresa_id == empresa_id
+        assert binding.competencia == competencia
+        assert tem_autoridade_economica_mei_competencia(
+            db, empresa_id=empresa_id, competencia=competencia, capability="mei.das"
+        )
+        assert not tem_autoridade_economica_mei_competencia(
+            db, empresa_id=empresa_id, competencia="202608", capability="mei.das"
+        )
+        db.commit()
 
 
 class OfflineTransport:
@@ -163,6 +221,7 @@ def test_owner_crosses_real_tenant_guard_and_publishes_path_identity(
         cnpj = empresa.cnpj
 
     monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", cnpj)
+    _prepare_paid_competence(empresa_id, VALID_BODY["periodo_apuracao"])
 
     response = client.post(
         f"/imposto/mei/{empresa_id}/das",
@@ -191,4 +250,21 @@ def test_non_integer_empresa_id_is_rejected_before_serpro_composition(
     )
 
     assert response.status_code == 422, response.text
+    assert _isolated_pgmei_boundary == []
+
+
+def test_owner_without_paid_competence_still_blocks_before_provider(
+    client, _isolated_pgmei_boundary, monkeypatch
+):
+    email, headers = _register_login_and_accept_terms(client, "unpaid-owner")
+    empresa_id = _create_active_mei(email, "unpaid-owner")
+    with _db_session() as db:
+        empresa = db.query(Empresa).filter(Empresa.id == empresa_id).one()
+        cnpj = empresa.cnpj
+    monkeypatch.setenv("SERPRO_PGMEI_CANARY_CNPJ", cnpj)
+    response = client.post(
+        f"/imposto/mei/{empresa_id}/das", headers=headers, json=VALID_BODY
+    )
+    assert response.status_code == 403, response.text
+    assert response.json()["detail"]["tipo_bloqueio"] == "AUTORIDADE_ECONOMICA_MEI_COMPETENCIA_AUSENTE"
     assert _isolated_pgmei_boundary == []
