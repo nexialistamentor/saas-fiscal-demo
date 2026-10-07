@@ -3,6 +3,7 @@ import binascii
 from datetime import date, datetime
 from functools import lru_cache
 import json
+import logging
 import math
 import os
 import re
@@ -41,6 +42,8 @@ from app.services.tax_engines.mei_constants import (
     MEI_LIMITE_ANUAL_FATURAMENTO,
     atividade_mei_reconhecida,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -138,6 +141,32 @@ def _data_oficial(value: object) -> bool:
     except ValueError:
         return False
     return True
+
+
+_MEI_DAS_FAILURE_REASONS = {
+    "resposta oficial divergente": "response_shape",
+    "cnpj oficial divergente": "cnpj_mismatch",
+    "detalhamento oficial divergente": "detail_shape",
+    "valores oficiais divergentes": "amount_shape",
+    "total oficial divergente": "total_invalid",
+    "numero oficial divergente": "document_number_invalid",
+    "periodo oficial divergente": "period_mismatch",
+    "data oficial divergente": "date_invalid",
+    "pdf oficial divergente": "pdf_invalid",
+    "codigo de barras oficial divergente": "barcode_invalid",
+    "mensagem oficial divergente": "non_emission_message_invalid",
+}
+
+
+def _log_mei_das_failure(stage: str, error: Exception) -> None:
+    reason = "unclassified"
+    if type(error) is ValueError and len(error.args) == 1 and type(error.args[0]) is str:
+        reason = _MEI_DAS_FAILURE_REASONS.get(error.args[0], "unclassified")
+    try:
+        logger.warning("mei_das_route_failure stage=%s reason=%s", stage, reason)
+    except Exception:
+        # Observability must not replace the existing closed response.
+        pass
 
 
 def _normalizar_documento_oficial(
@@ -372,12 +401,15 @@ def obter_das_mei_oficial(
         raise _bloqueio(503, "AUTORIDADE_OFICIAL_MEI_INDISPONIVEL")
 
     servico = _SERVICOS_PGMEI[dados.formato]
+    failure_stage = "official_request"
     try:
         resultado = client.request(servico, cnpj, dados.periodo_apuracao)
+        failure_stage = "official_response"
         dados_oficiais = resultado.data
         if not isinstance(dados_oficiais, str):
             raise ValueError("resposta oficial divergente")
         if not dados_oficiais.strip():
+            failure_stage = "non_emission_reason"
             motivo = _motivo_nao_emissao(resultado.messages)
             return {
                 "empresa_id": empresa.id,
@@ -389,13 +421,15 @@ def obter_das_mei_oficial(
                 "motivo_oficial": motivo,
                 "documento": None,
             }
+        failure_stage = "document_normalization"
         documento = _normalizar_documento_oficial(
             dados_oficiais,
             dados.formato,
             cnpj,
             dados.periodo_apuracao,
         )
-    except Exception:
+    except Exception as error:
+        _log_mei_das_failure(failure_stage, error)
         raise _bloqueio(502, "AUTORIDADE_OFICIAL_MEI_FALHOU") from None
 
     return {
