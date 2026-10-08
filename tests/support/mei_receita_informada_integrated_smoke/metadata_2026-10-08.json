@@ -1,0 +1,14 @@
+{
+  "head": "7ad9f7e6ca80b237261867789f9be148065aaf10",
+  "mode": "LOCAL_REAL_API_POSTGRES_SYNTHETIC_DATA",
+  "browserWidths": [
+    1280,
+    390
+  ],
+  "databaseRows": 4,
+  "productionAccessed": false,
+  "providersCalled": false,
+  "fullApplicationLoginTested": false,
+  "uncertainCommit": "real POST committed, browser acknowledgement discarded",
+  "read503": "browser injected failure"
+}
