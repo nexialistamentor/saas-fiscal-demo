@@ -4851,3 +4851,25 @@ for _adr020_append_only_model, _adr020_insert_validator in (
 
 del _adr020_append_only_model
 del _adr020_insert_validator
+
+
+class MeiReceitaInformada(Base):
+    """User-supplied revenue; no documentary or fiscal certification."""
+    __tablename__ = "mei_receitas_informadas"
+    __table_args__ = (
+        UniqueConstraint("empresa_id", "identidade_receita", name="uq_mei_receita_informada_identidade"),
+        CheckConstraint("valor >= 0 AND valor <= 9999999999999.99", name="ck_mei_receita_informada_valor"),
+        CheckConstraint("categoria IN ('comercio_industria','servicos')", name="ck_mei_receita_informada_categoria"),
+        CheckConstraint("origem = 'informada_sem_nota'", name="ck_mei_receita_informada_origem"),
+        CheckConstraint("length(identidade_receita) = 36", name="ck_mei_receita_informada_identidade"),
+        Index("ix_mei_receita_informada_empresa_data", "empresa_id", "data_receita"),
+    )
+    id = Column(Integer, primary_key=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    identidade_receita = Column(String(36), nullable=False)
+    data_receita = Column(Date, nullable=False)
+    valor = Column(Numeric(15, 2), nullable=False)
+    categoria = Column(String(32), nullable=False)
+    origem = Column(String(32), nullable=False, default="informada_sem_nota", server_default="informada_sem_nota")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
