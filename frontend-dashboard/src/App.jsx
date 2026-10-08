@@ -4,6 +4,7 @@ import useMeiDashboard from "./hooks/useMeiDashboard"
 import MeiHistoricoAlertas from "./components/MeiHistoricoAlertas"
 import MeiAssistente from "./components/MeiAssistente"
 import MeiConferenciaDocumental from "./components/MeiConferenciaDocumental"
+import MeiReceitasInformadas from "./components/MeiReceitasInformadas"
 import useMeiCompetenciaCheckout from "./hooks/useMeiCompetenciaCheckout"
 import useCpfDashboard from "./hooks/useCpfDashboard"
 import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
@@ -2220,6 +2221,12 @@ function App() {
 
         {isExistingMei && (
           <MeiConferenciaDocumental key={idPerfil} empresaId={idPerfil} />
+        )}
+
+        {usuario && tipoPerfil === "mei" && perfilAtual.status_empresa === "ativa"
+          && Number.isInteger(idPerfil) && idPerfil > 0
+          && Number.isInteger(usuario.id) && usuario.id > 0 && (
+          <MeiReceitasInformadas key={`${usuario.id}:${idPerfil}`} empresaId={idPerfil} usuarioId={usuario.id} />
         )}
 
         {perfilAtual.tipo === "mei" && perfilAtual.status_empresa === "em_abertura" && (
