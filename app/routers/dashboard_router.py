@@ -1,4 +1,14 @@
 from datetime import date
+from uuid import UUID
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, StrictStr, field_validator
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.services.mei_receita_informada_writer import (
+    MeiReceitaInformadaWriter, MeiReceitaInformadaWriterError,
+)
+from app.services.mei_receita_anual_apuracao import apurar_receitas_anuais
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import or_
@@ -19,6 +29,140 @@ from app.services.mei_receita_documental_selection import (
 from app.services.mei_emitente_observation import comparar_emitente_observado
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+
+
+class ReceitaInformadaEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    identidade_receita: StrictStr
+    data_receita: StrictStr
+    valor: StrictStr
+    categoria: StrictStr
+
+    @field_validator("identidade_receita")
+    @classmethod
+    def identidade_canonica(cls, value):
+        try:
+            identity = UUID(value)
+        except ValueError:
+            raise ValueError("IDENTIDADE_INVALIDA") from None
+        if str(identity) != value or identity.version != 4:
+            raise ValueError("IDENTIDADE_INVALIDA")
+        return value
+
+    @field_validator("data_receita")
+    @classmethod
+    def data_canonica(cls, value):
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError:
+            raise ValueError("DATA_INVALIDA") from None
+        if parsed.isoformat() != value or parsed.year < 1900:
+            raise ValueError("DATA_INVALIDA")
+        return value
+
+    @field_validator("valor")
+    @classmethod
+    def valor_canonico(cls, value):
+        import re
+        if not re.fullmatch(r"(?:0|[1-9][0-9]{0,12})\.[0-9]{2}", value, re.ASCII):
+            raise ValueError("VALOR_INVALIDO")
+        return value
+
+    @field_validator("categoria")
+    @classmethod
+    def categoria_valida(cls, value):
+        if value not in ("comercio_industria", "servicos"):
+            raise ValueError("CATEGORIA_INVALIDA")
+        return value
+
+
+def _exigir_mei_ativo_receitas(empresa):
+    if empresa.regime_tributario != "mei" or empresa.status_empresa != "ativa":
+        raise HTTPException(status_code=403, detail="RECEITAS_INFORMADAS_INDISPONIVEIS")
+
+
+def _receita_informada_publica(row):
+    return {
+        "id": row.id, "empresa_id": row.empresa_id,
+        "identidade_receita": row.identidade_receita,
+        "data_receita": row.data_receita.isoformat(),
+        "valor": format(row.valor, ".2f"), "categoria": row.categoria,
+        "origem": row.origem,
+    }
+
+
+@router.post("/mei/{empresa_id}/receitas-informadas")
+def registrar_receita_informada_mei(
+    dados: ReceitaInformadaEntrada,
+    response: Response,
+    empresa: models.Empresa = Depends(tenant_empresa),
+    usuario: models.User = Depends(get_usuario_atual),
+    db: Session = Depends(get_db),
+):
+    _exigir_mei_ativo_receitas(empresa)
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        row = MeiReceitaInformadaWriter(db).registrar(
+            empresa_id=empresa.id, usuario_id=usuario.id, **dados.model_dump()
+        )
+        resultado = _receita_informada_publica(row)
+        db.commit()
+        return resultado
+    except MeiReceitaInformadaWriterError:
+        db.rollback()
+        # A validated request conflicts only when its identity already exists.
+        # Infrastructure failures without a saved identity remain unavailable.
+        try:
+            existing = db.query(models.MeiReceitaInformada).filter(
+                models.MeiReceitaInformada.empresa_id == empresa.id,
+                models.MeiReceitaInformada.identidade_receita == dados.identidade_receita,
+            ).first()
+        except SQLAlchemyError:
+            raise HTTPException(status_code=503, detail="RECEITAS_INFORMADAS_INDISPONIVEIS") from None
+        if existing is not None and (
+            existing.usuario_id != usuario.id
+            or existing.data_receita.isoformat() != dados.data_receita
+            or existing.valor != Decimal(dados.valor)
+            or existing.categoria != dados.categoria
+            or existing.origem != "informada_sem_nota"
+        ):
+            raise HTTPException(status_code=409, detail="RECEITA_IDENTIDADE_CONFLITANTE") from None
+        raise HTTPException(status_code=503, detail="RECEITAS_INFORMADAS_INDISPONIVEIS") from None
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="RECEITAS_INFORMADAS_INDISPONIVEIS") from None
+
+
+@router.get("/mei/{empresa_id}/receitas-informadas")
+def apurar_receitas_informadas_mei(
+    response: Response,
+    ano_calendario: int = Query(..., ge=1900, le=9999),
+    empresa: models.Empresa = Depends(tenant_empresa),
+    db: Session = Depends(get_db),
+):
+    _exigir_mei_ativo_receitas(empresa)
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        rows = db.query(models.MeiReceitaInformada).filter(
+            models.MeiReceitaInformada.empresa_id == empresa.id,
+            models.MeiReceitaInformada.data_receita.between(
+                date(ano_calendario, 1, 1), date(ano_calendario, 12, 31)
+            ),
+        ).order_by(models.MeiReceitaInformada.id).limit(100001).all()
+        if len(rows) > 100000:
+            raise ValueError("RECEITAS_INVALIDAS")
+        receitas = []
+        for row in rows:
+            if row.usuario_id != empresa.user_id or row.origem != "informada_sem_nota":
+                raise ValueError("RECEITA_ORIGEM_INVALIDA")
+            item = _receita_informada_publica(row)
+            item.pop("id")
+            receitas.append({**item, "estado": "vigente"})
+        return apurar_receitas_anuais(
+            empresa_id=empresa.id, ano_calendario=ano_calendario, receitas=receitas
+        )
+    except (SQLAlchemyError, ValueError, TypeError, AttributeError):
+        raise HTTPException(status_code=503, detail="RECEITAS_INFORMADAS_INDISPONIVEIS") from None
 
 
 @router.get("/mei/{empresa_id}/conferencia-documental")
