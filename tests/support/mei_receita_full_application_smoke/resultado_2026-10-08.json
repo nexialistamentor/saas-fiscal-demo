@@ -1,0 +1,49 @@
+{
+  "fullApplicationStartupVerified": true,
+  "realLoginVerified": true,
+  "revenueUiApiPostgresVerified": true,
+  "operationObservationVerified": true,
+  "emitterObservationVerified": true,
+  "documentaryInventoryVerified": true,
+  "status": "PASS",
+  "providerMode": "SIMULATED",
+  "webhookVerified": false,
+  "realPaymentVerified": false,
+  "realSerproVerified": false,
+  "scenarios": [
+    {
+      "width": 1280,
+      "competence": "202607",
+      "registered": true,
+      "login": true,
+      "pendingResume": true,
+      "simulatedConfirmation": true,
+      "pdfDownload": true,
+      "barcode": true,
+      "otherCompetenceBlocked": true,
+      "noDuplicateCharge": true,
+      "noOverflow": true,
+      "noJavaScriptErrors": true,
+      "revenuePersistence": true,
+      "revenueUncertainRecovery": true,
+      "revenuePartialTotals": true
+    },
+    {
+      "width": 390,
+      "competence": "202608",
+      "registered": true,
+      "login": true,
+      "pendingResume": true,
+      "simulatedConfirmation": true,
+      "pdfDownload": true,
+      "barcode": true,
+      "otherCompetenceBlocked": true,
+      "noDuplicateCharge": true,
+      "noOverflow": true,
+      "noJavaScriptErrors": true,
+      "revenuePersistence": true,
+      "revenueUncertainRecovery": true,
+      "revenuePartialTotals": true
+    }
+  ]
+}
