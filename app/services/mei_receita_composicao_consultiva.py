@@ -57,6 +57,22 @@ def compor_receitas_mei(*, empresa_id, ano_calendario, apuracao, selecao_documen
         if type(fonte.get(campo)) is not list or len(fonte[campo]) > 100000:
             raise MeiComposicaoConsultivaError("LISTA_INVALIDA")
 
+    # Observacoes documentais nunca sao aceites sem estrutura minima.
+    for campo in ("documentos_para_revisao", "documentos_sem_periodo"):
+        for documento in selecao_documental[campo]:
+            if not isinstance(documento, Mapping):
+                raise MeiComposicaoConsultivaError("DOCUMENTO_INVALIDO")
+            if (
+                type(documento.get("documento_id")) is not int
+                or documento["documento_id"] <= 0
+            ):
+                raise MeiComposicaoConsultivaError("DOCUMENTO_IDENTIDADE_INVALIDA")
+            motivos = documento.get("motivos")
+            if (
+                type(motivos) is not list
+                or any(type(motivo) is not str or not motivo for motivo in motivos)
+            ):
+                raise MeiComposicaoConsultivaError("DOCUMENTO_MOTIVOS_INVALIDOS")
     return {
         "empresa_id": empresa_id,
         "ano_calendario": ano_calendario,
