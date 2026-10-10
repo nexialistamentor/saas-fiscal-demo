@@ -27,6 +27,7 @@ from app.services.mei_receita_documental_selection import (
     selecionar_documentos_para_conferencia,
 )
 from app.services.mei_emitente_observation import comparar_emitente_observado
+from app.services.mei_receita_composicao_consultiva import compor_receitas_mei
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -259,6 +260,106 @@ def listar_documentos_para_conferencia_mei(
     response.headers["Cache-Control"] = "private, no-store"
     return resultado
 
+
+@router.get("/mei/{empresa_id}/composicao-consultiva")
+def consultar_composicao_consultiva_mei(
+    response: Response,
+    ano_calendario: int = Query(..., ge=1900, le=9999),
+    empresa: models.Empresa = Depends(tenant_empresa),
+    db: Session = Depends(get_db),
+):
+    """Composicao somente leitura, sem certificar receita documental."""
+    _exigir_mei_ativo_receitas(empresa)
+    response.headers["Cache-Control"] = "private, no-store"
+
+    inicio = date(ano_calendario, 1, 1)
+    fim = date(ano_calendario, 12, 31)
+
+    try:
+        linhas_receitas = (
+            db.query(models.MeiReceitaInformada)
+            .filter(
+                models.MeiReceitaInformada.empresa_id == empresa.id,
+                models.MeiReceitaInformada.data_receita.between(inicio, fim),
+            )
+            .order_by(models.MeiReceitaInformada.id)
+            .limit(100001)
+            .all()
+        )
+
+        if len(linhas_receitas) > 100000:
+            raise ValueError("RECEITAS_INVALIDAS")
+
+        receitas = []
+        for linha in linhas_receitas:
+            if (
+                linha.usuario_id != empresa.user_id
+                or linha.origem != "informada_sem_nota"
+            ):
+                raise ValueError("RECEITA_ORIGEM_INVALIDA")
+
+            item = _receita_informada_publica(linha)
+            item.pop("id")
+            receitas.append({**item, "estado": "vigente"})
+
+        apuracao = apurar_receitas_anuais(
+            empresa_id=empresa.id,
+            ano_calendario=ano_calendario,
+            receitas=receitas,
+        )
+
+        linhas_documentos = (
+            db.query(models.DocumentoFiscal)
+            .filter(
+                models.DocumentoFiscal.empresa_id == empresa.id,
+                or_(
+                    models.DocumentoFiscal.data_emissao.is_(None),
+                    models.DocumentoFiscal.data_emissao.between(inicio, fim),
+                ),
+            )
+            .order_by(models.DocumentoFiscal.id)
+            .limit(100001)
+            .all()
+        )
+
+        if len(linhas_documentos) > 100000:
+            raise ValueError("DOCUMENTOS_INVALIDOS")
+
+        metadados = [
+            {
+                "id": documento.id,
+                "empresa_id": documento.empresa_id,
+                "data_emissao": (
+                    documento.data_emissao.isoformat()
+                    if documento.data_emissao is not None
+                    else None
+                ),
+                "tipo": documento.tipo,
+                "valor_total": documento.valor_total,
+                "chave_nfe": documento.chave_nfe,
+                "conteudo_sha256": documento.conteudo_sha256,
+            }
+            for documento in linhas_documentos
+        ]
+
+        selecao = selecionar_documentos_para_conferencia(
+            empresa_id=empresa.id,
+            ano_calendario=ano_calendario,
+            documentos=metadados,
+        )
+
+        return compor_receitas_mei(
+            empresa_id=empresa.id,
+            ano_calendario=ano_calendario,
+            apuracao=apuracao,
+            selecao_documental=selecao,
+        )
+
+    except (SQLAlchemyError, ValueError, TypeError, AttributeError, KeyError):
+        raise HTTPException(
+            status_code=503,
+            detail="COMPOSICAO_CONSULTIVA_INDISPONIVEL",
+        ) from None
 
 @router.get("/analises/{empresa_id}")
 def listar_analises_empresa(
