@@ -4,6 +4,7 @@ Sem acesso ao banco, provedores, motor DAS ou motores de outros regimes.
 """
 from collections.abc import Mapping
 from copy import deepcopy
+from decimal import Decimal
 import re
 
 
@@ -39,7 +40,8 @@ def compor_receitas_mei(*, empresa_id, ano_calendario, apuracao, selecao_documen
     total = apuracao.get("total_receitas_incluidas")
     if (
         type(total) is not str
-        or re.fullmatch(r"(?:0|[1-9][0-9]{0,12})\.[0-9]{2}", total, re.ASCII) is None
+        or re.fullmatch(r"(?:0|[1-9][0-9]{0,17})\.[0-9]{2}", total, re.ASCII) is None
+        or Decimal(total) > Decimal("999999999999999000.00")
     ):
         raise MeiComposicaoConsultivaError("TOTAL_INFORMADO_INVALIDO")
 
