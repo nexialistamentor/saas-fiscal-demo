@@ -48,6 +48,9 @@ export async function login(email, password) {
   })
 
   if (!res.ok) {
+    if (res.status === 422) {
+      throw new Error("Informe um email válido e uma senha.")
+    }
     const err = await res.json().catch(() => ({}))
     const detalhe = Array.isArray(err.detail)
       ? err.detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
