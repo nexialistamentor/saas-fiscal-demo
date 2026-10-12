@@ -681,6 +681,11 @@ function App() {
     e.preventDefault()
     setErroLogin(null)
 
+    if (!email.trim() || !password.trim()) {
+      setErroLogin("Preencha o email e a senha.")
+      return
+    }
+
     try {
       await login(email, password)
       window.location.reload()
@@ -1189,6 +1194,7 @@ function App() {
                 className="solveris-login-field"
                 id="solveris-login-email"
                 type="email"
+                required
                 autoComplete="email"
                 placeholder="email"
                 value={email}
@@ -1200,6 +1206,7 @@ function App() {
                 <input
                   className="solveris-login-field"
                   id="solveris-login-password"
+                  required
                   autoComplete="current-password"
                   type={mostrarSenhaLogin ? "text" : "password"}
                   placeholder="senha"
