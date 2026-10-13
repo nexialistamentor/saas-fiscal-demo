@@ -1,4 +1,3 @@
-import hashlib
 import re
 from pathlib import Path
 
@@ -8,9 +7,6 @@ APP_PATH = ROOT / "frontend-dashboard" / "src" / "App.jsx"
 APP_SOURCE = APP_PATH.read_text(encoding="utf-8")
 
 SESSION_KEY = "solveris.taxReportAcquisitionContext.v1"
-RESUME_FUNCTION_SHA256 = (
-    "ff5d45ba526c444372d5c6ae4c0a49aeb73926ac35a27ba3f5f5e40033addf08"
-)
 
 
 def _balanced_block_after(source: str, marker: str) -> str:
@@ -162,11 +158,44 @@ def test_return_marker_never_creates_browser_payment_or_acquisition_authority() 
     ), "success must never synthesize canonical acquisition identity in the browser"
 
 
-def test_resume_function_remains_the_unchanged_acquisition_authority() -> None:
+def test_resume_function_remains_enterprise_only_acquisition_authority() -> None:
     resume = _function_source("retomarAquisicaoTaxReport")
-    assert hashlib.sha256(resume.encode("utf-8")).hexdigest() == RESUME_FUNCTION_SHA256, (
-        "retomarAquisicaoTaxReport is GREEN/FROZEN and must remain unchanged in this gate"
+    guard = re.match(
+        r'async\s+function\s+retomarAquisicaoTaxReport\(\)\s*\{\s*'
+        r'if\s*\(\s*tipoPerfil\s*!==\s*["\']empresa["\']\s*\)\s*'
+        r'(?:\{\s*return\s*;?\s*\}|return\s*;?)',
+        resume,
     )
+    assert guard, "ENTERPRISE_ONLY_GUARD_MISSING"
+    assert guard.end() < resume.index("sessionStorage.getItem(")
+
+    # Contexto local identifica o pedido; não fornece identidade adquirida.
+    context_check = resume[resume.index("const contextIsValid"):resume.index("const acquisitionIdempotencyKey")]
+    for field in ("empresa_id", "relatorio_id"):
+        assert f"Number.isInteger(context.{field})" in context_check
+        assert f"context.{field} > 0" in context_check
+    assert 'typeof context.request_fingerprint === "string"' in context_check
+    assert "/^[0-9a-f]{64}$/.test(context.request_fingerprint)" in context_check
+    assert re.search(r"if\s*\(!contextIsValid\)\s*\{[^{}]*\breturn\b", context_check)
+
+    assert (
+        "`tax-report-acquisition:${context.empresa_id}:${context.relatorio_id}:${context.request_fingerprint}`"
+        in resume
+    )
+    assert '"Idempotency-Key": acquisitionIdempotencyKey' in resume
+    assert "${API_BASE}/relatorio/empresas/${context.empresa_id}/acquisitions" in resume
+    assert 'method: "POST"' in resume
+    response = resume.index("const { acquisition_id } = await res.json()")
+    acceptance = resume.index("setTaxReportAcquisitionId(acquisition_id)")
+    assert resume.index("await fetch(") < response < acceptance
+    validation = resume[response:acceptance]
+    assert re.search(
+        r"if\s*\(\s*!Number\.isInteger\(acquisition_id\)\s*\|\|\s*"
+        r"!\(acquisition_id\s*>\s*0\)\s*\)\s*\{\s*return\s*;?\s*\}",
+        validation,
+    )
+    assert re.findall(r"setTaxReportAcquisitionId\(([^)]*)\)", resume) == ["acquisition_id"]
+    assert re.findall(r"setTaxReportAcquisitionEmpresaId\(([^)]*)\)", resume) == ["context.empresa_id"]
     assert "setTaxReportAcquisitionId(acquisition_id)" in resume
     assert "setTaxReportAcquisitionEmpresaId(context.empresa_id)" in resume
     assert SESSION_KEY in resume
