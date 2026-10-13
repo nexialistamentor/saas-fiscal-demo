@@ -306,6 +306,7 @@ function App() {
     ) && !(tipoPerfil === "mei" && checkoutMei.compra && !taxReportRecoveredPaid)
 
   const taxReportPurchasable =
+    tipoPerfil === "empresa" &&
     Number.isInteger(resultadoXML?.relatorio_id) &&
     resultadoXML.relatorio_id > 0 &&
     typeof resultadoXML?.request_fingerprint === "string" &&
@@ -364,6 +365,8 @@ function App() {
   }
 
   async function recuperarTaxReportCheckoutDoServidor(empresaId) {
+    if (tipoPerfil !== "empresa") return
+
     if (!Number.isInteger(empresaId) || empresaId <= 0) {
       return
     }
@@ -515,7 +518,7 @@ function App() {
     }
 
     if (
-      (tipoPerfil !== "empresa" && tipoPerfil !== "mei") ||
+      tipoPerfil !== "empresa" ||
       !Number.isInteger(idPerfil) ||
       idPerfil <= 0
     ) {
@@ -589,6 +592,8 @@ function App() {
   }
 
   async function retomarAquisicaoTaxReport() {
+    if (tipoPerfil !== "empresa") return
+
     const rawContext = sessionStorage.getItem(
       "solveris.taxReportAcquisitionContext.v1"
     )
@@ -791,12 +796,26 @@ function App() {
   }
 
   useEffect(() => {
-    void retomarAquisicaoTaxReport()
-  }, [])
+    if (tipoPerfil !== "empresa") {
+      setResultadoXML(null)
+      setTaxReportRecoveredCheckoutUrl(null)
+      setTaxReportRecoveredIdempotencyKey(null)
+      setTaxReportRecoveredPaid(false)
+      setTaxReportRecoveryResolvedEmpresaId(null)
+      setTaxReportAcquisitionId(null)
+      setTaxReportAcquisitionEmpresaId(null)
+      setCheckoutErro(null)
+      setCheckoutLoading(false)
+    }
+  }, [tipoPerfil])
+
+  useEffect(() => {
+    if (tipoPerfil === "empresa") void retomarAquisicaoTaxReport()
+  }, [tipoPerfil])
 
   useEffect(() => {
     if (
-      (tipoPerfil !== "empresa" && tipoPerfil !== "mei") ||
+      tipoPerfil !== "empresa" ||
       !Number.isInteger(idPerfil) ||
       idPerfil <= 0
     ) {
@@ -2464,7 +2483,7 @@ function App() {
         <div id={isExistingMei ? "mei-diagnostico" : undefined} className="solveris-existing-diagnostic-heading">
           {isExistingMei && <><h2>Diagnóstico fiscal</h2><p>Consulte o resultado da análise ou as condições de aquisição do relatório, quando disponíveis.</p></>}
         </div>
-        {taxReportPurchasable && (
+        {tipoPerfil === "empresa" && taxReportPurchasable && (
           !Number.isInteger(taxReportAcquisitionId) ||
           taxReportAcquisitionId <= 0 ||
           !Number.isInteger(taxReportAcquisitionEmpresaId) ||
@@ -2511,7 +2530,7 @@ function App() {
           </div>
         )}
 
-        {Number.isInteger(taxReportAcquisitionId) &&
+        {tipoPerfil === "empresa" && Number.isInteger(taxReportAcquisitionId) &&
           taxReportAcquisitionId > 0 &&
           Number.isInteger(taxReportAcquisitionEmpresaId) &&
           taxReportAcquisitionEmpresaId > 0 && (
