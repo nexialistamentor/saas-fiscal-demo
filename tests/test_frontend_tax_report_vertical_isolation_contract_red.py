@@ -151,10 +151,12 @@ def test_troca_para_nao_empresa_limpa_estados_transitorios_empresariais():
         assert all([name, value] in updates for name, value in expected.items()), 'CROSS_VERTICAL_STATE_BLEED'
 
 
-def test_empresa_continua_elegivel_e_paywall_visivel():
-    code = f"const taxReportPurchasable = ({_expression('taxReportPurchasable')});\n"
-    code += f"console.log(JSON.stringify([taxReportPurchasable, Boolean({_render_guard('bloqueio-relatorio')})]));"
-    assert _run('empresa', code) == [True, True]
+def test_empresa_permanece_autorizada_pela_fronteira_vertical():
+    # Autoriza a vertical, não a compra: a aquisição depende da resposta backend.
+    calls = _run('empresa', _function('retomarAquisicaoTaxReport') +
+                 '\nawait retomarAquisicaoTaxReport(); console.log(JSON.stringify(calls));')
+    assert any(call[0] == 'fetch' and
+               call[1].endswith('/relatorio/empresas/21/acquisitions') for call in calls)
 
 
 def test_empresa_prepara_intencao_e_checkout_mesma_chave_e_oferta():
