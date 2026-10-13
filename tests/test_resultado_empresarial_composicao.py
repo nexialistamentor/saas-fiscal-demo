@@ -78,7 +78,7 @@ def test_resultado_de_outra_empresa_nao_e_composto():
 
 
 @pytest.mark.parametrize('rico', [_rico(), None], ids=['retorno_rico','insight_indisponivel'])
-def test_registro_usa_retorno_real_da_chamada_sem_persistir_composicao(rico):
+def test_registro_usa_retorno_real_da_chamada(rico):
     xml=_xml(); db=MagicMock(); empresa=SimpleNamespace(user_id=1)
     db.query.return_value.filter.return_value.first.return_value=empresa
     db.query.return_value.filter.return_value.order_by.return_value.first.return_value=None
@@ -98,9 +98,6 @@ def test_registro_usa_retorno_real_da_chamada_sem_persistir_composicao(rico):
     engine.return_value.gerar_insights_empresa.assert_called_once_with(empresa_id=7,relatorio_analise_id=9)
     assert obtido_rel is rel
     assert resultado == compor_resultado_empresarial(7,xml,rico)
-    # O caminho antigo continua recebendo exclusivamente XML; E mudará isto.
-    assert selo.call_args.args[0] is xml
-    assert finalizar.call_args.kwargs['resultado_json']=={'legado':xml}
     assert rel.resultado_json=={'anterior':True}
     assert rel.fingerprint=='anterior'
 
