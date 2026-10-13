@@ -48,13 +48,12 @@ def _object_passed_to(call: str, source: str) -> str:
 
 def test_empresa_checkout_uses_canonical_endpoint_and_fail_closed_guard() -> None:
     assert re.search(
-        r'if\s*\(\s*\(\s*tipoPerfil\s*!==\s*["\']empresa["\']\s*&&'
-        r'\s*tipoPerfil\s*!==\s*["\']mei["\']\s*\)\s*\|\|'
+        r'if\s*\(\s*tipoPerfil\s*!==\s*["\']empresa["\']\s*\|\|'
         r'\s*!Number\.isInteger\(idPerfil\)\s*\|\|\s*idPerfil\s*<=\s*0\s*\)'
         r'\s*\{[^{}]*return\b',
         CHECKOUT_FUNCTION,
         re.DOTALL,
-    ), "iniciarCheckout must return before fetch unless the profile is a positive-integer empresa or mei"
+    ), "iniciarCheckout must return before fetch unless the profile is a positive-integer empresa"
 
     assert re.search(
         r'fetch\(\s*`\$\{API_BASE\}/checkout/one-time`\s*,', CHECKOUT_FUNCTION
