@@ -556,20 +556,16 @@ def _gerar_insights_por_xml(dados_fiscais: dict) -> list:
 
 def _calcular_previsao_por_xml(dados_fiscais: dict) -> dict:
     """
-    Calcula estimativa de potencial de recuperação com base nos dados do XML.
+    Informa ICMS-ST identificado, sem presumir direito à recuperação.
     Para análise completa com empresa_id, use motor_preditivo_service.calcular_potencial_recuperacao.
     """
     icms_st = _to_float(dados_fiscais.get("icms_st"))
 
-    if icms_st and icms_st > 0:
-        potencial = round(icms_st * 0.15, 2)
-        return {
-            "potencial_recuperacao_nota": potencial,
-            "icms_st_nota": round(icms_st, 2),
-            "metodo": "estimativa_baseada_st_xml"
-        }
-
-    return {"potencial_recuperacao_nota": 0, "metodo": "sem_st_identificada"}
+    return {
+        "potencial_recuperacao_nota": None,
+        "icms_st_nota": round(icms_st, 2) if icms_st is not None else None,
+        "metodo": "indisponivel_sem_validacao_normativa",
+    }
 
 
 def _to_float(val) -> float | None:
@@ -593,11 +589,9 @@ def executar_analise_xml(xml_bytes: bytes) -> dict:
     previsao = _calcular_previsao_por_xml(dados_fiscais)
 
     context_flags = inferir_flags_xml(dados_fiscais, previsao)
-    icms_st = _to_float(dados_fiscais.get("icms_st")) or 0
-    pot = float(previsao.get("potencial_recuperacao_nota") or 0)
     decomposicao_impacto = {
-        "valor_recuperavel_real": round(icms_st, 2),
-        "valor_estimado": round(pot, 2),
+        "valor_recuperavel_real": None,
+        "valor_estimado": None,
         "normalizacoes_aplicadas": 0,
     }
 
