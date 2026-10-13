@@ -1,6 +1,6 @@
-from sqlalchemy import text
+from sqlalchemy import Date, text
 
-from app.services.fiscal_utils import resolver_aliquota_e_mva
+from app.services.fiscal_utils import resolver_aliquota_e_mva, uf_do_documento
 
 
 def calcular_potencial_recuperacao(db, empresa_id):
@@ -8,14 +8,17 @@ def calcular_potencial_recuperacao(db, empresa_id):
     query = text("""
         SELECT
             i.ncm,
+            d.uf_dest,
+            d.uf_emit,
+            d.data_emissao,
             SUM(i.valor_st) AS st_pago,
             SUM(i.base_st) AS base_st,
             COUNT(*) AS volume_operacoes
         FROM itens_fiscais i
         INNER JOIN documentos_fiscais d ON i.documento_id = d.id
         WHERE d.empresa_id = :empresa_id
-        GROUP BY i.ncm
-    """)
+        GROUP BY i.ncm, d.uf_dest, d.uf_emit, d.data_emissao
+    """).columns(data_emissao=Date)
 
     resultado = db.execute(query, {"empresa_id": empresa_id}).fetchall()
 
@@ -31,8 +34,10 @@ def calcular_potencial_recuperacao(db, empresa_id):
         if base_st == 0:
             continue
 
-        res = resolver_aliquota_e_mva(db, "", ncm)
-        if not res.get("calculo_autorizado", True) or res.get("calculo_parcial", False):
+        res = resolver_aliquota_e_mva(
+            db, uf_do_documento(row), ncm, data_referencia=row.data_emissao,
+        )
+        if not res.get("calculo_autorizado", False) or res.get("calculo_parcial", False):
             continue
         aliquota = res["aliquota"]
 

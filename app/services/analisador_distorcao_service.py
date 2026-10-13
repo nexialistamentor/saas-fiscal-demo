@@ -1,20 +1,23 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import Date, text
 
-from app.services.fiscal_utils import resolver_aliquota_e_mva
+from app.services.fiscal_utils import resolver_aliquota_e_mva, uf_do_documento
 
 
 def detectar_distorcoes(db: Session, empresa_id: int):
     query = text("""
         SELECT
             i.ncm,
+            d.uf_dest,
+            d.uf_emit,
+            d.data_emissao,
             AVG(i.valor_produto) as preco_medio,
             SUM(i.base_st) as base_st
         FROM itens_fiscais i
         INNER JOIN documentos_fiscais d ON i.documento_id = d.id
         WHERE d.empresa_id = :empresa_id
-        GROUP BY i.ncm
-    """)
+        GROUP BY i.ncm, d.uf_dest, d.uf_emit, d.data_emissao
+    """).columns(data_emissao=Date)
 
     resultado = db.execute(query, {"empresa_id": empresa_id}).fetchall()
 
@@ -30,8 +33,10 @@ def detectar_distorcoes(db: Session, empresa_id: int):
 
         margem_real = (preco_medio - base_st) / preco_medio
 
-        res = resolver_aliquota_e_mva(db, "", ncm)
-        if not res.get("mva_autorizada", res.get("calculo_autorizado", True)):
+        res = resolver_aliquota_e_mva(
+            db, uf_do_documento(row), ncm, data_referencia=row.data_emissao,
+        )
+        if not res.get("mva_autorizada", False):
             continue
         mva_oficial = res["mva"]
         distorcao = mva_oficial - margem_real
