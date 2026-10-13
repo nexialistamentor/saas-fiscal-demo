@@ -310,7 +310,13 @@ function App() {
     Number.isInteger(resultadoXML?.relatorio_id) &&
     resultadoXML.relatorio_id > 0 &&
     typeof resultadoXML?.request_fingerprint === "string" &&
-    /^[0-9a-f]{64}$/.test(resultadoXML.request_fingerprint)
+    /^[0-9a-f]{64}$/.test(resultadoXML.request_fingerprint) &&
+    resultadoXML.tax_report_eligibility !== null &&
+    typeof resultadoXML.tax_report_eligibility === "object" &&
+    !Array.isArray(resultadoXML.tax_report_eligibility) &&
+    Object.keys(resultadoXML.tax_report_eligibility).length === 1 &&
+    Object.hasOwn(resultadoXML.tax_report_eligibility, "eligible") &&
+    resultadoXML.tax_report_eligibility.eligible === true
 
   const [uploadRendimentoResposta, setUploadRendimentoResposta] = useState(null)
   const [formRendimento, setFormRendimento] = useState({
@@ -531,6 +537,17 @@ function App() {
 
     if (taxReportRecoveredCheckoutUrl) {
       window.location.href = taxReportRecoveredCheckoutUrl
+      return
+    }
+
+    if (
+      resultadoXML?.tax_report_eligibility == null ||
+      typeof resultadoXML.tax_report_eligibility !== "object" ||
+      Array.isArray(resultadoXML.tax_report_eligibility) ||
+      Object.keys(resultadoXML.tax_report_eligibility).length !== 1 ||
+      !Object.hasOwn(resultadoXML.tax_report_eligibility, "eligible") ||
+      resultadoXML.tax_report_eligibility.eligible !== true
+    ) {
       return
     }
 
@@ -1645,6 +1662,7 @@ function App() {
           relatorio_id: data.result.relatorio_id,
           request_fingerprint: data.result.request_fingerprint,
           tem_resultado: data.result.tem_resultado,
+          tax_report_eligibility: data.result?.tax_report_eligibility,
           carregado: false
         })
         continue
@@ -1664,6 +1682,7 @@ function App() {
                 relatorio_id: statusData.result?.relatorio_id,
                 request_fingerprint: statusData.result?.request_fingerprint,
                 tem_resultado: statusData.result?.tem_resultado,
+                tax_report_eligibility: statusData.result?.tax_report_eligibility,
                 carregado: false
               })
               resolve()
@@ -2195,6 +2214,11 @@ function App() {
       {tipoPerfil !== "cpf" && resultadoXML?.carregado && data?.consulta_paga && (() => {
         const ra = resultadoXML.dados?.resultado ?? resultadoXML.dados
         const df = ra?.dados_fiscais
+        const insights = Array.isArray(ra?.insights)
+          ? ra.insights
+          : [ra?.insights?.documental, ra?.insights?.empresarial]
+              .filter(Array.isArray)
+              .flat()
         return (
         <div style={{ marginTop: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
           <h3>Resultado da Análise XML</h3>
@@ -2206,7 +2230,7 @@ function App() {
 
           <h4>Insights</h4>
           <ul>
-            {(ra?.insights ?? []).map((i, idx) => (
+            {insights.map((i, idx) => (
               <li key={idx}>
                 {typeof i === "string"
                   ? i
