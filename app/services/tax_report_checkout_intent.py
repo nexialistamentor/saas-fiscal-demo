@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 import hmac
-import math
 import re
 
 from sqlalchemy import select
@@ -18,6 +17,7 @@ from app.services.resultado_provenance_service import (
     ResultadoProvenanceError,
     verificar_resultado_persistido,
 )
+from app.services.tax_report_eligibility import resultado_tem_credito_tax_report_elegivel
 
 
 _OFFER_CODE = "tax-report-one-time-company"
@@ -110,7 +110,7 @@ class TaxReportCheckoutIntent:
                     "fingerprint solicitado divergente"
                 )
 
-            if not self._resultado_tem_credito_elegivel(resultado_verificado):
+            if not resultado_tem_credito_tax_report_elegivel(resultado_verificado):
                 raise TaxReportCheckoutIntentError(
                     "relatorio inexistente ou inelegivel"
                 )
@@ -134,28 +134,6 @@ class TaxReportCheckoutIntent:
             raise TaxReportCheckoutIntentError(
                 "falha ao persistir intencao de checkout"
             ) from exc
-
-    @staticmethod
-    def _resultado_tem_credito_elegivel(resultado):
-        creditos = resultado.get("creditos_detectados")
-        if type(creditos) is not list:
-            return False
-        tem_positivo = False
-        for credito in creditos:
-            if (
-                type(credito) is not dict
-                or credito.get("tipo") != "CREDITO_ST_ESTIMADO"
-            ):
-                return False
-            valor = credito.get("valor_estimado")
-            if type(valor) not in (int, float):
-                return False
-            # Inteiros são finitos; evita conversão/overflow para inteiros grandes.
-            if type(valor) is float and not math.isfinite(valor):
-                return False
-            if valor > 0:
-                tem_positivo = True
-        return tem_positivo
 
     @staticmethod
     def _valid_fingerprint(value):

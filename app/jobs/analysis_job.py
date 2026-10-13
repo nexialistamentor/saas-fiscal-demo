@@ -2,6 +2,7 @@ from app.database import SessionLocal
 from app.models import Empresa
 from app.services.registro_analise_service import executar_e_registrar_analise_xml
 from app.services.resultado_provenance_service import verificar_resultado_persistido
+from app.services.tax_report_eligibility import projetar_tax_report_eligibility
 
 
 def processar_xml_job(xml_bytes: bytes, empresa_id: int):
@@ -17,11 +18,13 @@ def processar_xml_job(xml_bytes: bytes, empresa_id: int):
             user_id=emp.user_id,
             empresa_id=empresa_id,
         )
-        verificar_resultado_persistido(rel)
+        resultado_verificado = verificar_resultado_persistido(rel)
+        tax_report_eligibility = projetar_tax_report_eligibility(resultado_verificado)
         return {
             "relatorio_id": rel.id,
             "request_fingerprint": rel.fingerprint,
-            "tem_resultado": True
+            "tem_resultado": True,
+            "tax_report_eligibility": tax_report_eligibility,
         }
     finally:
         db.close()

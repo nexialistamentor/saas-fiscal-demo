@@ -18,6 +18,17 @@ router = APIRouter()
 _SYNC_JOB = "__sync_analysis__"
 
 
+def _tax_report_eligibility_projection(value):
+    """Valida somente a forma da projeção informativa recebida do job."""
+    if (
+        type(value) is dict
+        and set(value) == {"eligible"}
+        and type(value["eligible"]) is bool
+    ):
+        return value
+    return {"eligible": False}
+
+
 def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int, owner_id: int) -> dict:
     inline = os.getenv("ANALISE_XML_INLINE", "").strip().lower() in ("1", "true", "yes", "on")
     if inline:
@@ -30,6 +41,9 @@ def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int, owner_id: int) -> dic
             "result": {
                 "relatorio_id": resultado.get("relatorio_id"),
                 "tem_resultado": bool(resultado.get("tem_resultado")),
+                "tax_report_eligibility": _tax_report_eligibility_projection(
+                    resultado.get("tax_report_eligibility")
+                ),
             },
         }
         if "request_fingerprint" in resultado:
@@ -51,6 +65,9 @@ def _enqueue_or_run_sync(conteudo: bytes, empresa_id: int, owner_id: int) -> dic
             "result": {
                 "relatorio_id": resultado.get("relatorio_id"),
                 "tem_resultado": bool(resultado.get("tem_resultado")),
+                "tax_report_eligibility": _tax_report_eligibility_projection(
+                    resultado.get("tax_report_eligibility")
+                ),
             },
         }
         if "request_fingerprint" in resultado:
@@ -85,7 +102,11 @@ def status_job(job_id: str, usuario_atual: models.User = Depends(get_usuario_atu
         return {
             "job_id": job_id,
             "status": "finished",
-            "result": {"relatorio_id": None, "tem_resultado": False},
+            "result": {
+                "relatorio_id": None,
+                "tem_resultado": False,
+                "tax_report_eligibility": {"eligible": False},
+            },
             "detail": "Use o resultado retornado no POST /analisar-xml (modo síncrono).",
         }
     from app.queue.redis_queue import redis_conn
@@ -104,7 +125,10 @@ def status_job(job_id: str, usuario_atual: models.User = Depends(get_usuario_atu
         "status": job.get_status(),
         "result": {
             "relatorio_id": resultado.get("relatorio_id"),
-            "tem_resultado": True if resultado else False
+            "tem_resultado": True if resultado else False,
+            "tax_report_eligibility": _tax_report_eligibility_projection(
+                resultado.get("tax_report_eligibility")
+            ),
         }
     }
     if "request_fingerprint" in resultado:
