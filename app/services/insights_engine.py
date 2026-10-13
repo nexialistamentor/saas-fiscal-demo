@@ -39,12 +39,45 @@ from app.services.resultado_provenance_service import (
 )
 
 
+_REGIMES_EMPRESA = frozenset({"presumido", "real", "simples", "simples_nacional", "mei"})
+_ATIVIDADES_PRESUMIDAS = frozenset({"comercio", "industria", "servicos"})
+_ENGINES_DEPENDENTES_REGIME = frozenset({
+    "irpj", "csll", "pis_cofins", "lucro_real", "lucro_presumido",
+    "tax_planning", "tax_recovery",
+})
+
+
+def _contexto_fiscal_indisponivel(dimensao):
+    return {
+        "erro": f"{dimensao} fiscal ausente ou não suportado.",
+        "codigo": f"{dimensao.upper()}_FISCAL_INDISPONIVEL",
+        "estado_l3": "bloqueado",
+        "calculo_autorizado": False,
+    }
+
+
 def executar_engines(context: dict) -> dict:
     """Executa todas as engines fiscais registradas e retorna os resultados."""
     resultados = {}
+    regime = context.get("regime")
+    regime_valido = isinstance(regime, str) and regime in _REGIMES_EMPRESA
+    atividade = context.get("atividade")
+    atividade_valida = isinstance(atividade, str) and atividade in _ATIVIDADES_PRESUMIDAS
     faturamento_mei = context.pop("_faturamento_material_mei", context.get("faturamento"))
     for nome, engine_class in ENGINES.items():
         if nome == ANALYSIS_TYPE_MEI_TAX and context.get("regime") != "mei":
+            continue
+        if nome in _ENGINES_DEPENDENTES_REGIME and not regime_valido:
+            resultados[nome] = _contexto_fiscal_indisponivel("regime")
+            continue
+        if nome == "pis_cofins" and regime not in ("presumido", "real"):
+            resultados[nome] = _contexto_fiscal_indisponivel("regime")
+            continue
+        if (
+            nome in ("lucro_presumido", "tax_planning")
+            or (nome in ("irpj", "csll") and regime == "presumido")
+        ) and not atividade_valida:
+            resultados[nome] = _contexto_fiscal_indisponivel("atividade")
             continue
         try:
             engine = engine_class()
@@ -54,7 +87,6 @@ def executar_engines(context: dict) -> dict:
                     dados["icms"] = float(
                         dados.get("icms_devido") or dados.get("icms_pago") or 0
                     )
-                regime = context.get("regime") or "presumido"
                 resultados[nome] = calcular_pis_cofins(dados, regime=regime)
             elif nome == ANALYSIS_TYPE_MEI_TAX:
                 contexto_mei = dict(context)
@@ -110,14 +142,23 @@ class InsightEngine:
             .scalar()
         ) or 0
         empresa = self.db.query(Empresa).filter(Empresa.id == empresa_id).first()
-        regime = (empresa.regime_tributario or "presumido").lower() if empresa else "presumido"
+        regime_informado = empresa.regime_tributario if empresa else None
+        regime = regime_informado.strip().lower() if isinstance(regime_informado, str) else None
+        regime = regime or None
         lucro = faturamento - custos
-        base_calculo = lucro if regime == "real" else faturamento * 0.08
+        base_calculo = lucro if regime == "real" else None
         data_referencia = (
             self.db.query(func.max(DocumentoFiscal.data_emissao))
             .filter(DocumentoFiscal.empresa_id == empresa_id)
             .scalar()
         )
+
+        flags = inferir_flags_contexto_empresa(
+            regime=regime, faturamento=float(faturamento), custos=float(custos),
+        )
+        if regime not in _REGIMES_EMPRESA:
+            flags["base_presumida"] = False
+        flags["dados_incompletos"] = True  # Actividade não comprovada neste contexto.
 
         return {
             "empresa_id": empresa_id,
@@ -133,16 +174,12 @@ class InsightEngine:
             "custo_fiscal_entradas": float(custos),
             "lucro_contabil": float(max(0, lucro)),
             "lucro": float(max(0, lucro)),
-            "base_calculo": float(base_calculo),
+            "base_calculo": float(base_calculo) if base_calculo is not None else None,
             "regime": regime,
-            "atividade": "comercio",
+            "atividade": None,
             "icms_pago": float(st_entradas),
             "icms_devido": float(st_saidas),
-            "context_flags": inferir_flags_contexto_empresa(
-                regime=regime,
-                faturamento=float(faturamento),
-                custos=float(custos),
-            ),
+            "context_flags": flags,
         }
 
     def gerar_insights_empresa(self, empresa_id: int, relatorio_analise_id: int | None = None):

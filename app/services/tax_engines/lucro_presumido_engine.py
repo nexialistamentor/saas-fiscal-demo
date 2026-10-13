@@ -5,11 +5,40 @@ from app.services.tax_engines.pis_cofins_engine import calcular_pis_cofins
 from app.services.tax_engines.response_formatter import formatar_resposta_tributaria
 
 
+class AtividadeFiscalIndisponivelError(ValueError):
+    """Sem actividade suportada, não existe base presumida calculável."""
+
+
+def _atividade_explicita(dados_fiscais):
+    atividade = dados_fiscais.get("atividade")
+    if not isinstance(atividade, str) or atividade not in ("comercio", "industria", "servicos"):
+        raise AtividadeFiscalIndisponivelError("Atividade fiscal ausente ou não suportada.")
+    return atividade
+
+
 class LucroPresumidoEngine(BaseTaxEngine):
 
     def execute(self, context: dict):
+        regime = context.get("regime")
+        if not isinstance(regime, str) or regime not in (
+            "presumido", "real", "simples", "simples_nacional", "mei",
+        ):
+            return {
+                "erro": "Regime fiscal ausente ou não suportado.",
+                "codigo": "REGIME_FISCAL_INDISPONIVEL",
+                "estado_l3": "bloqueado",
+                "calculo_autorizado": False,
+            }
         ano_referencia = self.resolver_ano_referencia(context)
-        resultado = calcular_lucro_presumido(context)
+        try:
+            resultado = calcular_lucro_presumido(context)
+        except AtividadeFiscalIndisponivelError as exc:
+            return {
+                "erro": str(exc),
+                "codigo": "ATIVIDADE_FISCAL_INDISPONIVEL",
+                "estado_l3": "bloqueado",
+                "calculo_autorizado": False,
+            }
         resultado["_ano_referencia"] = ano_referencia
         resultado["_estado_temporal"] = "resolvido"
         return resultado
@@ -17,7 +46,7 @@ class LucroPresumidoEngine(BaseTaxEngine):
 
 def calcular_lucro_presumido(dados_fiscais: dict):
     faturamento = dados_fiscais.get("faturamento", 0)
-    atividade = dados_fiscais.get("atividade", "comercio")
+    atividade = _atividade_explicita(dados_fiscais)
 
     percentuais_presuncao = {
         "comercio": 0.08,
@@ -25,7 +54,7 @@ def calcular_lucro_presumido(dados_fiscais: dict):
         "servicos": 0.32
     }
 
-    percentual = percentuais_presuncao.get(atividade, 0.08)
+    percentual = percentuais_presuncao[atividade]
 
     base_calculo_irpj = faturamento * percentual
 
@@ -38,7 +67,7 @@ def calcular_lucro_presumido(dados_fiscais: dict):
     total_irpj = irpj + adicional_irpj
 
     percentuais_csll = {"comercio": 0.12, "industria": 0.12, "servicos": 0.32}
-    base_calculo_csll = faturamento * percentuais_csll.get(atividade, 0.12)
+    base_calculo_csll = faturamento * percentuais_csll[atividade]
     resultado_csll = CSLLEngine().execute({
         "lucro": base_calculo_csll,
         "data_referencia": dados_fiscais.get("data_referencia"),
