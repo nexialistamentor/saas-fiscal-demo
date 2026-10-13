@@ -1,168 +1,211 @@
-"""
-DT-MVA-01 — Escopo normativo MVA/ST do piloto (Pará)
-=====================================================
-Piloto = PA. Outras UFs = fora de escopo.
-PA + NCM sem regra = lacuna normativa.
-calculo_autorizado + calculo_parcial + mva_autorizada + aliquota_autorizada
-são os campos soberanos.
+"""Contrato nacional fail-closed do resolvedor MVA/ST — Bloco A0 test-only.
 
-Cobertura:
-  MVA01-P1  PA + NCM com regra completa → tudo True
-  MVA01-P2  PA + convenio_base → parcial (mva_autorizada=True, aliquota_autorizada=False)
-  MVA01-N1  UF vazia → tudo False
-  MVA01-N2  UF≠PA → fora_de_escopo_normativo_piloto, tudo False
-  MVA01-N3  PA + NCM sem regra → lacuna_normativa, tudo False
-  MVA01-N4  PA sem NCM → ncm_ausente, tudo False
-  MVA01-C1  todos os ramos têm os 4 campos soberanos
-  MVA01-C2  caller financeiro (motor_preditivo) não produz resultado quando bloqueado
-  MVA01-C3  caller financeiro (detector_creditos) não produz resultado quando bloqueado
-  MVA01-C4  caller MVA (analisador_distorcao) não produz resultado quando mva_autorizada=False
+DC-003: UF é dimensão da consulta, nunca autorização regional.
+"oficial" representa a fonte promovida no modelo actual; candidata/estimativa
+não têm autoridade financeira. Convênio sem alíquota conserva só análise MVA.
+Os testes dos consumidores C2–C6 abaixo são preservados sem alterações.
 """
 
-from unittest.mock import MagicMock, patch, call
+from datetime import date
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from app.services.fiscal_utils import resolver_aliquota_e_mva
+from app.services.tax_engines.base_tax_engine import TempoNormativoAusenteError
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+REFERENCIA = date(2026, 1, 1)
+NCM = "22021000"
+UFS = (
+    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT",
+    "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO",
+    "RR", "SC", "SP", "SE", "TO",
+)
+
 
 @pytest.fixture
 def db():
     return MagicMock()
 
 
-def _regra_completa():
-    return {"mva": 0.35, "aliquota_interna": 0.17, "nivel_confianca_fonte": "oficial"}
+def _regra_completa(**alteracoes):
+    regra = {
+        "mva": 0.35,
+        "aliquota_interna": 0.17,
+        "nivel_confianca_fonte": "oficial",
+        "fonte_legal": "Portaria SEFAZ de teste — regra sintética validada",
+        "vigencia_inicio": date(2025, 1, 1),
+        "vigencia_fim": None,
+    }
+    regra.update(alteracoes)
+    return regra
 
 
-def _regra_convenio():
-    return {"mva": 40.0, "aliquota_interna": 0.0, "nivel_confianca_fonte": "convenio_base_sem_aliquota"}
+def _resolver(db, regra, uf="PA", ncm=NCM, referencia=REFERENCIA, cobertura=True):
+    # Só o acesso aos dados é simulado; o resolvedor de produção é executado.
+    with patch("app.services.fiscal_utils.uf_tem_dados_mva", return_value=cobertura), \
+         patch("app.services.fiscal_utils.buscar_mva", return_value=regra):
+        return resolver_aliquota_e_mva(db, uf, ncm, data_referencia=referencia)
 
 
-# ---------------------------------------------------------------------------
-# MVA01-P1 — PA + regra completa
-# ---------------------------------------------------------------------------
+def _assert_bloqueado(res):
+    # Fallback numérico é compatível, mas não tem autoridade normativa.
+    for campo in ("calculo_autorizado", "calculo_parcial", "mva_autorizada", "aliquota_autorizada"):
+        assert res[campo] is False, f"Autoridade indevida: {campo}={res[campo]}"
+    assert res["bloqueio_normativo"] is True
+    assert res["motivo_bloqueio"]
+    assert res["confianca"] == "indisponivel"
+    assert res.get("aviso")
+    assert res["fonte"] != "fora_de_escopo_normativo_piloto"
+    assert res["motivo_bloqueio"] != "fora_de_escopo_normativo_piloto"
 
-def test_mva01_p1_pa_regra_completa_tudo_autorizado(db):
-    with patch("app.services.fiscal_utils.uf_tem_dados_mva", return_value=True), \
-         patch("app.services.fiscal_utils.buscar_mva", return_value=_regra_completa()):
-        res = resolver_aliquota_e_mva(db, "PA", "22021000")
 
-    assert res["fonte"] == "tabela"
+@pytest.mark.parametrize("uf", UFS)
+def test_regra_oficial_vigente_autoriza_qualquer_uf(db, uf):
+    res = _resolver(db, _regra_completa(), uf=uf)
     assert res["calculo_autorizado"] is True
     assert res["calculo_parcial"] is False
     assert res["mva_autorizada"] is True
     assert res["aliquota_autorizada"] is True
     assert res["bloqueio_normativo"] is False
     assert res["motivo_bloqueio"] is None
-
-
-# ---------------------------------------------------------------------------
-# MVA01-P2 — PA + convenio_base_sem_aliquota
-# ---------------------------------------------------------------------------
-
-def test_mva01_p2_pa_convenio_base_parcial(db):
-    with patch("app.services.fiscal_utils.uf_tem_dados_mva", return_value=True), \
-         patch("app.services.fiscal_utils.buscar_mva", return_value=_regra_convenio()):
-        res = resolver_aliquota_e_mva(db, "PA", "22021000")
-
     assert res["fonte"] == "tabela"
-    assert res["calculo_autorizado"] is False   # alíquota não autorizada → financeiro bloqueado
-    assert res["calculo_parcial"] is True        # MVA real — análise de margem permitida
+    assert res["uf"] == uf
+    assert res["ncm"] == NCM
+    assert res["mva"] == pytest.approx(0.35)
+    assert res["aliquota"] == pytest.approx(0.17)
+
+
+@pytest.mark.parametrize("uf", ["PA", "SP", "MG", "RJ"])
+def test_consulta_preserva_uf_ncm_e_data_explicita(db, uf):
+    with patch("app.services.fiscal_utils.uf_tem_dados_mva", return_value=True), \
+         patch("app.services.fiscal_utils.buscar_mva", return_value=_regra_completa()) as buscar:
+        resolver_aliquota_e_mva(db, uf, NCM, data_referencia=REFERENCIA)
+    buscar.assert_called_once_with(db, uf, NCM, data_referencia=REFERENCIA)
+
+
+@pytest.mark.parametrize("uf", ["PA", "SP", "MG", "RJ"])
+@pytest.mark.parametrize("cobertura", [True, False], ids=["uf_com_outros_dados", "uf_sem_dados"])
+def test_sem_regra_vigente_bloqueia_independentemente_da_uf(db, uf, cobertura):
+    _assert_bloqueado(_resolver(db, None, uf=uf, cobertura=cobertura))
+
+
+@pytest.mark.parametrize("uf", [None, "", "  ", "ZZ", "P", "PARA", "PA-extra"])
+def test_uf_ausente_ou_invalida_nao_adquire_autoridade(db, uf):
+    _assert_bloqueado(_resolver(db, _regra_completa(), uf=uf))
+
+
+@pytest.mark.parametrize("ncm", [None, "", "  ", "2202100", "220210000", "abcdefgh", "2202100X"])
+def test_ncm_ausente_ou_invalido_nao_adquire_autoridade(db, ncm):
+    _assert_bloqueado(_resolver(db, _regra_completa(), ncm=ncm))
+
+
+def test_data_referencia_ausente_nao_adquire_autoridade(db):
+    try:
+        res = _resolver(db, _regra_completa(), referencia=None)
+    except TempoNormativoAusenteError:
+        return  # Exceção normativa explícita já prevista no contrato temporal.
+    _assert_bloqueado(res)
+
+
+@pytest.mark.parametrize("fonte", [None, "", "  ", 123])
+def test_fonte_legal_ausente_ou_invalida_bloqueia(db, fonte):
+    _assert_bloqueado(_resolver(db, _regra_completa(fonte_legal=fonte)))
+
+
+def test_campo_fonte_legal_ausente_bloqueia(db):
+    regra = _regra_completa()
+    del regra["fonte_legal"]
+    _assert_bloqueado(_resolver(db, regra))
+
+
+@pytest.mark.parametrize("inicio", [None, "", "data-invalida"])
+def test_inicio_vigencia_ausente_ou_invalido_bloqueia(db, inicio):
+    _assert_bloqueado(_resolver(db, _regra_completa(vigencia_inicio=inicio)))
+
+
+def test_campo_inicio_vigencia_ausente_bloqueia(db):
+    regra = _regra_completa()
+    del regra["vigencia_inicio"]
+    _assert_bloqueado(_resolver(db, regra))
+
+
+@pytest.mark.parametrize("alteracoes", [
+    {"vigencia_inicio": date(2026, 1, 2)},
+    {"vigencia_fim": date(2025, 12, 31)},
+    {"vigencia_inicio": date(2025, 6, 1), "vigencia_fim": date(2025, 1, 1)},
+    {"vigencia_fim": "data-invalida"},
+], ids=["futura", "expirada_sem_substituto", "intervalo_invertido", "fim_invalido"])
+def test_regra_fora_da_vigencia_ou_com_intervalo_invalido_bloqueia(db, alteracoes):
+    # O retorno do acesso aos dados não é, por si só, prova de vigência.
+    _assert_bloqueado(_resolver(db, _regra_completa(**alteracoes)))
+
+
+@pytest.mark.parametrize("referencia", [date(2025, 1, 1), date(2025, 12, 31)])
+def test_limites_inclusivos_da_vigencia_autorizam(db, referencia):
+    res = _resolver(db, _regra_completa(vigencia_fim=date(2025, 12, 31)), referencia=referencia)
+    assert res["calculo_autorizado"] is True
+
+
+@pytest.mark.parametrize("nivel", [None, "", "sem_fonte", "estimativa", "candidata_oficial", "desconhecido"])
+def test_fonte_nao_promovida_a_oficial_nao_adquire_autoridade(db, nivel):
+    _assert_bloqueado(_resolver(db, _regra_completa(nivel_confianca_fonte=nivel)))
+
+
+def test_nivel_de_fonte_ausente_nao_adquire_autoridade(db):
+    regra = _regra_completa()
+    del regra["nivel_confianca_fonte"]
+    _assert_bloqueado(_resolver(db, regra))
+
+
+def test_convenio_base_nao_autoriza_aliquota_financeira(db):
+    res = _resolver(db, _regra_completa(nivel_confianca_fonte="convenio_base"))
+    assert res["calculo_autorizado"] is False
+    assert res["aliquota_autorizada"] is False
+
+
+@pytest.mark.parametrize("uf", ["PA", "SP", "MG", "RJ"])
+def test_convenio_sem_aliquota_preserva_mva_parcial_sem_financeiro(db, uf):
+    res = _resolver(db, _regra_completa(
+        nivel_confianca_fonte="convenio_base_sem_aliquota", mva=40.0, aliquota_interna=0.0,
+    ), uf=uf)
+    assert res["calculo_autorizado"] is False
+    assert res["calculo_parcial"] is True
     assert res["mva_autorizada"] is True
     assert res["aliquota_autorizada"] is False
+    assert res["bloqueio_normativo"] is False
     assert res["mva"] == pytest.approx(0.40)
     assert res["aliquota"] == 0.18
 
 
-# ---------------------------------------------------------------------------
-# MVA01-N1 — UF vazia
-# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("alteracoes", [
+    {"fonte_legal": None}, {"vigencia_inicio": None},
+    {"vigencia_fim": date(2025, 12, 31)},
+], ids=["sem_fonte", "sem_inicio", "expirado"])
+def test_convenio_invalido_tambem_perde_autoridade_parcial(db, alteracoes):
+    _assert_bloqueado(_resolver(db, _regra_completa(
+        nivel_confianca_fonte="convenio_base_sem_aliquota", **alteracoes,
+    )))
 
-def test_mva01_n1_uf_vazia_tudo_false(db):
-    res = resolver_aliquota_e_mva(db, "", "22021000")
-    assert res["fonte"] == "fallback_uf_desconhecida"
+
+@pytest.mark.parametrize("campo", ["mva", "aliquota_interna"])
+@pytest.mark.parametrize("valor", [None, float("nan"), float("inf"), -0.1, 0.0])
+def test_valor_normativo_invalido_nao_adquire_autoridade_financeira(db, campo, valor):
+    _assert_bloqueado(_resolver(db, _regra_completa(**{campo: valor})))
+
+
+def test_aliquota_acima_de_um_nao_adquire_autoridade_financeira(db):
+    res = _resolver(db, _regra_completa(aliquota_interna=1.01))
     assert res["calculo_autorizado"] is False
-    assert res["calculo_parcial"] is False
-    assert res["mva_autorizada"] is False
     assert res["aliquota_autorizada"] is False
 
 
-# ---------------------------------------------------------------------------
-# MVA01-N2 — UF ≠ PA
-# ---------------------------------------------------------------------------
-
-@pytest.mark.parametrize("uf", ["SP", "RJ", "MG", "RS", "SC"])
-def test_mva01_n2_uf_fora_escopo_tudo_false(db, uf):
-    res = resolver_aliquota_e_mva(db, uf, "22021000")
-    assert res["fonte"] == "fora_de_escopo_normativo_piloto"
-    assert res["calculo_autorizado"] is False
-    assert res["mva_autorizada"] is False
-    assert res["aliquota_autorizada"] is False
-    assert uf in res["aviso"]
-
-
-# ---------------------------------------------------------------------------
-# MVA01-N3 — PA + NCM sem regra (lacuna normativa I-MVA-06)
-# ---------------------------------------------------------------------------
-
-def test_mva01_n3_pa_ncm_sem_regra_lacuna(db):
-    with patch("app.services.fiscal_utils.uf_tem_dados_mva", return_value=True), \
-         patch("app.services.fiscal_utils.buscar_mva", return_value=None):
-        res = resolver_aliquota_e_mva(db, "PA", "99999999")
-
-    assert res["fonte"] == "lacuna_normativa"
-    assert res["calculo_autorizado"] is False
-    assert res["mva_autorizada"] is False
-    assert res["aliquota_autorizada"] is False
-    assert res["motivo_bloqueio"] == "lacuna_normativa"
-
-
-# ---------------------------------------------------------------------------
-# MVA01-N4 — PA sem NCM
-# ---------------------------------------------------------------------------
-
-def test_mva01_n4_pa_sem_ncm_bloqueado(db):
-    res = resolver_aliquota_e_mva(db, "PA", "")
-    assert res["fonte"] == "ncm_ausente"
-    assert res["calculo_autorizado"] is False
-    assert res["motivo_bloqueio"] == "ncm_ausente"
-
-
-# ---------------------------------------------------------------------------
-# MVA01-C1 — todos os ramos têm os 4 campos soberanos
-# ---------------------------------------------------------------------------
-
-def test_mva01_c1_todos_ramos_tem_campos_soberanos(db):
-    campos = ["calculo_autorizado", "calculo_parcial", "mva_autorizada",
-              "aliquota_autorizada", "bloqueio_normativo", "motivo_bloqueio"]
-
-    casos = [
-        (("", "22021000"), {}),
-        (("SP", "22021000"), {}),
-        (("PA", ""), {}),
-    ]
-    for (uf, ncm), patches in casos:
-        res = resolver_aliquota_e_mva(db, uf, ncm)
-        for campo in campos:
-            assert campo in res, f"Campo '{campo}' ausente para uf='{uf}', ncm='{ncm}'"
-
-    # PA + NCM sem regra
-    with patch("app.services.fiscal_utils.uf_tem_dados_mva", return_value=True), \
-         patch("app.services.fiscal_utils.buscar_mva", return_value=None):
-        res = resolver_aliquota_e_mva(db, "PA", "99999999")
-    for campo in campos:
-        assert campo in res
-
-    # PA + regra completa
-    with patch("app.services.fiscal_utils.uf_tem_dados_mva", return_value=True), \
-         patch("app.services.fiscal_utils.buscar_mva", return_value=_regra_completa()):
-        res = resolver_aliquota_e_mva(db, "PA", "22021000")
-    for campo in campos:
-        assert campo in res
+def test_mva_percentual_bruta_acima_de_um_preserva_autoridade(db):
+    res = _resolver(db, _regra_completa(mva=40.0))
+    assert res["calculo_autorizado"] is True
+    assert res["mva_autorizada"] is True
+    assert res["mva"] == pytest.approx(0.40)
 
 
 # ---------------------------------------------------------------------------
