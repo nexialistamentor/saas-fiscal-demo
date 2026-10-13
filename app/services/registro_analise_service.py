@@ -204,9 +204,16 @@ def executar_e_registrar_analise_xml(
 
     total_alertas = contar_alertas_empresa(db, empresa_id) if empresa_id else 0
 
+    if empresa_id:
+        resultado_final = compor_resultado_empresarial(empresa_id, resultado, resultado_insights)
+        producer_id = "app.services.resultado_empresarial_service.compor_resultado_empresarial"
+    else:
+        resultado_final = resultado
+        producer_id = "app.services.analysis_orchestrator.executar_analise_xml"
+
     resultado_persistido = selar_resultado_nao_mei(
-        resultado,
-        producer_id="app.services.analysis_orchestrator.executar_analise_xml",
+        resultado_final,
+        producer_id=producer_id,
     )
 
     finalizar_registro_analise(
@@ -220,6 +227,4 @@ def executar_e_registrar_analise_xml(
     )
     incrementar_uso_analise(db, empresa_id)
     db.refresh(rel)
-    if empresa_id:
-        return rel, compor_resultado_empresarial(empresa_id, resultado, resultado_insights)
-    return rel, resultado
+    return rel, resultado_final
