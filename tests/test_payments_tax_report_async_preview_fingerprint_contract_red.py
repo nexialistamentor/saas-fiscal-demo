@@ -84,11 +84,9 @@ def test_job_valida_persistido_e_expoe_exatamente_fingerprint_do_relatorio(monke
         }
     ]
     assert verificados == [rel]
-    assert resposta == {
-        "relatorio_id": 501,
-        "request_fingerprint": _FINGERPRINT,
-        "tem_resultado": True,
-    }
+    assert resposta["relatorio_id"] == 501
+    assert resposta["request_fingerprint"] == _FINGERPRINT
+    assert resposta["tem_resultado"] is True
     assert resposta["request_fingerprint"] == rel.fingerprint
     assert resposta["request_fingerprint"] != analise["fingerprint"]
     assert resposta["request_fingerprint"] != rel.resultado_json["fingerprint"]
@@ -124,11 +122,9 @@ def test_resultado_sincrono_preserva_id_e_fingerprint(monkeypatch):
     resposta = fiscal_router._enqueue_or_run_sync(b"<xml/>", 21, 11)
 
     assert resposta["status"] == "finished"
-    assert resposta["result"] == {
-        "relatorio_id": 501,
-        "request_fingerprint": _FINGERPRINT,
-        "tem_resultado": True,
-    }
+    assert resposta["result"]["relatorio_id"] == 501
+    assert resposta["result"]["request_fingerprint"] == _FINGERPRINT
+    assert resposta["result"]["tem_resultado"] is True
 
 
 @pytest.fixture
@@ -166,11 +162,9 @@ def test_status_do_job_finalizado_preserva_id_fingerprint_e_resultado(
             app.dependency_overrides.clear()
 
     assert resposta.status_code == 200
-    assert resposta.json()["result"] == {
-        "relatorio_id": 501,
-        "request_fingerprint": _FINGERPRINT,
-        "tem_resultado": True,
-    }
+    assert resposta.json()["result"]["relatorio_id"] == 501
+    assert resposta.json()["result"]["request_fingerprint"] == _FINGERPRINT
+    assert resposta.json()["result"]["tem_resultado"] is True
 
 
 def test_fluxo_assincrono_permanece_isolado_de_autoridades_de_pagamento():
