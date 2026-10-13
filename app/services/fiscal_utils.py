@@ -1,7 +1,7 @@
 """
 fiscal_utils.py — camada L2 de resolução MVA/ST
 
-DT-MVA-01: escopo normativo do piloto = Pará.
+DC-003: autoridade nacional por UF + NCM + data + fonte vigente.
 
 Campos soberanos do retorno:
   calculo_autorizado  — True só se alíquota E MVA são canónicos
@@ -9,28 +9,27 @@ Campos soberanos do retorno:
   mva_autorizada      — True quando MVA vem de fonte normativa real
   aliquota_autorizada — True quando alíquota vem de fonte normativa real
 
-Ramos:
-  UF vazia              → fallback_uf_desconhecida, tudo False
-  UF ≠ PA               → fora_de_escopo_normativo_piloto, tudo False
-  PA sem dados MVA       → fallback_uf_sem_dados, tudo False
-  PA + NCM sem regra     → lacuna_normativa, tudo False (I-MVA-06)
-  PA + NCM sem NCM       → ncm_ausente, tudo False
-  PA + convenio_base     → tabela, parcial (mva_autorizada=True, aliquota_autorizada=False)
-  PA + regra completa    → tabela, tudo True
+Autoridade financeira: regra oficial, fonte legal identificada, vigência válida,
+MVA positiva e alíquota decimal em (0, 1]. Convênio sem alíquota permite
+apenas análise parcial de MVA. Lacunas e valores inválidos bloqueiam.
 
 Princípio: fallback pode existir para compatibilidade de contrato.
 Fallback não pode produzir autoridade fiscal.
 """
 
 from datetime import date
+from math import isfinite
 from sqlalchemy.orm import Session
 from app.services.tabela_normativa_service import buscar_mva, uf_tem_dados_mva
 
 _ALIQUOTA_ICMS_FALLBACK = 0.18
 _MVA_FALLBACK = 0.40
 
-# UF canónica do piloto V1
-_UF_PILOTO = "PA"
+_UFS_VALIDAS = frozenset({
+    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT",
+    "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO",
+    "RR", "SC", "SP", "SE", "TO",
+})
 
 
 def uf_do_documento(documento) -> str:
@@ -82,8 +81,8 @@ def resolver_aliquota_e_mva(
       Análise de MVA (sem alíquota):
         if not res["mva_autorizada"]: skip
     """
-    uf_norm = (uf or "").strip().upper()[:2]
-    ncm_norm = (ncm or "").strip()
+    uf_norm = uf.strip().upper() if isinstance(uf, str) else ""
+    ncm_norm = ncm.strip() if isinstance(ncm, str) else ""
 
     # --- Ramo 1: UF desconhecida ---
     if not uf_norm:
@@ -93,18 +92,12 @@ def resolver_aliquota_e_mva(
             "UF não identificada no documento fiscal. Cálculo não autorizado.",
         )
 
-    # --- Ramo 2: UF fora do escopo do piloto (≠ PA) ---
-    if uf_norm != _UF_PILOTO:
+    if uf_norm not in _UFS_VALIDAS:
         return _bloqueio(
-            "fora_de_escopo_normativo_piloto", uf_norm, ncm_norm,
-            "fora_de_escopo_normativo_piloto",
-            f"UF '{uf_norm}' fora do escopo normativo do piloto ({_UF_PILOTO}). "
-            "Cálculo não autorizado — sem cobertura normativa validada.",
+            "uf_invalida", uf_norm, ncm_norm, "uf_invalida",
+            "UF inválida. Cálculo não autorizado.",
         )
 
-    # --- A partir daqui: UF == PA ---
-
-    # --- Ramo 3: PA sem NCM ---
     if not ncm_norm:
         return _bloqueio(
             "ncm_ausente", uf_norm, ncm_norm,
@@ -112,7 +105,18 @@ def resolver_aliquota_e_mva(
             "NCM não informado. Cálculo não autorizado.",
         )
 
-    # --- Ramo 4: PA sem dados MVA cadastrados ---
+    if len(ncm_norm) != 8 or not ncm_norm.isascii() or not ncm_norm.isdigit():
+        return _bloqueio(
+            "ncm_invalido", uf_norm, ncm_norm, "ncm_invalido",
+            "NCM deve conter oito dígitos. Cálculo não autorizado.",
+        )
+
+    if type(data_referencia) is not date:
+        return _bloqueio(
+            "data_referencia_invalida", uf_norm, ncm_norm, "data_referencia_invalida",
+            "Data de referência explícita e válida obrigatória. Cálculo não autorizado.",
+        )
+
     if not uf_tem_dados_mva(db, uf_norm):
         return _bloqueio(
             "fallback_uf_sem_dados", uf_norm, ncm_norm,
@@ -120,11 +124,11 @@ def resolver_aliquota_e_mva(
             f"UF '{uf_norm}' sem dados MVA cadastrados. Cálculo não autorizado.",
         )
 
-    # --- Ramo 5: PA + NCM — buscar regra ---
+    # Cobertura da combinação exacta UF + NCM + data.
     regra = buscar_mva(db, uf_norm, ncm_norm, data_referencia=data_referencia)
 
     if not regra:
-        # PA + NCM sem regra → lacuna normativa (I-MVA-06)
+        # Ausência de regra vigente → lacuna normativa (I-MVA-06).
         return _bloqueio(
             "lacuna_normativa", uf_norm, ncm_norm,
             "lacuna_normativa",
@@ -132,10 +136,43 @@ def resolver_aliquota_e_mva(
             "Cálculo não autorizado — lacuna de dados MVA/ST.",
         )
 
-    mva_val = (
-        float(regra["mva"]) / 100 if regra["mva"] > 1 else float(regra["mva"])
-    )
-    nivel = regra.get("nivel_confianca_fonte", "desconhecido")
+    fonte_legal = regra.get("fonte_legal")
+    nivel = regra.get("nivel_confianca_fonte")
+    if (
+        not isinstance(fonte_legal, str) or not fonte_legal.strip()
+        or nivel not in ("oficial", "convenio_base_sem_aliquota")
+    ):
+        return _bloqueio(
+            "fonte_normativa_invalida", uf_norm, ncm_norm, "fonte_normativa_invalida",
+            "Fonte normativa ausente ou sem autoridade suficiente. Cálculo não autorizado.",
+        )
+
+    inicio = regra.get("vigencia_inicio")
+    fim = regra.get("vigencia_fim")
+    if (
+        type(inicio) is not date
+        or (fim is not None and type(fim) is not date)
+        or inicio > data_referencia
+        or (fim is not None and (fim < inicio or fim < data_referencia))
+    ):
+        return _bloqueio(
+            "vigencia_invalida", uf_norm, ncm_norm, "vigencia_invalida",
+            "Regra sem vigência válida na data de referência. Cálculo não autorizado.",
+        )
+
+    try:
+        valor_mva = regra.get("mva")
+        mva_val = float(valor_mva)
+        if isinstance(valor_mva, bool) or not isfinite(mva_val) or mva_val <= 0:
+            raise ValueError("MVA inválida")
+    except (TypeError, ValueError, OverflowError):
+        return _bloqueio(
+            "mva_invalida", uf_norm, ncm_norm, "mva_invalida",
+            "MVA deve ser positiva e finita. Cálculo não autorizado.",
+        )
+    # Compatibilidade: a tabela admite 0.40 ou 40.0 para quarenta por cento.
+    if mva_val > 1:
+        mva_val /= 100
 
     # --- Ramo 6: convenio_base_sem_aliquota — MVA real, alíquota estimada ---
     if nivel == "convenio_base_sem_aliquota":
@@ -147,7 +184,7 @@ def resolver_aliquota_e_mva(
             "ncm": ncm_norm,
             "confianca": "estimativa",
             "aviso": (
-                "MVA de convênio base; alíquota ICMS estimada (RICMS PA não mapeado). "
+                "MVA de convênio base; alíquota ICMS estimada (RICMS da UF não mapeado). "
                 "MVA autorizada para análise de margem; alíquota não autorizada para cálculo financeiro."
             ),
             "calculo_autorizado": False,  # alíquota não autorizada → cálculo financeiro bloqueado
@@ -158,9 +195,20 @@ def resolver_aliquota_e_mva(
             "motivo_bloqueio": None,
         }
 
-    # --- Ramo 7: regra completa ---
+    try:
+        valor_aliquota = regra.get("aliquota_interna")
+        aliquota = float(valor_aliquota)
+        if isinstance(valor_aliquota, bool) or not isfinite(aliquota) or not 0 < aliquota <= 1:
+            raise ValueError("Alíquota inválida")
+    except (TypeError, ValueError, OverflowError):
+        return _bloqueio(
+            "aliquota_invalida", uf_norm, ncm_norm, "aliquota_invalida",
+            "Alíquota decimal deve estar em (0, 1]. Cálculo não autorizado.",
+        )
+
+    # Regra oficial completa: autoridade financeira.
     return {
-        "aliquota": float(regra["aliquota_interna"]),
+        "aliquota": aliquota,
         "mva": mva_val,
         "fonte": "tabela",
         "uf": uf_norm,
