@@ -44,7 +44,7 @@ def _render_guard(class_name):
     return match.group(1).strip()
 
 
-def _run(profile, code, *, acquired=False):
+def _run(profile, code, *, acquired=False, eligible=False):
     # Contexto residual empresarial deliberadamente válido, mesmo no MEI.
     setup = f'''
 const tipoPerfil = {json.dumps(profile)};
@@ -52,7 +52,8 @@ const idPerfil = 21;
 const empresaId = 21;
 const API_BASE = 'https://api.invalid';
 const isOpeningMei = false;
-const resultadoXML = {{relatorio_id: 501, request_fingerprint: 'a'.repeat(64)}};
+const resultadoXML = {{relatorio_id: 501, request_fingerprint: 'a'.repeat(64),
+    tax_report_eligibility: {{eligible: {json.dumps(eligible)}}}}};
 const taxReportRecoveredCheckoutUrl = null;
 const taxReportRecoveredIdempotencyKey = null;
 const taxReportRecoveredPaid = false;
@@ -161,7 +162,8 @@ def test_empresa_permanece_autorizada_pela_fronteira_vertical():
 
 def test_empresa_prepara_intencao_e_checkout_mesma_chave_e_oferta():
     calls = _run('empresa', _function('iniciarCheckout') +
-                 '\nawait iniciarCheckout({preventDefault(){}}); console.log(JSON.stringify(calls));')
+                 '\nawait iniciarCheckout({preventDefault(){}}); console.log(JSON.stringify(calls));',
+                 eligible=True)
     assert calls[0][0] == 'intent'
     checkout = next(call for call in calls if call[0] == 'fetch')
     assert checkout[1].endswith('/checkout/one-time')
