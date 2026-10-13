@@ -15,6 +15,7 @@ from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app import models
+from app.services.resultado_empresarial_service import compor_resultado_empresarial
 from app.services.resultado_provenance_service import (
     fingerprint_resultado_json,
     selar_resultado_nao_mei,
@@ -74,9 +75,33 @@ def _seed_report(
     valid_provenance=True,
     stored_fingerprint=None,
 ):
-    payload = {"tributo": "DAS", "total": 125.75}
+    payload = compor_resultado_empresarial(
+        empresa_id,
+        {
+            "dados_fiscais": {"icms_st": 0},
+            "insights": [],
+            "previsao_recuperacao": {"potencial_recuperacao_nota": None},
+            "context_flags": {},
+            "decomposicao_impacto": {
+                "valor_recuperavel_real": None,
+                "valor_estimado": None,
+            },
+        },
+        {
+            "empresa_id": empresa_id,
+            "creditos_detectados": [
+                {"tipo": "CREDITO_ST_ESTIMADO", "valor_estimado": 125.75},
+            ],
+        },
+    )
     if valid_provenance:
-        payload = selar_resultado_nao_mei(payload, producer_id="app.tax.engine")
+        payload = selar_resultado_nao_mei(
+            payload,
+            producer_id=(
+                "app.services.resultado_empresarial_service."
+                "compor_resultado_empresarial"
+            ),
+        )
     fingerprint = fingerprint_resultado_json(payload)
     if stored_fingerprint is not None:
         fingerprint = stored_fingerprint
