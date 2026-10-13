@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.models import Empresa, RelatorioAnalise, AlertaFiscal
 from app.services.analysis_orchestrator import executar_analise_xml
+from app.services.resultado_empresarial_service import compor_resultado_empresarial
 from app.xml_service import DuplicataFiscalError, processar_e_persistir_xml
 from app.services.score_global_tributario_service import calcular_score_global_tributario
 from app.services.usage_service import verificar_limite_analises, incrementar_uso_analise
@@ -171,12 +172,13 @@ def executar_e_registrar_analise_xml(
                 }
         raise
 
+    resultado_insights = None
     if empresa_id:
         try:
             from app.services.insights_engine import InsightEngine
 
             engine = InsightEngine(db)
-            engine.gerar_insights_empresa(
+            resultado_insights = engine.gerar_insights_empresa(
                 empresa_id=empresa_id,
                 relatorio_analise_id=rel.id,
             )
@@ -218,4 +220,6 @@ def executar_e_registrar_analise_xml(
     )
     incrementar_uso_analise(db, empresa_id)
     db.refresh(rel)
+    if empresa_id:
+        return rel, compor_resultado_empresarial(empresa_id, resultado, resultado_insights)
     return rel, resultado
