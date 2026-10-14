@@ -180,24 +180,30 @@ def test_payments_checkout_offer_one_time_router_contract_red():
     ))
     header = route.dependant.header_params[0]
     assert header.alias == "Idempotency-Key"
-    assert header.required is True
-    body_model = route.dependant.body_params[0].type_
-    assert set(body_model.model_fields) == {"empresa_id", "offer_code"}
-    assert body_model.model_config.get("extra") == "forbid"
-    offer_schema = body_model.model_json_schema()["properties"]["offer_code"]
-    assert offer_schema["type"] == "string"
-    assert offer_schema["maxLength"] == 120
-    assert offer_schema["pattern"] == r"^[a-z0-9]+(?:-[a-z0-9]+)+$"
     assert service.calls == []
     assert dependency.calls == []
 
     app = FastAPI()
     app.include_router(router)
-    header_schema = next(
-        parameter["schema"]
-        for parameter in app.openapi()["paths"]["/checkout/one-time"]["post"]["parameters"]
+    openapi = app.openapi()
+    operation = openapi["paths"]["/checkout/one-time"]["post"]
+    header_parameter = next(
+        parameter
+        for parameter in operation["parameters"]
         if parameter["name"] == "Idempotency-Key"
     )
+    assert header_parameter["required"] is True
+    header_schema = header_parameter["schema"]
+    assert operation["requestBody"]["required"] is True
+    body_ref = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+    body_schema = openapi["components"]["schemas"][body_ref.rsplit("/", 1)[-1]]
+    assert set(body_schema["properties"]) == {"empresa_id", "offer_code"}
+    assert set(body_schema["required"]) == {"empresa_id", "offer_code"}
+    assert body_schema["additionalProperties"] is False
+    offer_schema = body_schema["properties"]["offer_code"]
+    assert offer_schema["type"] == "string"
+    assert offer_schema["maxLength"] == 120
+    assert offer_schema["pattern"] == r"^[a-z0-9]+(?:-[a-z0-9]+)+$"
     assert header_schema["type"] == "string"
     assert header_schema["minLength"] == 1
     assert header_schema["maxLength"] == 255
