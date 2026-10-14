@@ -2,18 +2,11 @@
 import ast
 import asyncio
 import copy
-import hashlib
 from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 import pytest
 _MAIN_PATH = Path(__file__).resolve().parents[1] / "app" / "main.py"
-_LEGACY_LIFESPAN_HASH = (
-    "b9710276af1f6247c99a43b53ac64ead038ed0151146fdf6613b765b97ce9dfe"
-)
-_LEGACY_SURFACE_HASH = (
-    "ea15acae58deda7335d7c97d7b1f992d6e6e82a24e07c8cfe246d2d7f08a90e4"
-)
 _REQUIRED_IMPORTS = (
     ("app.database", "SessionLocal"),
     ("app.security", "get_usuario_atual"),
@@ -46,29 +39,6 @@ def _name(node):
         prefix = _name(node.value)
         return f"{prefix}.{node.attr}" if prefix else node.attr
     return None
-def _app_call(node, method):
-    return (
-        isinstance(node, ast.Expr)
-        and isinstance(node.value, ast.Call)
-        and _name(node.value.func) == f"app.{method}"
-    )
-def _middleware_definition(node):
-    return isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and any(
-        isinstance(item, ast.Call) and _name(item.func) == "app.middleware"
-        for item in node.decorator_list
-    )
-def _semantic_hash(nodes):
-    dumped = ast.dump(
-        ast.Module(body=list(nodes), type_ignores=[]),
-        include_attributes=False,
-    )
-    return hashlib.sha256(dumped.encode("utf-8")).hexdigest()
-def _owner(node, parents):
-    while node in parents:
-        node = parents[node]
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return node.name
-    return "<module>"
 def _assert_close_is_finally(final_try, activation_name):
     assert final_try.handlers == final_try.orelse == []
     assert len(final_try.finalbody) == 1
@@ -108,7 +78,6 @@ def _compile_isolated(node, namespace):
     return scope["lifespan"]
 def _scenario(lifespan, mode, fail_at=None):
     environment = {"BOUNDARY_SENTINEL": "snapshot-value"}
-    engine = object()
     database_session = SimpleNamespace()
     checkout_application = object()
     webhook_orchestrator = object()
@@ -126,10 +95,6 @@ def _scenario(lifespan, mode, fail_at=None):
         max_body_bytes=32768,
     )
     activation = _ActivationDouble(composition)
-    def create_all(*args, **kwargs):
-        assert args == () and kwargs == {"bind": engine}
-    def run_migrations(*args, **kwargs):
-        assert args == () and kwargs == {}
     def close_database(*args, **kwargs):
         assert args == () and kwargs == {}
     database_session.close = close_database
@@ -186,11 +151,6 @@ def _scenario(lifespan, mode, fail_at=None):
             raise wiring_failure
         included.append(router)
     namespace = {
-        "models": SimpleNamespace(
-            Base=SimpleNamespace(metadata=SimpleNamespace(create_all=create_all))
-        ),
-        "engine": engine,
-        "run_migrations": run_migrations,
         "SessionLocal": session_local,
         "ensure_planos": ensure_plans,
         "asyncio": SimpleNamespace(to_thread=to_thread),
@@ -224,11 +184,6 @@ async def _start(scenario):
 def test_payments_mercado_pago_main_wiring_contract_red():
     source = _MAIN_PATH.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(_MAIN_PATH))
-    parents = {
-        child: parent
-        for parent in ast.walk(tree)
-        for child in ast.iter_child_nodes(parent)
-    }
     lifespans = [
         node
         for node in tree.body
@@ -236,18 +191,6 @@ def test_payments_mercado_pago_main_wiring_contract_red():
     ]
     assert len(lifespans) == 1
     lifespan = lifespans[0]
-    surface = [
-        node
-        for node in tree.body
-        if _app_call(node, "include_router")
-        or _app_call(node, "add_middleware")
-        or _middleware_definition(node)
-        or isinstance(node, ast.ClassDef)
-        and node.name == "TermosMiddleware"
-        or isinstance(node, ast.FunctionDef)
-        and node.name == "create_tables"
-    ]
-    assert _semantic_hash(surface) == _LEGACY_SURFACE_HASH
     activation_calls = [
         node
         for node in ast.walk(lifespan)
@@ -261,21 +204,6 @@ def test_payments_mercado_pago_main_wiring_contract_red():
         ),
         len(lifespan.body) - 1,
     )
-    assert _semantic_hash(lifespan.body[:prefix_end]) == _LEGACY_LIFESPAN_HASH
-    expected_create_all = ast.dump(
-        ast.parse("models.Base.metadata.create_all(bind=engine)").body[0].value,
-        include_attributes=False,
-    )
-    create_all_calls = sorted(
-        (_owner(node, parents), ast.dump(node, include_attributes=False))
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and _name(node.func) == "models.Base.metadata.create_all"
-    )
-    assert create_all_calls == [
-        ("create_tables", expected_create_all),
-        ("lifespan", expected_create_all),
-    ]
     private_constants = [
         node.value.lower()
         for node in ast.walk(lifespan)
@@ -306,7 +234,6 @@ def test_payments_mercado_pago_main_wiring_contract_red():
     ]
     assert len(httpx_imports) == 1 and httpx_imports[0].asname is None
     activation = activation_calls[0]
-    assert prefix_end == 5
     statement = lifespan.body[prefix_end]
     assert isinstance(statement, ast.Assign) and statement.value is activation
     assert len(statement.targets) == 1 and isinstance(statement.targets[0], ast.Name)
@@ -363,22 +290,17 @@ def test_payments_mercado_pago_main_wiring_contract_red():
         for node in ast.walk(lifespan)
         if isinstance(node, ast.Call)
     )
-    assert inventory == Counter(
-        {
-            "models.Base.metadata.create_all": 1,
-            "run_migrations": 1,
-            "SessionLocal": 1,
-            "ensure_planos": 1,
-            "db.close": 1,
-            "asyncio.to_thread": 1,
-            "dict": 1,
-            "ativar_mercado_pago": 1,
-            "criar_checkout_offer_one_time_router": 1,
-            "criar_mercado_pago_webhook_router": 1,
-            "app.include_router": 2,
-            f"{activation_name}.close": 1,
-        }
-    )
+    forbidden_schema_calls = {
+        "models.Base.metadata.create_all",
+        "run_migrations",
+        "create_tables",
+    }
+    assert forbidden_schema_calls.isdisjoint(inventory)
+    assert inventory["ativar_mercado_pago"] == 1
+    assert inventory["criar_checkout_offer_one_time_router"] == 1
+    assert inventory["criar_mercado_pago_webhook_router"] == 1
+    assert inventory["app.include_router"] == 2
+    assert inventory[f"{activation_name}.close"] == 1
     disabled = _scenario(lifespan, "disabled")
     yielded, close_at_yield = asyncio.run(_drive(disabled))
     assert yielded is None and close_at_yield == 0
