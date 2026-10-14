@@ -621,7 +621,7 @@ class InsightEngine:
             preco_real = venda.preco_medio or 0
             base_presumida = base_por_ncm.get(venda.ncm, 0)
 
-            if base_presumida == 0:
+            if base_presumida is None or base_presumida == 0:
                 continue
 
             if preco_real < (base_presumida * 0.7):
@@ -845,7 +845,9 @@ class InsightEngine:
             if res.get("fonte") != "tabela":
                 continue
 
-            base = item.base_st or 0
+            if item.base_st is None:
+                continue
+            base = item.base_st
             valor = item.valor_produto or 0
 
             if valor <= 0:
@@ -902,7 +904,9 @@ class InsightEngine:
                 continue
 
             valor = item.valor_produto or 0
-            st_pago = item.valor_st or 0
+            if item.valor_st is None:
+                continue
+            st_pago = item.valor_st
 
             if valor <= 0:
                 continue

@@ -38,6 +38,9 @@ def gerar_benchmark_empresas(db, empresa_ids: list[int] | None = None):
 
     for row in resultados:
 
+        if row.total_st is None:
+            continue
+
         eficiencia = 0
         if row.volume_operacoes:
             eficiencia = row.total_st / row.volume_operacoes
