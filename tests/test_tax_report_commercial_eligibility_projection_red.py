@@ -14,6 +14,7 @@ import ast
 import copy
 import importlib
 import inspect
+import json
 import sys
 import types
 from pathlib import Path
@@ -129,7 +130,7 @@ def _sealed_report(resultado):
                            resultado_json=sealed, fingerprint=fingerprint_resultado_json(sealed))
 
 
-def _enforce(resultado):
+def _enforce(resultado, *, expected_persisted=None):
     """Decisão real de persist(), com provenance real; não chama o método privado."""
     engine = create_engine("sqlite+pysqlite:///:memory:")
     models.Base.metadata.create_all(engine, tables=(
@@ -144,6 +145,12 @@ def _enforce(resultado):
             )
             db.add(rel)
             db.commit()
+            if expected_persisted is not None:
+                # Compara com a coluna recarregada, não com o objeto pré-JSON.
+                db.refresh(rel)
+                persisted = verificar_resultado_persistido(rel)
+                assert type(persisted["creditos_detectados"]) is list
+                assert persisted == expected_persisted
             try:
                 result = checkout.TaxReportCheckoutIntent(db).persist(
                     user_id=11, empresa_id=21, relatorio_id=501, offer_code=OFFER,
@@ -163,6 +170,17 @@ def _enforce(resultado):
 
 @MATRIX
 def test_f1_semantica_existente_permanece_green(name, resultado, expected):
+    if name == "colecao-tuple":
+        _, authority = _public_function("authority")
+        _, projector = _public_function("projector")
+        assert type(resultado["creditos_detectados"]) is tuple
+        assert authority(resultado) is expected is False
+        _projection(projector(resultado), False)
+        persisted = json.loads(json.dumps(resultado))
+        assert type(persisted["creditos_detectados"]) is list
+        assert authority(persisted) is True
+        assert _enforce(resultado, expected_persisted=persisted) is True
+        return
     assert _enforce(resultado) is expected, name
 
 
@@ -175,7 +193,17 @@ def test_autoridade_compartilhada_projecao_e_enforcement_mesma_decisao(name, res
     assert type(decision) is bool
     assert decision is expected, name
     _projection(projector(resultado), decision)
-    assert _enforce(resultado) is decision, name
+    if name == "colecao-tuple":
+        # Paridade é exigida no mesmo domínio: JSON persistido é uma lista.
+        assert decision is False and type(resultado["creditos_detectados"]) is tuple
+        persisted = json.loads(json.dumps(resultado))
+        assert type(persisted["creditos_detectados"]) is list
+        persisted_decision = authority(persisted)
+        assert persisted_decision is True
+        _projection(projector(persisted), persisted_decision)
+        assert _enforce(resultado, expected_persisted=persisted) is persisted_decision
+    else:
+        assert _enforce(resultado) is decision, name
     # JSON/fingerprint preserva inclusive NaN sem comparação NaN == NaN.
     assert fingerprint_resultado_json(resultado) == fingerprint_resultado_json(original)
 

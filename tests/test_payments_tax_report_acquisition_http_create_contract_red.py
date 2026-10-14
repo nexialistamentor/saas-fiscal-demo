@@ -281,27 +281,34 @@ def test_tax_report_acquisition_http_create_route_and_authority_contract_red():
     assert len(dependant.header_params) == 1
     header = dependant.header_params[0]
     assert header.alias == "Idempotency-Key"
-    assert header.required is True
     dependency_calls = {dependency.call for dependency in dependant.dependencies}
     assert dependency_calls == {get_usuario_atual, get_db}
 
     app = FastAPI()
     app.include_router(relatorio_router.router, prefix="/relatorio")
-    operation = app.openapi()["paths"][REQUEST_PATH.replace("21", "{empresa_id}")][
+    openapi = app.openapi()
+    operation = openapi["paths"][REQUEST_PATH.replace("21", "{empresa_id}")][
         "post"
     ]
-    header_schema = next(
-        parameter["schema"]
+    header_parameter = next(
+        parameter
         for parameter in operation["parameters"]
-        if parameter["name"] == "Idempotency-Key"
+        if parameter["name"] == "Idempotency-Key" and parameter["in"] == "header"
     )
+    assert header_parameter["required"] is True
+    header_schema = header_parameter["schema"]
     assert header_schema["minLength"] == 1
     assert header_schema["maxLength"] == 255
     assert header_schema["pattern"] == r"^[\x21-\x7e]+$"
 
-    body_model = dependant.body_params[0].type_
-    assert set(body_model.model_fields) == {"relatorio_id", "request_fingerprint"}
-    assert body_model.model_config.get("extra") == "forbid"
+    assert operation["requestBody"]["required"] is True
+    body_ref = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+    body_schema = openapi["components"]["schemas"][body_ref.rsplit("/", 1)[-1]]
+    assert set(body_schema["properties"]) == {"relatorio_id", "request_fingerprint"}
+    assert set(body_schema["required"]) == {"relatorio_id", "request_fingerprint"}
+    assert body_schema["additionalProperties"] is False
+    assert body_schema["properties"]["relatorio_id"]["exclusiveMinimum"] == 0
+    assert body_schema["properties"]["request_fingerprint"]["pattern"] == "^[0-9a-f]{64}$"
 
     source = getsource(route.endpoint)
     assert "TaxReportAcquisition" in source

@@ -81,25 +81,30 @@ def test_http_intent_endpoint_exists_authenticated_and_has_exact_input_red():
         for dependency in route.dependant.dependencies
     ), "endpoint de intencao deve exigir usuario autenticado"
 
-    fields = route.body_field.type_.model_fields
-    assert tuple(fields) == ("relatorio_id", "request_fingerprint")
-    assert route.body_field.type_.model_config.get("extra") == "forbid"
-    schema = route.body_field.type_.model_json_schema()
-    assert schema["properties"]["relatorio_id"]["exclusiveMinimum"] == 0
-    assert schema["properties"]["request_fingerprint"]["pattern"] == "^[0-9a-f]{64}$"
-
     headers = [parameter for parameter in route.dependant.header_params]
     assert len(headers) == 1
     assert headers[0].alias == "Idempotency-Key"
 
     app = FastAPI()
     app.include_router(relatorio_router.router)
-    operation = app.openapi()["paths"][ROUTE_PATH]["post"]
-    header_schema = next(
-        parameter["schema"]
+    openapi = app.openapi()
+    operation = openapi["paths"][ROUTE_PATH]["post"]
+    assert "204" in operation["responses"]
+    assert operation["requestBody"]["required"] is True
+    body_ref = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+    schema = openapi["components"]["schemas"][body_ref.rsplit("/", 1)[-1]]
+    assert tuple(schema["properties"]) == ("relatorio_id", "request_fingerprint")
+    assert set(schema["required"]) == {"relatorio_id", "request_fingerprint"}
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["relatorio_id"]["exclusiveMinimum"] == 0
+    assert schema["properties"]["request_fingerprint"]["pattern"] == "^[0-9a-f]{64}$"
+    header_parameter = next(
+        parameter
         for parameter in operation["parameters"]
         if parameter["name"] == "Idempotency-Key" and parameter["in"] == "header"
     )
+    assert header_parameter["required"] is True
+    header_schema = header_parameter["schema"]
     assert header_schema["type"] == "string"
     assert header_schema["minLength"] == 1
     assert header_schema["maxLength"] == 255

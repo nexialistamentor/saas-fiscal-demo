@@ -29,6 +29,10 @@ from app.models import (
 from app.security import hash_senha
 from app.services.analysis_orchestrator import executar_analise_xml
 from app.services.registro_analise_service import executar_e_registrar_analise_xml
+from app.services.resultado_provenance_service import (
+    selar_resultado_nao_mei, fingerprint_resultado_json, verificar_resultado_persistido,
+)
+from app.services.tax_report_eligibility import projetar_tax_report_eligibility
 
 XML_FIXTURE = (
     Path(__file__).resolve().parents[1] / "app" / "xmls_testes" / "xml_icms10_st_sintetico.xml"
@@ -197,12 +201,28 @@ def test_processar_xml_job_delega_para_eixo_canonico():
     mock_db = MagicMock()
     mock_db.query.return_value.filter.return_value.first.return_value = mock_emp
 
-    mock_rel = MagicMock()
-    mock_rel.id = 99
+    payload = {"dados_fiscais": {}, "creditos_detectados": [
+        {"tipo": "CREDITO_ST_ESTIMADO", "valor_estimado": 100},
+    ]}
+    sealed = selar_resultado_nao_mei(payload, producer_id=(
+        "app.services.resultado_empresarial_service.compor_resultado_empresarial"
+    ))
+    mock_rel = RelatorioAnalise(id=99, user_id=7, empresa_id=empresa_id,
+        status="ok", analysis_type="xml_analise", resultado_json=sealed,
+        fingerprint=fingerprint_resultado_json(sealed))
 
     with patch("app.jobs.analysis_job.SessionLocal", return_value=mock_db), patch(
         "app.jobs.analysis_job.executar_e_registrar_analise_xml",
-    ) as spy:
+    ) as spy, patch("app.jobs.analysis_job.verificar_resultado_persistido",
+                   wraps=verificar_resultado_persistido) as verifier, patch(
+        "app.jobs.analysis_job.projetar_tax_report_eligibility",
+        wraps=projetar_tax_report_eligibility,
+    ) as projector:
+        trilha = MagicMock()
+        trilha.attach_mock(spy, "persistir")
+        trilha.attach_mock(verifier, "verificar")
+        trilha.attach_mock(projector, "projetar")
+        # Resultado transitório divergente: a projeção deve usar o persistido.
         spy.return_value = (mock_rel, {"dados_fiscais": {}})
         resultado = processar_xml_job(xml_bytes, empresa_id)
 
@@ -212,7 +232,13 @@ def test_processar_xml_job_delega_para_eixo_canonico():
             user_id=7,
             empresa_id=empresa_id,
         )
-        assert resultado == {"relatorio_id": 99, "tem_resultado": True}
+        assert [call[0] for call in trilha.mock_calls] == ["persistir", "verificar", "projetar"]
+        verifier.assert_called_once_with(mock_rel)
+        projector.assert_called_once_with(payload)
+        assert resultado["relatorio_id"] == 99
+        assert resultado["request_fingerprint"] == mock_rel.fingerprint
+        assert resultado["tem_resultado"] is True
+        assert resultado["tax_report_eligibility"] == {"eligible": True}
         mock_db.close.assert_called_once()
 
 
