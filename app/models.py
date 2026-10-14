@@ -1285,6 +1285,8 @@ class ItemFiscal(Base):
     valor_icms = Column(Float, nullable=True)
     base_st = Column(Float, nullable=True)
     valor_st = Column(Float, nullable=True)
+    # NULL: histórico sem prova de origem; True: campos ST extraídos do XML.
+    st_observado_xml = Column(Boolean, nullable=True)
 
     documento = relationship("DocumentoFiscal", back_populates="itens")
 

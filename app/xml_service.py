@@ -5,11 +5,8 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
 from app.models import DocumentoFiscal, ItemFiscal
-from app.motor_fiscal import MotorFiscal, analisar_xml, carregar_mva
+from app.motor_fiscal import analisar_xml, carregar_mva
 from app.services.tax_consistency.tax_consistency_engine import TaxConsistencyEngine
-
-ALIQUOTA_ICMS_PADRAO = 18.0
-
 
 class DuplicataFiscalError(Exception):
     """Documento fiscal duplicado (chave NF-e ou fingerprint SHA-256) para esta empresa."""
@@ -149,6 +146,7 @@ def ler_xml_unico(caminho_xml: str = None, xml_bytes: bytes = None):
             "valor_icms": valor_icms,
             "base_st": base_st,
             "valor_st": valor_st,
+            "st_observado_xml": base_st is not None and valor_st is not None,
         })
 
     resultado = {
@@ -182,10 +180,8 @@ def _parse_float(val):
 
 def enriquecer_st_se_necessario(dados: dict, analise: dict) -> None:
     """
-    Motor dual para ICMS-ST:
-    - Se XML tem ST (base_st, valor_st nos itens) → mantém (validar)
-    - Se XML não tem ST → calcula usando MotorFiscal + carregar_mva
-    Modifica dados in-place.
+    Preserva campos ST observados; consulta MVA apenas como metadado analítico.
+    Ausência de ST no XML nunca é preenchida com cálculo nos campos fiscais.
     """
     uf = dados.get("uf_dest") or dados.get("uf_emit") or analise.get("uf_operacao")
     data_referencia = _parse_data_emissao(dados.get("data_emissao"))
@@ -193,34 +189,7 @@ def enriquecer_st_se_necessario(dados: dict, analise: dict) -> None:
     if mva_doc is not None:
         mva_doc = _parse_float(mva_doc)
 
-    for item in dados.get("itens", []):
-        base_st = item.get("base_st")
-        valor_st = item.get("valor_st")
-        # ST já presente no XML → manter (validar)
-        if base_st is not None and str(base_st).strip() and float(str(base_st).replace(",", ".") or 0) > 0:
-            continue
-        if valor_st is not None and str(valor_st).strip() and float(str(valor_st).replace(",", ".") or 0) > 0:
-            continue
-
-        # ST ausente → calcular
-        valor_prod = _parse_float(item.get("valor_produto"))
-        ncm = item.get("ncm")
-        if valor_prod is None or valor_prod <= 0 or not ncm:
-            continue
-
-        mva = mva_doc or carregar_mva(ncm, uf, data_referencia=data_referencia)
-        if mva is None:
-            continue
-        base_st_calc = MotorFiscal.calcular_base_st(valor_prod, mva)
-        icms_proprio = MotorFiscal.calcular_icms_proprio(valor_prod, ALIQUOTA_ICMS_PADRAO)
-        icms_st_calc = MotorFiscal.calcular_icms_st(
-            base_st_calc, ALIQUOTA_ICMS_PADRAO, icms_proprio
-        )
-
-        item["base_st"] = round(base_st_calc, 2)
-        item["valor_st"] = round(icms_st_calc, 2)
-
-    # MVA no documento: usar da análise ou da primeira MVA calculada
+    # MVA analítica no documento, sem preencher os campos ST dos itens.
     if mva_doc is None and dados.get("itens"):
         first_ncm = next((i.get("ncm") for i in dados["itens"] if i.get("ncm")), None)
         if first_ncm:
@@ -390,6 +359,7 @@ def persistir_documento_fiscal(
             valor_icms=item_data.get("valor_icms"),
             base_st=item_data.get("base_st"),
             valor_st=item_data.get("valor_st"),
+            st_observado_xml=item_data.get("st_observado_xml") is True,
         )
         db.add(item)
 

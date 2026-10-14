@@ -17,6 +17,7 @@ def detectar_creditos(db: Session, empresa_id: int):
         FROM itens_fiscais i
         INNER JOIN documentos_fiscais d ON i.documento_id = d.id
         WHERE d.empresa_id = :empresa_id
+          AND i.st_observado_xml IS TRUE
         GROUP BY i.ncm, d.uf_dest, d.uf_emit, d.data_emissao
     """).columns(data_emissao=Date)
 
