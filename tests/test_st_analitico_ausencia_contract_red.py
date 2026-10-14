@@ -7,6 +7,7 @@ Não fixa implementação nem um campo/status futuro para dados insuficientes.
 """
 from datetime import date
 from numbers import Real
+import re
 from types import SimpleNamespace
 from unittest.mock import Mock
 import unicodedata
@@ -17,18 +18,46 @@ from app.services import insights_engine
 from app.services.benchmark_fiscal_service import gerar_benchmark_empresas
 
 
+def _exige_st_observado(statement):
+    # Reconhece o predicado emitido por SQLAlchemy e o SQL textual desta frente.
+    # Sem esse predicado, as rows são devolvidas intactas, inclusive UNKNOWN.
+    return re.search(r"\b(?:\w+\.)?st_observado_xml\s+IS\s+TRUE\b",
+                     str(statement), re.IGNORECASE) is not None
+
+
+class _Query:
+    def __init__(self, rows):
+        self.rows = list(rows)
+
+    def join(self, *args):
+        return self
+
+    def filter(self, *predicates):
+        if any(_exige_st_observado(p) for p in predicates):
+            self.rows = [r for r in self.rows if getattr(r, "st_observado_xml", None) is True]
+        return self
+
+    def group_by(self, *args):
+        return self
+
+    def order_by(self, *args):
+        return self
+
+    def all(self):
+        return list(self.rows)
+
+
 def _db(*grupos):
     db = Mock()
-    consultas = []
-    for rows in grupos:
-        query = Mock()
-        for method in ("join", "filter", "group_by", "order_by"):
-            getattr(query, method).return_value = query
-        query.all.return_value = rows
-        consultas.append(query)
-    db.query.side_effect = consultas
-    if grupos:
-        db.execute.return_value.fetchall.return_value = grupos[0]
+    db.query.side_effect = [_Query(rows) for rows in grupos]
+
+    def execute(statement, *args, **kwargs):
+        rows = list(grupos[0]) if grupos else []
+        if _exige_st_observado(statement):
+            rows = [r for r in rows if getattr(r, "st_observado_xml", None) is True]
+        return SimpleNamespace(fetchall=lambda: list(rows))
+
+    db.execute.side_effect = execute
     return db
 
 
