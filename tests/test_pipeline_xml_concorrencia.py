@@ -138,8 +138,6 @@ def test_chamadas_sequenciais_nao_duplicam_relatorio():
     db = SessionLocal()
     user, empresa, email = _seed_user_empresa(db)
     try:
-        _cleanup_race(db, user.id, empresa.id, email)
-
         xml_bytes = XML_FIXTURE.read_bytes()
 
         rel1, _ = executar_e_registrar_analise_xml(
@@ -179,7 +177,6 @@ def test_executar_e_registrar_analise_xml_mesmo_xml_concorrente_nao_duplica():
     db_setup = SessionLocal()
     try:
         user, empresa, email = _seed_user_empresa(db_setup)
-        _cleanup_race(db_setup, user.id, empresa.id, email)
         user_id, empresa_id = user.id, empresa.id
     finally:
         db_setup.close()
