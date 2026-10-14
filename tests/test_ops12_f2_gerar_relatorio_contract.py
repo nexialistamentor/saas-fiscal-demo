@@ -16,6 +16,7 @@ from app.services.usage_service import LimiteAnalisesAtingidoError
 _XML_BYTES = b"<NFeProc><NFe></NFe></NFeProc>"
 _MENSAGEM = "Análise concluída. Desbloqueie o relatório completo para visualizar os detalhes."
 _ANALISE_FAKE = {"insights": [], "context_flags": {}}
+_FINGERPRINT = "a" * 64
 
 
 class _QueryFake:
@@ -84,7 +85,7 @@ def test_f2_gerar_relatorio_sem_empresa_retorna_200(monkeypatch):
 
     def fake_executar(db, xml_bytes, user_id, empresa_id, limite_analises=100):
         executar_calls.append((db, xml_bytes, user_id, empresa_id, limite_analises))
-        return SimpleNamespace(id=42), _ANALISE_FAKE
+        return SimpleNamespace(id=42, status="ok", fingerprint=_FINGERPRINT), _ANALISE_FAKE
 
     def fake_montar(analise, empresa_id, db):
         montar_calls.append((analise, empresa_id, db))
@@ -98,6 +99,7 @@ def test_f2_gerar_relatorio_sem_empresa_retorna_200(monkeypatch):
     monkeypatch.setattr(relatorio_router, "executar_e_registrar_analise_xml", fake_executar)
     monkeypatch.setattr(relatorio_router, "executar_analise_xml", fail_analise_xml)
     monkeypatch.setattr(relatorio_router, "_montar_relatorio", fake_montar)
+    monkeypatch.setattr(relatorio_router, "verificar_resultado_persistido", lambda _rel: {})
     app.dependency_overrides[get_usuario_atual] = lambda: _mock_user(user_id=1, plano=plano)
     app.dependency_overrides[get_db] = _override_db()
 
@@ -112,6 +114,7 @@ def test_f2_gerar_relatorio_sem_empresa_retorna_200(monkeypatch):
         "status": "processado",
         "mensagem": _MENSAGEM,
         "relatorio_id": 42,
+        "request_fingerprint": _FINGERPRINT,
     }
     assert len(validar_calls) == 1
     assert len(executar_calls) == 1
@@ -142,7 +145,7 @@ def test_f2_gerar_relatorio_com_empresa_retorna_200(monkeypatch):
 
     def fake_executar(db, xml_bytes, user_id, empresa_id, limite_analises=100):
         executar_calls.append((db, xml_bytes, user_id, empresa_id, limite_analises))
-        return SimpleNamespace(id=99), _ANALISE_FAKE
+        return SimpleNamespace(id=99, status="ok", fingerprint=_FINGERPRINT), _ANALISE_FAKE
 
     def fake_montar(analise, empresa_id, db):
         return {"empresa_id": empresa_id, "insights": [], "score_global": None}
@@ -156,6 +159,7 @@ def test_f2_gerar_relatorio_com_empresa_retorna_200(monkeypatch):
     monkeypatch.setattr(relatorio_router, "executar_e_registrar_analise_xml", fake_executar)
     monkeypatch.setattr(relatorio_router, "executar_analise_xml", fail_analise_xml)
     monkeypatch.setattr(relatorio_router, "_montar_relatorio", fake_montar)
+    monkeypatch.setattr(relatorio_router, "verificar_resultado_persistido", lambda _rel: {})
     app.dependency_overrides[get_usuario_atual] = lambda: _mock_user(user_id=1)
     app.dependency_overrides[get_db] = _override_db(empresa=emp)
 
@@ -170,6 +174,7 @@ def test_f2_gerar_relatorio_com_empresa_retorna_200(monkeypatch):
         "status": "processado",
         "mensagem": _MENSAGEM,
         "relatorio_id": 99,
+        "request_fingerprint": _FINGERPRINT,
     }
     assert len(verificar_calls) == 1
     assert verificar_calls[0][0] == 10
