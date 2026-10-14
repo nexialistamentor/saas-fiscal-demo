@@ -814,7 +814,7 @@ class InsightEngine:
                     "ncm": ncm,
                     "impacto": "alto" if saldo > threshold_alto else "medio",
                     "valor_estimado": saldo,
-                    "descricao": f"NCM {ncm}: ST de R$ {saldo} paga na entrada sem saida correspondente.",
+                    "descricao": f"NCM {ncm}: ST de R$ {saldo} documentada na entrada sem saida correspondente.",
                     "recomendacao": "Verificar se produto ainda esta em estoque ou houve perda/devolucao nao registada."
                 })
 

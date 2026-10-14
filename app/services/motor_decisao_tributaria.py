@@ -9,7 +9,7 @@ def decidir_acao_st(valor_produto, st_pago, mva, aliquota):
         return {
             "decisao": "RESTITUICAO_POSSIVEL",
             "valor_estimado": impacto,
-            "descricao": "ST recolhida acima do valor correto.",
+            "descricao": "O valor de ST documentado no XML está acima do cenário normativo estimado.",
             "recomendacao": "avaliar pedido de restituição de ST."
         }
 
@@ -17,13 +17,13 @@ def decidir_acao_st(valor_produto, st_pago, mva, aliquota):
         return {
             "decisao": "RISCO_FISCAL",
             "valor_estimado": impacto,
-            "descricao": "ST recolhida abaixo do valor correto.",
+            "descricao": "O valor de ST documentado no XML está abaixo do cenário normativo estimado.",
             "recomendacao": "verificar parametrização fiscal para evitar autuação."
         }
 
     return {
         "decisao": "OPERACAO_CORRETA",
         "valor_estimado": 0,
-        "descricao": "ST recolhida corretamente.",
+        "descricao": "O valor de ST documentado no XML é compatível com o cenário normativo estimado.",
         "recomendacao": "nenhuma ação necessária."
     }

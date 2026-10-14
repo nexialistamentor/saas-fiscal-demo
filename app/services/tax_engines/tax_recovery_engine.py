@@ -20,7 +20,8 @@ class TaxRecoveryEngine(BaseTaxEngine):
             creditos.append({
                 "tipo": "ICMS_RECUPERAVEL",
                 "origem": "icms_fluxo",
-                "valor": icms_pago - icms_devido
+                "valor": icms_pago - icms_devido,
+                "qualificacao": "Estimativa analítica baseada em valores documentais; não constitui crédito comprovado."
             })
 
         return {
