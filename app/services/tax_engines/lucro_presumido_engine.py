@@ -19,6 +19,7 @@ def _atividade_explicita(dados_fiscais):
 class LucroPresumidoEngine(BaseTaxEngine):
 
     def execute(self, context: dict):
+        ano_referencia = self.resolver_ano_referencia(context)
         regime = context.get("regime")
         if not isinstance(regime, str) or regime not in (
             "presumido", "real", "simples", "simples_nacional", "mei",
@@ -29,7 +30,6 @@ class LucroPresumidoEngine(BaseTaxEngine):
                 "estado_l3": "bloqueado",
                 "calculo_autorizado": False,
             }
-        ano_referencia = self.resolver_ano_referencia(context)
         try:
             resultado = calcular_lucro_presumido(context)
         except AtividadeFiscalIndisponivelError as exc:
