@@ -108,6 +108,7 @@ def test_e3_status_job_proprio_retorna_200_com_contrato():
         "result": {
             "relatorio_id": 42,
             "tem_resultado": True,
+            "tax_report_eligibility": {"eligible": False},
         },
     }
 
