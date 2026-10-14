@@ -25,7 +25,7 @@ def db():
     engine = create_engine("sqlite:///:memory:")
     with engine.begin() as conn:
         conn.execute(text("CREATE TABLE documentos_fiscais (id INTEGER PRIMARY KEY, empresa_id INTEGER, uf_dest TEXT, uf_emit TEXT, data_emissao DATE)"))
-        conn.execute(text("CREATE TABLE itens_fiscais (documento_id INTEGER, ncm TEXT, valor_st REAL, base_st REAL, valor_produto REAL)"))
+        conn.execute(text("CREATE TABLE itens_fiscais (documento_id INTEGER, ncm TEXT, valor_st REAL, base_st REAL, valor_produto REAL, st_observado_xml BOOLEAN)"))
     with Session(engine) as session:
         yield session
     engine.dispose()
@@ -34,7 +34,7 @@ def db():
 def documento(db, id, uf_dest="PA", uf_emit="RJ", data="2026-01-01", ncm="22021000", empresa=1):
     db.execute(text("INSERT INTO documentos_fiscais VALUES (:id, :empresa, :dest, :emit, :data)"),
                {"id": id, "empresa": empresa, "dest": uf_dest, "emit": uf_emit, "data": data})
-    db.execute(text("INSERT INTO itens_fiscais VALUES (:id, :ncm, 100, 8, 10)"), {"id": id, "ncm": ncm})
+    db.execute(text("INSERT INTO itens_fiscais VALUES (:id, :ncm, 100, 8, 10, 1)"), {"id": id, "ncm": ncm})
 
 
 def executar(db, servico, bloqueado=False, parcial=False):
