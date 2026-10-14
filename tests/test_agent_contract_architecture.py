@@ -108,7 +108,7 @@ FORBIDDEN_PROVIDER_IMPORT_PREFIXES = (
 
 def _parse(path: Path) -> ast.Module:
     return ast.parse(
-        path.read_text(encoding="utf-8"),
+        path.read_text(encoding="utf-8-sig"),
         filename=str(path),
     )
 
