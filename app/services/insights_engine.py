@@ -611,6 +611,7 @@ class InsightEngine:
             .join(NotaFiscalItem.documento)
             .filter(DocumentoFiscal.empresa_id == empresa_id)
             .filter(DocumentoFiscal.tipo == "entrada")
+            .filter(NotaFiscalItem.st_observado_xml.is_(True))
             .group_by(NotaFiscalItem.ncm)
             .all()
         )
@@ -827,6 +828,7 @@ class InsightEngine:
             self.db.query(NotaFiscalItem)
             .join(NotaFiscalItem.documento)
             .filter(DocumentoFiscal.empresa_id == empresa_id)
+            .filter(NotaFiscalItem.st_observado_xml.is_(True))
             .all()
         )
 
@@ -895,6 +897,7 @@ class InsightEngine:
             self.db.query(NotaFiscalItem)
             .join(NotaFiscalItem.documento)
             .filter(DocumentoFiscal.empresa_id == empresa_id)
+            .filter(NotaFiscalItem.st_observado_xml.is_(True))
             .all()
         )
 

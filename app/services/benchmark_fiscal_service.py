@@ -17,6 +17,7 @@ def gerar_benchmark_empresas(db, empresa_ids: list[int] | None = None):
             JOIN documentos_fiscais d
                 ON i.documento_id = d.id
             WHERE d.empresa_id IN ({placeholders})
+              AND i.st_observado_xml IS TRUE
             GROUP BY d.empresa_id
         """)
         params = {f"id{i}": eid for i, eid in enumerate(empresa_ids)}
@@ -30,6 +31,7 @@ def gerar_benchmark_empresas(db, empresa_ids: list[int] | None = None):
             FROM itens_fiscais i
             JOIN documentos_fiscais d
                 ON i.documento_id = d.id
+            WHERE i.st_observado_xml IS TRUE
             GROUP BY d.empresa_id
         """)
         resultados = db.execute(query).fetchall()
