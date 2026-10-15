@@ -6,6 +6,10 @@ from io import BytesIO
 import re
 
 from app.services.context_flags_service import default_context_flags
+from app.services.enterprise_paid_report_pdf import (
+    EnterprisePaidReportFormatError,
+    render_enterprise_acquired_pdf,
+)
 from app.services.pdf_report_service import gerar_pdf_relatorio
 from app.services.resultado_provenance_service import (
     ResultadoProvenanceError,
@@ -52,6 +56,24 @@ class TaxReportAcquisitionPdfRenderer:
             raise TaxReportAcquisitionPdfError("fingerprint divergente")
 
         acquired_snapshot = deepcopy(snapshot)
+        # Enterprise v1 e estruturado; o PDF legado aceita apenas insights-lista.
+        # Nunca converter silenciosamente oportunidades/creditos em lista vazia.
+        enterprise = (
+            type(acquired_snapshot.get("insights")) is dict
+            or "oportunidades" in acquired_snapshot
+            or "creditos_detectados" in acquired_snapshot
+        )
+        if enterprise:
+            try:
+                return render_enterprise_acquired_pdf(
+                    snapshot=acquired_snapshot,
+                    empresa_id=empresa_id,
+                    report_id=report_id,
+                    fingerprint=fingerprint,
+                )
+            except EnterprisePaidReportFormatError as exc:
+                raise TaxReportAcquisitionPdfError("snapshot empresarial invalido") from exc
+
         recovery = acquired_snapshot.get("previsao_recuperacao")
         estimated_value = (
             recovery.get("potencial_recuperacao_nota", 0)
