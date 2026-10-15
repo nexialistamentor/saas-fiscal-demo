@@ -173,6 +173,12 @@ def test_payments_multi_vertical_one_time_dispatch_contract_red(monkeypatch):
     )
 
     engine, Session = _ambiente(models)
+    assert engine.dialect.name == "sqlite"
+    # SQLite CAST(CURRENT_TIMESTAMP AS DATETIME) nao preserva datetime.
+    # Adaptador exclusivo do teste offline; producao permanece intacta.
+    monkeypatch.setattr(
+        dispatch, "cast", lambda expression, _type: expression
+    )
     ordem = _criar_ordem(
         composition, Session,
         offer_code="document-one-time-mutated-company",
@@ -378,8 +384,7 @@ def test_payments_multi_vertical_one_time_dispatch_contract_red(monkeypatch):
     assert len(gateway_falho.chamadas) == 1
     _assert_limpa(Session, models, candidata.id)
 
-    # Falha de persistencia apos resposta exige rollback. O retry recebe a
-    # mesma chave duravel; o espiao representa a idempotencia logica externa.
+    # Falha no claim antes do gateway: retry cria apenas uma vez.
     candidata = _criar_ordem(composition, Session, chave="persistence-retry-301")
     gateway_retry = _GatewayEspiao(resposta={
         "provider_order_id": "provider-persistence-retry-4719",
@@ -399,11 +404,61 @@ def test_payments_multi_vertical_one_time_dispatch_contract_red(monkeypatch):
     finally:
         event.remove(engine, "before_cursor_execute", falhar_update)
     _assert_limpa(Session, models, candidata.id)
+    assert gateway_retry.chamadas == []
 
     recuperada = _despachar(dispatcher_retry, ordem_id=candidata.id)
     assert recuperada.provider_order_id == "provider-persistence-retry-4719"
-    assert len(gateway_retry.chamadas) == 2
+    assert len(gateway_retry.chamadas) == 1
     assert {chamada["idempotency_key"] for chamada in gateway_retry.chamadas} == {
         "persistence-retry-301"
     }
+    assert _contagens(Session, models) == (0, 0)
+
+    # POST_PROVIDER_RECONCILIATION_CONTRACT
+    # Falha depois de criar no provider: nunca criar novamente.
+    candidata = _criar_ordem(
+        composition, Session, chave="provider-effect-reconciliation-301"
+    )
+    gateway_effect = _GatewayEspiao(resposta={
+        "provider_order_id": "provider-reconciled-4719",
+        "checkout_url": CHECKOUT_URL,
+    })
+    dispatcher_effect = dispatch.CheckoutOfferOneTimeDispatcher(
+        Session, gateway_effect
+    )
+    updates = []
+
+    def falhar_segundo_update(_c, _u, statement, _p, _x, _m):
+        if statement.lstrip().lower().startswith("update ordens_checkout"):
+            updates.append(statement)
+            if len(updates) == 2:
+                raise RuntimeError(segredo)
+
+    event.listen(engine, "before_cursor_execute", falhar_segundo_update)
+    try:
+        with pytest.raises(dispatch.CheckoutOfferOneTimeDispatchError) as erro:
+            _despachar(dispatcher_effect, ordem_id=candidata.id)
+        _assert_sanitizado(erro.value, dispatch, segredo)
+    finally:
+        event.remove(
+            engine, "before_cursor_execute", falhar_segundo_update
+        )
+
+    assert len(updates) == 2
+    assert len(gateway_effect.chamadas) == 1
+    _assert_limpa(Session, models, candidata.id)
+
+    reconciliacoes = []
+
+    def reconciliar(**kwargs):
+        reconciliacoes.append(kwargs)
+        return gateway_effect.resposta
+
+    gateway_effect.reconciliar_cobranca = reconciliar
+    recuperada = _despachar(dispatcher_effect, ordem_id=candidata.id)
+
+    assert recuperada.provider_order_id == "provider-reconciled-4719"
+    assert recuperada.checkout_url == CHECKOUT_URL
+    assert len(gateway_effect.chamadas) == 1
+    assert reconciliacoes == gateway_effect.chamadas
     assert _contagens(Session, models) == (0, 0)
