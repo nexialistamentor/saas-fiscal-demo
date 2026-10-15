@@ -546,6 +546,7 @@ def test_payments_checkout_offer_campaign_preference_expiry_contract_red():
 
         # C: falha do provider nao altera o instante usado no retry.
         client_c = _FakePreferenceClient("retry", fail_first=True)
+        client_c.buscar_preferencias = lambda *, external_reference: []
         dispatcher_c = _dispatcher(dispatch, mercado_pago, Session, client_c)
         with Session() as db:
             retry_reservation_before = db.get(
@@ -576,25 +577,20 @@ def test_payments_checkout_offer_campaign_preference_expiry_contract_red():
 
         require(_opaque(first_error_c, dispatch), "C_FIRST_FAILURE_OPAQUE")
         require(provider_after_first_c is None, "C_FIRST_FAILURE_NOT_PERSISTED")
-        require(second_error_c is None and result_c is not None, "C_RETRY_SUCCESS")
-        require(len(client_c.calls) == 2, "C_PROVIDER_TWICE")
+        # Pesquisa vazia nao prova ausencia definitiva no provider.
         require(
-            len(client_c.calls) == 2
-            and _expiry_slice(client_c.calls[0]) == expected_retry_expiry
-            and _expiry_slice(client_c.calls[1]) == expected_retry_expiry,
-            "C_PERSISTED_EXPIRY_REUSED",
+            result_c is None and _opaque(second_error_c, dispatch),
+            "C_UNCERTAIN_RETRY_FAIL_CLOSED",
+        )
+        require(len(client_c.calls) == 1, "C_NO_SECOND_CREATION")
+        require(
+            _expiry_slice(client_c.calls[0]) == expected_retry_expiry,
+            "C_ORIGINAL_EXPIRY_PRESERVED",
         )
         require(
-            len(client_c.calls) == 2
-            and _expiry_slice(client_c.calls[0])
-            == _expiry_slice(client_c.calls[1]),
-            "C_EXPIRY_STRUCTURALLY_IDENTICAL",
-        )
-        require(
-            len(client_c.calls) == 2
-            and {call["idempotency_key"] for call in client_c.calls}
-            == {"campaign-expiry-retry-1003"},
-            "C_SAME_IDEMPOTENCY_KEY",
+            client_c.calls[0]["idempotency_key"]
+            == "campaign-expiry-retry-1003",
+            "C_ORIGINAL_IDEMPOTENCY_KEY",
         )
         require(
             reserved_after_first_c == _RESERVED_AT
@@ -644,3 +640,50 @@ def test_payments_checkout_offer_campaign_preference_expiry_contract_red():
         require(final_campaign_count == initial_campaign_count, "NO_NEW_CAMPAIGN")
 
     assert not violations, ",".join(violations)
+
+def test_campaign_existing_preference_recovery_contract():
+    from app import models
+    from app.services import checkout_offer_one_time_dispatch as dispatch
+    from app.services import mercado_pago_checkout_offer_one_time as mercado_pago
+
+    with _environment(models) as (_engine, Session):
+        client = _FakePreferenceClient("recovery", fail_first=True)
+        dispatcher = _dispatcher(dispatch, mercado_pago, Session, client)
+
+        result1, error1 = _attempt(dispatch, dispatcher, 1003)
+        assert result1 is None and _opaque(error1, dispatch)
+        assert len(client.calls) == 1
+
+        original = client.calls[0]
+        candidate = deepcopy(original["payload"])
+        candidate.update({
+            "id": "mp-pref-recovered-1003",
+            "init_point": (
+                "https://www.mercadopago.com.br/"
+                "checkout/v1/redirect/recovered-1003"
+            ),
+        })
+        searches = []
+
+        def search(*, external_reference):
+            searches.append(external_reference)
+            return [deepcopy(candidate)]
+
+        client.buscar_preferencias = search
+
+        result2, error2 = _attempt(dispatch, dispatcher, 1003)
+        assert error2 is None and result2 is not None
+        assert result2.provider_order_id == candidate["id"]
+        assert result2.checkout_url == candidate["init_point"]
+        assert searches == ["1003"]
+        assert len(client.calls) == 1
+
+        with Session() as db:
+            order = db.get(models.OrdemCheckout, 1003)
+            reservation = db.get(
+                models.CheckoutOfferCampaignReservation, 2003
+            )
+            assert order.provider_order_id == candidate["id"]
+            assert order.checkout_url == candidate["init_point"]
+            assert reservation.reserved_at == _RESERVED_AT
+            assert reservation.expires_at == _LIVE_EXPIRES_AT
