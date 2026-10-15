@@ -368,7 +368,7 @@ def test_payments_checkout_offer_campaign_dispatch_post_revalidation_race_contra
                 )
                 race_thread.start()
                 concurrent_commit_attempted.wait(_THREAD_READY_TIMEOUT_SECONDS)
-                concurrent_commit_before_return = concurrent_committed.wait(
+                concurrent_committed.wait(
                     _CONCURRENT_COMMIT_WAIT_SECONDS
                 )
             return projection
@@ -378,6 +378,7 @@ def test_payments_checkout_offer_campaign_dispatch_post_revalidation_race_contra
         authority_class.reservar_para_ordem = hooked_reservation
         try:
             result, error = _attempt(dispatch, dispatcher)
+            concurrent_commit_before_return = concurrent_committed.is_set()
         finally:
             authority_class.reservar_para_ordem = original
             if race_thread is not None:

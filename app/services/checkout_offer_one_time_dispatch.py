@@ -68,6 +68,7 @@ class _ReservationTerms:
     campaign_code: str
     campaign_contract_version: int
     campaign_purchase_limit: int
+    estado: str
     reserved_at: datetime
     expires_at: datetime
 
@@ -494,6 +495,7 @@ class CheckoutOfferOneTimeDispatcher:
             campaign_code=snapshot.campaign_code,
             campaign_contract_version=snapshot.campaign_contract_version,
             campaign_purchase_limit=snapshot.campaign_purchase_limit,
+            estado=reservation.estado,
             reserved_at=reservation.reserved_at,
             expires_at=reservation.expires_at,
         )
@@ -510,6 +512,7 @@ class CheckoutOfferOneTimeDispatcher:
                 reservation.campaign_contract_version
             ),
             campaign_purchase_limit=reservation.campaign_purchase_limit,
+            estado=reservation.estado,
             reserved_at=reservation.reserved_at,
             expires_at=reservation.expires_at,
         )
@@ -522,6 +525,7 @@ class CheckoutOfferOneTimeDispatcher:
             reservation.campaign_code,
             reservation.campaign_contract_version,
             reservation.campaign_purchase_limit,
+            reservation.estado,
             reservation.reserved_at,
             reservation.expires_at,
         )
