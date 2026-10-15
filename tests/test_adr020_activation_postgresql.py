@@ -558,7 +558,8 @@ def _postgresql_instance(
                         "old": GENERATION_DECISION_EXECUTION_FK_REVISION,
                     })
         env = os.environ.copy()
-        env["DATABASE_URL"] = url
+        env["ENVIRONMENT"] = "development"
+        env["DATABASE_URL"] = f"{url}?sslmode=disable"
         yield {
             "name": name, "container_id": container_id, "database": database,
             "url": url, "plain_url": plain_url, "engine": engine, "env": env,
