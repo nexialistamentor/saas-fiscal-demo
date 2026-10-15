@@ -757,6 +757,28 @@ def test_payments_checkout_offer_second_legitimate_payment_reconciliation_contra
             "SECOND_PAYMENT_CREATED_ENTITLEMENT",
         )
 
+        # C5: nova notificacao para P2 nao pode duplicar a evidencia.
+        before_collision = _snapshot(
+            Session, models, provider_authority_tables
+        )
+        collision_result, collision_error = _attempt(
+            orchestrator, orchestration, "810003", _P2
+        )
+        require(
+            collision_result is None and collision_error is not None,
+            "SECOND_PAYMENT_NOTIFICATION_COLLISION_NOT_REJECTED",
+        )
+        if collision_error is not None:
+            _assert_sanitized_public_error(
+                collision_error, orchestration, "810003", _P2, _ORDER_ID
+            )
+        require(
+            _snapshot(Session, models, provider_authority_tables)
+            == before_collision,
+            "SECOND_PAYMENT_NOTIFICATION_COLLISION_MUTATED_STATE",
+        )
+        assert provider.calls == [_P1, _P2, _P2, _P3, _P2]
+
         with Session() as db:
             reservations = db.scalars(
                 select(models.CheckoutOfferCampaignReservation).where(

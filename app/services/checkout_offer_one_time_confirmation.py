@@ -129,6 +129,25 @@ class CheckoutOfferOneTimeConfirmer:
                 CheckoutOfferCampaignReservationAuthority(
                     session
                 ).confirmar_para_ordem_bloqueada(ordem)
+                if ordem.vertical == "document" and ordem.payment_id != payment_id:
+                    _, _, grant = self._validate_paid_commercial_state(
+                        session, ordem, capabilities
+                    )
+                    observations = session.scalars(
+                        select(models.MercadoPagoPaymentObservation).where(
+                            models.MercadoPagoPaymentObservation.payment_id
+                            == payment_id
+                        )
+                    ).all()
+                    if any(
+                        item.notification_id != notification_id
+                        for item in observations
+                    ):
+                        _fail()
+                    result = self._projection(ordem, grant, capabilities)
+                    session.commit()
+                    return result
+
                 result = self._replay(
                     session,
                     ordem,
