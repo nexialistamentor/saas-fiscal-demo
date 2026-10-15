@@ -17,6 +17,9 @@ from app.agents.adapters.data_sanitization import (
 from app.agents.adapters.memorial_validator import (
     execute_memorial_validator_mission,
 )
+from app.agents.adapters.security_audit import (
+    execute_security_audit_mission,
+)
 from app.agents.contracts.execution_result import AgentExecutionResult
 from app.agents.contracts.mission import AgentMission
 
@@ -38,7 +41,9 @@ class AgentRegistry:
     Registro central de agentes do sistema.
     """
 
-    def __init__(self):
+    def __init__(self, *, enable_security_shadow: bool = False):
+        if type(enable_security_shadow) is not bool:
+            raise TypeError("L3_SECURITY_OPTIN_INVALID")
         self._agents: Dict[str, object] = {}
 
         self._l3_adapters: dict[
@@ -73,6 +78,11 @@ class AgentRegistry:
             "ag_abertura": "ADVISORY",
             "agent_erro_operacional": "READ_ONLY",
         }
+        if enable_security_shadow:
+            self._l3_adapters["security_audit_agent"] = {
+                "auditar_seguranca_agregada": execute_security_audit_mission,
+            }
+            self._l3_classifications["security_audit_agent"] = "READ_ONLY"
 
         # registro de agentes disponiveis
         self.register(data_sanitization_agent)

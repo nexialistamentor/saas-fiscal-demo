@@ -11,8 +11,12 @@ class AgentExecutor:
     Responsável por executar agentes registrados.
     """
 
-    def __init__(self):
-        self.registry = AgentRegistry()
+    def __init__(self, *, enable_security_shadow: bool = False):
+        if type(enable_security_shadow) is not bool:
+            raise TypeError("L3_SECURITY_OPTIN_INVALID")
+        self.registry = AgentRegistry(
+            enable_security_shadow=enable_security_shadow
+        )
 
     async def execute_mission(
         self,
