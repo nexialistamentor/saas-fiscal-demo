@@ -32,7 +32,7 @@ def key(model='55'):
 
 
 def canonical(n):
-    return etree.tostring(n,method='c14n',exclusive=False,with_comments=False)
+    return etree.tostring(deepcopy(n),method='c14n',exclusive=False,with_comments=False)
 
 
 class TestI7NFeXmlSignature(unittest.TestCase):

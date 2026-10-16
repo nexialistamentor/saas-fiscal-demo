@@ -7,6 +7,7 @@ O X509 embutido e fornecido PELO XML, nunca uma ancora de confianca.
 from __future__ import annotations
 
 import base64
+from copy import deepcopy
 import binascii
 import hashlib
 import hmac
@@ -64,7 +65,7 @@ def _b64(value, max_length):
 
 def _canonical(node):
     try:
-        return etree.tostring(node, method='c14n', exclusive=False, with_comments=False)
+        return etree.tostring(deepcopy(node), method='c14n', exclusive=False, with_comments=False)
     except (etree.LxmlError, ValueError, TypeError):
         _stop('I7_C14N_INVALID')
 
