@@ -11,7 +11,7 @@ from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
 
-from app.models import Empresa, RelatorioAnalise, AlertaFiscal
+from app.models import Empresa, RelatorioAnalise, AlertaFiscal, DocumentoFiscal
 from app.services.analysis_orchestrator import executar_analise_xml
 from app.services.resultado_empresarial_service import compor_resultado_empresarial
 from app.xml_service import DuplicataFiscalError, processar_e_persistir_xml
@@ -20,6 +20,10 @@ from app.services.usage_service import verificar_limite_analises, incrementar_us
 from app.services.resultado_provenance_service import (
     fingerprint_resultado_json,
     selar_resultado_nao_mei,
+)
+
+from app.services.enterprise_xml_evidence_binding import (
+    construir_vinculo_documento_relatorio,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,6 +105,7 @@ def executar_e_registrar_analise_xml(
 
     inicio = time.perf_counter()
     resultado = executar_analise_xml(xml_bytes)
+    documento_fiscal = None  # So a entidade documental ORM efetivamente persistida.
 
     if empresa_id and not resultado.get("dados_fiscais", {}).get("erro"):
         empresa = db.query(Empresa).filter(Empresa.id == empresa_id).first()
@@ -111,13 +116,34 @@ def executar_e_registrar_analise_xml(
 
             usuario_proxy = _UsuarioProxy(empresa.user_id)
             try:
-                processar_e_persistir_xml(
+                documento_resultado = processar_e_persistir_xml(
                     db=db,
                     usuario_atual=usuario_proxy,
                     empresa=empresa,
                     xml_bytes=xml_bytes,
                 )
-            except DuplicataFiscalError:
+                if (
+                    type(documento_resultado) is tuple
+                    and len(documento_resultado) == 3
+                    and isinstance(documento_resultado[0], DocumentoFiscal)
+                ):
+                    documento_fiscal = documento_resultado[0]
+            except DuplicataFiscalError as duplicata:
+                # Uma chave NF-e igual nao prova bytes XML iguais.
+                # So ignorar duplicacao quando o documento ja persistido
+                # foi encontrado pelo SHA-256 dos bytes recebidos.
+                from hashlib import sha256
+
+                if duplicata.conteudo_sha256 != sha256(xml_bytes).hexdigest():
+                    raise
+                if (
+                    type(duplicata.documento_id) is int
+                    and duplicata.documento_id > 0
+                    and callable(getattr(db, "get", None))
+                ):
+                    documento_existente = db.get(DocumentoFiscal, duplicata.documento_id)
+                    if isinstance(documento_existente, DocumentoFiscal):
+                        documento_fiscal = documento_existente
                 logger.info(
                     "persistencia_xml_ignorada_duplicata empresa_id=%s",
                     empresa_id,
@@ -207,6 +233,16 @@ def executar_e_registrar_analise_xml(
     if empresa_id:
         resultado_final = compor_resultado_empresarial(empresa_id, resultado, resultado_insights)
         producer_id = "app.services.resultado_empresarial_service.compor_resultado_empresarial"
+        if documento_fiscal is not None:
+            if "_enterprise_xml_evidence" in resultado_final:
+                raise ValueError("P103B_XML_EVIDENCE_KEY_ALREADY_PRESENT")
+            resultado_final["_enterprise_xml_evidence"] = construir_vinculo_documento_relatorio(
+                xml_bytes,
+                empresa_id=empresa_id,
+                relatorio_id=rel.id,
+                documento=documento_fiscal,
+                xml_chave=xml_chave,
+            )
     else:
         resultado_final = resultado
         producer_id = "app.services.analysis_orchestrator.executar_analise_xml"
