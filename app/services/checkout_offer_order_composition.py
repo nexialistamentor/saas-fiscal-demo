@@ -23,6 +23,9 @@ from app.services.checkout_offer_campaign_reservation import (
 from app.services.checkout_offer_prerequisite import (
     CheckoutOfferPrerequisite,
 )
+from app.services.enterprise_documental_checkout_order_authority import (
+    EnterpriseDocumentalCheckoutOrderAuthority,
+)
 from app.services.mei_competencia_checkout_prerequisite import (
     MeiCompetenciaCheckoutPrerequisite,
 )
@@ -106,6 +109,15 @@ class CheckoutOfferOrderComposer:
             ):
                 raise CheckoutOfferOrderCompositionError()
 
+            EnterpriseDocumentalCheckoutOrderAuthority(sessao).require(
+                authenticated_user_id=authenticated_user_id,
+                empresa_id=empresa_id,
+                offer_code=offer_code,
+                idempotency_key=idempotency_key,
+                offer_id=oferta.id,
+                offer_contract_version=oferta.contract_version,
+                capabilities=tuple(oferta.capabilities),
+            )
             CheckoutOfferPrerequisite(sessao).require(
                 authenticated_user_id=authenticated_user_id,
                 empresa_id=empresa_id,
@@ -204,6 +216,16 @@ class CheckoutOfferOrderComposer:
         ):
             raise CheckoutOfferOrderCompositionError()
 
+        EnterpriseDocumentalCheckoutOrderAuthority(sessao).require(
+            authenticated_user_id=user_id,
+            empresa_id=empresa_id,
+            offer_code=offer_code,
+            idempotency_key=ordem.idempotency_key,
+            offer_id=ordem.offer_id,
+            offer_contract_version=ordem.contract_version,
+            capabilities=tuple(cap.codigo for cap in ordem.capabilities),
+            order=ordem,
+        )
         CheckoutOfferPrerequisite(sessao).require(
             authenticated_user_id=user_id,
             empresa_id=empresa_id,

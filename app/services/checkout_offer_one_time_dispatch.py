@@ -14,6 +14,9 @@ from app.models import CheckoutOfferCampaignReservation, OrdemCheckout
 from app.services.checkout_offer_campaign_reservation import (
     CheckoutOfferCampaignReservationAuthority,
 )
+from app.services.enterprise_documental_checkout_order_authority import (
+    EnterpriseDocumentalCheckoutOrderAuthority,
+)
 
 
 _MENSAGEM_PUBLICA = "Nao foi possivel despachar a ordem de checkout"
@@ -153,6 +156,9 @@ class CheckoutOfferOneTimeDispatcher:
                 .where(OrdemCheckout.id == ordem_id)
             ).scalar_one_or_none()
             snapshot = self._snapshot(order, user_id, empresa_id)
+            # P1-04C3: even historical provider URLs must not be surfaced.
+            if snapshot.offer_code == "enterprise-documental-diagnostic-one-time-company":
+                raise CheckoutOfferOneTimeDispatchError()
             if snapshot.provider_order_id is not None:
                 self._validate_existing_provider_campaign_coherence(
                     session, snapshot
@@ -223,6 +229,19 @@ class CheckoutOfferOneTimeDispatcher:
             ):
                 raise CheckoutOfferOneTimeDispatchError()
 
+            # P1-04C3: locked Enterprise binding, with an independent hard
+            # dispatch hold before any claim, reservation or provider effect.
+            EnterpriseDocumentalCheckoutOrderAuthority(session).require(
+                authenticated_user_id=user_id,
+                empresa_id=empresa_id,
+                offer_code=current.offer_code,
+                idempotency_key=current.idempotency_key,
+                offer_id=current.offer_id,
+                offer_contract_version=current.contract_version,
+                capabilities=current.capabilities,
+                order=current,
+                for_dispatch=True,
+            )
             reservation_terms = self._structural_reservation_terms(
                 session,
                 current,
