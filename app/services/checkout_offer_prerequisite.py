@@ -20,6 +20,10 @@ class CheckoutOfferPrerequisite:
         offer_code,
         idempotency_key,
     ):
+        # P1-04C1: fail closed until an Enterprise-specific durable intent exists.
+        # Informative P1-04A/B readiness is never payment authority.
+        if offer_code == "enterprise-documental-diagnostic-one-time-company":
+            raise CheckoutOfferPrerequisiteError()
         if offer_code != "tax-report-one-time-company":
             return
 
