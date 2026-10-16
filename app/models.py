@@ -841,6 +841,74 @@ class TaxReportCheckoutIntent(Base):
     )
 
 
+
+
+class EnterpriseDocumentalCheckoutIntent(Base):
+    """P1-04C2: append-only provenance of an Enterprise documentary checkout request.
+
+    Persistence of an intent is not permission to create a checkout order.
+    """
+
+    __tablename__ = "enterprise_documental_checkout_intents"
+    __table_args__ = (
+        UniqueConstraint(
+            "checkout_idempotency_key", name="uq_enterprise_documental_intent_key",
+        ),
+        CheckConstraint(
+            "capability = 'enterprise.diagnostic.documental'",
+            name="ck_enterprise_documental_intent_capability",
+        ),
+        CheckConstraint(
+            "offer_code = 'enterprise-documental-diagnostic-one-time-company'",
+            name="ck_enterprise_documental_intent_offer",
+        ),
+        CheckConstraint(
+            "offer_contract_version > 0",
+            name="ck_enterprise_documental_intent_version",
+        ),
+        CheckConstraint(
+            "length(request_fingerprint) = 64 AND request_fingerprint = lower(request_fingerprint)",
+            name="ck_enterprise_documental_intent_fingerprint",
+        ),
+        CheckConstraint(
+            "length(xml_sha256) = 64 AND xml_sha256 = lower(xml_sha256)",
+            name="ck_enterprise_documental_intent_xml_hash",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    checkout_idempotency_key = Column(String(255), nullable=False)
+    user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False, index=True)
+    relatorio_analise_id = Column(
+        Integer, ForeignKey("relatorios_analise.id"), nullable=False, index=True,
+    )
+    documento_fiscal_id = Column(
+        Integer, ForeignKey("documentos_fiscais.id"), nullable=False, index=True,
+    )
+    offer_id = Column(Integer, ForeignKey("checkout_offers.id"), nullable=False, index=True)
+    offer_code = Column(String(120), nullable=False)
+    offer_contract_version = Column(Integer, nullable=False)
+    capability = Column(String(120), nullable=False)
+    request_fingerprint = Column(String(64), nullable=False)
+    xml_sha256 = Column(String(64), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, server_default=func.now())
+
+
+def _reject_enterprise_documental_checkout_intent_mutation(
+    _mapper, _connection, _target
+) -> None:
+    raise InvalidRequestError("enterprise_documental_checkout_intents is append-only")
+
+
+event.listen(
+    EnterpriseDocumentalCheckoutIntent,
+    "before_update", _reject_enterprise_documental_checkout_intent_mutation,
+)
+event.listen(
+    EnterpriseDocumentalCheckoutIntent,
+    "before_delete", _reject_enterprise_documental_checkout_intent_mutation,
+)
 class MeiCompetenciaCheckoutIntent(Base):
     """Intencao comercial imutavel para uma competencia MEI especifica."""
 
