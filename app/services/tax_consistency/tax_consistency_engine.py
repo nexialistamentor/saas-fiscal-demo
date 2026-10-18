@@ -1,129 +1,164 @@
+"""Enterprise G1 — consistência numérica fiscal com origem por item (fail-closed).
+
+NAO atesta conformidade tributária, vigência normativa, recolhimento,
+revogação, crédito, restituição ou autorização comercial. O motor legado
+`analisar_xml()` espelha valores do XML: não constitui recálculo independente.
+
+Os relatórios documentais podem consumir este resultado informativo, mas
+`consistente` fica sempre None até existir um árbitro normativo independente
+com proveniência, competência e fontes oficiais verificadas.
 """
-Tax Consistency Engine — Motor de consistência tributária.
-
-Detecta inconsistências entre:
-- Valores declarados no XML da NF-e (ICMS-ST, base de cálculo, etc.)
-- Valores recalculados pelo motor fiscal
-
-Exemplo: ICMS-ST declarado no XML vs. ICMS-ST recalculado pelo motor.
-"""
-
 from __future__ import annotations
+
+from decimal import Decimal, InvalidOperation
+from typing import Any
+
+
+_VALORES = ("ICMS_ST", "BASE_ST")
 
 
 class TaxConsistencyEngine:
-    """
-    Serviço responsável por verificar inconsistências entre o cálculo
-    do motor e o que veio no XML.
-    """
+    """Compara SOMENTE pares de itens com identidade e cálculo separados."""
+
+    @staticmethod
+    def _moeda(valor: object) -> Decimal | None:
+        if type(valor) not in (int, float, str, Decimal):
+            return None
+        if type(valor) is str and (not valor or valor.strip() != valor or "e" in valor.lower()):
+            return None
+        try:
+            n = Decimal(str(valor))
+        except (ValueError, InvalidOperation):
+            return None
+        if not n.is_finite() or n < 0 or n > Decimal("9999999999999.99"):
+            return None
+        if n.as_tuple().exponent < -2:
+            return None
+        return n.quantize(Decimal("0.01"))
+
+    @staticmethod
+    def _nao_avaliado(motivo: str) -> dict:
+        return {
+            "estado": "NAO_AVALIADO",
+            "motivo": motivo,
+            "consistente": None,
+            "coincidencia_numerica": None,
+            "divergencias": [],
+            "comparacoes_realizadas": 0,
+            "itens_comparados": 0,
+            "autoridade_fiscal": False,
+            "credito_confirmado": False,
+            "checkout_autorizado": False,
+        }
 
     def verificar_consistencia(self, dados_xml: dict, dados_motor: dict) -> dict:
+        """Somente `itens_calculados` explícitos podem originar confronto numérico.
+
+        `dados_motor` sem itens independentes (como a saída real de
+        `motor_fiscal.analisar_xml`) é NAO_AVALIADO, nunca consistente=True.
+
+        Um chamador externo pode fabricar a entrada `itens_calculados`;
+        por isso mesmo um confronto totalmente coincidente é SEM AUTORIDADE.
         """
-        Executa todas as verificações de consistência fiscal.
-        """
-        resultados = []
+        if type(dados_xml) is not dict or type(dados_motor) is not dict:
+            return self._nao_avaliado("ENTRADA_AUSENTE_OU_MALFORMADA")
+        if dados_motor.get("erro") is not None:
+            return self._nao_avaliado("MOTOR_COM_ERRO")
+        calculados = dados_motor.get("itens_calculados")
+        if calculados is None:
+            return self._nao_avaliado("SEM_RECALCULO_POR_ITEM_INDEPENDENTE")
+        originais = dados_xml.get("itens")
+        if (type(originais) is not list or type(calculados) is not list
+                or not originais or len(originais) != len(calculados)
+                or len(originais) > 500):
+            return self._nao_avaliado("CARDINALIDADE_ITENS_NAO_CONCILIADA")
+        chave_xml = dados_xml.get("chave_nfe")
+        chave_motor = dados_motor.get("chave_nfe")
+        if (type(chave_xml) is not str or len(chave_xml) != 44
+                or not chave_xml.isascii() or not chave_xml.isdecimal()
+                or chave_motor != chave_xml):
+            return self._nao_avaliado("IDENTIDADE_DOCUMENTO_NAO_CONCILIADA")
+
+        calculados_por_indice: dict[int, dict] = {}
+        for item in calculados:
+            if type(item) is not dict:
+                return self._nao_avaliado("CALCULO_ITEM_MALFORMADO")
+            indice = item.get("indice_item")
+            if (type(indice) is not int or not 1 <= indice <= len(originais)
+                    or indice in calculados_por_indice):
+                return self._nao_avaliado("INDICE_CALCULO_DUPLICADO_OU_INVALIDO")
+            calculados_por_indice[indice] = item
+
+        comparacoes = []
         divergencias = []
-
-        # executar verificações
-        r_icms = self.verificar_icms_st(dados_xml, dados_motor)
-        r_mva = self.verificar_mva(dados_xml, dados_motor)
-        r_base = self.verificar_base_st(dados_xml, dados_motor)
-
-        resultados.extend([r_icms, r_mva, r_base])
-
-        # consolidar divergências
-        for r in resultados:
-            divergencias.extend(r.get("divergencias", []))
-
+        itens_comparados = 0
+        motivos_pendentes = []
+        for indice, xml_item in enumerate(originais, 1):
+            calculado = calculados_por_indice.get(indice)
+            if type(xml_item) is not dict or calculado is None:
+                return self._nao_avaliado("ITEM_XML_MALFORMADO_OU_AUSENTE")
+            # Compara identidade NCM/CFOP estritamente; evita misturar itens.
+            ncm, cfop = xml_item.get("ncm"), xml_item.get("cfop")
+            if (type(ncm) is not str or type(cfop) is not str
+                    or not ncm or not cfop
+                    or calculado.get("ncm") != ncm
+                    or calculado.get("cfop") != cfop):
+                return self._nao_avaliado("CLASSIFICACAO_ITEM_NAO_CONCILIADA")
+            if xml_item.get("st_observado_xml") is not True:
+                motivos_pendentes.append(f"ITEM_{indice}_ST_NAO_OBSERVADO_XML")
+                continue
+            pares = (("ICMS_ST", "valor_st", "valor_st_calculado"),
+                     ("BASE_ST", "base_st", "base_st_calculada"))
+            validos = []
+            for tipo, campo_xml, campo_motor in pares:
+                a = self._moeda(xml_item.get(campo_xml))
+                b = self._moeda(calculado.get(campo_motor))
+                if a is None or b is None:
+                    motivos_pendentes.append(f"ITEM_{indice}_{tipo}_VALORES_NAO_COMPROVADOS")
+                    continue
+                validos.append((tipo, a, b))
+            if len(validos) == 2:
+                itens_comparados += 1
+            for tipo, a, b in validos:
+                diferente = abs(a - b) > Decimal("0.01")
+                resultado = {
+                    "indice_item": indice,
+                    "tipo": tipo,
+                    "valor_xml": str(a),
+                    "valor_motor": str(b),
+                    "divergencia_numerica": diferente,
+                    "prova_normativa": False,
+                }
+                comparacoes.append(resultado)
+                if diferente:
+                    divergencias.append(resultado)
+        if not comparacoes:
+            return self._nao_avaliado("SEM_PARES_NUMERICOS_COMPARAVEIS")
+        total = 2 * len(originais)
+        completo = len(comparacoes) == total and itens_comparados == len(originais)
         return {
-            "consistente": len(divergencias) == 0,
-            "divergencias": divergencias
+            "estado": "COMPARACAO_NUMERICA_SEM_AUTORIDADE" if completo else "PARCIAL_SEM_AUTORIDADE",
+            "motivo": "SEM_PROVA_NORMATIVA_E_RECOLHIMENTO" if completo else "ITENS_OU_CAMPOS_NAO_AVALIADOS",
+            "consistente": None,
+            "coincidencia_numerica": (not divergencias) if completo else None,
+            "divergencias": divergencias,
+            "comparacoes": comparacoes,
+            "comparacoes_realizadas": len(comparacoes),
+            "itens_comparados": itens_comparados,
+            "itens_total": len(originais),
+            "motivos_pendentes": motivos_pendentes,
+            "autoridade_fiscal": False,
+            "credito_confirmado": False,
+            "checkout_autorizado": False,
         }
 
+    # Métodos históricos diretos: um escalar sem identidade do item e do
+    # cálculo não constitui uma comparação fiscal causal.
     def verificar_icms_st(self, dados_xml: dict, dados_motor: dict) -> dict:
-        """
-        Compara ICMS-ST declarado no XML com o ICMS-ST recalculado pelo motor.
-        """
-        divergencias = []
-
-        icms_xml = dados_xml.get("valor_st")
-        icms_motor = dados_motor.get("icms_st")
-
-        if icms_xml is None or icms_motor is None:
-            return {
-                "consistente": True,
-                "divergencias": []
-            }
-
-        # tolerância para arredondamento
-        tolerancia = 0.01
-
-        if abs(float(icms_xml) - float(icms_motor)) > tolerancia:
-            divergencias.append({
-                "tipo": "ICMS_ST_DIVERGENTE",
-                "valor_xml": icms_xml,
-                "valor_motor": icms_motor
-            })
-
-        return {
-            "consistente": len(divergencias) == 0,
-            "divergencias": divergencias
-        }
+        return self._nao_avaliado("SEM_IDENTIDADE_ITEM_E_FONTE_INDEPENDENTE_ICMS_ST")
 
     def verificar_mva(self, dados_xml: dict, dados_motor: dict) -> dict:
-        """
-        Compara a MVA declarada no XML com a MVA utilizada pelo motor fiscal.
-        """
-        divergencias = []
-
-        mva_xml = dados_xml.get("mva_xml")
-        mva_motor = dados_motor.get("mva_utilizada")
-
-        if mva_xml is None or mva_motor is None:
-            return {
-                "consistente": True,
-                "divergencias": []
-            }
-
-        tolerancia = 0.01
-
-        if abs(float(mva_xml) - float(mva_motor)) > tolerancia:
-            divergencias.append({
-                "tipo": "MVA_DIVERGENTE",
-                "mva_xml": mva_xml,
-                "mva_motor": mva_motor
-            })
-
-        return {
-            "consistente": len(divergencias) == 0,
-            "divergencias": divergencias
-        }
+        return self._nao_avaliado("MVA_XML_NAO_OBSERVADA_POR_ITEM")
 
     def verificar_base_st(self, dados_xml: dict, dados_motor: dict) -> dict:
-        """
-        Compara a base de cálculo do ICMS-ST declarada no XML com a base recalculada pelo motor fiscal.
-        """
-        divergencias = []
-
-        base_xml = dados_xml.get("base_st")
-        base_motor = dados_motor.get("base_st_calculada")
-
-        if base_xml is None or base_motor is None:
-            return {
-                "consistente": True,
-                "divergencias": []
-            }
-
-        tolerancia = 0.01
-
-        if abs(float(base_xml) - float(base_motor)) > tolerancia:
-            divergencias.append({
-                "tipo": "BASE_ST_DIVERGENTE",
-                "base_xml": base_xml,
-                "base_motor": base_motor
-            })
-
-        return {
-            "consistente": len(divergencias) == 0,
-            "divergencias": divergencias
-        }
+        return self._nao_avaliado("SEM_IDENTIDADE_ITEM_E_FONTE_INDEPENDENTE_BASE_ST")
