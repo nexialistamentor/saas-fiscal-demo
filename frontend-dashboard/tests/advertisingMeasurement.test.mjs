@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createMeasurement } from "../src/services/advertisingMeasurement.mjs";
+import { createMeasurement, allowedAdvertisingLocation } from "../src/services/advertisingMeasurement.mjs";
 function fixture(overrides = {}) {
   const map = new Map(); const events = [];
   const m = createMeasurement({
@@ -48,4 +48,16 @@ test("storage, hashing and transport failure never reject business callers",asyn
 test("expired pending checkout does not count",async()=>{
   let clock=1000; const {m,events}=fixture({now:()=>clock});m.choose(true);await m.pending(pending,offer);
   clock+=8*24*60*60*1000;await m.paid(paid);assert.equal(events.length,0);
+});
+
+test("advertising URLs allow known ad tags but block private query keys",()=>{
+  const allowed = value => allowedAdvertisingLocation(new URL(value));
+  assert.equal(allowed("https://solveris.ia.br/mei?fbclid=Abc_123&utm_source=facebook"),true);
+  assert.equal(allowed("https://solveris.ia.br/mei?mp_return=success"),true);
+  for (const url of ["https://solveris.ia.br/mei?cpf=123","https://solveris.ia.br/mei?token=secret","https://solveris.ia.br/mei#private","https://other.example/mei","https://solveris.ia.br/admin"]) assert.equal(allowed(url),false);
+});
+test("pending capture is synchronous before checkout navigation",()=>{
+  const {m,map}=fixture();m.choose(true);
+  assert.ok(m.pending(pending,offer) instanceof Promise);
+  assert.ok([...map.keys()].some(k=>k.includes("pending")));
 });

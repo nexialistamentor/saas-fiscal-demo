@@ -27,9 +27,7 @@ export function createMeasurement({ storage, send, digest, now = Date.now }) {
           || offer?.offer_code !== "mei-das-one-time-company"
           || offer.preco !== "39.90" || offer.moeda !== "BRL"
           || typeof purchase.checkout_idempotency_key !== "string") return;
-        const id = await digest(purchase.checkout_idempotency_key);
-        if (!allowed()) return;
-        write(PENDING_KEY, { id, at: now(), value: 39.90 });
+        write(PENDING_KEY, { attempt: purchase.checkout_idempotency_key, at: now(), value: 39.90 });
       } catch { /* Analytics must never block checkout. */ }
     },
     async paid(purchase) {
@@ -38,7 +36,7 @@ export function createMeasurement({ storage, send, digest, now = Date.now }) {
           || purchase.checkout_url !== null || typeof purchase.checkout_idempotency_key !== "string") return;
         const id = await digest(purchase.checkout_idempotency_key);
         const pending = read(PENDING_KEY);
-        if (!allowed() || !pending || pending.id !== id || now() - pending.at > MAX_AGE
+        if (!allowed() || !pending || pending.attempt !== purchase.checkout_idempotency_key || now() - pending.at > MAX_AGE
           || now() < pending.at || read(SENT_KEY)?.includes(id) || busy.has(id)) return;
         busy.add(id);
         try {
@@ -52,4 +50,15 @@ export function createMeasurement({ storage, send, digest, now = Date.now }) {
       } catch { /* Analytics must never block purchase recovery. */ }
     },
   };
+}
+
+export function allowedAdvertisingLocation(location) {
+  if (location.hostname !== "solveris.ia.br" || !/^\/mei\/?$/.test(location.pathname) || location.hash) return false;
+  for (const [key, value] of new URLSearchParams(location.search)) {
+    if (key === "fbclid" && /^[A-Za-z0-9_-]{1,512}$/.test(value)) continue;
+    if (/^utm_(source|medium|campaign|content|term)$/.test(key) && /^[A-Za-z0-9 _|.-]{1,160}$/.test(value)) continue;
+    if (key === "mp_return" && /^(success|failure|pending)$/.test(value)) continue;
+    return false;
+  }
+  return true;
 }

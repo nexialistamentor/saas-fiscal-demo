@@ -1,4 +1,4 @@
-import { createMeasurement, CONSENT_KEY } from "./advertisingMeasurement.mjs";
+import { createMeasurement, CONSENT_KEY, allowedAdvertisingLocation } from "./advertisingMeasurement.mjs";
 
 export const PIXEL_ID = "1496002532350868";
 let initialized = false;
@@ -6,9 +6,7 @@ let pageSent = false;
 let owned = false;
 
 function cleanPage() {
-  return window.location.hostname === "solveris.ia.br"
-    && /^\/mei\/?$/.test(window.location.pathname)
-    && !window.location.search && !window.location.hash;
+  return allowedAdvertisingLocation(window.location);
 }
 function dispatch(event, data = {}, eventID) {
   try {
