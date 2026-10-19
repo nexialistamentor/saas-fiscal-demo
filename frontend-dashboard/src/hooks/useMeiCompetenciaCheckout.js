@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { API_BASE, fetchAutenticado } from "../config"
 import { criarMeiCompetenciaCheckout } from "../services/meiCompetenciaCheckout"
+import { measurement } from "../services/metaAdvertising"
 
 export default function useMeiCompetenciaCheckout({ empresaId, competencia, enabled }) {
   const client = useMemo(() => criarMeiCompetenciaCheckout({
@@ -23,6 +24,7 @@ export default function useMeiCompetenciaCheckout({ empresaId, competencia, enab
     setSnapshot({ scope, loading: true, compra: null, oferta: null, erro: "" })
     try {
       const compra = await client.recuperar({ empresaId, competencia })
+      if (ticket === sequence.current) void measurement.paid(compra)
       let oferta = null
       // A paid purchase remains recoverable even if the catalog is later held.
       if (compra?.estado !== "paid" && !compra?.checkout_url) oferta = await client.obterOferta()
@@ -52,6 +54,8 @@ export default function useMeiCompetenciaCheckout({ empresaId, competencia, enab
     setSnapshot({ ...state, loading: true })
     try {
       const compra = await client.iniciar({ empresaId, competencia, oferta: state.oferta })
+      // Record only this initiated checkout; never delay redirect on tracking failure.
+      void measurement.pending(compra, state.oferta)
       if (ticket !== sequence.current) return null
       setSnapshot({ ...state, loading: false, compra, erro: "" })
       return compra
