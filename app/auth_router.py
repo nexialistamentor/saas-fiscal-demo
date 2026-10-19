@@ -204,7 +204,9 @@ def politica_privacidade():
     <h2>2. Dados recolhidos</h2>
     <p>Email, CPF (opcional), endereço IP, dados fiscais enviados via XML (valores, NCM, ICMS). Estes dados são necessários para o funcionamento do serviço.</p>
     <h2>3. Finalidade</h2>
-    <p>Simulação tributária, geração de insights fiscais e melhoria do serviço. Os dados não são partilhados com terceiros para fins comerciais.</p>
+    <p>Simulação tributária, geração de insights fiscais e melhoria do serviço. Os dados fiscais não são partilhados com terceiros para fins publicitários.</p>
+    <h2>Medição publicitária opcional</h2>
+    <p>Apenas após uma escolha separada e opcional, o aplicativo utiliza o Pixel da Meta para medir visitas e compras do serviço SOLVERIS e avaliar anúncios. A Meta recebe eventos, identificadores de cookies e dados técnicos do navegador e da ligação, incluindo endereço IP. O evento de compra comunica o valor do serviço SOLVERIS, não o valor do tributo DAS. Não são enviados documentos, CPF, CNPJ ou parâmetros fiscais pela integração publicitária. Recusar não impede a utilização do serviço. A escolha é guardada neste navegador e pode ser alterada em Preferências de publicidade; retirar a autorização interrompe os envios futuros, sem desfazer os já realizados. Esta escolha não substitui o consentimento fiscal.</p>
     <h2>4. Base legal</h2>
     <p>Consentimento explícito do titular (art. 7º, I, LGPD) e execução de contrato (art. 7º, V, LGPD).</p>
     <h2>5. Armazenamento</h2>
