@@ -1,4 +1,5 @@
 import { createMeasurement, CONSENT_KEY, allowedAdvertisingLocation } from "./advertisingMeasurement.mjs";
+import { cleanAdvertisingReturnURL } from "./advertisingReturn.mjs";
 
 export const PIXEL_ID = "1496002532350868";
 let initialized = false;
@@ -6,7 +7,15 @@ let pageSent = false;
 let owned = false;
 
 function cleanPage() {
-  return allowedAdvertisingLocation(window.location);
+  if (allowedAdvertisingLocation(window.location)) return true;
+  const clean = cleanAdvertisingReturnURL(window.location);
+  if (!clean) return false;
+  try {
+    // Remove provider identifiers before the Meta runtime reads the page URL.
+    // Keep mp_return and history state so application recovery is unchanged.
+    window.history.replaceState(window.history.state, "", clean);
+    return allowedAdvertisingLocation(window.location);
+  } catch { return false; }
 }
 function dispatch(event, data = {}, eventID) {
   try {
@@ -73,3 +82,4 @@ export function hasAdvertisingChoice() {
   try { return typeof JSON.parse(window.localStorage.getItem(CONSENT_KEY))?.accepted === "boolean"; }
   catch { return false; }
 }
+
