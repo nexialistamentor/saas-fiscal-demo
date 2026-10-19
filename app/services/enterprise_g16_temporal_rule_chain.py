@@ -169,7 +169,8 @@ def _temporal(db, row, item):
 
 def cotejar_ciclo_normativo_g16(*,db,authenticated_user_id:int,empresa_id:int,
     relatorio_id:int,xml_bytes:bytes,candidatos_normativos:list[dict]|None=None,
-    referencias_adr020:list[dict]|None=None,referencias_temporais:list[dict]|None=None)->dict:
+    referencias_adr020:list[dict]|None=None,referencias_temporais:list[dict]|None=None,
+    cas_root=None)->dict:
     """Never authorize legal efficacy from internal data, including active rows."""
     if (db is None or not all(_id(x) for x in (authenticated_user_id,empresa_id,relatorio_id))
         or type(xml_bytes) is not bytes or not 0<len(xml_bytes)<=2*1024*1024):
@@ -191,7 +192,8 @@ def cotejar_ciclo_normativo_g16(*,db,authenticated_user_id:int,empresa_id:int,
     try:
         g15=cotejar_artefacto_primario_g15(db=db,authenticated_user_id=authenticated_user_id,
             empresa_id=empresa_id,relatorio_id=relatorio_id,xml_bytes=xml_bytes,
-            candidatos_normativos=candidatos_normativos,referencias_adr020=referencias_adr020)
+            candidatos_normativos=candidatos_normativos,referencias_adr020=referencias_adr020,
+            **({'cas_root':cas_root} if cas_root is not None else {}))
     except Exception as exc:
         raise EnterpriseG16GateError('G16_G15_DOCUMENTO_E_ARTEFACTO_NAO_COTEJADOS') from exc
     digest=hashlib.sha256(xml_bytes).hexdigest()

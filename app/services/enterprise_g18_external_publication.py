@@ -120,7 +120,8 @@ def cotejar_evidencia_externa_publicacao_g18(*, db, authenticated_user_id: int,
         referencias_adr020: list[dict] | None = None,
         referencias_temporais: list[dict] | None = None,
         referencias_cobertura: list[dict] | None = None,
-        evidencias_externas: list[dict] | None = None) -> dict:
+        evidencias_externas: list[dict] | None = None,
+        cas_root=None) -> dict:
     """Recompute real bytes then link to the exact G1.7 ADR-020 artefact.
 
     No trust upgrade is possible. In particular, this does not resolve the
@@ -153,6 +154,7 @@ def cotejar_evidencia_externa_publicacao_g18(*, db, authenticated_user_id: int,
             referencias_adr020=referencias_adr020,
             referencias_temporais=referencias_temporais,
             referencias_cobertura=referencias_cobertura,
+            **({'cas_root':cas_root} if cas_root is not None else {}),
         )
     except Exception as exc:
         raise EnterpriseG18GateError('G18_G17_GATE_FALHOU') from exc

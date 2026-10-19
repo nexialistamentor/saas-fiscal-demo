@@ -182,7 +182,8 @@ def cotejar_cobertura_publicacao_g17(*, db, authenticated_user_id:int,
         candidatos_normativos:list[dict]|None=None,
         referencias_adr020:list[dict]|None=None,
         referencias_temporais:list[dict]|None=None,
-        referencias_cobertura:list[dict]|None=None) -> dict:
+        referencias_cobertura:list[dict]|None=None,
+        cas_root=None) -> dict:
     """G16 first; only then read ADR-020 bounded checkpoint/ledger rows.
 
     Does NOT claim fresh/exhaustive coverage of all amendments or official
@@ -204,7 +205,8 @@ def cotejar_cobertura_publicacao_g17(*, db, authenticated_user_id:int,
         g16=cotejar_ciclo_normativo_g16(db=db,authenticated_user_id=authenticated_user_id,
             empresa_id=empresa_id,relatorio_id=relatorio_id,xml_bytes=xml_bytes,
             candidatos_normativos=candidatos_normativos,referencias_adr020=referencias_adr020,
-            referencias_temporais=referencias_temporais)
+            referencias_temporais=referencias_temporais,
+            **({'cas_root':cas_root} if cas_root is not None else {}))
     except Exception as exc:
         raise EnterpriseG17GateError('G17_G16_GATE_FALHOU') from exc
     digest=hashlib.sha256(xml_bytes).hexdigest()

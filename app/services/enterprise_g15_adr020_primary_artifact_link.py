@@ -79,7 +79,7 @@ def _matched_verification(row, *, expected_id, vtype, artifact_id, digest):
                 and _sha(getattr(row, 'record_hash', None)))
 
 
-def _cotejar_artefacto(db, candidate: dict, link: dict) -> tuple[bool, str, str | None]:
+def _cotejar_artefacto(db, candidate: dict, link: dict, *, cas_root=None) -> tuple[bool, str, str | None]:
     """Cotejo dos registos guardados, sem transformar estado BD em trust externo."""
     ref = _row(db, ArtifactReference, link['artifact_reference_record_id'])
     execution = _row(db, AcquisitionExecution, link['acquisition_execution_record_id'])
@@ -110,16 +110,52 @@ def _cotejar_artefacto(db, candidate: dict, link: dict) -> tuple[bool, str, str 
             or not _sha(getattr(artifact, 'record_hash', None))):
         return False, 'ARTEFACTO_SEM_ORIGEM_EXACTA', None
     raw = getattr(artifact, 'immutable_bytes', None)
-    if (type(raw) is not bytes or not 0 < len(raw) <= 2 * 1024 * 1024
-            or getattr(artifact, 'immutable_location', None) is not None):
-        # Sem leitura de CAS arbitrario: location exige gate proprio.
+    location = getattr(artifact, 'immutable_location', None)
+    if type(raw) is bytes and location is None:
+        # Historical G1.5 behavior is unchanged and remains limited to 2 MiB.
+        if not 0 < len(raw) <= 2 * 1024 * 1024:
+            return False, 'BYTES_IMUTAVEIS_NAO_DISPONIVEIS_OFFLINE', None
+        digest = hashlib.sha256(raw).hexdigest()
+        if (getattr(artifact, 'byte_size', None) != len(raw)
+                or not _sha(getattr(artifact, 'artifact_hash', None))
+                or not hmac.compare_digest(digest, artifact.artifact_hash)
+                or not hmac.compare_digest(digest, candidate['sha256_texto_normativo_declarado'])):
+            return False, 'HASH_BYTES_ADR020_DIVERGENTE', None
+    elif raw is None and type(location) is str and cas_root is not None:
+        # Strict opt-in: G19 reopens and independently hashes exact CAS bytes;
+        # G1.5 still checks all three actual verification records below.
+        digest = getattr(artifact, 'artifact_hash', None)
+        size = getattr(artifact, 'byte_size', None)
+        if (not _sha(digest) or type(size) is not int
+                or not 1024 <= size <= 16 * 1024 * 1024
+                or not hmac.compare_digest(digest, candidate['sha256_texto_normativo_declarado'])):
+            return False, 'CAS_ADR020_HASH_OU_TAMANHO_DIVERGENTE', None
+        try:
+            from app.services.enterprise_g19_local_cas_custody import (
+                SCHEMA as G19_SCHEMA, cotejar_localizacao_adr020_g19,
+            )
+            custody = cotejar_localizacao_adr020_g19(
+                db=db, root=cas_root,
+                normative_artifact_id=artifact.normative_artifact_id,
+                artifact_reference_record_id=ref.artifact_reference_record_id,
+                acquisition_execution_record_id=execution.acquisition_execution_record_id,
+                url_publicacao=ref.exact_locator,
+                sha256_esperado=digest, tamanho_esperado=size,
+            )
+        except Exception:
+            return False, 'CAS_G19_CUSTODIA_NAO_VERIFICADA', None
+        if (type(custody) is not dict or custody.get('schema_version') != G19_SCHEMA
+                or custody.get('vinculo_adr020') is not True
+                or custody.get('bytes_revalidados') is not True
+                or custody.get('sha256_recalculado') != digest
+                or custody.get('tamanho_bytes') != size
+                or custody.get('custodia_externa_imutavel_comprovada') is not False
+                or custody.get('fonte_primaria_autenticada') is not False
+                or custody.get('checkout_autorizado') is not False):
+            return False, 'CAS_G19_CONTRATO_INCOMPATIVEL', None
+    else:
+        # Location never qualifies without an explicitly provided CAS root.
         return False, 'BYTES_IMUTAVEIS_NAO_DISPONIVEIS_OFFLINE', None
-    digest = hashlib.sha256(raw).hexdigest()
-    if (getattr(artifact, 'byte_size', None) != len(raw)
-            or not _sha(getattr(artifact, 'artifact_hash', None))
-            or not hmac.compare_digest(digest, artifact.artifact_hash)
-            or not hmac.compare_digest(digest, candidate['sha256_texto_normativo_declarado'])):
-        return False, 'HASH_BYTES_ADR020_DIVERGENTE', None
     auth = _row(db, ArtifactVerificationRecord, link['authenticity_verification_record_id'])
     integrity = _row(db, ArtifactVerificationRecord, link['integrity_verification_record_id'])
     preservation = _row(db, ArtifactVerificationRecord, link['preservation_verification_record_id'])
@@ -143,7 +179,8 @@ def _cotejar_artefacto(db, candidate: dict, link: dict) -> tuple[bool, str, str 
 def cotejar_artefacto_primario_g15(*, db, authenticated_user_id: int,
         empresa_id: int, relatorio_id: int, xml_bytes: bytes,
         candidatos_normativos: list[dict] | None = None,
-        referencias_adr020: list[dict] | None = None) -> dict:
+        referencias_adr020: list[dict] | None = None,
+        cas_root=None) -> dict:
     """G14 primeiro; ADR-020 por item depois. Nunca concede autoridade fiscal.
 
     Links ADR-020 sao identificadores *nao confiaveis*; sempre sao resolvidos
@@ -206,7 +243,7 @@ def cotejar_artefacto_primario_g15(*, db, authenticated_user_id: int,
               or type(item.get('fonte_legal_candidata')) is not str):
             _stop('G15_CANDIDATO_G14_MALFORMADO')
         else:
-            good, reason, artifact_digest = _cotejar_artefacto(db, item, link)
+            good, reason, artifact_digest = _cotejar_artefacto(db, item, link, cas_root=cas_root)
             rec['motivo']=reason
             if good:
                 matched+=1
