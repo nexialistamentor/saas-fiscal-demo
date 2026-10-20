@@ -273,6 +273,25 @@ def confrontar_st_por_item_g12(*, db, xml_bytes: bytes) -> dict:
                 'autoridade_fiscal': False,
                 'credito_confirmado': False,
             }
+            registro_mva_id = norm.get('registro_mva_id')
+            if type(registro_mva_id) is int and registro_mva_id > 0:
+                info['proveniencia_l2_g12_v1'] = {
+                    'versao': 1,
+                    'registro_mva_id': registro_mva_id,
+                    'uf': issuer, 'ncm': ncm,
+                    'data_referencia': reference_date.isoformat(),
+                    'vigencia_inicio': vstart.isoformat(),
+                    'vigencia_fim': vend.isoformat() if vend is not None else None,
+                    'fonte_legal': source,
+                    'url_fonte': norm.get('url_fonte'),
+                    'importado_por_declarado': norm.get('importado_por'),
+                    'mva_fracao_registo': str(mva),
+                    'aliquota_fracao_registo': str(ali),
+                    'unicidade_registos_vigentes_comprovada': False,
+                    'vinculo_adr020_comprovado': False,
+                    'autenticidade_fonte_externa_comprovada': False,
+                    'autoridade_fiscal': False,
+                }
             info['estado'] = 'SIMULACAO_CONDICIONAL_MVA'
             info['motivo'] = 'G12_NORMA_DECLARADA_SEM_PROVA_ORIGINAL_E_ICMS_PROPRIO_XML'
             info['fonte_legal_informada'] = source

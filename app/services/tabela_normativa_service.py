@@ -310,6 +310,8 @@ def buscar_mva(
         return None
 
     return {
+        "registro_mva_id": registro.id,
+        "importado_por": getattr(registro, "importado_por", None),
         "mva": registro.mva,
         "aliquota_interna": registro.aliquota_interna,
         "vigencia_inicio": registro.vigencia_inicio,
