@@ -256,6 +256,23 @@ def confrontar_st_por_item_g12(*, db, xml_bytes: bytes) -> dict:
                 continue
             calc['base_st_calculada'] = str(base_motor)
             calc['valor_st_calculado'] = str(st_motor)
+            info['rastro_parametros_g12_v1'] = {
+                'versao': 1,
+                'mva_fracao_utilizada': str(mva),
+                'aliquota_fracao_utilizada': str(ali),
+                'fonte_legal_consultada': source,
+                'url_fonte_consultada': norm.get('url_fonte'),
+                'nivel_confianca_registro': norm.get('nivel_confianca_fonte'),
+                'vprod_xml': str(product_value),
+                'icms_proprio_xml': str(own_icms),
+                'base_st_motor': str(base_motor),
+                'icms_st_motor': str(st_motor),
+                'metodo_base': 'iva_st',
+                'identidade_registo_normativo_comprovada': False,
+                'regra_adr020_comprovada': False,
+                'autoridade_fiscal': False,
+                'credito_confirmado': False,
+            }
             info['estado'] = 'SIMULACAO_CONDICIONAL_MVA'
             info['motivo'] = 'G12_NORMA_DECLARADA_SEM_PROVA_ORIGINAL_E_ICMS_PROPRIO_XML'
             info['fonte_legal_informada'] = source
