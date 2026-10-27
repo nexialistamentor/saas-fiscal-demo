@@ -4943,3 +4943,159 @@ class MeiReceitaInformada(Base):
     categoria = Column(String(32), nullable=False)
     origem = Column(String(32), nullable=False, default="informada_sem_nota", server_default="informada_sem_nota")
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+# 02-R4G prospective metadata only; migrations remain the sole DDL authority.
+from sqlalchemy import FetchedValue as _B02FetchedValue
+from sqlalchemy.dialects.postgresql import JSONB as _B02JSONB
+# Existing acquisition columns/semantics remain intact.
+AcquisitionExecution.__table__.append_constraint(UniqueConstraint(
+    'acquisition_execution_record_id', 'record_hash', 'acquisition_execution_id',
+    'artifact_reference_id', 'attempt_number', name='uq_b02_execution_exact_hash'))
+
+
+class AcquisitionModeBinding(Base):
+    __tablename__ = 'acquisition_mode_bindings'
+    __table_args__ = (
+        UniqueConstraint('mode_binding_id','record_hash', name='uq_b02_acquisition00'),
+        UniqueConstraint('record_hash', name='uq_b02_acquisition01'),
+        UniqueConstraint('acquisition_execution_id','attempt_number', name='uq_b02_acquisition02'),
+        UniqueConstraint('mode_binding_id','record_hash','acquisition_execution_id','artifact_reference_id','attempt_number', name='uq_b02_acquisition03'),
+        ForeignKeyConstraint(['planning_execution_record_id', 'planning_execution_record_hash', 'acquisition_execution_id', 'artifact_reference_id', 'attempt_number'],['acquisition_executions.acquisition_execution_record_id', 'acquisition_executions.record_hash', 'acquisition_executions.acquisition_execution_id', 'acquisition_executions.artifact_reference_id', 'acquisition_executions.attempt_number'], name='fk_b02_00', ondelete='RESTRICT'),
+        CheckConstraint('schema_version=1', name='ck_b02_00'),
+        CheckConstraint("canonicalization_contract_id='ADR020_B02_INTEGER_JSON_UTF8_V1' AND canonicalization_contract_version=1 AND canonicalization_contract_hash='a4b480d7a6fedd54b5c020e338f7dbc133ef0fc87a1ffefdbf1de5e088632fd1'", name='ck_b02_01'),
+        CheckConstraint("assigned_txid ~ '^[1-9][0-9]*$'", name='ck_b02_02'),
+        CheckConstraint("planning_execution_record_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_03'),
+        CheckConstraint("scope_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_04'),
+        CheckConstraint("canonicalization_contract_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_05'),
+        CheckConstraint("record_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_06'),
+        CheckConstraint('attempt_number > 0', name='ck_b02_07'),
+        CheckConstraint("mode IN ('EXTERNAL_CREDENTIALLED','EXTERNAL_PUBLIC_NO_CREDENTIALS','LOCAL_CAS_INCORPORATION')", name='ck_b02_08'),
+    )
+    mode_binding_id = Column(String(255), nullable=False, primary_key=True)
+    planning_execution_record_id = Column(String(255), nullable=False)
+    planning_execution_record_hash = Column(String(64), nullable=False)
+    acquisition_execution_id = Column(String(255), nullable=False)
+    artifact_reference_id = Column(String(255), nullable=False)
+    attempt_number = Column(Integer(), nullable=False)
+    mode = Column(String(255), nullable=False)
+    actor = Column(String(255), nullable=False)
+    adapter_contract_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    acquisition_contract_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    source_identity_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    source_scope = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    tenant_scope = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    scope_hash = Column(String(64), nullable=False)
+    security_policy_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    sanitization_policy_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    bound_at = Column(DateTime(timezone=True), nullable=False)
+    provenance = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    schema_version = Column(Integer(), nullable=False)
+    canonicalization_contract_id = Column(String(255), nullable=False)
+    canonicalization_contract_version = Column(Integer(), nullable=False)
+    canonicalization_contract_hash = Column(String(64), nullable=False)
+    assigned_txid = Column(String(255), nullable=False, server_default=_B02FetchedValue())
+    record_hash = Column(String(64), nullable=False, server_default=_B02FetchedValue())
+
+
+class NonCredentialAcquisitionReceipt(Base):
+    __tablename__ = 'noncredential_acquisition_receipts'
+    __table_args__ = (
+        UniqueConstraint('receipt_id','record_hash', name='uq_b02_noncredential10'),
+        UniqueConstraint('record_hash', name='uq_b02_noncredential11'),
+        UniqueConstraint('receipt_id','receipt_hash', name='uq_b02_noncredential12'),
+        UniqueConstraint('acquisition_execution_id','attempt_number', name='uq_b02_noncredential13'),
+        ForeignKeyConstraint(['mode_binding_id', 'mode_binding_hash', 'acquisition_execution_id', 'artifact_reference_id', 'attempt_number'],['acquisition_mode_bindings.mode_binding_id', 'acquisition_mode_bindings.record_hash', 'acquisition_mode_bindings.acquisition_execution_id', 'acquisition_mode_bindings.artifact_reference_id', 'acquisition_mode_bindings.attempt_number'], name='fk_b02_10', ondelete='RESTRICT'),
+        ForeignKeyConstraint(['start_execution_record_id', 'start_execution_record_hash', 'acquisition_execution_id', 'artifact_reference_id', 'attempt_number'],['acquisition_executions.acquisition_execution_record_id', 'acquisition_executions.record_hash', 'acquisition_executions.acquisition_execution_id', 'acquisition_executions.artifact_reference_id', 'acquisition_executions.attempt_number'], name='fk_b02_11', ondelete='RESTRICT'),
+        CheckConstraint('schema_version=1', name='ck_b02_10'),
+        CheckConstraint("canonicalization_contract_id='ADR020_B02_INTEGER_JSON_UTF8_V1' AND canonicalization_contract_version=1 AND canonicalization_contract_hash='a4b480d7a6fedd54b5c020e338f7dbc133ef0fc87a1ffefdbf1de5e088632fd1'", name='ck_b02_11'),
+        CheckConstraint("assigned_txid ~ '^[1-9][0-9]*$'", name='ck_b02_12'),
+        CheckConstraint("receipt_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_13'),
+        CheckConstraint("mode_binding_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_14'),
+        CheckConstraint("start_execution_record_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_15'),
+        CheckConstraint("artifact_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_16'),
+        CheckConstraint("canonicalization_contract_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_17'),
+        CheckConstraint("record_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_18'),
+        CheckConstraint('attempt_number > 0 AND byte_size > 0', name='ck_b02_19'),
+        CheckConstraint("mode IN ('EXTERNAL_PUBLIC_NO_CREDENTIALS','LOCAL_CAS_INCORPORATION')", name='ck_b02_110'),
+        CheckConstraint("(mode='LOCAL_CAS_INCORPORATION' AND acquisition_outcome IN ('incorporated','missing_object','integrity_mismatch','indeterminate','cancelled_before_read')) OR (mode='EXTERNAL_PUBLIC_NO_CREDENTIALS' AND acquisition_outcome IN ('acquired','source_rejected','no_content_valid','transport_failed','indeterminate','cancelled_before_dispatch'))", name='ck_b02_111'),
+    )
+    receipt_id = Column(String(255), nullable=False, primary_key=True)
+    receipt_hash = Column(String(64), nullable=False, server_default=_B02FetchedValue())
+    mode_binding_id = Column(String(255), nullable=False)
+    mode_binding_hash = Column(String(64), nullable=False)
+    start_execution_record_id = Column(String(255), nullable=False)
+    start_execution_record_hash = Column(String(64), nullable=False)
+    acquisition_execution_id = Column(String(255), nullable=False)
+    artifact_reference_id = Column(String(255), nullable=False)
+    attempt_number = Column(Integer(), nullable=False)
+    mode = Column(String(255), nullable=False)
+    source_identity_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    source_scope = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    tenant_scope = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    acquisition_contract_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    security_policy_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    sanitization_policy_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    artifact_hash = Column(String(64), nullable=False)
+    byte_size = Column(Integer(), nullable=False)
+    media_type = Column(String(255), nullable=False)
+    content_reference = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    transport_manifest = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    cas_manifest = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    component_manifest = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    redaction_manifest = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    execution_proof_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    observed_at = Column(DateTime(timezone=True), nullable=False)
+    receipt_created_at = Column(DateTime(timezone=True), nullable=False)
+    acquisition_outcome = Column(String(255), nullable=False)
+    creator = Column(String(255), nullable=False)
+    provenance = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    schema_version = Column(Integer(), nullable=False)
+    canonicalization_contract_id = Column(String(255), nullable=False)
+    canonicalization_contract_version = Column(Integer(), nullable=False)
+    canonicalization_contract_hash = Column(String(64), nullable=False)
+    assigned_txid = Column(String(255), nullable=False, server_default=_B02FetchedValue())
+    record_hash = Column(String(64), nullable=False, server_default=_B02FetchedValue())
+
+
+class NonCredentialSanitizationVerification(Base):
+    __tablename__ = 'noncredential_sanitization_verifications'
+    __table_args__ = (
+        UniqueConstraint('verification_id','record_hash', name='uq_b02_noncredential20'),
+        UniqueConstraint('record_hash', name='uq_b02_noncredential21'),
+        UniqueConstraint('receipt_id','receipt_hash', name='uq_b02_noncredential22'),
+        ForeignKeyConstraint(['receipt_id', 'receipt_hash'],['noncredential_acquisition_receipts.receipt_id', 'noncredential_acquisition_receipts.receipt_hash'], name='fk_b02_20', ondelete='RESTRICT'),
+        CheckConstraint('schema_version=1', name='ck_b02_20'),
+        CheckConstraint("canonicalization_contract_id='ADR020_B02_INTEGER_JSON_UTF8_V1' AND canonicalization_contract_version=1 AND canonicalization_contract_hash='a4b480d7a6fedd54b5c020e338f7dbc133ef0fc87a1ffefdbf1de5e088632fd1'", name='ck_b02_21'),
+        CheckConstraint("assigned_txid ~ '^[1-9][0-9]*$'", name='ck_b02_22'),
+        CheckConstraint("receipt_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_23'),
+        CheckConstraint("verification_engine_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_24'),
+        CheckConstraint("canonicalization_contract_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_25'),
+        CheckConstraint("record_hash ~ '^[0-9a-f]{64}$'", name='ck_b02_26'),
+        CheckConstraint('verification_engine_version > 0', name='ck_b02_27'),
+        CheckConstraint("verification_outcome IN ('verified_sanitized','verified_violation','inconclusive')", name='ck_b02_28'),
+    )
+    verification_id = Column(String(255), nullable=False, primary_key=True)
+    receipt_id = Column(String(255), nullable=False)
+    receipt_hash = Column(String(64), nullable=False, server_default=_B02FetchedValue())
+    verification_engine_id = Column(String(255), nullable=False)
+    verification_engine_version = Column(Integer(), nullable=False)
+    verification_engine_hash = Column(String(64), nullable=False)
+    inspected_component_manifest = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    violation_manifest = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    verification_outcome = Column(String(255), nullable=False)
+    verified_at = Column(DateTime(timezone=True), nullable=False)
+    verifier = Column(String(255), nullable=False)
+    sanitization_policy_binding = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    provenance = Column(JSON().with_variant(_B02JSONB(), "postgresql"), nullable=False)
+    schema_version = Column(Integer(), nullable=False)
+    canonicalization_contract_id = Column(String(255), nullable=False)
+    canonicalization_contract_version = Column(Integer(), nullable=False)
+    canonicalization_contract_hash = Column(String(64), nullable=False)
+    assigned_txid = Column(String(255), nullable=False, server_default=_B02FetchedValue())
+    record_hash = Column(String(64), nullable=False, server_default=_B02FetchedValue())
+
+AcquisitionExecution.__table__.append_column(Column('b02_completion_txid', Text, nullable=True))
+NormativeArtifact.__table__.append_column(Column('b02_completion_txid', Text, nullable=True))
+
+# B02 policy atomicity metadata discovery; no DDL or database connection.
+import app.models_policy_activation_atomicity

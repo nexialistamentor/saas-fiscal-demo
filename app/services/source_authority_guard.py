@@ -78,11 +78,17 @@ def _fonte_ou_none(fonte_id: str) -> dict | None:
     return _carregar_manifest().get(fonte_id)
 
 
-def verificar(request: SourceAuthorityRequest) -> SourceAuthorityResult:
+def verificar(request: SourceAuthorityRequest, *, documentary_context: dict | None = None, documentary_connection=None, institutional_proof_verifier=None) -> SourceAuthorityResult:
     """
     Verifica se o uso pretendido de uma fonte tributária é permitido.
     Determinístico. Sem efeitos secundários.
     """
+    if request.uso_pretendido == "autenticar_documento_sefa_pr":
+        from app.services.sefa_pr_documentary_admission import admit_documentary_verification
+        evidence = dict(documentary_context) if isinstance(documentary_context, dict) else {}
+        evidence["source_id"] = request.fonte_id
+        return admit_documentary_verification(evidence, connection=documentary_connection, institutional_proof_verifier=institutional_proof_verifier)
+
     fonte = _fonte_ou_none(request.fonte_id)
 
     # 1. Fonte inexistente

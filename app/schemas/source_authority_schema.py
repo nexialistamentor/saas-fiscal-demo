@@ -17,6 +17,7 @@ class SourceAuthorityRequest(BaseModel):
         "validar_fato_operacional",
         "apoiar_explicacao_ux",
         "contexto_llm",
+        "autenticar_documento_sefa_pr",
     ]
 
 
