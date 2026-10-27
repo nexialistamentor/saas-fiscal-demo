@@ -1,9 +1,12 @@
 import logging
 import os
+import re
 from typing import Generator
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from sqlalchemy import create_engine, event, inspect, text
+from sqlalchemy import CheckConstraint
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -211,6 +214,26 @@ def _sqlite_ensure_alert_effect_idempotency_unique() -> None:
                 "ON alertas_fiscais (effect_idempotency_key)"
             )
         )
+
+_SQLITE_PG_ONLY_CHECK = re.compile(
+    r"(?i)(?:\b(?:jsonb_[a-z_]+|to_jsonb|pg_catalog\.[a-z_]+|regexp_replace|regexp_match|octet_length)\s*\("
+    r"|(?<![<>=!])~\*?|::\s*[a-z_]+|->>?|#>>?|@>|<@|\?\||\?&|\bSIMILAR\s+TO\b)"
+)
+
+
+@compiles(CheckConstraint, "sqlite")
+def _compile_check_sqlite_without_metadata_mutation(constraint, compiler, **kw):
+    """Omitir apenas CHECK incompatíveis com SQLite, sem tocar na Table.
+
+    Constraints compatíveis continuam efetivas em SQLite; todas são mantidas
+    na metadata e continuam a ser compiladas normalmente em PostgreSQL.
+    """
+    sql_without_literals = re.sub(r"'(?:''|[^'])*'", "''", str(constraint.sqltext))
+    if _SQLITE_PG_ONLY_CHECK.search(sql_without_literals):
+        return None
+    return compiler.visit_check_constraint(constraint, **kw)
+
+
 
 def ensure_sqlite_schema_compat() -> None:
     """
