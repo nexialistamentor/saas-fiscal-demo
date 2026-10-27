@@ -151,7 +151,7 @@ def cotejar_excerto_normativo_g113(*, pdf_bytes: bytes, pdf_sha256: str,
     try:
         reader = PdfReader(BytesIO(pdf_bytes), strict=True)
         count = len(reader.pages)
-        if not 1 <= count <= 500 or page > count:
+        if not 1 <= count <= 600 or page > count:
             _stop('PAGINA_FORA_DO_DOCUMENTO')
         page_text = reader.pages[page-1].extract_text(extraction_mode='plain')
     except G113EvidenceError:
