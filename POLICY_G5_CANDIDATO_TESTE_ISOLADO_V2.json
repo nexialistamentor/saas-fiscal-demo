@@ -1,0 +1,405 @@
+{
+  "__AVISO_CAMPOS_INSTITUCIONAIS__": "Os campos 'ids', 'identity_proofs', 'ratification_record_sha256' e quaisquer sub-campos de ator/ratificacao/auditoria/decisao/assinatura dentro de 'policy_candidate_body' abaixo pertencem ao PREDECESSOR (policy_hash 57982f46...) e NAO constituem submissao, auditoria, ratificacao ou assinatura deste objeto sucessor. Sao copiados apenas para referencia estrutural. O sucessor NAO tem nenhum ato real emitido sobre ele ate que submissao/auditoria/ratificacao proprias ocorram para este policy_hash especifico (ainda PENDENTE).",
+  "status": "TESTE_ISOLADO_SEM_AUTORIDADE_OPERACIONAL_PARA_REVISAO_DO_GERADOR",
+  "predecessor_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+  "test_marker": "NAO_USAR_EM_PRODUCAO_JANELA_ANO_2099",
+  "policy_candidate_body": {
+    "declared_material_applicability": {
+      "from": "2099-01-01T12:00:00+00:00",
+      "kind": "documentary_persistence_only_not_fiscal_validity",
+      "no_retroactive_authority": true,
+      "until": "2099-01-02T07:56:30.910737+00:00"
+    },
+    "domain": "SEFA_PR_B02_DOCUMENTAL_G5_PERSISTENCE",
+    "exact_references": {
+      "adoption_act_sha256": "d1fcd244129e669fc5a37c79dc1fc77f677b1cb0e0ceaf06d4cbe9bf9740d911",
+      "candidate_0064_sha256": "de96cc7af1f5fd41b47caf03ced7bd4774f6910ed462b36ac79f4bd9e07c8608",
+      "canonicalization_contract": {
+        "hash": "a4b480d7a6fedd54b5c020e338f7dbc133ef0fc87a1ffefdbf1de5e088632fd1",
+        "id": "ADR020_B02_INTEGER_JSON_UTF8_V1",
+        "version": 1
+      },
+      "g4_policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+      "r4f_sha256": "0359ab0bd03fee6127330158bc1b5388188aba650ee6e74fb2c762d1b85857fa",
+      "verification_method_sha256": "c79d8916c29914dc8a070ce1c29b352b38f3fea3f59dccc53d8066e4cf30616c"
+    },
+    "gates": {
+      "binding_and_policy_before_operational_read": true,
+      "effective_current_segregated_receipt_inspection": true,
+      "exact_two_units_one_signed_transaction": true,
+      "explicit_policy_ratification_and_activation": true,
+      "g4_current_and_favourable_for_each_document": true,
+      "native_non_anticipatable_precommit": true,
+      "operational_diff_and_root_and_libraries_separately_approved": true,
+      "own_review_record_resolved_by_commit_issuer": true,
+      "reject_unknown_components_and_ambiguity": true
+    },
+    "limits": {
+      "automatic_activation": false,
+      "checkout": false,
+      "commercial_authorization": false,
+      "conclusive_extraction": false,
+      "credit": false,
+      "fiscal_authority": false,
+      "llm_context": false,
+      "maximum_units": 2,
+      "no_trust_activation_by_this_file": true,
+      "operational_validation": false,
+      "other_databases": false,
+      "other_documents": false,
+      "other_modes": false
+    },
+    "modalities": [
+      "LOCAL_CAS_INCORPORATION"
+    ],
+    "origin_evidence": {
+      "classification": "candidate_for_real_documentary_persistence_not_execution_claim",
+      "institutional_evidence_bindings": {
+        "g5_mandate": {
+          "id": "B02-G5-MANDATES-AND-COMMIT-PURPOSE-1",
+          "sha256": "11ad4a27cce80380659b94a54404877e7b7b65eb9431b7acc5a07e96299b97fe"
+        },
+        "method_review": {
+          "id": "B02-G5-METHOD-TECHNICAL-REVIEW-1",
+          "sha256": "4bbbd811d7cc6434e9e4ecdf9d33a2f1cac46bee1e004e54d88dd9a2a2c83c5d"
+        },
+        "proponent_acceptance": {
+          "id": "B02-G5-PROPONENT-ACCEPTANCE-1",
+          "sha256": "a9dfd277eaf1b750bc23388c10d6adb1c8b9966f47d324954e41efc7212db424"
+        },
+        "reviewer_acceptance": {
+          "id": "B02-G5-REVIEWER-ACCEPTANCE-1",
+          "sha256": "6a6ad0f34d8ef879f1a264ac7691cd0376ce124d898e71e4824fa41252bc4035"
+        }
+      },
+      "known_limitations": [
+        "candidate_not_ratified_or_active",
+        "new_dynamic_guard_not_physically_homologated",
+        "no_operational_receipt_or_sanitization_exists_yet",
+        "positive_outcomes_in_rules_are_required_future_results_not_completed_exams",
+        "adapter_binding_identifies_existing_source_and_is_proposed_for_policy_approval",
+        "custody_adenda_reference_does_not_attest_current_store",
+        "commit_issuer_must_resolve_actual_own_reviewer_execution_record_before_signing"
+      ],
+      "preparatory_local_observation": {
+        "id": "OBSERVACAO_LOCAL_REAL.json",
+        "not_operational_cas_evidence": true,
+        "sha256": "575ff0215c9311692108a571f2fc7b9087f8df090912ef2cbf7ad5cb3fe993ee"
+      },
+      "synthetic_only": false
+    },
+    "permitted_authorization_classes": [
+      "constitucional_reservada"
+    ],
+    "permitted_execution_modes": [
+      "manual"
+    ],
+    "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+    "policy_type": "activation_authority",
+    "policy_version": 1,
+    "roles": {
+      "commit_capability_issuer": "Miguel",
+      "functional_reviewer": "/root/canonical_executor_technical_review",
+      "proponent_and_integrator": "/root",
+      "ratifier": "Miguel",
+      "sql_writer": "solveris_b02_writer",
+      "technical_policy_activation_writers": [
+        "solveris_b02_policy_writer"
+      ]
+    },
+    "rules": {
+      "b02_noncredential": {
+        "sanitization": {
+          "acquisition_contract_binding": {
+            "hash": "0359ab0bd03fee6127330158bc1b5388188aba650ee6e74fb2c762d1b85857fa",
+            "id": "ADR020_R4F_R1_LOCAL_CAS_A2_A4",
+            "version": 1
+          },
+          "actors": [
+            "/root"
+          ],
+          "adapter_contract_binding": {
+            "hash": "b9a0cdd94f7bc6b523c25e3c772b41e680eaeda9cb0b9f755b7e012ea055853c",
+            "id": "app.services.enterprise_b02_noncredential_acquisition.stage_completion",
+            "version": 1
+          },
+          "custody_contract_binding": {
+            "hash": "0359ab0bd03fee6127330158bc1b5388188aba650ee6e74fb2c762d1b85857fa",
+            "id": "ADR020_R4F_R1_LOCAL_CAS_CUSTODY_A4",
+            "version": 1
+          },
+          "independence_evidence_required": true,
+          "modes": [
+            "LOCAL_CAS_INCORPORATION"
+          ],
+          "schema": "B02_POLICY_GRANT_V1",
+          "scope": {
+            "document_hashes": [
+              "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+              "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d"
+            ],
+            "jurisdiction": "BR-PR",
+            "source_id": "SEFA-PR-B02-DOCUMENTAL",
+            "use": "documentary_persistence_only"
+          },
+          "tenant_scope": {},
+          "verification_engine_binding": {
+            "hash": "c79d8916c29914dc8a070ce1c29b352b38f3fea3f59dccc53d8066e4cf30616c",
+            "id": "B02_G5_SEGREGATED_RECEIPT_INSPECTION",
+            "version": 1
+          },
+          "verifiers": [
+            "/root/canonical_executor_technical_review"
+          ]
+        },
+        "security": {
+          "acquisition_contract_binding": {
+            "hash": "0359ab0bd03fee6127330158bc1b5388188aba650ee6e74fb2c762d1b85857fa",
+            "id": "ADR020_R4F_R1_LOCAL_CAS_A2_A4",
+            "version": 1
+          },
+          "actors": [
+            "/root"
+          ],
+          "adapter_contract_binding": {
+            "hash": "b9a0cdd94f7bc6b523c25e3c772b41e680eaeda9cb0b9f755b7e012ea055853c",
+            "id": "app.services.enterprise_b02_noncredential_acquisition.stage_completion",
+            "version": 1
+          },
+          "custody_contract_binding": {
+            "hash": "0359ab0bd03fee6127330158bc1b5388188aba650ee6e74fb2c762d1b85857fa",
+            "id": "ADR020_R4F_R1_LOCAL_CAS_CUSTODY_A4",
+            "version": 1
+          },
+          "g5_release": {
+            "actor": "/root",
+            "capability_root_id": "SOLVERIS-B02-SEFA-PR-G5-COMMIT-MIGUEL-V1",
+            "documents": [
+              {
+                "acquisition_execution_id": "B02-G5-101202501245-V1-execution",
+                "artifact_reference_id": "B02-G5-101202501245-V1-reference",
+                "byte_size": 258302,
+                "document_id": "101202501245",
+                "g4": {
+                  "origin_report_binding": {
+                    "id": "B02-05ede0f8-ORIGIN-101202501245-FOLLOWUP-20261021-RUNTIME-BODY",
+                    "sha256": "09754ecef2fe0967459d36017afdc9393718a5df911ab0b93c08cddd82869087"
+                  },
+                  "outcome": "conclusivo_favoravel",
+                  "policy_binding": {
+                    "decision_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018",
+                    "decision_id": "B02-05ede-ratificada-v1",
+                    "policy_activation_id": "B02-05ede-activation-v1",
+                    "policy_activation_record_hash": "06321ef4c9df17e251a08428a534ab6af8e1f868df2c48b64c3342ecc703dae5",
+                    "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+                    "policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY",
+                    "policy_type": "activation_authority",
+                    "policy_version": 1
+                  },
+                  "synthetic_only": false,
+                  "valid_from": "2026-10-22T07:56:30.910737+00:00",
+                  "valid_until": "2026-10-23T07:56:30.910737+00:00",
+                  "verifier": {
+                    "hash": "fab019b18d21f8e47e59ff96fd783dc9732cc3ae1d6e1ed429bddf957f0b9472",
+                    "id": "SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN",
+                    "version": "1"
+                  }
+                },
+                "mode_binding_id": "B02-G5-101202501245-V1-binding",
+                "normative_artifact_id": "B02-G5-101202501245-V1-artifact",
+                "receipt_id": "B02-G5-101202501245-V1-receipt",
+                "sanitization": {
+                  "component_manifest": {
+                    "complete": true,
+                    "components": [
+                      "source",
+                      "scope",
+                      "contracts",
+                      "local_cas_read",
+                      "content_reference",
+                      "redaction",
+                      "execution_proof",
+                      "provenance_and_public_logs"
+                    ]
+                  },
+                  "execution_proof_id": "B02-G5-101202501245-V1-current-execution-proof",
+                  "independence_evidence_id": "B02-G5-101202501245-V1-segregated-inspection",
+                  "inspected_component_manifest": {
+                    "complete": true,
+                    "components": [
+                      "source",
+                      "scope",
+                      "contracts",
+                      "local_cas_read",
+                      "content_reference",
+                      "redaction",
+                      "execution_proof",
+                      "provenance_and_public_logs"
+                    ]
+                  },
+                  "institutional_method_review_binding": {
+                    "id": "B02-G5-METHOD-TECHNICAL-REVIEW-1",
+                    "sha256": "4bbbd811d7cc6434e9e4ecdf9d33a2f1cac46bee1e004e54d88dd9a2a2c83c5d"
+                  },
+                  "mandate_binding": {
+                    "hash": "11ad4a27cce80380659b94a54404877e7b7b65eb9431b7acc5a07e96299b97fe",
+                    "id": "B02-G5-MANDATES-AND-COMMIT-PURPOSE-1"
+                  },
+                  "outcome": "verified_sanitized",
+                  "proof_binding_mode": "B02_G5_SIGNED_TRANSACTION_PROOFS_V1",
+                  "synthetic_only": false,
+                  "verification_method_binding": {
+                    "hash": "c79d8916c29914dc8a070ce1c29b352b38f3fea3f59dccc53d8066e4cf30616c",
+                    "id": "B02_G5_SEGREGATED_RECEIPT_INSPECTION",
+                    "version": 1
+                  },
+                  "verifier": "/root/canonical_executor_technical_review",
+                  "verifier_acceptance_binding": {
+                    "hash": "6a6ad0f34d8ef879f1a264ac7691cd0376ce124d898e71e4824fa41252bc4035",
+                    "id": "B02-G5-REVIEWER-ACCEPTANCE-1"
+                  }
+                },
+                "sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+                "url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf",
+                "verification_id": "B02-G5-101202501245-V1-sanitization"
+              },
+              {
+                "acquisition_execution_id": "B02-G5-101201900571-V1-execution",
+                "artifact_reference_id": "B02-G5-101201900571-V1-reference",
+                "byte_size": 1944929,
+                "document_id": "101201900571",
+                "g4": {
+                  "origin_report_binding": {
+                    "id": "B02-05ede0f8-ORIGIN-101201900571-FOLLOWUP-20261021-RUNTIME-BODY",
+                    "sha256": "63435196c888e42d7eaf85c6ba6d2323c1d0ff47dc4e3a7a824c357a6f093f8e"
+                  },
+                  "outcome": "conclusivo_favoravel",
+                  "policy_binding": {
+                    "decision_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018",
+                    "decision_id": "B02-05ede-ratificada-v1",
+                    "policy_activation_id": "B02-05ede-activation-v1",
+                    "policy_activation_record_hash": "06321ef4c9df17e251a08428a534ab6af8e1f868df2c48b64c3342ecc703dae5",
+                    "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+                    "policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY",
+                    "policy_type": "activation_authority",
+                    "policy_version": 1
+                  },
+                  "synthetic_only": false,
+                  "valid_from": "2026-10-22T07:56:30.910737+00:00",
+                  "valid_until": "2026-10-23T07:56:30.910737+00:00",
+                  "verifier": {
+                    "hash": "fab019b18d21f8e47e59ff96fd783dc9732cc3ae1d6e1ed429bddf957f0b9472",
+                    "id": "SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN",
+                    "version": "1"
+                  }
+                },
+                "mode_binding_id": "B02-G5-101201900571-V1-binding",
+                "normative_artifact_id": "B02-G5-101201900571-V1-artifact",
+                "receipt_id": "B02-G5-101201900571-V1-receipt",
+                "sanitization": {
+                  "component_manifest": {
+                    "complete": true,
+                    "components": [
+                      "source",
+                      "scope",
+                      "contracts",
+                      "local_cas_read",
+                      "content_reference",
+                      "redaction",
+                      "execution_proof",
+                      "provenance_and_public_logs"
+                    ]
+                  },
+                  "execution_proof_id": "B02-G5-101201900571-V1-current-execution-proof",
+                  "independence_evidence_id": "B02-G5-101201900571-V1-segregated-inspection",
+                  "inspected_component_manifest": {
+                    "complete": true,
+                    "components": [
+                      "source",
+                      "scope",
+                      "contracts",
+                      "local_cas_read",
+                      "content_reference",
+                      "redaction",
+                      "execution_proof",
+                      "provenance_and_public_logs"
+                    ]
+                  },
+                  "institutional_method_review_binding": {
+                    "id": "B02-G5-METHOD-TECHNICAL-REVIEW-1",
+                    "sha256": "4bbbd811d7cc6434e9e4ecdf9d33a2f1cac46bee1e004e54d88dd9a2a2c83c5d"
+                  },
+                  "mandate_binding": {
+                    "hash": "11ad4a27cce80380659b94a54404877e7b7b65eb9431b7acc5a07e96299b97fe",
+                    "id": "B02-G5-MANDATES-AND-COMMIT-PURPOSE-1"
+                  },
+                  "outcome": "verified_sanitized",
+                  "proof_binding_mode": "B02_G5_SIGNED_TRANSACTION_PROOFS_V1",
+                  "synthetic_only": false,
+                  "verification_method_binding": {
+                    "hash": "c79d8916c29914dc8a070ce1c29b352b38f3fea3f59dccc53d8066e4cf30616c",
+                    "id": "B02_G5_SEGREGATED_RECEIPT_INSPECTION",
+                    "version": 1
+                  },
+                  "verifier": "/root/canonical_executor_technical_review",
+                  "verifier_acceptance_binding": {
+                    "hash": "6a6ad0f34d8ef879f1a264ac7691cd0376ce124d898e71e4824fa41252bc4035",
+                    "id": "B02-G5-REVIEWER-ACCEPTANCE-1"
+                  }
+                },
+                "sha256": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d",
+                "url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf",
+                "verification_id": "B02-G5-101201900571-V1-sanitization"
+              }
+            ],
+            "from": "2026-10-22T12:00:00+00:00",
+            "mode": "LOCAL_CAS_INCORPORATION",
+            "schema": "B02_G5_SEFA_PR_REAL_RELEASE_V1",
+            "synthetic_only": false,
+            "until": "2026-10-23T07:56:30.910737+00:00"
+          },
+          "independence_evidence_required": true,
+          "modes": [
+            "LOCAL_CAS_INCORPORATION"
+          ],
+          "schema": "B02_POLICY_GRANT_V1",
+          "scope": {
+            "document_hashes": [
+              "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+              "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d"
+            ],
+            "jurisdiction": "BR-PR",
+            "source_id": "SEFA-PR-B02-DOCUMENTAL",
+            "use": "documentary_persistence_only"
+          },
+          "tenant_scope": {},
+          "verification_engine_binding": {
+            "hash": "c79d8916c29914dc8a070ce1c29b352b38f3fea3f59dccc53d8066e4cf30616c",
+            "id": "B02_G5_SEGREGATED_RECEIPT_INSPECTION",
+            "version": 1
+          },
+          "verifiers": [
+            "/root/canonical_executor_technical_review"
+          ]
+        }
+      }
+    },
+    "scope": {
+      "document_hashes": [
+        "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+        "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d"
+      ],
+      "jurisdiction": "BR-PR",
+      "source_id": "SEFA-PR-B02-DOCUMENTAL",
+      "use": "documentary_persistence_only"
+    },
+    "segregation_of_duties": {
+      "no_internal_model_identity_or_material_independence_asserted": true,
+      "ratifier_not_proponent_or_reviewer": true,
+      "reviewer_not_author_or_integrator": true,
+      "shared_context_infrastructure_limit_acknowledged": true,
+      "sql_writer_not_authority_writer_or_key_custodian": true,
+      "verifier_not_receipt_creator": true
+    }
+  }
+}
