@@ -3,7 +3,7 @@
 **Estado: PROPOSTA CONSOLIDADA, NÃO EMITIDA, SEM AUTORIZAÇÃO DE INSTALAÇÃO OU OPERAÇÃO.**
 **Objeto de revisão fixo:** PR #26, commit `909fd78b2db6add6727f834a0abf189511eddf47`. Esta entrega é posterior ao objeto fixo, não modifica o V4, não constitui revisão GitHub independente e não é aprovação criptográfica/física.
 
-## 0. Ratificação documental V5 — texto único pronto para Miguel, **NÃO EMITIDO**
+## 0. Ratificação documental V5 — manifestação recebida, sem autorização operacional
 
 **PONTO DE ENTREGA:** este é o único texto de ratificação preparado para apresentação a Miguel **depois** do aditamento favorável do revisor sobre o delta V4→V5. Não é uma segunda ficha, nem ratificação por este executor. Referência de revisão atual: [PR #26, comentário 6501412721](https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6501412721). Até prova de aditamento próprio, este texto fica em estado **PRONTO_PARA_DECISÃO_NÃO_SUBMETIDO**.
 
@@ -38,6 +38,40 @@
 | Referências g4.policy_binding em ambos os PDFs | **policy_version=1** mantida | G4 txid 926, sem alteração |
 
 **Preparação executável sem autoridade:** fontes C recuperados e hashes pinados, candidatas 0064→0065 preservadas e sua revisão estática focada concluída; nenhuma restrição literal à versão 1 foi encontrada nas candidatas. Resta gerar header novo apenas após a decisão/ativação reais, compilar ELF específico em descartável PG17.10, realizar backup **e restauro** no alvo autorizado e confirmar ACL/owner/lock e situação de sanitização. Não executar DDL nem DB writes com base nesta minuta.
+
+---
+
+## 0-A. Registo da decisão recebida e pacote de autorização G5 V5
+
+**Manifestação literal de Miguel:** «RETIFICADO, AVANÇA». Não se atribui timestamp certificado, assinatura digital ou conteúdo adicional a esta frase.
+
+**Interpretação previamente comunicada pelo executor:** ratificação **documental** da política sucessora `SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE`, versão `2`, objeto `POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json`, SHA-256 integral `bf7cdb951ac8e4fb8e5b8e2a1aa6fa3095fad194cbd5845a0dc0e20afd7a3ae9`, corpo canónico candidato SHA-256 `007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf`. A interpretação do executor não é citação literal de Miguel nem autorização de escrita.
+
+**Parecer recebido na conversa:** aditamento técnico V4→V5 FAVORÁVEL CONDICIONADO, delta semântico único `policy_candidate_body.policy_version: 1→2`, com declaração do revisor GPT-6 de participação anterior no B02 e **sem independência institucional material demonstrada**. Não é aprovação formal GitHub. G4 txid 926, versões G4 `1`, documentos, hashes e condições B1–B4 preservados.
+
+**Estado:** ratificação documental recebida; não pedir repetição. Não há prova nesta entrega de que versão 2, decisão ou ativação G5 estejam persistidas. G5 operacional não ativado. B02 OPEN; B03 BLOCKED.
+
+### Primeiro procedimento protegido — política G5 versão 2, decisão e ativação
+
+**Alvo previsto:** PostgreSQL isolado `solveris_b02_r4g_test` no container `solveris-pg17-migration-test`. O alvo deve ser confirmado por leitura física antes de qualquer escrita; nomes conhecidos não provam conectividade, identidade nem autorização.
+
+**Entradas imutáveis:** bytes exatos do JSON V5 e corpo `policy_candidate_body`, `policy_id=SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE`, `policy_version=2`, hash canónico candidato acima, documentação das duas resoluções SEFA/PR e evidência G4 txid 926.
+
+**Descoberta read-only obrigatória:** identificar o caller real e a assinatura pública do serviço de registo de `PolicyVersion`, decisão de `PolicyDecision` e ativação de `PolicyActivationExecution`, nos modelos `app/models.py`, no serviço `app/services/enterprise_b02_noncredential_acquisition.py` e nas migrations aplicáveis. Identificar campos obrigatórios e identidade do ator **a partir de atos e registos verificáveis**, não de valores supostos. Conferir `alembic_version`, identidade de servidor/base, papéis/ACL, inexistência de `(policy_id,2)`, integridade de G4, status e revogação da chave Ed25519, vigência temporal real e janela G5. Exigir evidência B1 de aceite/segregação aplicável e B2 de vigência e custódia. Se o contrato concreto não puder ser confirmado, **STOP antes de escrita**.
+
+**Sequência condicionada:** (1) registar `PolicyVersion` V5 com bytes e hash conferidos pelo contrato canónico do motor; (2) reconciliar ID, `policy_hash` e `record_hash` persistidos por leitura independente; (3) submeter a decisão G5 por ator e mandato comprovados, capturar `decision_id` e `decision_hash` reais; (4) registar ativação G5 apenas se as pré-condições e vigência forem satisfeitas, capturar `activation_id` e `activation_record_hash` reais; (5) verificar encadeamento, cardinalidade, audit trail e idempotência. **Não afirmar atomicidade entre etapas sem comprovar o contrato transacional dos serviços.** Cada transição protegida exige autorização correspondente ou instrumento único que expressamente a abranja.
+
+**Falha / ACK incerto:** não repetir automaticamente; reabrir somente leitura e procurar `(policy_id,2)`, decisão e ativação pelos identificadores naturais reais; comparar hashes e estado transacional, classificar `COMMITTED`, `ROLLED_BACK` ou `UNKNOWN`; `UNKNOWN` implica STOP e reconciliação humana. Não executar `DELETE`, `UPDATE` ou `INSERT` compensatório improvisado.
+
+**Saídas exigidas antes do header:** `policy_hash` persistido, `record_hash` da política, `decision_id`, `decision_hash`, `activation_id`, `activation_record_hash`, chave pública e `key_id` reconhecidos, constraints, janela válida e pins físicos reais. O header sucessor deve consumir estes dados, não identidades históricas G4. Reutilizar `COMPILAR_CANDIDATO_ISOLADO_SEM_INSTALAR.ps1` no PG17.10 descartável, sem volumes protegidos; validar SHA do header e ELF, símbolos, ABI, dependências e perfil real. A aprovação do ELF só ocorre **depois** de existir o seu hash.
+
+**Gates posteriores:** backup custom com restauração ensaiada em ambiente distinto, ACL/owner, aprovação expressa do ELF e dos bytes de `0064/0065`, instalação exclusivamente Alembic `0063→0064→0065`, releitura independente, sanitização real, autorização one-shot separada, PRE_COMMIT, COMMIT e reconciliação. Nenhum desses atos está autorizado por esta ratificação.
+
+### Texto único para apreciação da primeira escrita protegida — NÃO APROVADO
+
+> Autorizo / NÃO AUTORIZO a execução controlada do registo institucional da política G5 sucessora, `policy_id=SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE`, `policy_version=2`, exclusivamente na base `solveris_b02_r4g_test` cuja identidade física deverá ser confirmada, usando os bytes exatos do V5 e o serviço de registo existente, condicionado à prova prévia de B1 (ator, mandato, aceite/segregação exigível e contrato canónico) e B2 (vigência, chave Ed25519, custódia e não revogação), à inexistência prévia de versão 2 e à validação de ACL/transaction boundaries. Exijo captura e reconciliação independente de `policy_hash`, `record_hash`, ID e resultado transacional. Não autorizo por este ato instalação `0064/0065`, ELF, assinatura, operação one-shot, GRANT/DDL ou alterações G4. Decisão e ativação G5 subsequentes só poderão ocorrer quando a autorização as abranger expressamente e os respetivos atores e pré-condições estiverem comprovados. Qualquer divergência ou ACK incerto implica STOP sem repetição automática.
+
+**Evidência ainda necessária e ponto de consumo:** (i) aceitação/mandato e segregação B1 no serviço de decisão; (ii) estado temporal G4/G5 e revogação/custódia B2 antes do registo e novamente antes da ativação; (iii) assinaturas reais dos serviços e campos de `PolicyVersion`, `PolicyDecision`, `PolicyActivationExecution` antes de produzir runner de escrita; (iv) leitura de identidade e unicidade do PostgreSQL antes da primeira transação. Sem esses elementos não é seguro fornecer SQL de escrita como se fosse validado.
 
 ---
 
