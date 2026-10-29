@@ -45,7 +45,7 @@ class AtomicCallerTests(TestCase):
     def test_unknown_commit_ack_does_not_retry(self):
         engine = self.engine()
         engine.begin.return_value.__exit__.side_effect = OSError("unknown commit ACK")
-        with patch.object(mod, "stage", return_value={"reused": False}) as stage, patch.object(mod, "reconcile_unit", return_value="PRESENT_FOUR_RECORDS_REQUIRES_EXACT_EVIDENCE_CHECK"):
+        with patch.object(mod, "stage", return_value={"reused": False}) as stage, patch.object(mod, "reconcile_unit", return_value="PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED"):
             with self.assertRaisesRegex(mod.Stop, "TRANSACTION_FAILED_RECONCILIATION_PRESENT_FOUR_RECORDS"):
                 mod.run(engine, REQUEST, commit=True)
         stage.assert_called_once()
@@ -60,14 +60,14 @@ class AtomicCallerTests(TestCase):
 
     def test_successful_commit_requires_independent_reconciliation(self):
         engine = self.engine()
-        with patch.object(mod, "stage", return_value={"reused": False}) as stage, patch.object(mod, "reconcile_unit", return_value="PRESENT_FOUR_RECORDS_REQUIRES_EXACT_EVIDENCE_CHECK"):
+        with patch.object(mod, "stage", return_value={"reused": False}) as stage, patch.object(mod, "reconcile_unit", return_value="PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED"):
             result = mod.run(engine, REQUEST, commit=True)
-        self.assertEqual(result["status"], "PRESENT_FOUR_RECORDS_REQUIRES_EXACT_EVIDENCE_CHECK")
+        self.assertEqual(result["status"], "PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED")
         stage.assert_called_once()
 
     def test_re_delivery_is_delegated_to_existing_idempotent_service(self):
         engine = self.engine()
-        with patch.object(mod, "stage", return_value={"reused": True}) as stage, patch.object(mod, "reconcile_unit", return_value="PRESENT_FOUR_RECORDS_REQUIRES_EXACT_EVIDENCE_CHECK"):
+        with patch.object(mod, "stage", return_value={"reused": True}) as stage, patch.object(mod, "reconcile_unit", return_value="PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED"):
             result = mod.run(engine, REQUEST, commit=True)
         self.assertTrue(result["staged"]["reused"])
         stage.assert_called_once()
@@ -77,3 +77,28 @@ class AtomicCallerTests(TestCase):
         with patch.object(mod, "assert_writer"):
             with self.assertRaisesRegex(mod.Stop, "EXACT_REQUEST_FIELDS_REQUIRED"):
                 mod.stage(conn, {"execution": {}})
+
+    def test_reconciliation_rejects_wrong_links(self):
+        from unittest.mock import MagicMock
+        from sqlalchemy import select
+        e={"policy_activation_execution_id":"e1","policy_decision_id":"d1",
+           "policy_decision_record_hash":"dh","policy_id":"p1","policy_version":2,
+           "policy_hash":"ph","record_hash":"eh","state":"concluida"}
+        a=dict(e,policy_activation_id="a1",record_hash="ah",
+               policy_activation_execution_record_hash="eh",state="activa")
+        g=dict(a,policy_activation_generation_id="g1",record_hash="gh",
+               is_complete=True,provenance={"source":"verified"})
+        o=dict(g,policy_activation_outbox_event_id="o1",
+               policy_activation_generation_hash="gh",provenance={"source":"verified"})
+        def check(rows):
+            engine=MagicMock()
+            conn=engine.connect.return_value.__enter__.return_value
+            conn.execute.return_value.mappings.return_value.one_or_none.side_effect=rows
+            with patch.object(mod,"assert_writer"):
+                return mod.reconcile_unit(engine,"e1","a1","g1","o1")
+        self.assertEqual(check([e,a,g,o]),"PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED")
+        broken=dict(o,policy_activation_generation_hash="wrong")
+        self.assertEqual(check([e,a,g,broken]),"GENERATION_HASH_LINK_CONFLICT")
+        broken_a=dict(a,policy_activation_execution_record_hash="wrong")
+        self.assertEqual(check([e,broken_a,g,o]),"EXECUTION_HASH_LINK_CONFLICT")
+        self.assertEqual(check([e,a,g,None]),"PARTIAL_CONFLICT")
