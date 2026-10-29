@@ -58,6 +58,10 @@ def pin(bridge):
     if bridge.git("rev-parse","HEAD")!=bridge.git("rev-parse","origin/"+BRANCH):
         stop("STOP_HEAD_NOT_SYNCED")
     bridge.assert_repo_and_approval()
+    for guarded in ("tools/b02_g4_authorized_runner.py",
+                    "tools/b02_g4_outubro_execucao_controlada.py"):
+        if bridge.git("hash-object",str(ROOT/guarded))!=bridge.git("rev-parse","HEAD:"+guarded):
+            stop("STOP_LOCAL_RUNNER_DIFFERS_FROM_REVIEWED_GIT_BYTES")
     source=bridge.git("show","HEAD:"+CANDIDATE,binary=True)
     if sha_blob(source)!=CANDIDATE_BLOB:
         stop("STOP_CANDIDATE_BLOB")
