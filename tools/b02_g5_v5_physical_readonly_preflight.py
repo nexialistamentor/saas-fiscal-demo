@@ -61,6 +61,87 @@ def inspect(engine):
           "role":current_user,"g4_hash_equivalence":len(historical),
           "g5_v5_policy_rows":len(candidate),"g5_v5_decision_rows":decisions["total"],"atomic_tables":len(tables),"writes":0}
 
+def _g5_v2_chain_inventory(engine):
+    """Read-only inventory of persisted institutional G5 V5 chain, no inferred events."""
+    with engine.connect() as c:
+        c.execute(text("SET TRANSACTION READ ONLY"))
+        ident=tuple(c.execute(text("SELECT current_database(),session_user,current_user,"
+            "(SELECT version_num FROM public.alembic_version)")).one())
+        if ident!=(DB,"solveris_b02_policy_writer","solveris_b02_policy_writer",REV):
+            raise RuntimeError("STOP_G5_CHAIN_IDENTITY")
+        row=c.execute(text("""
+            SELECT policy_version_record_id, policy_hash, record_hash,
+                   record_hash=public.b02_json_hash(to_jsonb(p)-'record_hash') AS hash_ok
+            FROM public.policy_versions p
+            WHERE policy_id=:pid AND policy_version=2
+        """),{"pid":POLICY}).mappings().one_or_none()
+        if not row or (row["policy_version_record_id"]!="B02-G5-V5-policy-v2"
+            or row["policy_hash"]!=POLICY_HASH or
+            row["record_hash"]!="fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9"
+            or row["hash_ok"] is not True):
+            raise RuntimeError("STOP_G5_V2_COMMITTED_POLICY_IDENTITY")
+        events=c.execute(text("""
+            SELECT decision_id,decision_event,previous_decision_id,
+                   institutional_role,actor,policy_hash,record_hash,
+                   record_hash=public.b02_json_hash(to_jsonb(d)-'record_hash') AS hash_ok,
+                   evidence IS NOT NULL AS evidence_present
+            FROM public.policy_decisions d
+            WHERE policy_id=:pid AND policy_version=2
+            ORDER BY timestamp,decision_id
+        """),{"pid":POLICY}).mappings().all()
+        bootstrap=c.execute(text("""
+            SELECT bootstrap_authority_record_id,record_hash,validity,
+                   independent_audit_result,
+                   record_hash=public.b02_json_hash(to_jsonb(b)-'record_hash') AS hash_ok
+            FROM public.bootstrap_authority_records b
+            WHERE policy_id=:pid AND policy_version=2
+        """),{"pid":POLICY}).mappings().all()
+        activations=c.execute(text("""
+            SELECT policy_activation_id,policy_decision_id,
+                   policy_decision_record_hash,policy_hash,state,record_hash
+            FROM public.policy_activations
+            WHERE policy_id=:pid AND policy_version=2
+        """),{"pid":POLICY}).mappings().all()
+        c.rollback()
+    expected=("submetida","auditoria_iniciada","auditada_favoravelmente","ratificada")
+    records=[dict(r) for r in events]
+    boots=[dict(r) for r in bootstrap]
+    acts=[dict(r) for r in activations]
+    if any(r["policy_hash"]!=POLICY_HASH or not r["hash_ok"] for r in records):
+        raise RuntimeError("STOP_G5_CHAIN_DECISION_HASH")
+    if any(not r["hash_ok"] or r["validity"]!="valida"
+           or r["independent_audit_result"]!="favoravel" for r in boots):
+        raise RuntimeError("STOP_G5_CHAIN_BOOTSTRAP_CONFLICT")
+    if any(r["policy_hash"]!=POLICY_HASH for r in acts):
+        raise RuntimeError("STOP_G5_CHAIN_ACTIVATION_HASH")
+    if len(records)>len(expected) or tuple(r["decision_event"] for r in records)!=expected[:len(records)]:
+        raise RuntimeError("STOP_G5_CHAIN_EVENTS_NOT_EXACT")
+    role_sequence=("proponente_institucional","auditor_independente",
+                   "auditor_independente","autoridade_constitucional_final")
+    for index,record in enumerate(records):
+        if record["institutional_role"]!=role_sequence[index] or not record["actor"] or not record["evidence_present"]:
+            raise RuntimeError("STOP_G5_CHAIN_ROLE_OR_EVIDENCE")
+        if index==0 and record["previous_decision_id"] is not None:
+            raise RuntimeError("STOP_G5_CHAIN_FIRST_PREDECESSOR")
+        if index>0 and record["previous_decision_id"]!=records[index-1]["decision_id"]:
+            raise RuntimeError("STOP_G5_CHAIN_PREDECESSOR")
+    if len(records)>=3 and records[1]["actor"]!=records[2]["actor"]:
+        raise RuntimeError("STOP_G5_CHAIN_AUDITOR_IDENTITY")
+    if len(records)==4 and (len({records[0]["actor"],records[1]["actor"],records[3]["actor"]})!=3):
+        raise RuntimeError("STOP_G5_CHAIN_ACTOR_SEGREGATION")
+    return {"status":"PHYSICAL_G5_V2_CHAIN_READ_ONLY",
+            "database":DB,"policy_version":2,"policy_hash":POLICY_HASH,
+            "policy_record_id":row["policy_version_record_id"],
+            "policy_record_hash":row["record_hash"],
+            "decision_count":len(records),"decisions":records,
+            "next_required_decision_event":expected[len(records)] if len(records)<4 else None,
+            "bootstrap_count":len(boots),"bootstrap_records":boots,
+            "activation_count":len(acts),"activations":acts,
+            "decision_chain_complete":len(records)==4,
+            "eligibility":"NOT_INFERRED_REQUIRE_REAL_PROVENANCE_AND_GATES",
+            "writes":0}
+
+
 def _acl_inventory(engine):
     """Read-only physical ACL/owner inventory; no grants, DDL, role switch or data writes."""
     names = (
@@ -170,12 +251,15 @@ def _docker(*args, timeout=15):
 def main():
     import sys
     if len(sys.argv)>1:
-        if sys.argv[1:]!=["--acl-inventory"]:
+        if sys.argv[1:] not in (["--acl-inventory"],["--g5-v2-chain"]):
             raise RuntimeError("STOP_UNKNOWN_PREFLIGHT_OPTION")
         dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
-        if not dsn:raise RuntimeError("STOP_ACL_INVENTORY_REQUIRES_BRIDGE")
+        if not dsn:raise RuntimeError("STOP_PREFLIGHT_REQUIRES_BRIDGE")
         engine=create_engine(dsn,poolclass=NullPool)
-        try:print(json.dumps(_acl_inventory(engine),sort_keys=True))
+        try:
+            result=(_g5_v2_chain_inventory(engine) if sys.argv[1:]==["--g5-v2-chain"]
+                    else _acl_inventory(engine))
+            print(json.dumps(result,sort_keys=True))
         finally:engine.dispose()
         return
     # Preserve initial Docker state; do not require passwords or change pg_hba.
