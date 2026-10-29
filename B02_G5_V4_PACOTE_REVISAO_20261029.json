@@ -1,0 +1,40 @@
+{
+  "schema": "SOLVERIS_B02_G5_V4_REVIEW_SUBMISSION_V1",
+  "status": "PARA_REVISAO_SEGREGADA_NAO_RATIFICADO",
+  "source_branch": "candidate/g5-successor-window-prep",
+  "g4_record": "B02_G4_RESULTADO_RECONCILIADO_OUTUBRO_20261029.json",
+  "g4_transaction_id": "926",
+  "g4_activation_id": "B02-05ede-activation-v3",
+  "g4_activation_hash": "504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4",
+  "g5_candidate": "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V4_PARA_REVISAO.json",
+  "g5_candidate_sha256_reported": "2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e",
+  "g5_candidate_git_blob": "b8538623a53ff4f75a78f44454751259ccfb943e",
+  "g5_diff": "DIFF_G5_V3_PARA_SUCESSOR_OUTUBRO_V4.diff",
+  "window_utc": {
+    "from": "2026-10-29T13:00:00+00:00",
+    "until": "2026-10-30T13:00:00+00:00"
+  },
+  "static_scope_review": {
+    "changed_json_leaves": 15,
+    "changed_operational_references": 12,
+    "changed_descriptive_fields": 3,
+    "other_changes": 0,
+    "documents": 2
+  },
+  "physical_g5_gates": [
+    "segregated_reviewer_acceptance",
+    "current_method_and_sanitization_proof",
+    "exact_sql_0064_0065_runtime_native_library_build_and_signature",
+    "real_pg_installer_authority",
+    "independent_postgres_tests_and_commit_proof",
+    "G5_policy_ratification_and_activation",
+    "real_two_document_transaction_evidence"
+  ],
+  "limits": [
+    "G4 completed only",
+    "G5 not signed",
+    "G5 not active",
+    "B02 not closed",
+    "B03 not released"
+  ]
+}
