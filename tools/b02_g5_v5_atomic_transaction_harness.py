@@ -53,7 +53,24 @@ def reconcile_unit(engine, execution_id, activation_id, generation_id, outbox_id
         return "ABSENT"
     if any(row is None for row in rows):
         return "PARTIAL_CONFLICT"
-    return "PRESENT_FOUR_RECORDS_REQUIRES_EXACT_EVIDENCE_CHECK"
+    e,a,g,o=rows
+    for row in (a,g,o):
+        for key in ("policy_activation_execution_id","policy_decision_id",
+                    "policy_decision_record_hash","policy_id","policy_version","policy_hash"):
+            if row[key]!=e[key]:
+                return "EXACT_PREDECESSOR_CONFLICT"
+    if a["policy_activation_execution_record_hash"]!=e["record_hash"]:
+        return "EXECUTION_HASH_LINK_CONFLICT"
+    for row in (g,o):
+        if row["policy_activation_id"]!=activation_id or row["policy_activation_record_hash"]!=a["record_hash"]:
+            return "ACTIVATION_HASH_LINK_CONFLICT"
+    if o["policy_activation_generation_id"]!=generation_id or o["policy_activation_generation_hash"]!=g["record_hash"]:
+        return "GENERATION_HASH_LINK_CONFLICT"
+    if g["provenance"]!=o["provenance"]:
+        return "PROVENANCE_CONFLICT"
+    if e["state"]!="concluida" or a["state"]!="activa" or not g["is_complete"]:
+        return "INCOMPLETE_UNIT_CONFLICT"
+    return "PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED"
 
 def run(engine, request, *, commit=False):
     """Explicit transaction boundary; no automatic retry on uncertain ACK."""
@@ -78,7 +95,7 @@ def run(engine, request, *, commit=False):
             status = "UNKNOWN_STOP_NO_RETRY"
         raise Stop("TRANSACTION_FAILED_RECONCILIATION_" + status) from None
     status = reconcile_unit(engine, execution_id, activation_id, generation_id, outbox_id)
-    if status != "PRESENT_FOUR_RECORDS_REQUIRES_EXACT_EVIDENCE_CHECK":
+    if status != "PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED":
         raise Stop("POSTCOMMIT_" + status)
     return {"status": status, "staged": result}
 
