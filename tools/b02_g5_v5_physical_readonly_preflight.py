@@ -60,6 +60,9 @@ FROM public.policy_versions p WHERE policy_version_record_id IN
 SELECT count(*) FROM information_schema.tables WHERE table_schema='public'
 AND table_name IN ('policy_activation_executions','policy_activations',
 'policy_activation_generations','policy_activation_outbox_events','policy_decisions');
+SELECT rolname,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolinherit,
+(SELECT count(*) FROM pg_auth_members WHERE member=pg_roles.oid)
+FROM pg_roles WHERE rolname='solveris_b02_policy_writer';
 SELECT count(*) FROM public.policy_versions
 WHERE policy_id='SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE' AND policy_version=2;
 ROLLBACK;"""
@@ -67,19 +70,21 @@ ROLLBACK;"""
             "psql","-X","-v","ON_ERROR_STOP=1","-U","solveris_b02_writer",
             "-d",DB,"-At"],input=sql,text=True,capture_output=True,check=True)
         lines=result.stdout.strip().splitlines()
-        if len(lines)!=7:raise RuntimeError("STOP_DOCKER_OUTPUT_SHAPE")
+        if len(lines)!=8:raise RuntimeError("STOP_DOCKER_OUTPUT_SHAPE")
         if lines[0]!="BEGIN" or lines[1]!=DB+"|solveris_b02_writer|"+REV:
             raise RuntimeError("STOP_DOCKER_IDENTITY_REVISION")
         if lines[2]!="B02-05ede-policy-v1|t" or lines[3]!="B02-57982-policy-v1|t":
             raise RuntimeError("STOP_G4_HISTORICAL_HASH")
         if lines[4]!="5":raise RuntimeError("STOP_ATOMIC_TABLES_MISSING")
-        if lines[5] not in ("0","1"):raise RuntimeError("STOP_G5_POLICY_CONFLICT")
-        if lines[6]!="ROLLBACK":raise RuntimeError("STOP_DOCKER_ROLLBACK")
+        if lines[5]!="solveris_b02_policy_writer|f|f|f|f|f|f|0":
+            raise RuntimeError("STOP_POLICY_WRITER_ROLE_PRIVILEGES")
+        if lines[6] not in ("0","1"):raise RuntimeError("STOP_G5_POLICY_CONFLICT")
+        if lines[7]!="ROLLBACK":raise RuntimeError("STOP_DOCKER_ROLLBACK")
         print(json.dumps({"status":"PHYSICAL_DOCKER_READ_ONLY_PREFLIGHT_PASS",
             "database":DB,"revision":REV,"role":"solveris_b02_writer",
             "g4_hash_equivalence":2,"atomic_tables":5,
-            "g5_v5_policy_rows":int(lines[5]),"writes":0,
-            "policy_writer_role_not_verified":True},sort_keys=True))
+            "g5_v5_policy_rows":int(lines[6]),"writes":0,
+            "policy_writer_role_catalog_verified":True},sort_keys=True))
         return
     engine=create_engine(dsn,poolclass=NullPool)
     try:print(json.dumps(inspect(engine),sort_keys=True))
