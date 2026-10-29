@@ -60,6 +60,14 @@ Os IDs literais aprováveis (ainda não executados) estão no script: `B02-05ede
 - O procedimento G4 permanece com blob imutável `1729e6d62c77510ef4dd7db0af56a6cbe985c168`; nenhuma alteração em `app/database.py`, modelos, migrations, credenciais ou pg_hba.conf. O V3 também permanece intocado. A autorização G4 existente continua a mesma.
 - **Execução após a correção ainda não observada neste chat.** Só ratificar G4 quando a leitura independente apresentar `FOUR_RECORDS_RECONCILED` com quatro IDs e hashes verificados. Sem sucesso, não produzir G5 sucessor nem repetir tentativas cegas.
 
+## InternalError após import PostgreSQL — evidência Windows (29/10/2026)
+
+- Checkout Windows sincronizado por fast-forward até `31391c4a00561245a97aba4c858370c3f19a54a4`. Wrapper emite `G4_POSTGRESQL_MODEL_IMPORT_PASS`, provando que o problema anterior de import SQLite já não bloqueia o import.
+- Execução G4 aprovada emitiu `mode=EXECUTION_REQUESTED`, depois `STOP: InternalError` e `APPROVED_PROCEDURE_EXIT|2`. Sonda independente emitiu `INDEPENDENT_READ_NO_UNIT`; container `RESTORED_STOPPED`; `RUNNER_EXIT|2`. **Não existe `FOUR_RECORDS_RECONCILED`, não custodiar hashes novos nem gerar G5 sucessor.**
+- A classe `InternalError` isolada não identifica o SQLSTATE, a função SQL ou a instrução; não afirmar COMMIT nem causa concreta por suposição. A evidência mostra falha e ausência da unidade no instante da leitura independente.
+- Diagnóstico não-mutante reforçado em `tools/b02_g4_attribute_diagnostic.py`: reutiliza a ponte aprovada em ligação única, com `default_transaction_read_only=on` validado antes das consultas. Produz `DIAG_SQLSTATE` e eventuais códigos `B02` delimitados, sem DSNs ou SQL completo. Não constitui execução G4, não autoriza tentativa de escrita nem altera o blob aprovado.
+- **Regra imediata:** não repetir `tools/b02_g4_authorized_runner.py` até causa concreta esclarecida e correção cirúrgica avaliada. Preservar autorização G4 já existente.
+
 ## Passos posteriores (não iniciar)
 1. **Não repetir o preflight físico nem solicitar nova autorização.** Executar o runner autorizado no Windows pelo percurso de loopback anteriormente validado. Só aceitar resultado da reconciliação independente da unidade completa.
 2. O runner utiliza a autorização existente e executa o procedimento aprovado uma única vez; em resultado incerto, apenas leituras independentes. Não repetir INSERT automaticamente.
