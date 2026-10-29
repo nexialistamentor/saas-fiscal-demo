@@ -1,0 +1,82 @@
+
+====================================================================================================
+1. Quem CRIA policy_activations (INSERT, nao SELECT)
+====================================================================================================
+  [MODELO] app\models.py:3579: class PolicyActivation(Base):
+
+====================================================================================================
+2. Funcoes de servico com 'activation' ou 'ativar' no nome, fora de testes/candidatos
+====================================================================================================
+  app\services\enterprise_b02_authorized_trust.py:29: def activate_for_process():
+  app\services\enterprise_b02_policy_activation_atomicity.py:60: def stage_policy_activation(connection,*,execution,activation,generation_id,outbox_id,provenance):
+  app\services\mercado_pago_runtime_lifecycle.py:48: def ativar_mercado_pago(
+  app\services\pagamento_service.py:180: def registar_tentativa(
+  app\services\tabela_normativa_service.py:10: def _exigir_data_referencia_normativa(data_referencia):
+  app\services\tabela_normativa_service.py:34: def listar_base_normativa(db: Session):
+  app\services\tabela_normativa_service.py:114: def verificar_cobertura_normativa_st(
+  app\services\tax_engines\mei_tax_engine.py:39: def _exigir_autoridade_normativa_mei(
+
+====================================================================================================
+3. Quem chama require_current_authority -- para ver 'selected' (technical_actor/activated_at)
+====================================================================================================
+
+--- app\services\sefa_pr_documentary_admission.py ---
+ND p.policy_version=:policy_version AND p.policy_hash=:policy_hash
+ AND a.policy_activation_id=:policy_activation_id AND a.record_hash=:policy_activation_record_hash
+ AND d.decision_id=:decision_id AND d.record_hash=:decision_hash'''),b).mappings().one_or_none()
+        if row is None:return _result('EXACT_AUTHORITY_BINDING_MISSING')
+        if row['policy_type']!='activation_authority' or row['domain']!='SEFA_PR_B02_DOCUMENTAL':return _result('SOURCE_NOT_AUTHORIZED')
+        from app.services.sefa_pr_policy_projection import PolicyProofError,require_current_authority
+        try:
+            require_current_authority(connection,b,row,now=now,proof_verifier=institutional_proof_verifier)
+        except PolicyProofError as error:
+            return _result(str(error))
+        if row['decision_event']!='ratificada' or row['institutional_role']!='autoridade_constitucional_final' or not row['actor'] or row['actor']==row['technical_actor']:return _result('EXACT_DECISION_REQUIRED')
+        fo
+
+====================================================================================================
+4. Modelo PolicyActivation/PolicyDecision -- campos obrigatorios (app/models.py)
+====================================================================================================
+
+--- class PolicyActivation (primeiros campos) ---
+class PolicyActivation(Base):
+    __tablename__ = "policy_activations"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_activation_execution_id"], ["policy_activation_executions.policy_activation_execution_id"], name="fk_policy_activations_execution", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["policy_decision_id"], ["policy_decisions.decision_id"], name="fk_policy_activations_decision", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activations_exact_policy", ondelete="RESTRICT"),
+        UniqueConstraint("record_hash", name="uq_policy_activations_record_hash"),
+        CheckConstraint("state IN ('activa','suspensa','desactivada','expirada','revogada')", name="ck_policy_activations_state"),
+        CheckC
+
+--- class PolicyDecision (primeiros campos) ---
+class PolicyDecision(Base):
+    """Immutable institutional event over one exact PolicyVersion."""
+
+    __tablename__ = "policy_decisions"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_decisions_exact_policy_version", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["previous_decision_id"], ["policy_decisions.decision_id"], name="fk_policy_decisions_previous_decision", ondelete="RESTRICT"),
+        UniqueConstraint("idempotency_key", name="uq_policy_decisions_idempotency_key"),
+        UniqueConstraint("record_hash", name="uq_policy_decisions_record_hash"),
+        CheckConstraint("policy_version > 0", name="ck_policy_decisions_version_positive"),
+        CheckConstraint("policy_type IN ('activation_authority', 'automation
+
+--- class PolicyActivationExecution (primeiros campos) ---
+class PolicyActivationExecution(Base):
+    """Immutable technical attempt to activate one exact policy version."""
+
+    __tablename__ = "policy_activation_executions"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activation_executions_exact_policy", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["policy_decision_id"], ["policy_decisions.decision_id"], name="fk_policy_activation_executions_exact_decision", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["bootstrap_authority_record_id"], ["bootstrap_authority_records.bootstrap_authority_record_id"], name="fk_policy_activation_executions_exact_bootstrap", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["activation_authority_policy_id", "activation_authority_policy_
+
+class PolicyActivationGeneration: NAO encontrada em app/models.py
+
+class PolicyActivationOutboxEvent: NAO encontrada em app/models.py
+
+====================================================================================================
+5. Grants/permissoes do writer que cria estas linhas (quem tem INSERT)
+====================================================================================================
