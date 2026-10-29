@@ -44,11 +44,11 @@ class OwnerRollbackProbeTests(unittest.TestCase):
                 probe.independent_absence()
 
     def test_main_success_runs_single_attempt_and_readback(self):
-        with patch.object(probe.bridge,"validate_checkout") as guard, \\
-             patch.object(probe.bridge,"managed_container",return_value=nullcontext()), \\
-             patch.object(probe.policy,"candidate",return_value={"policy_id":probe.policy.POLICY_ID}), \\
-             patch.object(probe,"owner_preflight"), \\
-             patch.object(probe,"psql",return_value=["BEGIN","ROLLBACK","B02_G5_V5_OWNER_ROLLBACK_ACK"]) as sql, \\
+        with patch.object(probe.bridge,"validate_checkout") as guard, \
+             patch.object(probe.bridge,"managed_container",return_value=nullcontext()), \
+             patch.object(probe.policy,"candidate",return_value={"policy_id":probe.policy.POLICY_ID}), \
+             patch.object(probe,"owner_preflight"), \
+             patch.object(probe,"psql",return_value=["BEGIN","ROLLBACK","B02_G5_V5_OWNER_ROLLBACK_ACK"]) as sql, \
              patch.object(probe,"independent_absence") as reconcile:
             probe.main()
         guard.assert_called_once_with(probe.PATH)
@@ -57,11 +57,11 @@ class OwnerRollbackProbeTests(unittest.TestCase):
         reconcile.assert_called_once()
 
     def test_main_failed_insert_never_retries_and_reconciles(self):
-        with patch.object(probe.bridge,"validate_checkout"), \\
-             patch.object(probe.bridge,"managed_container",return_value=nullcontext()), \\
-             patch.object(probe.policy,"candidate",return_value={"policy_id":probe.policy.POLICY_ID}), \\
-             patch.object(probe,"owner_preflight"), \\
-             patch.object(probe,"psql",side_effect=RuntimeError("SIMULATED_SQL_ERROR")) as sql, \\
+        with patch.object(probe.bridge,"validate_checkout"), \
+             patch.object(probe.bridge,"managed_container",return_value=nullcontext()), \
+             patch.object(probe.policy,"candidate",return_value={"policy_id":probe.policy.POLICY_ID}), \
+             patch.object(probe,"owner_preflight"), \
+             patch.object(probe,"psql",side_effect=RuntimeError("SIMULATED_SQL_ERROR")) as sql, \
              patch.object(probe,"independent_absence") as reconcile:
             with self.assertRaisesRegex(RuntimeError,"SIMULATED_SQL_ERROR"):
                 probe.main()
