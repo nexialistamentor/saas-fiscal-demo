@@ -40,6 +40,17 @@ Os IDs literais aprováveis (ainda não executados) estão no script: `B02-05ede
 - Verificação realizada nesta sessão antes de disponibilizar a execução: revisão estática do código do runner, compilação Python e exercício offline da guarda de hashes e da geração das duas vinculações G5, sem Docker/BD.
 - **Estado nesta entrega: execução Windows não observada neste chat; não afirmar G4 ativo, não inventar record hashes, não criar G5 final.** A próxima evidência deve ser o resultado terminal verdadeiro da execução autorizada.
 
+## STOP Windows corrigido — integridade V3 (29/10/2026)
+
+- Miguel executou git fetch e git merge --ff-only até b9adc4b47531c994decef4ebb1e5fe64f05429c4, ambos bem-sucedidos.
+- O runner terminou em STOP_G5_V3_BYTES_DIVERGENT antes de iniciar o container, estabelecer ligação ou realizar INSERT. Não houve COMMIT nem hashes G4 novos nessa tentativa.
+- Causa limitada: divergência entre os bytes do V3 na árvore Windows e os bytes institucionais do Git. Sem prova de que se trate especificamente de CRLF; podem existir mudanças ou filtros locais.
+- Correção: verificar o SHA-256 sobre os bytes imutáveis de git show HEAD:POLICY_G5_CANDIDATO_V3_COMPLETO.json, sem tocar no ficheiro Windows. Esperado: 8b3b0cc0a880156b5659166b6878de580b1ddafcf245d811545a0f1ba60500d4.
+- O candidato G5 sucessor é preparado a partir dos mesmos bytes Git e somente quatro valores em dois vínculos G4 são substituídos; nenhuma reindentação global.
+- O volume passa a ser reconhecido pelo prefixo único confirmado nos diagnósticos do Windows, com paragem obrigatória perante zero ou múltiplos matches.
+- Autorização B02-G4-AUTH-MIGUEL-20261029-01 e procedimento aprovado blob 1729e6d62c77510ef4dd7db0af56a6cbe985c168 preservados. Sem nova autorização e sem revisão normativa.
+- Estado: ativação G4 continua não executada neste chat; correção validada estaticamente no GitHub, execução Windows ainda pendente.
+
 ## Passos posteriores (não iniciar)
 1. **Não repetir o preflight físico nem solicitar nova autorização.** Executar o runner autorizado no Windows pelo percurso de loopback anteriormente validado. Só aceitar resultado da reconciliação independente da unidade completa.
 2. O runner utiliza a autorização existente e executa o procedimento aprovado uma única vez; em resultado incerto, apenas leituras independentes. Não repetir INSERT automaticamente.
