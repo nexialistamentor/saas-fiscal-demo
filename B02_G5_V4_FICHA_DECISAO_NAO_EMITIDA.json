@@ -1,0 +1,123 @@
+{
+  "schema": "SOLVERIS_B02_G5_V4_DECISION_SHEET_DRAFT_V1",
+  "status": "MINUTA_NAO_EMITIDA_SEM_AUTORIDADE_OPERACIONAL",
+  "purpose": "Decisao institucional exata sobre o G5 V4, distinta de G4 e da assinatura transacional posterior",
+  "prepared_from": {
+    "repository": "nexialistamentor/saas-fiscal-demo",
+    "branch": "candidate/g5-successor-window-prep",
+    "pr_number": 26,
+    "pr": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26",
+    "candidate_file": "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V4_PARA_REVISAO.json",
+    "candidate_git_blob": "b8538623a53ff4f75a78f44454751259ccfb943e",
+    "candidate_sha256_reported": "2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e",
+    "delta": "DIFF_G5_V3_PARA_SUCESSOR_OUTUBRO_V4.diff",
+    "predecessor_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+    "g4_record_file": "B02_G4_RESULTADO_RECONCILIADO_OUTUBRO_20261029.json",
+    "g4_transaction_id": "926",
+    "g4_activation_id": "B02-05ede-activation-v3",
+    "g4_activation_record_hash": "504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4",
+    "g4_window_utc": {
+      "from": "2026-10-29T13:00:00+00:00",
+      "until": "2026-10-30T13:00:00+00:00"
+    },
+    "scope": {
+      "documents": [
+        {
+          "id": "101202501245",
+          "bytes": 258302,
+          "sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832"
+        },
+        {
+          "id": "101201900571",
+          "bytes": 1944929,
+          "sha256": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d"
+        }
+      ],
+      "jurisdiction": "BR-PR",
+      "use": "documentary_persistence_only",
+      "enterprise_product_scope": "NATIONAL_UNCHANGED"
+    }
+  },
+  "current_evidence": {
+    "g4": "FOUR_RECORDS_RECONCILED",
+    "physical_database_revision": "0063_adr020_policy_activation_atomicity",
+    "native_binary": "ABSENT",
+    "g5_0064_installed": false,
+    "g5_0065_installed": false,
+    "g5_review": "NO_REVIEW_SUBMITTED_ON_PR26_AT_2026-10-29_CHECK",
+    "reviewer_assigned": false,
+    "g5_policy_ratified": false,
+    "g5_operational_approval": false
+  },
+  "reviewer_mandate": {
+    "status": "AGUARDA_IDENTIFICACAO_E_ACEITACAO_PROPRIA",
+    "subject_candidate_sha256": "2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e",
+    "reviewer_identity": null,
+    "functional_role": null,
+    "independent_from_author_and_integrator": null,
+    "conflicts_of_interest_declaration": null,
+    "mandate_accepted_at": null,
+    "review_record_reference": null,
+    "review_record_hash": null,
+    "result": null,
+    "findings": null
+  },
+  "miguel_reserved_decision": {
+    "status": "NAO_EMITIDA",
+    "object_sha256": "2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e",
+    "decision": "PENDENTE_ACEITAR_OU_RECUSAR",
+    "decision_actor": null,
+    "decision_timestamp_utc": null,
+    "decision_document_sha256": null,
+    "operative_window_utc": {
+      "from": null,
+      "until": null
+    },
+    "explicit_g4_current_scope_verified_at_execution": null,
+    "accepted_reviewer_review_hash": null,
+    "identified_public_key_fingerprint": null,
+    "key_nonrevocation_proof": null,
+    "g5_activation_execution_id": null,
+    "g5_activation_record_hash": null
+  },
+  "native_provisioning": {
+    "status": "NAO_AUTORIZADO",
+    "technical_c_sources": [
+      {
+        "file": "native/g5/historical_20261022/b02_precommit_guard.c",
+        "sha256": "ea0f49d9d686bb9dc33a041b85473f734b41b76236411ce4f7942f47538ad278"
+      },
+      {
+        "file": "native/g5/historical_20261022/b02_g5_native_signature.c",
+        "sha256": "83fbffa030ed861c4f7e70f654db5179574d986e0cab8f21cf657054ceb4b669"
+      }
+    ],
+    "old_header": "native/g5/historical_20261022/b02_g5_approved_roots.h",
+    "old_header_valid_until_utc": "2026-10-23T07:56:30.910737+00:00",
+    "old_header_unusable_as_current": true,
+    "new_header_sha256": null,
+    "approved_public_key_fingerprint": null,
+    "approved_g5_policy_and_activation_hash": null,
+    "compiled_elf_sha256": null,
+    "compiled_elf_verified_postgresql_17_10": false,
+    "specific_install_authorization": null
+  },
+  "operation_gates": {
+    "installation_0064_0065_authorized": false,
+    "database_backup_and_real_restore_test_confirmed": false,
+    "sql_acl_and_role_separation_signed_off": false,
+    "cas_receipt_and_sanitization_review_current": false,
+    "real_two_document_signed_precommit_transaction": false,
+    "independent_transaction_readback": false,
+    "b02_normative_matrix_final_accepted": false
+  },
+  "restrictions": [
+    "File is only a proposal; blank/null fields are not acts or implicit permission",
+    "Preserve G4 closed state; no G4 re-execution",
+    "No current native root until independent review and explicit ratification",
+    "No G5 installation, no temporary privilege, no G5 write, no commit signature without exact authority",
+    "No valid policy extension from proposed dates or historical acts",
+    "No fabricated reviewer identity, signature or segregated acceptance",
+    "No MEI changes and no B03 release until B02 final gates"
+  ]
+}
