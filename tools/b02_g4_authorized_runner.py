@@ -257,6 +257,27 @@ def persist_success(stdout):
             print(line)
     print("G5_CANDIDATE_NOT_RATIFIED_OR_EXECUTED")
 
+READ_ONLY_PROBE = r'''
+import hashlib, json, os, subprocess
+from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
+source=subprocess.check_output(["git","show","HEAD:executar_ativacao_g4_real.py"])
+blob=hashlib.sha1(b"blob "+str(len(source)).encode()+b"\0"+source).hexdigest()
+if blob!="1729e6d62c77510ef4dd7db0af56a6cbe985c168":
+    raise RuntimeError("STOP_PROBE_SOURCE_BLOB_MISMATCH")
+ns={"__name__":"__g4_read_only__","__file__":"executar_ativacao_g4_real.py"}
+exec(compile(source,"executar_ativacao_g4_real.py","exec"),ns)
+engine=create_engine(os.environ["SOLVERIS_B02_POLICY_WRITER_DSN"],
+                     pool_pre_ping=True,poolclass=NullPool)
+try:
+    result=ns["independent_read"](engine)
+    if result is None:
+        raise RuntimeError("INDEPENDENT_READ_NO_UNIT")
+    print(json.dumps(result,sort_keys=True))
+finally:
+    engine.dispose()
+'''.encode("utf-8")
+
 def main():
     if len(sys.argv)!=1:
         stop("STOP_NO_ARGS_EXPECTED_APPROVAL_ALREADY_PINNED")
@@ -269,12 +290,16 @@ def main():
             docker("start",CONTAINER)
             started=True
         status,output=execute_exact_bridge(source)
-        print("PYTHON_EXIT|"+str(status))
-        if status!=0:
-            stop("STOP_APPROVED_EXECUTION_FAILED_NO_BLIND_RETRY")
-        if '"status": "FOUR_RECORDS_RECONCILED"' not in output:
-            stop("STOP_NO_FULL_RECONCILIATION")
-        persist_success(output)
+        print("APPROVED_PROCEDURE_EXIT|"+str(status))
+        # An independently established loopback bridge and NullPool SQL session.
+        # This is READ ONLY even when COMMIT ACK from the approved run is unknown.
+        probe_status,probe_output=execute_exact_bridge(READ_ONLY_PROBE)
+        print("INDEPENDENT_RECONCILIATION_EXIT|"+str(probe_status))
+        if probe_status!=0:
+            stop("STOP_INDEPENDENT_READ_NO_VERIFIED_UNIT_NO_RETRY")
+        if '"status": "FOUR_RECORDS_RECONCILED"' not in probe_output:
+            stop("STOP_INDEPENDENT_FOUR_RECORD_RECONCILIATION_MISSING")
+        persist_success(probe_output)
     finally:
         os.environ.pop(DSN_ENV,None)
         if started:
