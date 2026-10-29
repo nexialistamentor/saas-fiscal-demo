@@ -7,10 +7,13 @@ transaction and a role with no elevated privileges. Requires DSN from environmen
 import json
 import os
 import subprocess
+import time
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 
 DB="solveris_b02_r4g_test"
+CONTAINER="solveris-pg17-migration-test"
+VOLUME_PREFIX="4fe15764d8f4c6c2b5aaaad634c0ed54ec"
 REV="0063_adr020_policy_activation_atomicity"
 POLICY="SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE"
 POLICY_HASH="007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf"
@@ -56,7 +59,7 @@ def inspect(engine):
           "role":current_user,"g4_hash_equivalence":len(historical),
           "g5_v5_policy_rows":len(candidate),"g5_v5_decision_rows":len(decisions),"atomic_tables":len(tables),"writes":0}
 
-def main():
+def _database_preflight():
     dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
     if not dsn:
         sql = """BEGIN READ ONLY;
@@ -70,9 +73,11 @@ AND table_name IN ('policy_activation_executions','policy_activations',
 SELECT rolname,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolinherit,
 (SELECT count(*) FROM pg_auth_members WHERE member=pg_roles.oid)
 FROM pg_roles WHERE rolname='solveris_b02_policy_writer';
-SELECT count(*) FROM public.policy_versions
+SELECT count(*), count(*) FILTER (WHERE policy_hash='007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf')
+FROM public.policy_versions
 WHERE policy_id='SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE' AND policy_version=2;
-SELECT count(*) FROM public.policy_decisions
+SELECT count(*), count(*) FILTER (WHERE policy_hash<>'007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf')
+FROM public.policy_decisions
 WHERE policy_id='SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE' AND policy_version=2;
 ROLLBACK;"""
         result=subprocess.run(["docker","exec","-i","solveris-pg17-migration-test",
@@ -89,8 +94,11 @@ ROLLBACK;"""
         if lines[4]!="5":raise RuntimeError("STOP_ATOMIC_TABLES_MISSING")
         if lines[5]!="solveris_b02_policy_writer|f|f|f|f|f|f|0":
             raise RuntimeError("STOP_POLICY_WRITER_ROLE_PRIVILEGES")
-        if lines[6] not in ("0","1"):raise RuntimeError("STOP_G5_POLICY_CONFLICT")
-        if not lines[7].isdigit():raise RuntimeError("STOP_G5_DECISION_COUNT")
+        if lines[6] not in ("0|0","1|1"):raise RuntimeError("STOP_G5_POLICY_VERSION_OR_HASH_CONFLICT")
+        decision_parts=lines[7].split("|")
+        if len(decision_parts)!=2 or not all(part.isdigit() for part in decision_parts):
+            raise RuntimeError("STOP_G5_DECISION_COUNT")
+        if decision_parts[1]!="0":raise RuntimeError("STOP_G5_DECISION_POLICY_HASH_CONFLICT")
         if lines[8]!="ROLLBACK":raise RuntimeError("STOP_DOCKER_ROLLBACK")
         auth_sql="BEGIN READ ONLY; SELECT current_database(),session_user,current_user; ROLLBACK;"
         auth=subprocess.run(["docker","exec","-i","solveris-pg17-migration-test",
@@ -104,7 +112,7 @@ ROLLBACK;"""
         print(json.dumps({"status":"PHYSICAL_DOCKER_READ_ONLY_PREFLIGHT_PASS",
             "database":DB,"revision":REV,"role":"solveris_b02_writer",
             "g4_hash_equivalence":2,"atomic_tables":5,
-            "g5_v5_policy_rows":int(lines[6]),"g5_v5_decision_rows":int(lines[7]),"writes":0,
+            "g5_v5_policy_rows":int(lines[6].split("|")[0]),"g5_v5_decision_rows":int(decision_parts[0]),"writes":0,
             "policy_writer_role_catalog_verified":True,
             "policy_writer_authenticated":auth_verified,
             "policy_writer_auth_requires_setup":not auth_verified},sort_keys=True))
@@ -112,5 +120,57 @@ ROLLBACK;"""
     engine=create_engine(dsn,poolclass=NullPool)
     try:print(json.dumps(inspect(engine),sort_keys=True))
     finally:engine.dispose()
+
+def _docker(*args, timeout=15):
+    result=subprocess.run(["docker",*args],text=True,capture_output=True,timeout=timeout)
+    if result.returncode:
+        raise RuntimeError("STOP_DOCKER_COMMAND: "+(result.stderr or "").strip()[-300:])
+    return result.stdout.strip()
+
+def main():
+    # Preserve initial Docker state; do not require passwords or change pg_hba.
+    if os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN"):
+        return _database_preflight()
+    info=json.loads(_docker("inspect",CONTAINER))
+    if len(info)!=1:
+        raise RuntimeError("STOP_CONTAINER_IDENTITY")
+    container=info[0]
+    volumes=[m for m in container.get("Mounts",[])
+             if m.get("Type")=="volume" and m.get("Name","").startswith(VOLUME_PREFIX)]
+    if len(volumes)!=1:
+        raise RuntimeError("STOP_CONTAINER_VOLUME_MISMATCH")
+    started=False
+    if not container["State"]["Running"]:
+        _docker("start",CONTAINER,timeout=25)
+        started=True
+    try:
+        deadline=time.monotonic()+20
+        while True:
+            ready=subprocess.run(
+                ["docker","exec",CONTAINER,"pg_isready","-q","-h","127.0.0.1",
+                 "-p","5432","-U","solveris_b02_writer","-d",DB],
+                text=True,capture_output=True,timeout=5)
+            if ready.returncode==0:
+                break
+            if time.monotonic()>=deadline:
+                raise RuntimeError("STOP_POSTGRESQL_READINESS_TIMEOUT")
+            time.sleep(0.4)
+        return _database_preflight()
+    finally:
+        if started:
+            # An already-running container is never stopped. An initially
+            # stopped container is stopped only if no other client is active.
+            try:
+                clients=_docker(
+                    "exec",CONTAINER,"psql","-X","-q","-At","-w",
+                    "-U","solveris_b02_writer","-d",DB,"-c",
+                    "SELECT count(*) FROM pg_stat_activity WHERE backend_type='client backend' AND pid<>pg_backend_pid()")
+                if clients=="0":
+                    _docker("stop",CONTAINER,timeout=25)
+                else:
+                    print("CONTAINER_PRESERVED_RUNNING_ACTIVE_CLIENTS",flush=True)
+            except Exception:
+                print("CONTAINER_STATE_UNCERTAIN_MANUAL_REVIEW_NO_RETRY",flush=True)
+                raise
 
 if __name__=="__main__":main()
