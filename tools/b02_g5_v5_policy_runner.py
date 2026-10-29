@@ -98,10 +98,16 @@ def execute(repo,body,a):
                 # database using the same timestamp and JSONB values being inserted.
                 created_at=c.execute(text('SELECT transaction_timestamp()')).scalar_one()
                 payload=dict(body,policy_version_record_id=record_id,policy_hash=POLICY_HASH,created_at=created_at)
-                material=dict(payload,created_at=created_at.isoformat())
+                # PostgreSQL formats timestamptz itself, matching to_jsonb(row)
+                # and avoiding Python ISO timestamp serialization differences.
+                material=dict(body,policy_version_record_id=record_id,policy_hash=POLICY_HASH)
+                material_json=json.dumps(material,ensure_ascii=False,allow_nan=False)
                 payload['record_hash']=c.execute(
-                    text('SELECT public.b02_json_hash(CAST(:material AS jsonb))'),
-                    {'material':json.dumps(material,ensure_ascii=False,allow_nan=False)}
+                    text("""SELECT public.b02_json_hash(
+                        CAST(:material AS jsonb) ||
+                        jsonb_build_object('created_at', to_jsonb(CAST(:created_at AS timestamptz)))
+                    )"""),
+                    {'material':material_json,'created_at':created_at}
                 ).scalar_one()
                 if not HEX.fullmatch(payload['record_hash'] or ''):stop('SERVER_HASH_RESULT')
                 result=c.execute(table.insert().values(**payload).returning(table.c.policy_version_record_id,table.c.policy_hash,table.c.record_hash)).mappings().one()
