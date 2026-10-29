@@ -86,7 +86,7 @@ class AtomicCallerTests(TestCase):
            "policy_hash":"ph","record_hash":"eh","state":"concluida"}
         a=dict(e,policy_activation_id="a1",record_hash="ah",
                policy_activation_execution_record_hash="eh",state="activa")
-        g=dict(a,policy_activation_generation_id="g1",record_hash="gh",
+        g=dict(a,policy_activation_generation_id="g1",policy_activation_record_hash="ah",record_hash="gh",
                is_complete=True,provenance={"source":"verified"})
         o=dict(g,policy_activation_outbox_event_id="o1",
                policy_activation_generation_hash="gh",provenance={"source":"verified"})
