@@ -70,23 +70,11 @@ Parecer técnico documental recebido: **FAVORÁVEL CONDICIONADO** ao desenho G5 
 
 O V4 `POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V4_PARA_REVISAO.json`, blob Git `b8538623a53ff4f75a78f44454751259ccfb943e`, tem SHA-256 do **ficheiro completo** `2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e` (recalculado no parecer). Este SHA **não é o policy_hash canónico do corpo** e não deve ser escrito no campo `g5_policy_binding.policy_hash`. O corpo é `policy_candidate_body`, com `policy_id=SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE`, `policy_version=1`, `policy_type=activation_authority`. A identidade, serialização e hash operacionais do corpo serão apurados pela mesma autoridade de canonicalização/record hash usada pelo motor (`app/services/enterprise_b02_noncredential_acquisition.py:canonical_bytes` e o contrato da tabela `policy_versions`), confrontados com os bytes efetivamente ratificados e aceites pelo PostgreSQL **antes de vincular header ou assinar**. Se algum campo institucional do predecessor persistir sem validade no sucessor, corrigi-lo por delta aprovado e novo objeto/hash; não carimbar o hash anterior.
 
-## 2. Minuta única de deliberação — decisões reservadas a Miguel
+## 2. Deliberação única — referência ativa ao V5 versão 2
 
-> **MINUTA — NÃO EMITIDA.** 
->
-> **Objeto e alcance:** Examino exclusivamente a política G5 V4 acima, no âmbito de persistência documental SEFA/PR dos dois PDFs fixados; a SOLVERIS Enterprise mantém ambição nacional, mas esta decisão não autentica outras fontes nem autoriza venda, MEI ou fiscalidade nacional.
->
-> **Revisor e conflitos (a obter do próprio revisor):** identidade/competência [PENDENTE]; papel e mandato para o hash exato [PENDENTE]; aceitação e conflitos [PENDENTE]; grau demonstrável de segregação material [PENDENTE]; parecer assinado ou documentado do sujeito legítimo e sua referência/hash [PENDENTE]. O parecer técnico GPT-6 recebido é condicionado e não prova separação institucional.
->
-> **Decisão de Miguel sobre o corpo canónico:** [RATIFICO / REJEITO / DEVOLVO PARA CORREÇÃO]; `policy_id`, `policy_version`, `policy_hash` canónico derivado, `decision_id`, `decision_record_hash`, modalidades, escopo, evidências/limites e norma da autoridade [FIXAR EM ATO EFETIVO]; data/hora e autoria identificável [PENDENTE]. **V4 inteiro SHA-256 não substitui estes valores.**
->
-> **Janela:** V4 propõe `2026-10-29T13:00:00Z` até `2026-10-30T13:00:00Z`. Ratificação posterior não produz efeitos retroativos. O G4 físico possui o mesmo intervalo; **depois de 2026-10-30T13:00:00Z não há cobertura G4 presumida**. Nova janela para instalação/consumo dependerá de percurso institucional temporal G4/G5 próprio e coerente, sem alterar relógio nem repetir exames de origem.
->
-> **Chave pública:** Ed25519 raw `ab8dc926512061fee370dfcabc5f11752229c6583546a65592c97ce24c6ae381`, fingerprint SHA-256 DER/SPKI `6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c`; continuidade histórica verificada **apenas quanto aos bytes públicos**. Custódia atual [PENDENTE]; não revogação [PENDENTE]; direito de utilização para o objeto G5 atual [PENDENTE]. Não gerar nova chave por defeito nem exportar a privada.
->
-> **Autorização de implantação:** NÃO CONCEDIDA por esta minuta. Só habilitável após parecer suficiente, ratificação, ativação G5 real, header aprovado, hash de novo ELF compilado/verificado, backup/restauro, identidade física do servidor, ACL e revisão de SQL 0064/0065. Os identificadores de cada artefacto e provas devem ser anexados ao **mesmo ato de autorização** antes da execução, e Miguel deve aceitar expressamente esses hashes e o alvo. Nunca considerar aprovado hoje um binário ainda por gerar.
->
-> **Autorização da operação one-shot:** NÃO CONCEDIDA por esta minuta. Uma única operação protegida, assinada e vinculada a dois PDFs, aos respetivos recibos e ao `txid` gerado dentro do PostgreSQL será autorizada especificamente com a manifestação, assinatura e evidências atuais. Nem ativação G4 nem instalação 0064/0065 concede automaticamente a capacidade de assinatura/COMMIT.
+**O único texto destinado à decisão de Miguel é a minuta da secção 0**, condicionada ao aditamento do revisor V4→V5. A minuta V4/versão 1 anteriormente presente neste ponto tornou-se inexequível em razão da colisão física de `(policy_id,policy_version)` e foi substituída, preservada no histórico Git. **Não apresentar V4 versão 1 para nova ratificação ou inserção.**
+
+A eventual ratificação documental do V5 **não** é autorização de instalação das candidatas 0064/0065, aprovação do binário ainda por compilar, prova atual de sanitização ou concessão de assinatura/COMMIT.
 
 ## 3. Contrato exato do header sucessor — preparar sem inventar raiz
 
@@ -131,7 +119,7 @@ A biblioteca verifica `constraints_json` como subconjunto do manifesto e campos 
 | Gate | Estado até esta entrega |
 | --- | --- |
 | G4 físico / quatro registos | **CLOSED**, txid 926, imutável |
-| V4 candidato e parecer técnico documental | **FAVORÁVEL CONDICIONADO**; sem segregação institucional demonstrada |
+| V4 documental | **FAVORÁVEL CONDICIONADO**; preservado como revisão histórica |\n| V5 versão 2 | **CANDIDATO CORRIGIDO**; aditamento focal de revisão e ratificação de Miguel pendentes |
 | Política canónica G5/ratificação/ativação | **NÃO DEMONSTRADAS** |
 | Raiz atual, header e binário compilado aprovado | **AUSENTES**; código C histórico recuperado |
 | Backup **e restauro** atual comprovados | **NÃO DEMONSTRADOS** |
@@ -140,4 +128,4 @@ A biblioteca verifica `constraints_json` como subconjunto do manifesto e campos 
 | Assinatura e COMMIT real das duas unidades | **NÃO EXECUTADOS** |
 | Matriz normativa e aceitação B02 global | **PENDENTES**, não transferir ao B03 |
 
-**Decisão operacional final:** preservar `G4 CLOSED`; `G5 OPEN`; `B02 OPEN`; `B03 BLOCKED`; MEI intocado. Não repetir testes encerrados, não criar nova ficha intermédia, não alterar a janela V4 à pressa, não disparar deploy, não fingir consentimento/assinatura/independência.
+**Decisão operacional final:** preservar `G4 CLOSED`; `G5 OPEN`; `B02 OPEN`; `B03 BLOCKED`; MEI intocado. Não repetir testes encerrados, não criar nova ficha intermédia, não prolongar nem editar janelas V4/V5 à pressa, não disparar deploy, não fingir consentimento/assinatura/independência.
