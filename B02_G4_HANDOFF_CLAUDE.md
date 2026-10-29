@@ -68,6 +68,13 @@ Os IDs literais aprováveis (ainda não executados) estão no script: `B02-05ede
 - Diagnóstico não-mutante reforçado em `tools/b02_g4_attribute_diagnostic.py`: reutiliza a ponte aprovada em ligação única, com `default_transaction_read_only=on` validado antes das consultas. Produz `DIAG_SQLSTATE` e eventuais códigos `B02` delimitados, sem DSNs ou SQL completo. Não constitui execução G4, não autoriza tentativa de escrita nem altera o blob aprovado.
 - **Regra imediata:** não repetir `tools/b02_g4_authorized_runner.py` até causa concreta esclarecida e correção cirúrgica avaliada. Preservar autorização G4 já existente.
 
+## Diagnóstico read-only SQLSTATE 25006 — interpretação (29/10/2026)
+
+- Saída real do Windows: `DIAG_IMPORTS_PASS`, `DIAG_EXCEPTION|InternalError`, `DIAG_SQLSTATE|25006`, `DIAG_PG_SOURCE_FUNCTION|PreventCommandIfReadOnly`; traceback do serviço `enterprise_b02_policy_activation_atomicity.py:117`; `DIAG_PYTHON_EXIT|0`; `CONTAINER|RESTORED_STOPPED`.
+- Este erro é **esperado e provocado pelo próprio diagnóstico**, que impõe `default_transaction_read_only=on`. A linha 117 do serviço é o primeiro `E.insert()`; o servidor recusa-o com SQLSTATE 25006. **Não atribuir 25006 ao InternalError da execução real anterior**, cujo SQLSTATE ainda não foi capturado.
+- A prova confirma que o código real alcança a primeira tentativa de INSERT quando executado sob a ponte validada, mas **não explica** o `STOP: InternalError` observado anteriormente no runner de escrita. Não há evidência de COMMIT, nem `FOUR_RECORDS_RECONCILED` ou hashes G4.
+- Próxima investigação delimitada: recuperar dos logs existentes do container somente as linhas de erro PostgreSQL e contexto de função da tentativa anterior, sem imprimir comandos SQL, valores ou credenciais. Não repetir a ativação para diagnosticar.
+
 ## Passos posteriores (não iniciar)
 1. **Não repetir o preflight físico nem solicitar nova autorização.** Executar o runner autorizado no Windows pelo percurso de loopback anteriormente validado. Só aceitar resultado da reconciliação independente da unidade completa.
 2. O runner utiliza a autorização existente e executa o procedimento aprovado uma única vez; em resultado incerto, apenas leituras independentes. Não repetir INSERT automaticamente.
