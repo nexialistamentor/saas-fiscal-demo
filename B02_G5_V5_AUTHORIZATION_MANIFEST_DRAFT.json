@@ -25,7 +25,52 @@
   "validation": {
     "runner_dry_run": "PASS",
     "historic_jsonb_hash_equivalence": "4/4 PASS",
-    "transaction_rollback_reconciliation": "PENDING",
+    "transaction_rollback_reconciliation": "ISOLATED_TESTS_ADDED_NOT_EXECUTED",
     "g5_decisions_and_activation": "PENDING"
-  }
+  },
+  "authorization_received": {
+    "literal": "INSTALA E ATIVA",
+    "scope": "G5 V5 policy version 2 installation and activation subject to existing gates",
+    "source": "user instruction in conversation",
+    "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
+  },
+  "technical_readiness": "PENDING",
+  "evidence_requirements": [
+    {
+      "field": "authority_actor",
+      "consumer": "authorize()",
+      "source": "verified institutional actor/provenance",
+      "status": "PENDING"
+    },
+    {
+      "field": "validity_evidence",
+      "consumer": "authorize() and activation validators",
+      "source": "validity/revocation evidence applicable to V5",
+      "status": "PENDING"
+    },
+    {
+      "field": "key_custody_evidence",
+      "consumer": "authorize() and signing gate",
+      "source": "custody proof, not a signing authorization",
+      "status": "PENDING"
+    },
+    {
+      "field": "schema_hash_evidence",
+      "consumer": "authorize() and physical schema verification",
+      "source": "verified 0063 schema and migration evidence",
+      "status": "PENDING"
+    },
+    {
+      "field": "policy_version_record_id",
+      "consumer": "authorize(), reconcile()",
+      "source": "approved unique V5 record identity",
+      "status": "PENDING"
+    },
+    {
+      "field": "legitimate_decision_and_predecessor_hashes",
+      "consumer": "stage_policy_activation()",
+      "source": "existing ratified decision and superior/bootstrap authority with exact hashes",
+      "status": "PENDING"
+    }
+  ]
 }
