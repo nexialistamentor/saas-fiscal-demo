@@ -102,7 +102,7 @@ def _owner_commit_sql(body,record_id):
         stop('POLICY_ORIGIN_CLASSIFICATION')
     template=owner.make_rollback_sql(body)
     old_id='B02-G5-V5-ROLLBACK-PROBE'
-    suffix="ROLLBACK;\\nSELECT 'B02_G5_V5_OWNER_ROLLBACK_ACK';"
+    suffix="ROLLBACK;\nSELECT 'B02_G5_V5_OWNER_ROLLBACK_ACK';"
     if template.count(old_id)!=2 or not template.endswith(suffix):
         stop('OWNER_ROLLBACK_TEMPLATE_UNEXPECTED')
     guard=""" IF clock_timestamp()<TIMESTAMPTZ '2026-10-29T13:00:00+00:00'
@@ -114,13 +114,13 @@ def _owner_commit_sql(body,record_id):
  AND record_hash='504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4'
  ) THEN RAISE EXCEPTION 'STOP_G4_EXACT_PREDECESSOR_MISSING'; END IF;
 """
-    needle=' PERFORM pg_advisory_xact_lock(\\n'
+    needle=' PERFORM pg_advisory_xact_lock(\n'
     if template.count(needle)!=1:
         stop('OWNER_SQL_GUARD_ANCHOR')
     statement=(template.replace(old_id,record_id)
                .replace(needle,guard+needle)
                .removesuffix(suffix)+
-               "COMMIT;\\nSELECT 'B02_G5_V5_OWNER_COMMIT_ACK';")
+               "COMMIT;\nSELECT 'B02_G5_V5_OWNER_COMMIT_ACK';")
     if statement.count('COMMIT;')!=1 or statement.count('ROLLBACK;')!=0:
         stop('OWNER_SINGLE_COMMIT_CONTRACT')
     return statement
