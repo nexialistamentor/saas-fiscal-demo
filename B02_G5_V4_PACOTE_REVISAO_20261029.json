@@ -36,5 +36,34 @@
     "G5 not active",
     "B02 not closed",
     "B03 not released"
-  ]
+  ],
+  "physical_inventory_observed_20261029": {
+    "source": "Windows PostgreSQL read-only inventory, confirmed by operator",
+    "target": "solveris_b02_r4g_test",
+    "postgres_version": "17.10 (Debian 17.10-1.pgdg13+1)",
+    "writer": "solveris_b02_policy_writer",
+    "alembic": "0063_adr020_policy_activation_atomicity",
+    "g5_functions_absent": [
+      "b02g5_assert_signature",
+      "b02g5_native_profile",
+      "b02g5_precommit_validate",
+      "b02_g5_assert_one_shot"
+    ],
+    "one_shot_table_present": false,
+    "exit_code": 0,
+    "container_restored_stopped": true
+  },
+  "native_artifact_source_review": {
+    "source": "previous isolated compilation candidate COMPILAR_CANDIDATO_ISOLADO_SEM_INSTALAR.ps1 recovered from user Library",
+    "status": "HISTORICAL_CANDIDATE_NOT_APPROVED_FOR_CURRENT_WINDOW",
+    "c_sources_sha256": {
+      "b02_g5_native_signature.c": "83fbffa030ed861c4f7e70f654db5179574d986e0cab8f21cf657054ceb4b669",
+      "b02_precommit_guard.c": "ea0f49d9d686bb9dc33a041b85473f734b41b76236411ce4f7942f47538ad278",
+      "b02_g5_approved_roots.h": "ff513972cd19d123af9d1a85b1b57f76c0935c18c5bc172b07722972bbe254cd"
+    },
+    "warning": "Historical root header references window 2026-10-22 to 2026-10-23; cannot infer suitability for G4/G5 current window. Installation requires current roots, reviewed artifact hash and distinct operational authority.",
+    "physical_binary_presence": "NOT_YET_CHECKED"
+  },
+  "next_gate": "Read-only inspect PostgreSQL 17 libdir native file presence/hash and compare to approved current roots; no DDL or G5 operation.",
+  "g5_release_status": "G4_RECONCILED_G5_REVIEW_AND_REAL_NATIVE_INSTALL_NOT_YET_AUTHORIZED"
 }
