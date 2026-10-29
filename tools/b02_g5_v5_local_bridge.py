@@ -27,6 +27,7 @@ ALLOWED = {
     'tools/b02_g5_v5_policy_runner.py',
     'tools/b02_g5_v5_atomic_transaction_harness.py',
     'tools/b02_g5_v5_physical_readonly_preflight.py',
+    'tools/b02_g5_v5_institutional_owner_rollback_probe.py',
 }
 
 
