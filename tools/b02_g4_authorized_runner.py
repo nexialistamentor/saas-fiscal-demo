@@ -16,7 +16,7 @@ import threading
 
 REPO=Path(__file__).resolve().parent.parent
 CONTAINER="solveris-pg17-migration-test"
-VOLUME="4fe15764d8f4c6c2b5aaaad634c0ed54ec42200f1a35edcc3e693da153a0410d"
+VOLUME_PREFIX="4fe15764d8f4c6c2b5aaaad634c0ed54ec"
 BRANCH="candidate/g5-successor-window-prep"
 APPROVAL="B02-G4-AUTH-MIGUEL-20261029-01"
 APPROVED_BLOB="1729e6d62c77510ef4dd7db0af56a6cbe985c168"
@@ -68,8 +68,11 @@ def assert_repo_and_approval():
         local=REPO/path
         if not local.is_file() or git("hash-object",str(local))!=expected:
             stop("STOP_TRACKED_SERVICE_BYTES_DIVERGENT")
-    if hashlib.sha256((REPO/V3).read_bytes()).hexdigest()!=G5_V3_SHA256:
-        stop("STOP_G5_V3_BYTES_DIVERGENT")
+    # Windows working-tree bytes can differ from immutable Git bytes.
+    # Preserve local changes; source the candidate only from the pinned Git object.
+    canonical_v3=git("show","HEAD:"+V3,binary=True)
+    if hashlib.sha256(canonical_v3).hexdigest()!=G5_V3_SHA256:
+        stop("STOP_G5_V3_GIT_BYTES_DIVERGENT")
     return source
 
 def docker(*args):
@@ -78,8 +81,11 @@ def docker(*args):
 
 def check_container():
     i=json.loads(docker("inspect",CONTAINER).stdout)[0]
-    if not any(m.get("Type")=="volume" and m.get("Name")==VOLUME
-               for m in i.get("Mounts",[])):
+    # Previous physical Windows diagnostic established the unique volume prefix.
+    matches=[m for m in i.get("Mounts",[])
+             if m.get("Type")=="volume"
+             and m.get("Name","").startswith(VOLUME_PREFIX)]
+    if len(matches)!=1:
         stop("STOP_PROTECTED_VOLUME_MISMATCH")
     return bool(i["State"]["Running"])
 
@@ -232,7 +238,9 @@ def persist_success(stdout):
     safe_save(REPO/PRIMARY,
               (json.dumps(primary,indent=2,ensure_ascii=False)+"\n").encode("utf-8"))
     print("PRIMARY_RECONCILED_SAVED|"+PRIMARY)
-    original=(REPO/V3).read_text(encoding="utf-8")
+    original=git("show","HEAD:"+V3,binary=True).decode("utf-8")
+    if hashlib.sha256(original.encode("utf-8")).hexdigest()!=G5_V3_SHA256:
+        stop("STOP_G5_V3_CANONICAL_HASH_CONFLICT")
     candidate=json.loads(original)
     documents=(candidate["policy_candidate_body"]["rules"]
                ["b02_noncredential"]["security"]["g5_release"]["documents"])
@@ -247,7 +255,13 @@ def persist_success(stdout):
             stop("STOP_G5_V3_BINDING_DIVERGENT")
         binding["policy_activation_id"]=result["activation_id"]
         binding["policy_activation_record_hash"]=result["activation_hash"]
-    revised=json.dumps(candidate,ensure_ascii=False,indent=2)+"\n"
+    # Minimal text diff: only the two G4 bindings in the two existing documents.
+    if original.count(old_id)!=2 or original.count(old_hash)!=2:
+        stop("STOP_G5_V3_EXPECTED_LITERALS_NOT_EXACTLY_TWICE")
+    revised=original.replace(old_id,result["activation_id"]).replace(
+        old_hash,result["activation_hash"])
+    if json.loads(revised)!=candidate:
+        stop("STOP_G5_MINIMAL_DIFF_DIVERGENT")
     safe_save(REPO/G5_CANDIDATE,revised.encode("utf-8"))
     print("G5_SUCCESSOR_FOR_REVIEW_SAVED|"+G5_CANDIDATE)
     for line in difflib.unified_diff(
