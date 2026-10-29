@@ -1,0 +1,16 @@
+{
+  "schema": "B02_G5_G4_CURRENCY_CONFIRMATION_REQUEST_V1",
+  "status": "OBJETO_PREPARADO_NAO_EMITIDO_NAO_RATIFICADO",
+  "para_decisao_de_miguel": true,
+  "texto_concreto_para_apreciacao": "Eu, Miguel, confirmo que os exames de origem favoraveis dos documentos 101202501245 (origin_report_binding sha256 09754ecef2fe0967...) e 101201900571 (origin_report_binding sha256 63435196c888e42d...), emitidos sob a politica G4 05ede0f8..., permanecem aplicaveis e correntes para a janela operacional proposta 2026-11-03T12:00:00Z a 2026-11-04T07:56:30.910737Z. Esta confirmacao NAO reexamina a origem; so declara vigencia atual da conclusao favoravel ja obtida.",
+  "vinculos_referenciados_sem_alteracao": [
+    "09754ecef2fe0967459d36017afdc9393718a5df911ab0b93c08cddd82869087",
+    "63435196c888e42d7eaf85c6ba6d2323c1d0ff47dc4e3a7a824c357a6f093f8e"
+  ],
+  "limites": [
+    "nao e novo exame",
+    "nao e ativacao G5",
+    "nao e instalacao",
+    "nao e assinatura"
+  ]
+}

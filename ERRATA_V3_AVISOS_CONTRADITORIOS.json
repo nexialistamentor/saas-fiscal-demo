@@ -1,0 +1,12 @@
+{
+  "schema": "B02_G5_V3_ERRATA_V1",
+  "refere_se_a": "POLICY_G5_CANDIDATO_V3_COMPLETO.json (commit a8c4be17), imutavel, nao editado",
+  "inconsistencia_encontrada": {
+    "aviso_desatualizado": "__AVISO_VALIDADE_G4__",
+    "texto_desatualizado": "Descreve os campos g4.valid_from/until como 'REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT' -- estado do V2, nao do V3.",
+    "aviso_correto": "__AVISO_G4_PREENCHIDO__",
+    "texto_correto": "Os mesmos campos estao preenchidos com datas concretas, como proposta pendente de ratificacao."
+  },
+  "classificacao": "erro de metadado/comentario de preparacao -- NAO afeta o conteudo normativo (policy_candidate_body), que permanece correto.",
+  "acao": "Esta errata documenta a inconsistencia para leitura do revisor. V3 nao foi editado. Nenhum candidato sucessor foi gerado porque o conteudo normativo nao precisa de alteracao -- so a leitura do aviso desatualizado deve ser descontada."
+}

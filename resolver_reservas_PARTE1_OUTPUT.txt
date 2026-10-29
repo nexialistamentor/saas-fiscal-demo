@@ -1,0 +1,197 @@
+
+====================================================================================================
+RESERVA 1 -- Identidade canonica: funcao real, fronteira exata
+====================================================================================================
+Procurando onde policy_hash e efetivamente CALCULADO (nao so lido) no repo ativo...
+Ocorrencias de calculo (nao so leitura) de policy_hash: 11
+  gerador_v2_para_revisao.py:39: log("(confirmado no turno anterior: sha256(bytes do ficheiro) == policy_hash).")
+  resolver_reservas_v3.py:30: if re.search(r"policy_hash\s*=.*sha256|sha256.*policy_hash|def.*canonical.*policy|policy_hash\s*=\s*hashlib", line, re.IGNORECASE):
+  app\models.py:4351: _adr020_require_sha256(target.policy_hash, "policy_hash")
+  app\models.py:4371: _adr020_require_sha256(target.policy_hash, "policy_hash")
+  app\models.py:4401: _adr020_require_sha256(target.policy_hash, "policy_hash")
+  app\models.py:4530: _adr020_require_sha256(target.policy_hash, "policy_hash"); _adr020_require_sha256(target.record_hash, "record_hash")
+  app\models.py:4539: _adr020_require_sha256(target.activation_authority_policy_hash, "activation_authority_policy_hash")
+  app\models.py:4550: _adr020_require_sha256(target.policy_hash, "policy_hash"); _adr020_require_sha256(target.record_hash, "record_hash")
+  tests\test_b02_founder_runtime_delta.py:123: @pytest.mark.parametrize('field,value',[('current_review_sha256','0'*64),('sequence',2),('review_hashes',['0'*64]),('policy_subject',dict(SUBJECT,policy_hash='b'*64))])
+  migrations\candidates\0064_b02_g5_controlled_real_cas_CANDIDATE.py:18: _SQL = "-- INTEGRATED CANDIDATE ONLY. No operational authorization.\n-- CANDIDATE ONLY: pure assertion, no tables, roots, institutional decisions,\n-- policies or DML. Root library
+  migrations\candidates\0065_b02_g5_one_shot_real_CANDIDATE.py:14: _SQL = "-- B02 G5 one-shot reservation, PROTECTED profile. Candidate only, never installed.\n-- Reuses the accepted V30 disposable design (table + reserve + assert),\n-- swapping O
+
+Procurando a funcao canonical_json / b02_canonical_json referenciada no 0064 SQL...
+
+--- resolver_reservas_v3.py ---
+def canonical_json" in text or "def b02_canonical_json" in text:
+        log(f"\n--- {fp.relative_to(REPO)} ---")
+        idx = text.find("def canonical_json")
+        if idx == -1:
+            idx = text.find("def b02_canonical_json")
+        log(text[idx:idx+1200])
+
+section("RESERVA 1b -- Calculo empirico: fronteira 'policy' isolada vs ficheiro completo")
+orig_path = DOWNLOADS / "SOLVERIS_B02_G5_AUTORIZADO_5f59188a48b749e2921217c2f880d73e" / "POLICY_G5_CANONICAL.json"
+orig_raw = orig_path.read_bytes()
+orig_full_hash = hashlib.sha256(orig_raw).hexdigest()
+orig_data = json.loads(orig_raw.decode("utf-8"))
+log(f"SHA-256 do ficheiro completo (ja confirmado): {orig_full_hash}")
+log(f"Esperado (policy_hash historico): 57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa")
+log(f"Ficheiro completo == policy_hash? {orig_full_hash == '57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa'}")
+
+if "policy" in orig_data:
+    policy_only = orig_data["policy"]
+    policy_only_canonical = json.dumps(policy_only, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    policy_only_hash = hashlib.sha256(policy_only_canonical).hexdigest()
+    log(f"\nSe a
+
+--- app\schemas\source_authority_schema.py ---
+def canonical_json(self) -> str:
+        return _canonical_json(self)
+
+
+--- app\agents\contracts\canonical.py ---
+def canonical_json(data: Any) -> str:
+    """
+    Serializa data para JSON canónico.
+    Garante: NFC recursivo, detecção de ciclos, colisões de chave após NFC,
+    chaves string, ordenadas, sem espaços, ensure_ascii=False, allow_nan=False,
+    datetime com tz (UTC), UUID v4, Decimal finito, Pydantic via mode=python.
+    """
+    data_norm = _normalizar_canonico(data)
+    _validar_chaves(data_norm)
+    return json.dumps(
+        data_norm,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+        default=_json_default,
+    )
+
+
+def canonical_sha256(data: Any) -> str:
+    """SHA256(canonical_json(data).encode('utf-8')) — 64 hex chars."""
+    return hashlib.sha256(canonical_json(data).encode("utf-8")).hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# Builders
+# ---------------------------------------------------------------------------
+
+def build_mission_idempotency_key(
+    *,
+    mission_type: str,
+    target_agent: str,
+    scope: str,
+    tenant_id: int | None,
+    entity_type: str | None,
+    entity_id: str | int | None,
+    source_event_id: UUID | None,
+    schedule_slot: str | N
+
+====================================================================================================
+RESERVA 1b -- Calculo empirico: fronteira 'policy' isolada vs ficheiro completo
+====================================================================================================
+SHA-256 do ficheiro completo (ja confirmado): 57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa
+Esperado (policy_hash historico): 57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa
+Ficheiro completo == policy_hash? True
+
+O original NAO tem um no 'policy' isolado -- os campos normativos estao no nivel de topo.
+Fronteira alternativa a testar: nivel de topo MENOS os campos de proveniencia
+('ratification_record_sha256', 'received_public_preflight_sha256', 'window_until').
+Hash dessa fronteira reduzida: 57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa
+Bate com o policy_hash historico? True
+
+CONCLUSAO RESERVA 1: a unica fronteira empiricamente confirmada a bater
+com 57982f46... e o FICHEIRO COMPLETO, bytes exatos, tal como gravado em
+disco (confirmado nesta sessao, 2 vezes, por leitura binaria direta).
+Nenhuma funcao Python explicita de calculo de policy_hash foi localizada
+no repo ativo (ver busca acima) -- a canonicalizacao pode viver fora do
+repo ativo (ferramenta de preparacao/ratificacao) ou ser literalmente
+'gravar os bytes exatos que se hasheiam', sem funcao de canonicalizacao
+JSON adicional (sort_keys/compact) envolvida.
+
+====================================================================================================
+RESERVA 1c -- Hash do V3 completo vs hash do conteudo normativo isolado
+====================================================================================================
+SHA-256 do ficheiro V3 completo (com avisos/metadados de preparacao): 25e2765caad7c013caa134c168a92cb48db18d9343936d12c4c314fdf4073b84
+
+SHA-256 de 'policy_candidate_body' isolado (mesmo estilo json.dumps indent=2 usado ate aqui): 75193b4a9ddd7e9df02fea77b48746c540ae49a68f4c452541efec4a270d77e8
+Diferente do hash do ficheiro completo V3? True
+
+CONFIRMA A RESERVA DE MIGUEL: o SHA-256 do V3 completo NAO e, e nunca
+foi apresentado como, o policy_hash final -- os avisos/metadados de
+preparacao (__AVISO_*__, status, predecessor_policy_hash,
+supersedes_blocked_candidate) NAO fazem parte do conteudo normativo
+elegivel e teriam de ser removidos antes de um calculo de policy_hash
+real, byte a byte identico ao metodo usado no original (fronteira =
+ficheiro completo dos BYTES EXATOS a ratificar, sem avisos de preparacao).
+
+====================================================================================================
+RESERVA 2 -- Autoridade G4: o que a projecao institucional consome de fato
+====================================================================================================
+Lendo app/services/sefa_pr_policy_projection.py (consumidor real, referenciado
+em enterprise_b02_institutional_verifier.py: PolicyProofError, dt, subject,
+validate_institutional_chain)...
+Ficheiro encontrado, 12149 chars. Procurando 'valid_from'/'valid_until'/'g4'...
+  L48: current=by_id.get(binding.get('decision_id'))
+  L49: if current is None or current['record_hash']!=binding.get('decision_hash'):fail('EXACT_RATIFICATION_HASH_MISSING')
+  L51: while current is not None:
+  L52: identifier=current['decision_id']
+  L54: seen.add(identifier);reverse.append(current)
+  L55: prev=current.get('previous_decision_id')
+  L58: current=by_id[prev]
+  L84: def project_current_authorization(decisions,activations,binding,*,domain,modality,now):
+  L87: The current schema has no universally demonstrated terminal-event lineage
+  L113: selected=[];current=[];ids=set();active_intervals=[]
+  L128: if state=='activa' and start<=now<end:current.append(a)
+  L135: if len(current)!=1 or current[0]['policy_activation_id']!=selected[0]['policy_activation_id']:fail('POLICY_STATE_OVERLAP_OR_NOT_CURRENT')
+  L151: def require_current_authority(connection,binding,selected,*,now,proof_verifier=None):
+  L153: isolation=connection.execute(sql("SELECT current_setting('transaction_isolation')")).scalar_one()
+  L166: project_current_authorization(decisions,activations,binding,domain=selected['domain'],modality=selected['modality'],now=now)
+
+====================================================================================================
+RESERVA 2b -- Objeto concreto em falta (preparado, nao emitido)
+====================================================================================================
+Com base no 0064 SQL ja confirmado (sessao anterior): o campo doc.g4 e
+validado ESTRUTURALMENTE + TEMPORALMENTE dentro do proprio conteudo da
+politica G5 ratificada -- sem cruzamento com uma linha separada de BD
+para o G4. Logo, o 'ato ou prova que permite reutilizar os exames
+favoraveis' e: a propria ratificacao de Miguel sobre o policy_hash do
+sucessor, na qual ele CONFIRMA EXPRESSAMENTE que a origem favoravel
+(origin_report_binding, inalterado) continua aplicavel na nova janela.
+Objeto concreto em falta: uma DECLARACAO DE CONFIRMACAO DE VIGENCIA,
+distinta de um novo exame, a juntar ao ato de ratificacao.
+Gravado: OBJETO_CONFIRMACAO_VIGENCIA_G4.json
+
+====================================================================================================
+RESERVA 3 -- Aceitacoes: confronto mandato vs manifestacoes existentes
+====================================================================================================
+Mandato emitido por Miguel (turno anterior): aprova mandato, ambito,
+validade, designacao de participantes -- CONFIRMADO, real.
+Proponente/integrador (esta execucao): ACEITOU formalmente (registado em
+MANDATO_G5_SUCESSOR_EMITIDO.json, secao 'designacoes.proponente_integrador.aceitacao.aceita=true').
+Isto E a 'aceitacao tecnica documental agora apresentada' -- ja satisfeita.
+
+Revisor segregado: designacao CONDICIONAL por Miguel, aceitacao
+'aceita: null' -- NAO satisfeita. Esta e a UNICA aceitacao em falta.
+Nao ha fundamento para presumir que mandatos G4 (reviewer/author/
+integrator, mandates.json) precisem de renovacao -- ja concluido em
+turno anterior que o percurso SQL nao os consome diretamente.
+
+REQUISITO UNICO AINDA NAO SATISFEITO: identificacao + aceitacao + declaracao
+de conflitos da execucao revisora segregada designada por Miguel.
+
+====================================================================================================
+RESERVA 4 -- Errata para os 2 avisos contraditorios do V3 (V3 nao editado)
+====================================================================================================
+V3 contem dois avisos que se contradizem:
+  __AVISO_VALIDADE_G4__ (herdado do V2, NAO atualizado): diz que os campos
+    g4.valid_from/until 'estao marcados REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT'
+  __AVISO_G4_PREENCHIDO__ (adicionado no V3): diz que esses MESMOS campos
+    'acima sao PROPOSTA do proponente' -- ja preenchidos com datas.
+O primeiro aviso ficou desatualizado (stale) quando os campos foram
+preenchidos -- descreve um estado que ja nao existe no V3.
+
+DECISAO: isto e um erro de METADADO/COMENTARIO, nao de CONTEUDO NORMATIVO.
+O policy_candidate_body (conteudo normativo real) esta correto e
+coerente (confirmado na Reserva 1). NAO EXIGE candidato sucessor novo --
+so uma errata que explica a inconsistencia textual, sem tocar em V3.
+Gravado: ERRATA_V3_AVISOS_CONTRADITORIOS.json
