@@ -166,16 +166,31 @@ def execute_exact_bridge(source):
     thread.start()
     old_argv=sys.argv
     old_stdout=sys.stdout
+    old_database_url=os.environ.get("DATABASE_URL")
     captured=Tee()
     os.environ[DSN_ENV]=(
         f"postgresql+psycopg2://solveris_b02_policy_writer"
         f"@127.0.0.1:{port}/solveris_b02_r4g_test"
         "?sslmode=disable&connect_timeout=8")
+    # Match the app's own DB initialization to the already authorized writer.
+    # Otherwise app.database selects SQLite and attempts legacy SQLite DDL
+    # on import; never bypass ORM imports or change the approved G4 bytes.
+    os.environ["DATABASE_URL"]=os.environ[DSN_ENV]
     sys.argv=[SCRIPT,"--execute","--approval-reference",APPROVAL]
     status=None
     try:
         sys.stdout=captured
         try:
+            import app.database as application_database
+            from app.services.enterprise_b02_policy_activation_atomicity import stage_policy_activation
+            from app.models_policy_activation_atomicity import PolicyActivationGeneration, PolicyActivationOutboxEvent
+            url=application_database.engine.url
+            if (url.get_backend_name()!="postgresql"
+                or url.database!="solveris_b02_r4g_test"
+                or url.username!="solveris_b02_policy_writer"
+                or url.host!="127.0.0.1"):
+                stop("STOP_IMPORTED_DATABASE_IDENTITY_MISMATCH")
+            print("G4_POSTGRESQL_MODEL_IMPORT_PASS")
             exec(compile(source,SCRIPT,"exec"),
                  {"__name__":"__main__","__file__":SCRIPT})
             status=0
@@ -185,6 +200,10 @@ def execute_exact_bridge(source):
         sys.stdout=old_stdout
         sys.argv=old_argv
         os.environ.pop(DSN_ENV,None)
+        if old_database_url is None:
+            os.environ.pop("DATABASE_URL",None)
+        else:
+            os.environ["DATABASE_URL"]=old_database_url
         server.close()
         if "client" in state:
             state["client"].close()
