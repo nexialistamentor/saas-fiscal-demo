@@ -80,11 +80,22 @@ ROLLBACK;"""
             raise RuntimeError("STOP_POLICY_WRITER_ROLE_PRIVILEGES")
         if lines[6] not in ("0","1"):raise RuntimeError("STOP_G5_POLICY_CONFLICT")
         if lines[7]!="ROLLBACK":raise RuntimeError("STOP_DOCKER_ROLLBACK")
+        auth_sql="BEGIN READ ONLY; SELECT current_database(),session_user,current_user; ROLLBACK;"
+        auth=subprocess.run(["docker","exec","-i","solveris-pg17-migration-test",
+            "psql","-X","-v","ON_ERROR_STOP=1","-U","solveris_b02_policy_writer",
+            "-d",DB,"-At"],input=auth_sql,text=True,capture_output=True)
+        auth_verified=(auth.returncode==0 and
+            auth.stdout.strip().splitlines()==["BEGIN",
+            DB+"|solveris_b02_policy_writer|solveris_b02_policy_writer","ROLLBACK"])
+        if auth.returncode==0 and not auth_verified:
+            raise RuntimeError("STOP_POLICY_WRITER_AUTH_IDENTITY")
         print(json.dumps({"status":"PHYSICAL_DOCKER_READ_ONLY_PREFLIGHT_PASS",
             "database":DB,"revision":REV,"role":"solveris_b02_writer",
             "g4_hash_equivalence":2,"atomic_tables":5,
             "g5_v5_policy_rows":int(lines[6]),"writes":0,
-            "policy_writer_role_catalog_verified":True},sort_keys=True))
+            "policy_writer_role_catalog_verified":True,
+            "policy_writer_authenticated":auth_verified,
+            "policy_writer_auth_requires_setup":not auth_verified},sort_keys=True))
         return
     engine=create_engine(dsn,poolclass=NullPool)
     try:print(json.dumps(inspect(engine),sort_keys=True))
