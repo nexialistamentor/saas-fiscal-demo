@@ -1,0 +1,85 @@
+--- POLICY_G5_CANDIDATO_V3_COMPLETO.json
++++ POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V4_PARA_REVISAO.json
+@@ -1,15 +1,15 @@
+ {
+   "__AVISO_CAMPOS_INSTITUCIONAIS__": "Campos de ator/ratificacao/auditoria/decisao/assinatura em 'policy_candidate_body' pertencem ao PREDECESSOR (57982f46...) e NAO constituem atos sobre este sucessor.",
+-  "__AVISO_VALIDADE_G4__": "Os campos g4.valid_from/valid_until por documento estao marcados REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT. Isto NAO e repeticao do exame de origem (que permanece favoravel e preservado via origin_report_binding, inalterado). E a ausencia de um ato real de confirmacao/atualizacao de validade operacional G4 cobrindo a janela proposta. Ver secao 5 do relatorio para o que falta exatamente.",
+-  "status": "CANDIDATO_COMPLETO_AGUARDA_RATIFICACAO_NAO_RATIFICADO",
++  "__AVISO_VALIDADE_G4__": "Ativacao G4 de outubro reconciliada por leitura independente; G5 ainda exige parecer, ratificacao e propria autorizacao operacional.",
++  "status": "CANDIDATO_SUCESSOR_G4_RECONCILIADO_G5_NAO_RATIFICADO",
+   "predecessor_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+   "supersedes_blocked_candidate": "fc93605e654325d2bab1ceb75c5600ab2410d7e347b65644d22ccdef30b851a2",
+   "policy_candidate_body": {
+     "declared_material_applicability": {
+-      "from": "2026-11-03T12:00:00+00:00",
++      "from": "2026-10-29T13:00:00+00:00",
+       "kind": "documentary_persistence_only_not_fiscal_validity",
+       "no_retroactive_authority": true,
+-      "until": "2026-11-04T07:56:30.910737+00:00"
++      "until": "2026-10-30T13:00:00+00:00"
+     },
+     "domain": "SEFA_PR_B02_DOCUMENTAL_G5_PERSISTENCE",
+     "exact_references": {
+@@ -190,16 +190,16 @@
+                   "policy_binding": {
+                     "decision_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018",
+                     "decision_id": "B02-05ede-ratificada-v1",
+-                    "policy_activation_id": "B02-05ede-activation-v1",
+-                    "policy_activation_record_hash": "06321ef4c9df17e251a08428a534ab6af8e1f868df2c48b64c3342ecc703dae5",
++                    "policy_activation_id": "B02-05ede-activation-v3",
++                    "policy_activation_record_hash": "504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4",
+                     "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+                     "policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY",
+                     "policy_type": "activation_authority",
+                     "policy_version": 1
+                   },
+                   "synthetic_only": false,
+-                  "valid_from": "2026-11-03T12:00:00+00:00",
+-                  "valid_until": "2026-11-04T07:56:30.910737+00:00",
++                  "valid_from": "2026-10-29T13:00:00+00:00",
++                  "valid_until": "2026-10-30T13:00:00+00:00",
+                   "verifier": {
+                     "hash": "fab019b18d21f8e47e59ff96fd783dc9732cc3ae1d6e1ed429bddf957f0b9472",
+                     "id": "SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN",
+@@ -278,16 +278,16 @@
+                   "policy_binding": {
+                     "decision_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018",
+                     "decision_id": "B02-05ede-ratificada-v1",
+-                    "policy_activation_id": "B02-05ede-activation-v1",
+-                    "policy_activation_record_hash": "06321ef4c9df17e251a08428a534ab6af8e1f868df2c48b64c3342ecc703dae5",
++                    "policy_activation_id": "B02-05ede-activation-v3",
++                    "policy_activation_record_hash": "504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4",
+                     "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+                     "policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY",
+                     "policy_type": "activation_authority",
+                     "policy_version": 1
+                   },
+                   "synthetic_only": false,
+-                  "valid_from": "2026-11-03T12:00:00+00:00",
+-                  "valid_until": "2026-11-04T07:56:30.910737+00:00",
++                  "valid_from": "2026-10-29T13:00:00+00:00",
++                  "valid_until": "2026-10-30T13:00:00+00:00",
+                   "verifier": {
+                     "hash": "fab019b18d21f8e47e59ff96fd783dc9732cc3ae1d6e1ed429bddf957f0b9472",
+                     "id": "SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN",
+@@ -353,11 +353,11 @@
+                 "verification_id": "B02-G5-101201900571-V1-sanitization"
+               }
+             ],
+-            "from": "2026-11-03T12:00:00+00:00",
++            "from": "2026-10-29T13:00:00+00:00",
+             "mode": "LOCAL_CAS_INCORPORATION",
+             "schema": "B02_G5_SEFA_PR_REAL_RELEASE_V1",
+             "synthetic_only": false,
+-            "until": "2026-11-04T07:56:30.910737+00:00"
++            "until": "2026-10-30T13:00:00+00:00"
+           },
+           "independence_evidence_required": true,
+           "modes": [
+@@ -403,5 +403,5 @@
+       "verifier_not_receipt_creator": true
+     }
+   },
+-  "__AVISO_G4_PREENCHIDO__": "Os valores g4.valid_from/until acima sao PROPOSTA do proponente, nao ato institucional consumado. A sua legitimidade depende inteiramente da ratificacao de Miguel sobre este policy_hash exato -- antes disso, nao tem efeito."
+-}+  "__AVISO_G4_PREENCHIDO__": "Os vinculos e hashes G4 sao observados; os valores da politica G5 sao somente candidato, NAO ratificados."
++}
