@@ -33,6 +33,21 @@ class ReconcileTests(unittest.TestCase):
         engine, _ = self.engine(row)
         self.assertEqual(runner.reconcile(engine, "B02-G5-V5")[0], "CONFLICT")
 
+    def test_invalid_manifest_is_fail_closed(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "manifest.json"
+            path.write_text(json.dumps({"status": "PENDING_EVIDENCE",
+                                        "reference": "USER_ORDER_INSTALA_E_ATIVA_G5_V5_VERSION_2"}),
+                            encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "STOP_AUTHORIZATION_STATUS"):
+                runner.authorize(path, "USER_ORDER_INSTALA_E_ATIVA_G5_V5_VERSION_2")
+
+    def test_missing_manifest_is_fail_closed(self):
+        with self.assertRaisesRegex(RuntimeError, "STOP_EXPLICIT_AUTHORIZATION_REQUIRED"):
+            runner.authorize(None, None)
+
     def test_no_automatic_retry_on_unknown_commit(self):
         # Reconciliation is a read-only classifier, never a write or retry.
         engine, conn = self.engine(None)
