@@ -32,6 +32,18 @@ if blob!=APPROVED:
 
 def report(exc):
     print("DIAG_EXCEPTION|"+type(exc).__name__)
+    # No SQL statement, parameters, DSN or traceback source line is printed.
+    orig=getattr(exc,"orig",exc)
+    print("DIAG_SQLSTATE|"+str(getattr(orig,"pgcode",None) or "none"))
+    pgdiag=getattr(orig,"diag",None)
+    if pgdiag is not None:
+        for key in ("constraint_name","function_name","source_function"):
+            value=getattr(pgdiag,key,None)
+            if value and isinstance(value,str) and len(value)<120:
+                print("DIAG_PG_"+key.upper()+"|"+value)
+        msg=getattr(pgdiag,"message_primary",None)
+        if isinstance(msg,str) and msg.startswith("B02") and len(msg)<180:
+            print("DIAG_B02_SERVER_CODE|"+msg.replace("\n"," "))
     tb=traceback.extract_tb(exc.__traceback__)
     for frame in tb[-12:]:
         name=frame.filename.replace("\\","/").rsplit("/",1)[-1]
