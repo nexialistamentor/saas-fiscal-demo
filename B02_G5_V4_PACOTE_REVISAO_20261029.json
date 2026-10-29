@@ -65,5 +65,23 @@
     "physical_binary_presence": "NOT_YET_CHECKED"
   },
   "next_gate": "Read-only inspect PostgreSQL 17 libdir native file presence/hash and compare to approved current roots; no DDL or G5 operation.",
-  "g5_release_status": "G4_RECONCILED_G5_REVIEW_AND_REAL_NATIVE_INSTALL_NOT_YET_AUTHORIZED"
+  "g5_release_status": "G4_RECONCILED_G5_REVIEW_AND_REAL_NATIVE_INSTALL_NOT_YET_AUTHORIZED",
+  "source_recovery_20261029": {
+    "verification": "All 3 original byte SHA-256 checks matched original Library payload; files now in native/g5/historical_20261022",
+    "repo_manifest": "native/g5/historical_20261022/RECOVERY_MANIFEST.json",
+    "precommit_c_sha256": "ea0f49d9d686bb9dc33a041b85473f734b41b76236411ce4f7942f47538ad278",
+    "signature_c_sha256": "83fbffa030ed861c4f7e70f654db5179574d986e0cab8f21cf657054ceb4b669",
+    "expired_header_sha256": "ff513972cd19d123af9d1a85b1b57f76c0935c18c5bc172b07722972bbe254cd",
+    "old_header_valid_until_utc": "2026-10-23T07:56:30.910737+00:00",
+    "old_header_g5_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+    "new_root_status": "NOT_AUTHORIZED_FOR_CURRENT_G5_V4"
+  },
+  "corrected_engineering_dependency": "The protected one-shot reservation is present as isolated SQL candidate in migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py, not in the PostgreSQL catalog. An older pre-0065 report claiming total absence is historical, not current evidence.",
+  "current_institutional_blockers": [
+    "Independent reviewer must accept mandate for exact G5 V4 SHA256 2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e and provide own evidence, not inherited reviewer acceptance",
+    "Miguel must decide actual G5 policy V4, temporal window and authorized release; current V4 is not ratified or active",
+    "Signing root must be current, non-revoked and bound to exact ratified G5 policy/decision/activation and physical target; old C header expired",
+    "Native library candidate must be separately built/verified from approved roots, and installation of 0064 and 0065 requires specific authority and recovery proof",
+    "Signed two-document transaction must be executed once and independently reconciled"
+  ]
 }
