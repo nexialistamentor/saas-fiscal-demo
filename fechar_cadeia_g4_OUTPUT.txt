@@ -1,0 +1,94 @@
+
+====================================================================================================
+1. Corpo completo de stage_policy_activation
+====================================================================================================
+def stage_policy_activation(connection,*,execution,activation,generation_id,outbox_id,provenance):
+    """Stage an authorised manual unit and return server hashes; never commit.
+
+    Ratified decision, existing policy version and exact bootstrap/superior
+    authority must already be provided. This function creates none of them.
+    ID/hash re-delivery validates every supplied field and the complete stored
+    unit before reuse. Changed input is a conflict, never ON CONFLICT DO NOTHING.
+    """
+    if not connection.in_transaction():fail('OUTER_TRANSACTION_REQUIRED')
+    from sqlalchemy import select,text
+    identity=connection.execute(text('SELECT current_database(),session_user,current_user')).one()
+    if tuple(identity)!=(DATABASE,WRITER,WRITER):fail('DISTINCT_ISOLATED_POLICY_WRITER_REQUIRED')
+    flags=connection.execute(text('SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolinherit FROM pg_roles WHERE rolname=current_user')).one()
+    if any(flags):fail('ADMINISTRATIVE_WRITER_FORBIDDEN')
+    memberships=connection.execute(text('SELECT count(*) FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname=current_user)')).scalar_one()
+    if memberships:fail('WRITER_ROLE_MEMBERSHIP_FORBIDDEN')
+    from app import models
+    from app.models_policy_activation_atomicity import PolicyActivationGeneration,PolicyActivationOutboxEvent
+    E=models.PolicyActivationExecution.__table__;A=models.PolicyActivation.__table__
+    G=PolicyActivationGeneration.__table__;O=PolicyActivationOutboxEvent.__table__;P=models.PolicyVersion.__table__
+    for obj in (execution,activation,provenance):reject_server_fields(obj)
+    e=dict(execution);a=dict(activation)
+    if 'policy_activation_execution_record_hash' in a:fail('SERVER_FIELDS_FORBIDDEN')
+    if e.get('state')!='concluida' or e.get('execution_mode')!='manual':fail('MANUAL_COMPLETED_WRITER_ONLY')
+    if 'structured_result' in e:fail('SERVER_COMPLETION_MANIFEST_ONLY')
+    if not e.get('policy_decision_record_hash'):fail('EXACT_DECISION_HASH_REQUIRED')
+    for value in (generation_id,outbox_id,a.get('policy_activation_id')):
+        if not isinstance(value,str) or not value.strip() or len(value)>64:fail('EXACT_UNIT_IDS_REQUIRED')
+    _bind(e,'actor_or_worker',WRITER)
+    for key in ('policy_activation_execution_id','policy_decision_id','policy_decision_record_hash','policy_type','policy_id','policy_version','policy_hash'):_bind(a,key,e.get(key))
+    _bind(a,'activation_generation_id',generation_id);_bind(a,'technical_actor',WRITER)
+    if a.get('state')!='activa':fail('ACTIVE_CREATION_WRITER_ONLY')
+    policy=connection.execute(select(P).where(P.c.policy_id==e['policy_id'],P.c.policy_version==e['policy_version'],P.c.policy_hash==e['policy_hash'],P.c.policy_type==e['policy_type'])).mappings().one_or_none()
+    if policy is None:fail('EXACT_POLICY_MISSING')
+    if a.get('domain')!=policy['domain']:fail('EXACT_POLICY_DOMAIN_REQUIRED')
+    import hashlib
+    e['structured_resul
+
+====================================================================================================
+2. Campos completos de BootstrapAuthorityRecord
+====================================================================================================
+class BootstrapAuthorityRecord(Base):
+    """Manual constitutional authority for the first exact policy chain."""
+
+    __tablename__ = "bootstrap_authority_records"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_bootstrap_authority_records_exact_policy_version", ondelete="RESTRICT"),
+        UniqueConstraint("record_hash", name="uq_bootstrap_authority_records_record_hash"),
+        CheckConstraint("policy_type = 'activation_authority'", name="ck_bootstrap_authority_records_policy_type"),
+        CheckConstraint("policy_version > 0", name="ck_bootstrap_authority_records_version_positive"),
+        CheckConstraint("independent_audit_result = 'favoravel'", name="ck_bootstrap_authority_records_audit_favorable"),
+        CheckConstraint("validity = 'valida'", name="ck_bootstrap_authority_records_validity"),
+        CheckConstraint("submission_mode = 'manual' AND audit_mode = 'manual' AND ratification_mode = 'manual' AND activation_mode = 'manual'", name="ck_bootstrap_authority_records_manual_only"),
+        CheckConstraint("actor_proponente <> actor_auditor AND actor_proponente <> actor_ratificador AND actor_auditor <> actor_ratificador", name="ck_bootstrap_authority_records_actor_segregation"),
+        CheckConstraint("length(policy_hash) = 64", name="ck_bootstrap_authority_records_policy_hash_len"),
+        CheckConstraint("length(record_hash) = 64", name="ck_bootstrap_authority_records_record_hash_len"),
+    )
+
+    bootstrap_authority_record_id = Column(String(64), primary_key=True)
+    policy_type = Column(String(32), nullable=False)
+    policy_id = Column(String(64), nullable=False, index=True)
+    policy_version =
+
+====================================================================================================
+3. Nomes reais das tabelas generation/outbox (tablename, nao nome de classe)
+====================================================================================================
+
+====================================================================================================
+4. Campos completos de PolicyActivationExecution (continuacao, FK ativacao)
+====================================================================================================
+class PolicyActivationExecution(Base):
+    """Immutable technical attempt to activate one exact policy version."""
+
+    __tablename__ = "policy_activation_executions"
+    __table_args__ = (
+        ForeignKeyConstraint(["policy_id", "policy_version", "policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activation_executions_exact_policy", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["policy_decision_id"], ["policy_decisions.decision_id"], name="fk_policy_activation_executions_exact_decision", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["bootstrap_authority_record_id"], ["bootstrap_authority_records.bootstrap_authority_record_id"], name="fk_policy_activation_executions_exact_bootstrap", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["activation_authority_policy_id", "activation_authority_policy_version", "activation_authority_policy_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activation_executions_exact_authority_policy", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["activation_authority_policy_activation_id"], ["policy_activations.policy_activation_id"], name="fk_policy_activation_executions_exact_authority_activation", ondelete="RESTRICT", use_alter=True),
+        ForeignKeyConstraint(["automation_envelope_id", "automation_envelope_version", "automation_envelope_hash"], ["policy_versions.policy_id", "policy_versions.policy_version", "policy_versions.policy_hash"], name="fk_policy_activation_executions_exact_envelope", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["automation_envelope_activation_id"], ["policy_activations.policy_activation_id"], name="fk_policy_activation_executions_exact_envelope_activation", ondelete="RESTRICT", use_alter=True),
+        UniqueConstraint("idempotency_key", name="uq_policy_activation_executions_idempotency"),
+        UniqueConstraint("record_hash", name="uq_policy_activation_executions_record_hash"),
+        CheckConstraint("state IN ('pendente','em_execucao','concluida','falhada','cancelada')", name="ck_policy_activation_executions_state"),
+      
+
+====================================================================================================
+5. Grants reais em policy_activations/policy_decisions -- quem tem INSERT (busca ampla)
+====================================================================================================

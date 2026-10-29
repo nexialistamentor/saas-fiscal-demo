@@ -1,0 +1,84 @@
+
+====================================================================================================
+1. Original -- localizado, verificado, intocado
+====================================================================================================
+Original: C:\Users\Oem\Downloads\SOLVERIS_B02_G5_AUTORIZADO_5f59188a48b749e2921217c2f880d73e\POLICY_G5_CANONICAL.json
+sha256 confirmado: 57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa
+
+====================================================================================================
+2. FRONTEIRA do conteudo que gera o policy_hash -- distincao explicita
+====================================================================================================
+O hash e calculado sobre TODO o ficheiro JSON tal como esta em disco
+(confirmado no turno anterior: sha256(bytes do ficheiro) == policy_hash).
+Isto inclui 'policy' (conteudo normativo) E qualquer metadado de topo
+(ex: 'ratification_record_sha256', 'ids', 'identity_proofs', 'subject',
+'schema', 'window_until') -- TUDO conta para o hash, nao so 'policy'.
+Metadados de PREPARACAO que o gerador adiciona (status, test_marker,
+predecessor_policy_hash) NAO existiam no original e por isso alteram
+o hash do sucessor -- o que e esperado e correto: um objeto novo tem
+hash novo. A fronteira e: ficheiro completo = conteudo hashed.
+
+====================================================================================================
+3. Anotacao explicita dos campos historicos copiados (nao atos sobre o sucessor)
+====================================================================================================
+Campos institucionais encontrados (copiados do predecessor): 19
+  gates.explicit_policy_ratification_and_activation
+  origin_evidence.institutional_evidence_bindings.g5_mandate
+  origin_evidence.institutional_evidence_bindings.g5_mandate.id
+  origin_evidence.institutional_evidence_bindings.g5_mandate.sha256
+  roles.ratifier
+  rules.b02_noncredential.sanitization.actors
+  rules.b02_noncredential.security.actors
+  rules.b02_noncredential.security.g5_release.actor
+  rules.b02_noncredential.security.g5_release.documents[0].g4.policy_binding.decision_hash
+  rules.b02_noncredential.security.g5_release.documents[0].g4.policy_binding.decision_id
+  rules.b02_noncredential.security.g5_release.documents[0].sanitization.mandate_binding
+  rules.b02_noncredential.security.g5_release.documents[0].sanitization.mandate_binding.hash
+  rules.b02_noncredential.security.g5_release.documents[0].sanitization.mandate_binding.id
+  rules.b02_noncredential.security.g5_release.documents[1].g4.policy_binding.decision_hash
+  rules.b02_noncredential.security.g5_release.documents[1].g4.policy_binding.decision_id
+  rules.b02_noncredential.security.g5_release.documents[1].sanitization.mandate_binding
+  rules.b02_noncredential.security.g5_release.documents[1].sanitization.mandate_binding.hash
+  rules.b02_noncredential.security.g5_release.documents[1].sanitization.mandate_binding.id
+  segregation_of_duties.ratifier_not_proponent_or_reviewer
+
+Gravado: C:\dev\saas-fiscal-demo-a1\POLICY_G5_CANDIDATO_TESTE_ISOLADO_V2.json
+sha256 do candidato (!= 57982f46...): 380b5c8a0c290b3df76177d560d7eb2eb7a1fc317deb210dd50f2ce88fc9e485
+
+====================================================================================================
+4. Diff completo -- original vs candidato de teste
+====================================================================================================
+--- ORIGINAL_57982f46.json
++++ CANDIDATO_TESTE_body.json
+@@ -1,9 +1,9 @@
+ {
+   "declared_material_applicability": {
+-    "from": "2026-10-22T12:00:00+00:00",
++    "from": "2099-01-01T12:00:00+00:00",
+     "kind": "documentary_persistence_only_not_fiscal_validity",
+     "no_retroactive_authority": true,
+-    "until": "2026-10-23T07:56:30.910737+00:00"
++    "until": "2099-01-02T07:56:30.910737+00:00"
+   },
+   "domain": "SEFA_PR_B02_DOCUMENTAL_G5_PERSISTENCE",
+   "exact_references": {
+
+
+Diff gravado em: C:\dev\saas-fiscal-demo-a1\DIFF_POLICY_G5_ORIGINAL_vs_CANDIDATO_TESTE.diff
+
+====================================================================================================
+5. Propagacao dos instantes -- politica / operador / header, mesma fonte
+====================================================================================================
+Politica  (from/until UTC): 2099-01-01T12:00:00+00:00 / 2099-01-02T07:56:30.910737+00:00
+Header    (from/until UTC): 2099-01-01T12:00:00+00:00 / 2099-01-02T07:56:30.910737+00:00  (decision_hash/id = REQUIRED_REAL_ACT_NOT_PRESENT)
+Operador  (VALID_UNTIL -03:00): 2099-01-02T04:56:30.910737-03:00  (roundtrip->UTC bate: True)
+
+====================================================================================================
+6. Preparacao Git -- candidato para revisao segregada, nunca instalacao
+====================================================================================================
+Comandos a correr manualmente (nao executados por este script):
+  cd C:\dev\saas-fiscal-demo-a1
+  git checkout -b candidate/g5-successor-window-prep
+  git add POLICY_G5_CANDIDATO_SUCESSOR.json POLICY_G5_CANDIDATO_TESTE_ISOLADO_V2.json DIFF_POLICY_G5_ORIGINAL_vs_CANDIDATO_TESTE.diff gerador_v2_para_revisao.py gerador_sucessores_OUTPUT.txt
+  git commit -m 'G5 successor prep: test-window generator + diff, NOT ratified, NOT installed'
+  # NUNCA merge para branch principal antes de revisao segregada + atos institucionais reais

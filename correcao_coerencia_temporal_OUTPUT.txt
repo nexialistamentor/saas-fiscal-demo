@@ -1,0 +1,112 @@
+
+====================================================================================================
+1. Original -- intocado, verificado
+====================================================================================================
+Confirmado: 57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa
+
+====================================================================================================
+2. Auditoria exaustiva de TODOS os campos temporais na cadeia
+====================================================================================================
+Campos temporais encontrados: 8
+  declared_material_applicability.from = 2026-10-22T12:00:00+00:00
+  declared_material_applicability.until = 2026-10-23T07:56:30.910737+00:00
+  rules.b02_noncredential.security.g5_release.documents[0].g4.valid_from = 2026-10-22T07:56:30.910737+00:00
+  rules.b02_noncredential.security.g5_release.documents[0].g4.valid_until = 2026-10-23T07:56:30.910737+00:00
+  rules.b02_noncredential.security.g5_release.documents[1].g4.valid_from = 2026-10-22T07:56:30.910737+00:00
+  rules.b02_noncredential.security.g5_release.documents[1].g4.valid_until = 2026-10-23T07:56:30.910737+00:00
+  rules.b02_noncredential.security.g5_release.from = 2026-10-22T12:00:00+00:00
+  rules.b02_noncredential.security.g5_release.until = 2026-10-23T07:56:30.910737+00:00
+
+====================================================================================================
+3. Classificacao -- sincronizavel vs exige ato real externo
+====================================================================================================
+
+Sincronizaveis diretamente com a proposta operacional: 4
+  declared_material_applicability.from
+  declared_material_applicability.until
+  rules.b02_noncredential.security.g5_release.from
+  rules.b02_noncredential.security.g5_release.until
+
+Exigem ato real externo (NAO sincronizados por este script): 4
+  rules.b02_noncredential.security.g5_release.documents[0].g4.valid_from (atual: 2026-10-22T07:56:30.910737+00:00)
+  rules.b02_noncredential.security.g5_release.documents[0].g4.valid_until (atual: 2026-10-23T07:56:30.910737+00:00)
+  rules.b02_noncredential.security.g5_release.documents[1].g4.valid_from (atual: 2026-10-22T07:56:30.910737+00:00)
+  rules.b02_noncredential.security.g5_release.documents[1].g4.valid_until (atual: 2026-10-23T07:56:30.910737+00:00)
+
+====================================================================================================
+4. Candidato corrigido -- sincronizacao completa + marcacao explicita
+====================================================================================================
+Marcado (nao fabricado): rules.b02_noncredential.security.g5_release.documents[0].g4.valid_from -> REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT  (era: 2026-10-22T07:56:30.910737+00:00)
+Marcado (nao fabricado): rules.b02_noncredential.security.g5_release.documents[0].g4.valid_until -> REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT  (era: 2026-10-23T07:56:30.910737+00:00)
+Marcado (nao fabricado): rules.b02_noncredential.security.g5_release.documents[1].g4.valid_from -> REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT  (era: 2026-10-22T07:56:30.910737+00:00)
+Marcado (nao fabricado): rules.b02_noncredential.security.g5_release.documents[1].g4.valid_until -> REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT  (era: 2026-10-23T07:56:30.910737+00:00)
+
+IMPORTANTE: 'origin_report_binding' (o exame de origem favoravel) de
+cada documento NAO foi alterado -- preservado como evidencia historica,
+distinta da janela de validade operacional que requer ato novo.
+
+Gravado: POLICY_G5_CANDIDATO_V2_COERENTE.json
+SHA-256 novo: fc93605e654325d2bab1ceb75c5600ab2410d7e347b65644d22ccdef30b851a2
+
+====================================================================================================
+5. Diff causal completo -- original vs candidato v2
+====================================================================================================
+--- ORIGINAL_57982f46.json
++++ CANDIDATO_V2_body.json
+@@ -2,6 +2,6 @@
+   "declared_material_applicability": {
+-    "from": "2026-10-22T12:00:00+00:00",
++    "from": "2026-11-03T12:00:00+00:00",
+     "kind": "documentary_persistence_only_not_fiscal_validity",
+     "no_retroactive_authority": true,
+-    "until": "2026-10-23T07:56:30.910737+00:00"
++    "until": "2026-11-04T07:56:30.910737+00:00"
+   },
+@@ -194,4 +194,4 @@
+                 "synthetic_only": false,
+-                "valid_from": "2026-10-22T07:56:30.910737+00:00",
+-                "valid_until": "2026-10-23T07:56:30.910737+00:00",
++                "valid_from": "REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT",
++                "valid_until": "REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT",
+                 "verifier": {
+@@ -282,4 +282,4 @@
+                 "synthetic_only": false,
+-                "valid_from": "2026-10-22T07:56:30.910737+00:00",
+-                "valid_until": "2026-10-23T07:56:30.910737+00:00",
++                "valid_from": "REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT",
++                "valid_until": "REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT",
+                 "verifier": {
+@@ -349,3 +349,3 @@
+           ],
+-          "from": "2026-10-22T12:00:00+00:00",
++          "from": "2026-11-03T12:00:00+00:00",
+           "mode": "LOCAL_CAS_INCORPORATION",
+@@ -353,3 +353,3 @@
+           "synthetic_only": false,
+-          "until": "2026-10-23T07:56:30.910737+00:00"
++          "until": "2026-11-04T07:56:30.910737+00:00"
+         },
+
+
+====================================================================================================
+6. Propagacao operador/header -- mesma fonte unica
+====================================================================================================
+Operador VALID_UNTIL (-03:00): 2026-11-04T04:56:30.910737-03:00
+Header g5_policy_binding janela: from=2026-11-03T12:00:00+00:00 until=2026-11-04T07:56:30.910737+00:00
+Header decision_hash/decision_id: REQUIRED_REAL_ACT_NOT_PRESENT (inalterado desde a preparacao anterior)
+
+====================================================================================================
+7. Ato externo em falta -- identificado, nao fabricado
+====================================================================================================
+Para CADA um dos 2 documentos, falta um ATO REAL que confirme ou renove
+a validade operacional G4 (campo g4.valid_from/valid_until) cobrindo a
+janela proposta (03-04/11). Este ato:
+  - NAO repete o exame de origem (origin_report_binding permanece o mesmo,
+    ja favoravel, preservado sem alteracao)
+  - E uma confirmacao/renovacao de que essa origem favoravel CONTINUA
+    aplicavel/atual na nova janela -- tipicamente um novo registo de
+    'policy_activations.operational_interval' real para a politica G4
+    (05ede0f8...), ou um ato equivalente que Miguel/auditor emita
+    confirmando vigencia atual sem reexaminar a origem do zero.
+  - Sem esse ato, o candidato fica honestamente marcado como incompleto
+    nesses 2 campos -- este script NAO inventa valores para eles.

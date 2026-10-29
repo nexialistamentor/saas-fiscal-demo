@@ -1,0 +1,33 @@
+{
+  "schema": "B02_G5_G4_PREFLIGHT_RESULT_V1",
+  "resultado": "ALVO_CONFIRMADO",
+  "container": {
+    "nome": "solveris-pg17-migration-test",
+    "imagem": "postgres:17.10-trixie",
+    "volume": "4fe15764d8f4c6c2b5aaaad634c0ed54ec42200f1a35edcc3e693da153a0410d",
+    "porta": 55432,
+    "estado_atual": "parado (docker stop confirmado apos diagnostico)",
+    "eliminacao": "NAO ELIMINADO -- e o alvo real confirmado, necessario para os proximos passos (ativacao G4). Condicao do operador ('so se nao for preciso') nao se aplica."
+  },
+  "papel_de_ligacao_real": "solveris_test (descoberto via POSTGRES_USER do container -- nao presumido)",
+  "identidade_confirmada": {"db": "solveris_b02_r4g_test", "session_user": "solveris_test", "current_user": "solveris_test"},
+  "predecessores_confirmados_por_leitura_direta": {
+    "policy": {"policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY", "policy_version": 1, "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a", "domain": "SEFA_PR_B02_DOCUMENTAL", "bate_com_proposta": true},
+    "decision": {"decision_id": "B02-05ede-ratificada-v1", "record_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018", "bate_com_proposta": true, "cadeia_completa_4_eventos": true},
+    "bootstrap": {"bootstrap_authority_record_id": "B02-05ede-bootstrap-v1", "record_hash": "8bbc9af2383860d79ec00221efbe9df1eda0dd9d10b10ca13c775a1ba8ffac17", "independent_audit_result": "favoravel", "validity": "valida", "bate_com_proposta": true}
+  },
+  "permissoes_confirmadas": {
+    "policy_activation_executions": "INSERT: sim",
+    "policy_activations": "INSERT: sim",
+    "policy_activation_generations": "INSERT: sim",
+    "policy_activation_outbox_events": "INSERT: sim",
+    "nota": "Confirma que o papel 'solveris_test' tem, de fato, privilegio de escrita nas 4 tabelas da unidade -- consistente com ser o WRITER esperado por stage_policy_activation(), ainda que o valor literal da constante WRITER no modulo Python nao tenha sido lido/confirmado diretamente nesta sessao."
+  },
+  "divergencia_encontrada_NAO_corrigida": {
+    "achado": "A ativacao historica B02-05ede-activation-v1 tem state='activa' apesar de o seu operational_interval (22-23/10) ja ter terminado (hoje e 29/10 ou posterior).",
+    "implicacao": "project_current_authorization() nao a selecionaria como 'current' (falha start<=now<end), mas tambem nao esta em estado TERMINAL (expirada/desativada/revogada) -- fica num estado 'nao-resolvido', nem ativa-correntemente nem formalmente encerrada.",
+    "relevancia_para_nova_ativacao": "Ao inserir a nova linha B02-05ede-activation-v2 (state='activa', janela 03-04/11), nao ha sobreposicao de intervalo com a v1 -- estruturalmente permitido. Mas o estado 'activa'-mas-expirada da v1 fica por esclarecer -- NAO e corrigido aqui, so relatado, conforme instruido.",
+    "acao": "Nenhuma -- apresentado para decisao/conhecimento, nao alterado."
+  },
+  "proximo_passo": "Com os predecessores confirmados por leitura direta, a secao 3 da proposta (parametros de stage_policy_activation) fica validada contra dados reais, nao hipoteticos. A execucao real continua pendente de decisao institucional -- nao ocorreu nesta missao."
+}

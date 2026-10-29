@@ -1,0 +1,24 @@
+{
+  "schema": "B02_G5_RESERVA_CORRECTION_V1",
+  "correcao_1_hash": {
+    "conclusao": "V3 (commit a8c4be173e43db58c1db8f133840a2ceb7cdc74a) permanece imutavel, confirmado por extracao direta do blob Git em dois commits. O unico hash correto/ratificavel e 8b3b0cc0a880156b5659166b6878de580b1ddafcf245d811545a0f1ba60500d4. O valor 25e2765c... era um artefacto de leitura local (traducao de fim de linha pelo SO), nunca o objeto a ratificar -- corrigido e descartado.",
+    "acao": "Nenhuma alteracao ao V3. Relatorio anterior corrigido por este documento."
+  },
+  "correcao_2_autoridade_g4": {
+    "conclusao_anterior_retratada": "A secao 2 do relatorio anterior (declaracao textual de Miguel como suficiente) estava INCOMPLETA. So examinei o SQL 0064; nao confrontei com require_current_authority/project_current_authorization (app/services/sefa_pr_policy_projection.py), que e o mecanismo real e generico de autoridade corrente, ligado a BD.",
+    "requisitos_reais_nao_satisfeitos_pelo_objeto_anterior": [
+      "linha real de policy_decisions corrente para G4 (05ede0f8...)",
+      "linha real de policy_activations com state='activa' AND start<=now<end",
+      "ligacao de BD real (nao substituivel por texto estatico)",
+      "cadeia de decisao resolvida por previous_decision_id"
+    ],
+    "objeto_substitui_o_anterior": "OBJETO_CONFIRMACAO_VIGENCIA_G4.json RETIRADO -- nao e suficiente nem corrigivel por edicao de texto, porque o requisito real e uma ATIVACAO INSTITUCIONAL, nao uma declaracao.",
+    "identificacao_exata_do_que_falta": {
+      "ato": "Uma nova linha de policy_activations (ou equivalente institucional real) para a politica G4 (policy_type=activation_authority, policy_id=SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY, policy_hash=05ede0f8...), com state='activa' e operational_interval cobrindo a janela proposta (2026-11-03T12:00Z a 2026-11-04T07:56:30.910737Z).",
+      "quem_emite": "Nao o executor -- requer o percurso institucional real (submissao->auditoria->ratificacao->ativacao) que produz uma linha de BD genuina, nao fabricavel por preparacao documental.",
+      "nao_e": "Um novo exame de origem (origin_report_binding permanece o mesmo, favoravel, inalterado). E apenas a RENOVACAO/ATIVACAO da autoridade G4 ja favoravelmente examinada."
+    }
+  },
+  "texto_concreto_para_miguel": "A autoridade G4 para a janela proposta nao pode ser suprida por uma declaracao escrita. Exige uma ativacao institucional real da politica G4 (05ede0f8...) cobrindo 2026-11-03T12:00Z a 2026-11-04T07:56:30.910737Z -- isto e, o mesmo tipo de ato que ja existe no sistema para a politica G5 (submissao, auditoria, ratificacao, ativacao), aplicado desta vez a G4. O exame de origem favoravel nao precisa de ser repetido; so a autoridade operacional precisa de ser renovada.",
+  "nao_fabricado": ["nenhuma linha de BD", "nenhuma ativacao", "nenhuma ratificacao", "nenhum exame novo"]
+}

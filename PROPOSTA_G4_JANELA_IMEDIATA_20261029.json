@@ -1,0 +1,37 @@
+{
+  "schema": "B02_G4_TEMPORAL_DELTA_CANDIDATE_V1",
+  "status": "PROPOSTA_NAO_AUTORIZADA_NAO_EXECUTADA",
+  "candidate_procedure": "executar_ativacao_g4_antecipada_CANDIDATO.py",
+  "candidate_git_blob": "646caf5f62c3520ab965077d2218ba9b4da38437",
+  "predecessor_procedure": "executar_ativacao_g4_real.py",
+  "predecessor_git_blob": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+  "authorization_required_reference": "B02-G4-AUTH-MIGUEL-20261029-02",
+  "original_authorization_unchanged": "B02-G4-AUTH-MIGUEL-20261029-01",
+  "database": "solveris_b02_r4g_test",
+  "writer": "solveris_b02_policy_writer",
+  "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+  "decision_id": "B02-05ede-ratificada-v1",
+  "bootstrap_id": "B02-05ede-bootstrap-v1",
+  "window": {
+    "from": "2026-10-29T13:00:00+00:00",
+    "until": "2026-10-30T13:00:00+00:00"
+  },
+  "ids": {
+    "execution": "B02-05ede-execution-v3",
+    "activation": "B02-05ede-activation-v3",
+    "generation": "B02-05ede-generation-v3",
+    "outbox": "B02-05ede-outbox-v3"
+  },
+  "idempotency_key": "B02-05ede-execution-v3-20261029T130000Z",
+  "attempt_number": 3,
+  "fencing_token": 3,
+  "lease_id": "B02-05ede-manual-lease-v3",
+  "limits": [
+    "not an authorization",
+    "no G4 execution before specific authorization",
+    "no G5 execution",
+    "no migration",
+    "no changes to MEI",
+    "G5 V3 immutable"
+  ]
+}

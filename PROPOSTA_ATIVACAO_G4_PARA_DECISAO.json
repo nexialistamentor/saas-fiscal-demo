@@ -1,0 +1,51 @@
+{
+  "schema": "B02_G5_G4_ACTIVATION_PROCEDURE_PROPOSAL_V1",
+  "status": "PROPOSTA_PARA_REVISAO_NAO_EXECUTADA",
+  "servico_real_identificado": {
+    "funcao": "stage_policy_activation(connection, *, execution, activation, generation_id, outbox_id, provenance)",
+    "localizacao": "app/services/enterprise_b02_policy_activation_atomicity.py",
+    "nota": "Funcao ja existente no sistema -- nao e reconstruida nem substituida. So executa dentro de uma transacao externa (OUTER_TRANSACTION_REQUIRED), nunca comita internamente.",
+    "modelos_de_apoio": "PolicyActivationGeneration/PolicyActivationOutboxEvent vivem em app/models_policy_activation_atomicity.py (confirmado pelo import real dentro da propria funcao)."
+  },
+  "alvo_exato": {
+    "policy_type": "activation_authority",
+    "policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY",
+    "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+    "domain": "SEFA_PR_B02_DOCUMENTAL"
+  },
+  "autorizacao_ja_existente_reutilizada_sem_alteracao": [
+    {"tipo": "policy_versions", "id": "05ede0f8... (ja na BD)", "acao": "nenhuma -- so leitura"},
+    {"tipo": "policy_decisions (ratificada)", "id": "B02-05ede-ratificada-v1", "record_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018", "acao": "nenhuma -- reutilizada tal como esta"},
+    {"tipo": "bootstrap_authority_records", "id": "B02-05ede-bootstrap-v1", "acao": "nenhuma -- reutilizado tal como esta (independent_audit_result ja 'favoravel', validity ja 'valida')"},
+    {"tipo": "exames de origem G4", "ids": ["origin_report_binding 09754ecef2fe0967...", "63435196c888e42d..."], "acao": "nenhuma -- preservados, nao repetidos"}
+  ],
+  "autorizacao_ainda_necessaria_novas_linhas": [
+    {
+      "tipo": "policy_activation_executions",
+      "campos_obrigatorios": {"state": "concluida", "execution_mode": "manual", "policy_decision_id": "B02-05ede-ratificada-v1", "policy_decision_record_hash": "4c5c3d2f...", "bootstrap_authority_record_id": "B02-05ede-bootstrap-v1", "policy_id/version/hash": "05ede0f8..."},
+      "quem_cria": "escritor dedicado, isolado (sessao com identidade exata database+session_user+current_user igual ao writer configurado; sem flags de superuser/createdb/createrole/replication/bypassrls/inherit; sem memberships de role)"
+    },
+    {
+      "tipo": "policy_activations",
+      "campos_obrigatorios": {"state": "activa", "domain": "SEFA_PR_B02_DOCUMENTAL (tem de bater com policy.domain)", "operational_interval.from": "2026-11-03T12:00:00+00:00", "operational_interval.until": "2026-11-04T07:56:30.910737+00:00"},
+      "nota": "janela identica a proposta G5 ja em revisao -- mesma fonte, para que clock_timestamp() no momento de uso esteja dentro de ambas"
+    },
+    {"tipo": "policy_activation_generations", "acao": "criada por stage_policy_activation() na mesma transacao"},
+    {"tipo": "policy_activation_outbox_events", "acao": "criada por stage_policy_activation() na mesma transacao"}
+  ],
+  "verificacao_anterior": [
+    "Confirmar identidade exata do writer dedicado (database/session_user/current_user) antes de abrir a transacao",
+    "Confirmar que a ativacao G4 historica (22-23/10) nao esta a bloquear por sobreposicao de intervalo -- improvavel (janelas nao se sobrepoem no tempo) mas a verificar no estado real da BD antes de proceder",
+    "Confirmar que o decision_record_hash e bootstrap_authority_record_id citados continuam exatos (sem alteracao desde a ratificacao original)"
+  ],
+  "verificacao_posterior": [
+    "Confirmar que stage_policy_activation() devolveu os hashes de servidor esperados",
+    "Confirmar que require_current_authority()/project_current_authorization() resolvem 'current' corretamente para o novo binding, antes de qualquer uso efetivo pela via documental"
+  ],
+  "interrupcao_e_recuperacao": {
+    "durante": "stage_policy_activation nunca comita internamente -- falha a meio nao deixa nada persistido (transacao externa controla o commit)",
+    "apos_falha": "reentrega com os MESMOS valores exatos e idempotente (re-validada por hash); input alterado e tratado como conflito explicito, nunca sobreposto silenciosamente (nota da propria docstring)"
+  },
+  "nao_fabricado_nesta_proposta": ["nenhuma linha criada", "nenhuma transacao aberta", "nenhuma escrita protegida", "nenhum novo exame de origem", "nenhuma nova ratificacao"],
+  "distincao_explicita": "Isto e RENOVACAO DA AUTORIDADE OPERACIONAL (nova ativacao), nao um novo exame nem uma nova ratificacao. A decisao e o bootstrap ja ratificados permanecem os mesmos."
+}

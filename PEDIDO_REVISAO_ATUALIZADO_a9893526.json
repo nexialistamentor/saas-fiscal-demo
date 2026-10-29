@@ -1,0 +1,17 @@
+{
+  "schema": "B02_G5_REVIEWER_REQUEST_UPDATE_V1",
+  "objeto_para_revisao": {
+    "candidato_sha256": "fc93605e654325d2bab1ceb75c5600ab2410d7e347b65644d22ccdef30b851a2",
+    "commit": "a9893526",
+    "branch": "candidate/g5-successor-window-prep",
+    "nota": "O hash fc93605e... identifica esta versao COM placeholders nos campos G4. NAO sera o hash final apos preenchimento -- um novo hash sera gerado e submetido depois."
+  },
+  "a_revisao_pode_comecar_agora": true,
+  "nao_precisa_esperar_pelo": ["ato G4 de confirmacao de vigencia", "preenchimento dos 4 campos pendentes"],
+  "pedido_ao_revisor_apos_aceitar_o_mandato": [
+    "1. Apreciar a correcao temporal G5 (4 campos sincronizados: declared_material_applicability + g5_release, mesma fonte, header/operador propagados) e confirmar que os exames historicos (origin_report_binding dos 2 documentos) permanecem preservados sem alteracao.",
+    "2. Determinar, pelo contrato (SQL 0064/0065) e pelos verificadores efetivos -- NAO por presuncao -- qual ato e quais vinculos comprovam a validade operacional G4 exigida pelos 4 campos marcados REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT. Uma linha isolada em policy_activations pode nao ser suficiente -- confirmar pelo codigo real, nao por analogia.",
+    "3. Classificar o desenho como favoravel, desfavoravel ou inconclusivo -- separando explicitamente condicoes tecnicas (o que o codigo exige) de atos institucionais ainda pendentes (o que falta Miguel/auditor emitir)."
+  ],
+  "aceitacao_do_revisor": "continua necessaria e pendente -- nao fabricada aqui"
+}

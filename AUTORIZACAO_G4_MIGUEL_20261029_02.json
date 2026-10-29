@@ -1,0 +1,33 @@
+{
+  "actor": "Miguel",
+  "consent_literal": "AUTORIZO G4 OUTUBRO B02-G4-AUTH-MIGUEL-20261029-02",
+  "consent_utc": "2026-10-29T13:47:45.811390+00:00",
+  "database": "solveris_b02_r4g_test",
+  "idempotency_key": "B02-05ede-execution-v3-20261029T130000Z",
+  "ids": {
+    "activation": "B02-05ede-activation-v3",
+    "execution": "B02-05ede-execution-v3",
+    "generation": "B02-05ede-generation-v3",
+    "outbox": "B02-05ede-outbox-v3"
+  },
+  "limited_to": "G4 four-record atomic unit only",
+  "original_unchanged_blob": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+  "other_operations_not_authorized": [
+    "G5",
+    "migrations",
+    "signing",
+    "MEI"
+  ],
+  "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+  "procedure": "executar_ativacao_g4_antecipada_CANDIDATO.py",
+  "procedure_git_blob": "646caf5f62c3520ab965077d2218ba9b4da38437",
+  "reference": "B02-G4-AUTH-MIGUEL-20261029-02",
+  "schema": "B02_G4_OCTOBER_OPERATOR_EXPLICIT_AUTH_V1",
+  "source": "confirmacao_explicita_no_terminal_Windows",
+  "status": "AUTORIZADO_PELO_OPERADOR_LOCAL",
+  "window": {
+    "from": "2026-10-29T13:00:00+00:00",
+    "until": "2026-10-30T13:00:00+00:00"
+  },
+  "writer": "solveris_b02_policy_writer"
+}

@@ -1,0 +1,51 @@
+
+====================================================================================================
+1. Carregar candidato v2 (a9893526) -- ja no repo
+====================================================================================================
+
+====================================================================================================
+2. Preencher os 4 campos g4 -- proposta, nao ato consumado
+====================================================================================================
+documents[0].g4.valid_from:  REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT -> 2026-11-03T12:00:00+00:00
+documents[0].g4.valid_until: REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT -> 2026-11-04T07:56:30.910737+00:00
+documents[0].g4.origin_report_binding: INALTERADO (09754ecef2fe0967...)
+documents[1].g4.valid_from:  REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT -> 2026-11-03T12:00:00+00:00
+documents[1].g4.valid_until: REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT -> 2026-11-04T07:56:30.910737+00:00
+documents[1].g4.origin_report_binding: INALTERADO (63435196c888e42d...)
+
+Gravado: POLICY_G5_CANDIDATO_V3_COMPLETO.json
+SHA-256 novo (candidato completo, ainda nao ratificado): 8b3b0cc0a880156b5659166b6878de580b1ddafcf245d811545a0f1ba60500d4
+
+====================================================================================================
+3. Diff -- v2 (placeholders) vs v3 (preenchido)
+====================================================================================================
+--- V2_fc93605e_placeholders.json
++++ V3_preenchido.json
+@@ -3,5 +3,5 @@
+   "__AVISO_VALIDADE_G4__": "Os campos g4.valid_from/valid_until por documento estao marcados REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT. Isto NAO e repeticao do exame de origem (que permanece favoravel e preservado via origin_report_binding, inalterado). E a ausencia de um ato real de confirmacao/atualizacao de validade operacional G4 cobrindo a janela proposta. Ver secao 5 do relatorio para o que falta exatamente.",
+-  "status": "CANDIDATO_COM_LACUNA_G4_IDENTIFICADA_SEM_EFICACIA_OPERACIONAL",
++  "status": "CANDIDATO_COMPLETO_AGUARDA_RATIFICACAO_NAO_RATIFICADO",
+   "predecessor_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+-  "supersedes_blocked_candidate": "fd5920cd3268d12d1c0e78e9b50fca9fd1ef102cd937a6e377a3064d782631ab",
++  "supersedes_blocked_candidate": "fc93605e654325d2bab1ceb75c5600ab2410d7e347b65644d22ccdef30b851a2",
+   "policy_candidate_body": {
+@@ -200,4 +200,4 @@
+                   "synthetic_only": false,
+-                  "valid_from": "REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT",
+-                  "valid_until": "REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT",
++                  "valid_from": "2026-11-03T12:00:00+00:00",
++                  "valid_until": "2026-11-04T07:56:30.910737+00:00",
+                   "verifier": {
+@@ -288,4 +288,4 @@
+                   "synthetic_only": false,
+-                  "valid_from": "REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT",
+-                  "valid_until": "REQUIRES_CURRENT_G4_VALIDITY_ACT_NOT_PRESENT",
++                  "valid_from": "2026-11-03T12:00:00+00:00",
++                  "valid_until": "2026-11-04T07:56:30.910737+00:00",
+                   "verifier": {
+@@ -404,3 +404,4 @@
+     }
+-  }
++  },
++  "__AVISO_G4_PREENCHIDO__": "Os valores g4.valid_from/until acima sao PROPOSTA do proponente, nao ato institucional consumado. A sua legitimidade depende inteiramente da ratificacao de Miguel sobre este policy_hash exato -- antes disso, nao tem efeito."
+ }

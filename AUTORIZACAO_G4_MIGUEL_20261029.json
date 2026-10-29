@@ -1,0 +1,19 @@
+{
+  "schema": "B02_G5_G4_INSTITUTIONAL_AUTHORIZATION_RECORD_V1",
+  "reference": "B02-G4-AUTH-MIGUEL-20261029-01",
+  "ato": "Autorizacao expressa, em conversa, por Miguel, para execucao da unidade G4 de 4 registos",
+  "texto_literal": "AUTORIZO a execucao da unidade G4 acima, com os quatro registos, alvo, writer, politica e janela indicados. Esta mensagem e a autorizacao expressa; preserva-a e associa-lhe uma referencia documental rastreavel.",
+  "objeto_autorizado": {
+    "procedimento": "executar_ativacao_g4_real.py",
+    "commit": "16abd61b0792b8564d708cbc525b354619c14a7f",
+    "blob_sha": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+    "pacote_revisor": "APRESENTACAO_REVISOR_ATIVACAO_G4.json (commit a91bd50b, parecer favoravel)",
+    "database": "solveris_b02_r4g_test", "writer": "solveris_b02_policy_writer",
+    "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+    "ids": {"execution": "B02-05ede-execution-v2", "activation": "B02-05ede-activation-v2",
+            "generation": "B02-05ede-generation-v2", "outbox": "B02-05ede-outbox-v2"},
+    "window": {"from": "2026-11-03T12:00:00+00:00", "until": "2026-11-04T07:56:30.910737+00:00"}
+  },
+  "limites_explicitos_do_ato": ["nao autoriza execucao G5", "nao autoriza instalacao de migrations", "nao autoriza alteracao ao MEI"],
+  "status": "AUTORIZADO_AGUARDA_EXECUCAO"
+}

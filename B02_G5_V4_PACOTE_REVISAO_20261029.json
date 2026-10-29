@@ -1,0 +1,104 @@
+{
+  "schema": "SOLVERIS_B02_G5_V4_REVIEW_SUBMISSION_V1",
+  "status": "PARA_REVISAO_SEGREGADA_NAO_RATIFICADO",
+  "source_branch": "candidate/g5-successor-window-prep",
+  "g4_record": "B02_G4_RESULTADO_RECONCILIADO_OUTUBRO_20261029.json",
+  "g4_transaction_id": "926",
+  "g4_activation_id": "B02-05ede-activation-v3",
+  "g4_activation_hash": "504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4",
+  "g5_candidate": "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V4_PARA_REVISAO.json",
+  "g5_candidate_sha256_reported": "2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e",
+  "g5_candidate_git_blob": "b8538623a53ff4f75a78f44454751259ccfb943e",
+  "g5_diff": "DIFF_G5_V3_PARA_SUCESSOR_OUTUBRO_V4.diff",
+  "window_utc": {
+    "from": "2026-10-29T13:00:00+00:00",
+    "until": "2026-10-30T13:00:00+00:00"
+  },
+  "static_scope_review": {
+    "changed_json_leaves": 15,
+    "changed_operational_references": 12,
+    "changed_descriptive_fields": 3,
+    "other_changes": 0,
+    "documents": 2
+  },
+  "physical_g5_gates": [
+    "segregated_reviewer_acceptance",
+    "current_method_and_sanitization_proof",
+    "exact_sql_0064_0065_runtime_native_library_build_and_signature",
+    "real_pg_installer_authority",
+    "independent_postgres_tests_and_commit_proof",
+    "G5_policy_ratification_and_activation",
+    "real_two_document_transaction_evidence"
+  ],
+  "limits": [
+    "G4 completed only",
+    "G5 not signed",
+    "G5 not active",
+    "B02 not closed",
+    "B03 not released"
+  ],
+  "physical_inventory_observed_20261029": {
+    "source": "Windows PostgreSQL read-only inventory, confirmed by operator",
+    "target": "solveris_b02_r4g_test",
+    "postgres_version": "17.10 (Debian 17.10-1.pgdg13+1)",
+    "writer": "solveris_b02_policy_writer",
+    "alembic": "0063_adr020_policy_activation_atomicity",
+    "g5_functions_absent": [
+      "b02g5_assert_signature",
+      "b02g5_native_profile",
+      "b02g5_precommit_validate",
+      "b02_g5_assert_one_shot"
+    ],
+    "one_shot_table_present": false,
+    "exit_code": 0,
+    "container_restored_stopped": true
+  },
+  "native_artifact_source_review": {
+    "source": "previous isolated compilation candidate COMPILAR_CANDIDATO_ISOLADO_SEM_INSTALAR.ps1 recovered from user Library",
+    "status": "HISTORICAL_CANDIDATE_NOT_APPROVED_FOR_CURRENT_WINDOW",
+    "c_sources_sha256": {
+      "b02_g5_native_signature.c": "83fbffa030ed861c4f7e70f654db5179574d986e0cab8f21cf657054ceb4b669",
+      "b02_precommit_guard.c": "ea0f49d9d686bb9dc33a041b85473f734b41b76236411ce4f7942f47538ad278",
+      "b02_g5_approved_roots.h": "ff513972cd19d123af9d1a85b1b57f76c0935c18c5bc172b07722972bbe254cd"
+    },
+    "warning": "Historical root header references window 2026-10-22 to 2026-10-23; cannot infer suitability for G4/G5 current window. Installation requires current roots, reviewed artifact hash and distinct operational authority.",
+    "physical_binary_presence": "G5_NATIVE_ABSENT_CONFIRMED_20261029"
+  },
+  "next_gate": "Independent reviewer acceptance and causal opinion on exact G5 V4, 0064, 0065 and native source/root expiration; then Miguel's explicit policy/root decision. Do not repeat physical inventory or G4.",
+  "g5_release_status": "G4_RECONCILED_G5_REVIEW_AND_REAL_NATIVE_INSTALL_NOT_YET_AUTHORIZED",
+  "source_recovery_20261029": {
+    "verification": "All 3 original byte SHA-256 checks matched original Library payload; files now in native/g5/historical_20261022",
+    "repo_manifest": "native/g5/historical_20261022/RECOVERY_MANIFEST.json",
+    "precommit_c_sha256": "ea0f49d9d686bb9dc33a041b85473f734b41b76236411ce4f7942f47538ad278",
+    "signature_c_sha256": "83fbffa030ed861c4f7e70f654db5179574d986e0cab8f21cf657054ceb4b669",
+    "expired_header_sha256": "ff513972cd19d123af9d1a85b1b57f76c0935c18c5bc172b07722972bbe254cd",
+    "old_header_valid_until_utc": "2026-10-23T07:56:30.910737+00:00",
+    "old_header_g5_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+    "new_root_status": "NOT_AUTHORIZED_FOR_CURRENT_G5_V4"
+  },
+  "corrected_engineering_dependency": "The protected one-shot reservation is present as isolated SQL candidate in migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py, not in the PostgreSQL catalog. An older pre-0065 report claiming total absence is historical, not current evidence.",
+  "current_institutional_blockers": [
+    "Independent reviewer must accept mandate for exact G5 V4 SHA256 2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e and provide own evidence, not inherited reviewer acceptance",
+    "Miguel must decide actual G5 policy V4, temporal window and authorized release; current V4 is not ratified or active",
+    "Signing root must be current, non-revoked and bound to exact ratified G5 policy/decision/activation and physical target; old C header expired",
+    "Native library candidate must be separately built/verified from approved roots, and installation of 0064 and 0065 requires specific authority and recovery proof",
+    "Signed two-document transaction must be executed once and independently reconciled"
+  ],
+  "technical_internal_review": "B02_G5_V4_EXAME_TECNICO_CAUSAL_20261029.md",
+  "latest_physical_native_observation": {
+    "date": "2026-10-29",
+    "result": "G5_NATIVE_ABSENT",
+    "container": "RESTORED_STOPPED",
+    "claim": "Existing protected PG17.10 has no native library at /usr/lib/postgresql/17/lib/b02_g5_native_REAL_CLOSED.so"
+  },
+  "review_workflow": {
+    "github_pr": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26",
+    "pr_number": 26,
+    "base": "work/fiscal-assumptions-c0",
+    "head": "candidate/g5-successor-window-prep",
+    "stage": "OPEN_READY_FOR_REVIEW_NOT_MERGED",
+    "independent_reviewer_assigned": false,
+    "independent_review_status": "NOT_SUBMITTED",
+    "limitation": "PR readiness is not a reviewer mandate, technical approval, Miguel ratification, operational G5 authority or release"
+  }
+}

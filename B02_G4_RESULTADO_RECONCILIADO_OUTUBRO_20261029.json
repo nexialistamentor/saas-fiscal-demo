@@ -1,0 +1,23 @@
+{
+  "authorization_file": "AUTORIZACAO_G4_MIGUEL_20261029_02.json",
+  "authorization_reference": "B02-G4-AUTH-MIGUEL-20261029-02",
+  "candidate_procedure_blob": "646caf5f62c3520ab965077d2218ba9b4da38437",
+  "evidence": "independent read-only four-record reconciliation; transaction IDs equal",
+  "result": {
+    "activation_hash": "504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4",
+    "activation_id": "B02-05ede-activation-v3",
+    "execution_hash": "35581980f6a2de1bb6c878880e98c834145914572f78aa386dbc554c52dd47bf",
+    "execution_id": "B02-05ede-execution-v3",
+    "generation_hash": "cb52fafaa087a94f6af47f08b2ca06efd3f948581ab8892305d140895b4883ee",
+    "generation_id": "B02-05ede-generation-v3",
+    "outbox_hash": "11b3632c9e3ea7bd483387847fb7d9f7f41d6246dc41391b4b2b690567ec40a2",
+    "outbox_id": "B02-05ede-outbox-v3",
+    "outbox_payload_hash": "c63f2aa1be3364643c92a4fad2bc75353a7826484381453fd630cbf34a99dbe0",
+    "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+    "scope_hash": "22be95274e994015c7be2b0e988cf7ac6d1427cf932cd1387414a4f008451578",
+    "status": "FOUR_RECORDS_RECONCILED",
+    "transaction_id": "926"
+  },
+  "schema": "B02_G4_OCTOBER_FOUR_RECORDS_RECONCILED_V1",
+  "transport": "Windows Python localhost ephemeral -> docker exec -> PostgreSQL internal loopback TCP"
+}
