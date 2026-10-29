@@ -1,0 +1,9 @@
+{
+  "execution_id": "B02-05ede-execution-v3",
+  "idempotency_key": "B02-05ede-execution-v3-20261029T130000Z",
+  "procedure_git_blob": "646caf5f62c3520ab965077d2218ba9b4da38437",
+  "reference": "B02-G4-AUTH-MIGUEL-20261029-02",
+  "schema": "B02_G4_OCTOBER_ONE_SHOT_ATTEMPT_V1",
+  "started_utc": "2026-10-29T13:47:45.825395+00:00",
+  "status": "ATTEMPT_RESERVED_BEFORE_ANY_INSERT_NO_AUTOMATIC_RETRY"
+}
