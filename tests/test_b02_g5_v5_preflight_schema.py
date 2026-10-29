@@ -98,5 +98,50 @@ class ReadOnlyPreflightTests(unittest.TestCase):
             self.mod.inspect(self.engine)
 
 
+    def test_acl_inventory_read_only_reports_actual_denial(self):
+        names = ("policy_versions", "policy_decisions", "bootstrap_authority_records",
+                 "policy_activation_executions", "policy_activations",
+                 "policy_activation_generations", "policy_activation_outbox_events")
+        rows = [{"table_name": n, "owner": "postgres", "can_select": True,
+                 "can_insert": n != "policy_versions", "can_update": False,
+                 "can_delete": False} for n in names]
+        self.conn.execute.side_effect = [
+            Result(None),
+            Result((self.mod.DB, "solveris_b02_policy_writer",
+                    "solveris_b02_policy_writer", self.mod.REV)),
+            Result(rows),
+        ]
+        result = self.mod._acl_inventory(self.engine)
+        self.assertEqual(result["status"], "PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS")
+        self.assertEqual(len(result["tables"]), 7)
+        self.assertFalse(next(x["can_insert"] for x in result["tables"]
+                              if x["table_name"] == "policy_versions"))
+        self.assertEqual(result["writes"], 0)
+        self.assertEqual(result["grants"], 0)
+        sql = "\\n".join(str(x.args[0]) for x in self.conn.execute.call_args_list)
+        self.assertIn("SET TRANSACTION READ ONLY", sql)
+        self.assertIn("pg_get_userbyid", sql)
+        self.conn.rollback.assert_called_once()
+
+    def test_acl_inventory_rejects_missing_table(self):
+        self.conn.execute.side_effect = [
+            Result(None),
+            Result((self.mod.DB, "solveris_b02_policy_writer",
+                    "solveris_b02_policy_writer", self.mod.REV)),
+            Result([{"table_name": "policy_versions", "owner": "postgres"}]),
+        ]
+        with self.assertRaisesRegex(RuntimeError, "STOP_ACL_TABLES_MISSING"):
+            self.mod._acl_inventory(self.engine)
+
+    def test_acl_inventory_rejects_wrong_identity_before_catalog(self):
+        self.conn.execute.side_effect = [
+            Result(None),
+            Result((self.mod.DB, "postgres", "postgres", self.mod.REV)),
+        ]
+        with self.assertRaisesRegex(RuntimeError, "STOP_ACL_IDENTITY_REVISION"):
+            self.mod._acl_inventory(self.engine)
+        self.assertEqual(self.conn.execute.call_count, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
