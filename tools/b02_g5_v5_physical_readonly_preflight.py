@@ -77,7 +77,9 @@ WHERE policy_id='SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE' AND policy_version=2;
 ROLLBACK;"""
         result=subprocess.run(["docker","exec","-i","solveris-pg17-migration-test",
             "psql","-X","-v","ON_ERROR_STOP=1","-U","solveris_b02_writer",
-            "-d",DB,"-At"],input=sql,text=True,capture_output=True,check=True)
+            "-d",DB,"-At"],input=sql,text=True,capture_output=True)
+        if result.returncode:
+            raise RuntimeError("STOP_DOCKER_SQL_READ_ONLY: "+result.stderr.strip())
         lines=result.stdout.strip().splitlines()
         if len(lines)!=9:raise RuntimeError("STOP_DOCKER_OUTPUT_SHAPE")
         if lines[0]!="BEGIN" or lines[1]!=DB+"|solveris_b02_writer|"+REV:
