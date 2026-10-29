@@ -27,12 +27,12 @@ class AtomicCallerTests(TestCase):
         with patch.object(mod, "stage", return_value={"reused": False}), patch.object(mod, "reconcile_unit", return_value="ABSENT") as recon:
             result = mod.run(engine, REQUEST, commit=False)
         self.assertEqual(result["status"], "ROLLBACK_RECONCILED")
-        recon.assert_called_once()
+        self.assertEqual(recon.call_count, 2)
 
     def test_rollback_probe_detects_persisted_records(self):
         engine = self.engine()
-        with patch.object(mod, "stage", return_value={}), patch.object(mod, "reconcile_unit", return_value="PARTIAL_CONFLICT"):
-            with self.assertRaisesRegex(mod.Stop, "ROLLBACK_NOT_ABSENT"):
+        with patch.object(mod, "stage", return_value={}), patch.object(mod, "reconcile_unit", side_effect=["ABSENT","PARTIAL_CONFLICT"]):
+            with self.assertRaisesRegex(mod.Stop, "ROLLBACK_CHANGED_BASELINE"):
                 mod.run(engine, REQUEST, commit=False)
 
     def test_intermediate_failure_does_not_retry(self):
@@ -45,7 +45,7 @@ class AtomicCallerTests(TestCase):
     def test_unknown_commit_ack_does_not_retry(self):
         engine = self.engine()
         engine.begin.return_value.__exit__.side_effect = OSError("unknown commit ACK")
-        with patch.object(mod, "stage", return_value={"reused": False}) as stage, patch.object(mod, "reconcile_unit", return_value="PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED"):
+        with patch.object(mod, "stage", return_value={"reused": False}) as stage, patch.object(mod, "reconcile_unit", side_effect=["ABSENT","PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED"]):
             with self.assertRaisesRegex(mod.Stop, "TRANSACTION_FAILED_RECONCILIATION_PRESENT_FOUR_RECORDS"):
                 mod.run(engine, REQUEST, commit=True)
         stage.assert_called_once()
@@ -53,7 +53,7 @@ class AtomicCallerTests(TestCase):
     def test_unknown_commit_and_unavailable_reconciliation(self):
         engine = self.engine()
         engine.begin.return_value.__exit__.side_effect = OSError("unknown commit ACK")
-        with patch.object(mod, "stage", return_value={}) as stage, patch.object(mod, "reconcile_unit", side_effect=OSError("db unavailable")):
+        with patch.object(mod, "stage", return_value={}) as stage, patch.object(mod, "reconcile_unit", side_effect=["ABSENT",OSError("db unavailable")]):
             with self.assertRaisesRegex(mod.Stop, "UNKNOWN_STOP_NO_RETRY"):
                 mod.run(engine, REQUEST, commit=True)
         stage.assert_called_once()
@@ -71,6 +71,21 @@ class AtomicCallerTests(TestCase):
             result = mod.run(engine, REQUEST, commit=True)
         self.assertTrue(result["staged"]["reused"])
         stage.assert_called_once()
+
+    def test_rollback_reused_existing_unit_preserves_baseline(self):
+        engine = self.engine()
+        status = "PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED"
+        with patch.object(mod, "stage", return_value={"reused": True}), patch.object(mod, "reconcile_unit", return_value=status):
+            result = mod.run(engine, REQUEST, commit=False)
+        self.assertEqual(result["status"], "ROLLBACK_RECONCILED")
+        self.assertTrue(result["staged"]["reused"])
+
+    def test_partial_baseline_blocks_staging(self):
+        engine = self.engine()
+        with patch.object(mod, "stage") as stage, patch.object(mod, "reconcile_unit", return_value="PARTIAL_CONFLICT"):
+            with self.assertRaisesRegex(mod.Stop, "PREEXISTING_UNIT_CONFLICT"):
+                mod.run(engine, REQUEST, commit=False)
+        stage.assert_not_called()
 
     def test_stage_rejects_incomplete_request(self):
         conn = MagicMock()
