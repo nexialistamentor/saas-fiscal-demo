@@ -1,0 +1,41 @@
+{
+  "schema": "B02_G5_G4_ACTIVATION_REVIEWER_PACKAGE_V1",
+  "estado": "PREFLIGHT_FISICO_CONCLUIDO_ESCRITA_NAO_EXECUTADA",
+  "cadeia_de_custodia": {
+    "commit_auditado": "16abd61b0792b8564d708cbc525b354619c14a7f",
+    "script_blob_sha": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+    "verificacao": "git diff vazio entre 0db2fd63..16abd61b para o script; hash local confirma byte a byte -- nenhuma alteracao ao procedimento desde a revisao linha a linha ja feita"
+  },
+  "o_que_ja_foi_apreciado_nesta_sessao_nao_repetir": [
+    "leitura completa do ficheiro (preflight, reconcile, independent_read, run, main) -- sem bandeiras vermelhas",
+    "confirmacao real na BD: papel solveris_b02_policy_writer existe, sem flags admin, 0 memberships, INSERT nas 4 tabelas",
+    "confirmacao real na BD: politica/decisao/bootstrap G4 exatos, sem limite temporal proprio que bloqueie Novembro",
+    "confirmacao no codigo real: caminho de autorizacao bootstrap_authority_record nao depende da ativacao historica expirada",
+    "import canonical_bytes confirmado real em enterprise_b02_noncredential_acquisition.py",
+    "gestao de COMMIT/ROLLBACK e reconciliacao de ACK perdido (3 leituras independentes, nunca repeticao de INSERT) revista linha a linha",
+    "DRY_RUN_STATIC_ONLY obtido e correto nesta sessao (sem DSN)"
+  ],
+  "o_que_e_novo_desde_a_ultima_apreciacao_-_verificar_so_isto": [
+    {
+      "item": "DRY_RUN_DB_READ_ONLY_PASS obtido fisicamente no Windows de Miguel (nao nesta sessao)",
+      "evidencia_citada": "9 verificacoes PASS (IDENTITY, ROLE, TABLE_PERMISSIONS, PREDECESSOR_READ, SQL_FUNCTIONS, POLICY, DECISION, BOOTSTRAP, IDS_AVAILABLE); PYTHON_EXIT=0; CONTAINER=RESTORED_STOPPED",
+      "nota_para_o_revisor": "Esta execucao fisica NAO foi presenciada por este executor -- a evidencia e relatada no handoff, nao observada diretamente aqui. A cadeia de custodia do SCRIPT esta confirmada (hash identico); a cadeia de custodia da EXECUCAO fisica (terminal de Miguel) depende da integridade do relato do handoff."
+    },
+    {
+      "item": "Mecanismo de ligacao usado: socket interno do container (loopback efemero via docker exec), nao TCP publicado no Windows",
+      "consistencia": "Compativel com pg_hba.conf ja lido nesta sessao: 'local all all trust' cobre ligacoes por socket Unix dentro do container, sem exigir password -- explica por que este caminho nao precisou da credencial que nao foi recuperada por nenhuma via de leitura tentada."
+    }
+  ],
+  "procedimento_exato_para_a_escrita_das_4_linhas": {
+    "alvo": {"database": "solveris_b02_r4g_test", "container": "solveris-pg17-migration-test", "porta_publicada": 55432, "writer": "solveris_b02_policy_writer"},
+    "servico_chamado": "app.services.enterprise_b02_policy_activation_atomicity.stage_policy_activation() -- reutilizado, nunca alterado",
+    "autorizacao": {"basis_type": "bootstrap_authority_record", "bootstrap_id": "B02-05ede-bootstrap-v1", "bootstrap_record_hash": "8bbc9af2383860d79ec00221efbe9df1eda0dd9d10b10ca13c775a1ba8ffac17"},
+    "predecessores": {"policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a", "decision_id": "B02-05ede-ratificada-v1", "decision_record_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018"},
+    "ids_novos": {"execution_id": "B02-05ede-execution-v2", "activation_id": "B02-05ede-activation-v2", "generation_id": "B02-05ede-generation-v2", "outbox_id": "B02-05ede-outbox-v2", "idempotency_key": "B02-05ede-execution-v2-20261103T120000Z"},
+    "janela": {"from": "2026-11-03T12:00:00+00:00", "until": "2026-11-04T07:56:30.910737+00:00"},
+    "transacao": "externa, gerida pelo chamador; stage_policy_activation() nunca comita internamente",
+    "reconciliacao_de_sucesso": "so apos leitura independente READ ONLY das 4 linhas, seus vinculos, hashes, manifesto, conteudo, payload e identidade transacional -- status FOUR_RECORDS_RECONCILED",
+    "reconciliacao_de_ack_perdido": "3 leituras independentes; se inconclusivas, STOP -- nunca retry de INSERT"
+  },
+  "pedido_ao_revisor": "Apreciar SO os 2 itens novos listados acima (execucao fisica relatada + mecanismo de ligacao), dado que todo o resto ja foi revisto linha a linha e confirmado por leitura direta nesta sessao. Classificar: favoravel, desfavoravel, ou inconclusivo -- distinguindo condicao tecnica de ato institucional pendente."
+}
