@@ -3,6 +3,25 @@
 **Estado: PROPOSTA CONSOLIDADA, NÃO EMITIDA, SEM AUTORIZAÇÃO DE INSTALAÇÃO OU OPERAÇÃO.**
 **Objeto de revisão fixo:** PR #26, commit `909fd78b2db6add6727f834a0abf189511eddf47`. Esta entrega é posterior ao objeto fixo, não modifica o V4, não constitui revisão GitHub independente e não é aprovação criptográfica/física.
 
+## Adenda causal obrigatória — colisão `policy_version=1` confirmada fisicamente
+
+**Observação PostgreSQL somente leitura, 29/10/2026:** na base `solveris_b02_r4g_test`, `policy_versions` já possui `policy_id=SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE`, `policy_version=1`, `policy_hash=57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa`, `record_hash=705c7e2879abb37069f65eb39b544aa3028fc4b0dea282e60d3dd1628046171d`. `RUNNER_EXIT=0`, sem alterações; a versão 1 não pode ser reinserida porque `app/models.py:PolicyVersion` exige unicidade `(policy_id,policy_version)`. Trata-se de falha de identidade objetiva não abrangida pelo parecer V4: **não ratificar nem tentar inserir o V4 com versão 1.**
+
+**Correção mínima preparada, sem substituir o V4 revisto:** `POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json`, com uma única alteração semântica ao V4 congelado: `$.policy_candidate_body.policy_version: 1 → 2`. Não alterar os dois `g4.policy_binding.policy_version=1` (referem-se à política G4 distinta), nem testes, PDFs, SQL 0064/0065, raízes, intervalos ou outros campos. O V4 mantém o SHA-256 `2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e` e o blob `b8538623a53ff4f75a78f44454751259ccfb943e`.
+
+**Identidade do novo objeto preparado, ainda NÃO RATIFICADO:**
+
+- Ficheiro V5 completo SHA-256: `bf7cdb951ac8e4fb8e5b8e2a1aa6fa3095fad194cbd5845a0dc0e20afd7a3ae9`.
+- Blob Git V5: `87dd0560d842f8b9f20d808363496fa60786710c`.
+- Corpo `policy_candidate_body` em `canonical_bytes` SHA-256 candidato: `007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf` (12268 bytes). O SHA do ficheiro e o SHA do corpo são objetos diferentes. O contrato de hash canónico da política e respetivos campos armazenados deve ser confirmado no ato/inserção ratificados; nenhum destes valores é automaticamente uma assinatura ou um `record_hash` do banco.
+- O corpo V4 canonicalizado, apenas para comparação, foi `e35576a437d4f7b1868e281914e878331624106d6e50f4ee7a4e91289933e0d6`; **não usar no sucessor V5**.
+
+**Revisão limitada necessária:** submeter ao revisor somente a correção causal de versão `1→2` e esta prova física, preservando o parecer técnico V4 favorável condicionado como histórico. A apreciação do V4 **não é uma ratificação implícita do V5**; Miguel deverá decidir sobre a identidade canónica **V5 versão 2** e o novo hash, depois de validação do delta, sem mais um conjunto de fichas.
+
+**Compatibilidade estática focal:** as migrations candidatas 0064/0065 procuram `policy_id`, `policy_version`, `policy_hash` efetivos e não contêm uma restrição literal `policy_version=1`. A mudança não demonstra funcionamento físico e não dispensa os quatro gates B1–B4. A janela 29–30/10 é **apenas proposta**, não autoriza operação nem extensão de G4.
+
+---
+
 ## 1. Decisão e limites do parecer recebido
 
 Parecer técnico documental recebido: **FAVORÁVEL CONDICIONADO** ao desenho G5 V4; o autor declara a identidade funcional GPT-6 e participação anterior no G4/G5, **sem independência material demonstrada**. Aceite apenas como contribuição técnica ao processo decisório. Não é aprovação formal segregada, não aprova um ELF futuro e não autoriza instalação.
