@@ -47,17 +47,19 @@ def inspect(engine):
            ('policy_activation_executions','policy_activations',
            'policy_activation_generations','policy_activation_outbox_events','policy_decisions')""")).scalars().all()
         if len(tables)!=5:raise RuntimeError("STOP_ATOMIC_TABLES_MISSING")
-        decisions=c.execute(text("""SELECT policy_decision_id, policy_id, policy_version,
-            policy_hash, record_hash
+        # The canonical decisions table uses decision_id, not policy_decision_id.
+        # Count the entire version, not a limited sample, and reject any hash mismatch.
+        decisions=c.execute(text("""SELECT count(*) AS total,
+            count(*) FILTER (WHERE policy_hash <> :expected_hash) AS divergent
             FROM public.policy_decisions
-            WHERE policy_id=:policy AND policy_version=2
-            ORDER BY policy_decision_id LIMIT 20"""),{"policy":POLICY}).mappings().all()
-        if any(d["policy_hash"]!=POLICY_HASH for d in decisions):
+            WHERE policy_id=:policy AND policy_version=2"""),
+            {"policy":POLICY,"expected_hash":POLICY_HASH}).mappings().one()
+        if decisions["divergent"]:
             raise RuntimeError("STOP_G5_DECISION_POLICY_HASH_CONFLICT")
         c.rollback()
         return {"status":"PHYSICAL_READ_ONLY_PREFLIGHT_PASS","database":db,"revision":revision,
           "role":current_user,"g4_hash_equivalence":len(historical),
-          "g5_v5_policy_rows":len(candidate),"g5_v5_decision_rows":len(decisions),"atomic_tables":len(tables),"writes":0}
+          "g5_v5_policy_rows":len(candidate),"g5_v5_decision_rows":decisions["total"],"atomic_tables":len(tables),"writes":0}
 
 def _database_preflight():
     dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
