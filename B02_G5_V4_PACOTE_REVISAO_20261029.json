@@ -62,9 +62,9 @@
       "b02_g5_approved_roots.h": "ff513972cd19d123af9d1a85b1b57f76c0935c18c5bc172b07722972bbe254cd"
     },
     "warning": "Historical root header references window 2026-10-22 to 2026-10-23; cannot infer suitability for G4/G5 current window. Installation requires current roots, reviewed artifact hash and distinct operational authority.",
-    "physical_binary_presence": "NOT_YET_CHECKED"
+    "physical_binary_presence": "G5_NATIVE_ABSENT_CONFIRMED_20261029"
   },
-  "next_gate": "Read-only inspect PostgreSQL 17 libdir native file presence/hash and compare to approved current roots; no DDL or G5 operation.",
+  "next_gate": "Independent reviewer acceptance and causal opinion on exact G5 V4, 0064, 0065 and native source/root expiration; then Miguel's explicit policy/root decision. Do not repeat physical inventory or G4.",
   "g5_release_status": "G4_RECONCILED_G5_REVIEW_AND_REAL_NATIVE_INSTALL_NOT_YET_AUTHORIZED",
   "source_recovery_20261029": {
     "verification": "All 3 original byte SHA-256 checks matched original Library payload; files now in native/g5/historical_20261022",
@@ -83,5 +83,12 @@
     "Signing root must be current, non-revoked and bound to exact ratified G5 policy/decision/activation and physical target; old C header expired",
     "Native library candidate must be separately built/verified from approved roots, and installation of 0064 and 0065 requires specific authority and recovery proof",
     "Signed two-document transaction must be executed once and independently reconciled"
-  ]
+  ],
+  "technical_internal_review": "B02_G5_V4_EXAME_TECNICO_CAUSAL_20261029.md",
+  "latest_physical_native_observation": {
+    "date": "2026-10-29",
+    "result": "G5_NATIVE_ABSENT",
+    "container": "RESTORED_STOPPED",
+    "claim": "Existing protected PG17.10 has no native library at /usr/lib/postgresql/17/lib/b02_g5_native_REAL_CLOSED.so"
+  }
 }
