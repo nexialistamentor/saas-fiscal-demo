@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Physical PostgreSQL transaction/rollback probe, isolated B02 G5 V5.
 
-Uses an actual transaction under solveris_b02_policy_writer. Writes only to
-a transaction-local temporary table and rolls it back; no public schema writes,
+Uses an actual transaction under solveris_b02_policy_writer. Uses transaction-scoped advisory locks and rolls them back; no public schema writes,
 no policy installation, no activation, no institutional records.
 """
 import json
@@ -15,11 +14,10 @@ CONTAINER="solveris-pg17-migration-test"
 def probe():
     sql="""BEGIN;
 SELECT current_database(),session_user,current_user;
-CREATE TEMP TABLE b02_g5_v5_rollback_probe (probe_id integer PRIMARY KEY) ON COMMIT DROP;
-INSERT INTO pg_temp.b02_g5_v5_rollback_probe (probe_id) VALUES (1);
-SELECT count(*) FROM pg_temp.b02_g5_v5_rollback_probe;
+SELECT pg_advisory_xact_lock(90452026);
+SELECT pg_advisory_xact_lock_shared(90452027);
 ROLLBACK;
-SELECT to_regclass('pg_temp.b02_g5_v5_rollback_probe') IS NULL;
+SELECT NOT EXISTS (SELECT 1 FROM pg_locks WHERE pid=pg_backend_pid() AND locktype='advisory');
 """
     proc=subprocess.run(["docker","exec","-i",CONTAINER,"psql","-X",
         "-v","ON_ERROR_STOP=1","-U",ROLE,"-d",DB,"-At"],
@@ -28,12 +26,11 @@ SELECT to_regclass('pg_temp.b02_g5_v5_rollback_probe') IS NULL;
         detail=(proc.stderr or "").strip()[-1200:]
         raise RuntimeError("STOP_PHYSICAL_TRANSACTION_PROBE_FAILED: "+detail)
     lines=proc.stdout.strip().splitlines()
-    expected=["BEGIN",DB+"|"+ROLE+"|"+ROLE,"CREATE TABLE","INSERT 0 1","1","ROLLBACK","t"]
+    expected=["BEGIN",DB+"|"+ROLE+"|"+ROLE,"","","ROLLBACK","t"]
     if lines!=expected:
         raise RuntimeError("STOP_PHYSICAL_ROLLBACK_NOT_PROVEN")
     return {"status":"PHYSICAL_TRANSACTION_ROLLBACK_PASS",
-            "database":DB,"role":ROLE,"temp_inserted":1,
-            "temp_after_rollback":0,"public_schema_writes":0,
+            "database":DB,"role":ROLE,"transaction_scoped_advisory_locks_released":True,"public_schema_writes":0,
             "policy_installations":0,"activations":0}
 
 if __name__=="__main__":
