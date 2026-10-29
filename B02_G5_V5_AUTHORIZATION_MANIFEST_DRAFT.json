@@ -15,7 +15,7 @@
   "key_custody_evidence": null,
   "schema_hash_evidence": null,
   "server_record_hash_contract_verified": true,
-  "policy_version_record_id": null,
+  "policy_version_record_id": "B02-G5-V5-policy-v2",
   "restrictions": {
     "private_signature_authorized": false,
     "documentary_one_shot_commit_authorized": false,
@@ -26,7 +26,7 @@
     "runner_dry_run": "PASS",
     "historic_jsonb_hash_equivalence": "4/4 PASS",
     "transaction_rollback_reconciliation": "PHYSICAL_G5_V5_OWNER_INSERT_ROLLBACK_RECONCILED",
-    "g5_decisions_and_activation": "PENDING",
+    "g5_decisions_and_activation": "PENDING_VERIFIED_INSTITUTIONAL_DECISION_CHAIN",
     "owner_rollback_regression_tests": "6/6 PASS user Windows isolated PostgreSQL",
     "physical_acl": "7/7 tables inventoried; solveris_test owns all; policy writer has SELECT not INSERT on policy_versions/policy_decisions/bootstrap; has INSERT on four activation tables",
     "physical_identity": "solveris_b02_r4g_test; alembic 0063_adr020_policy_activation_atomicity",
@@ -34,7 +34,16 @@
     "post_probe_decision_version_2_rows": 0,
     "physical_committed_writes": 0,
     "grants": 0,
-    "g4_historical_hash_equivalence": "2/2"
+    "g4_historical_hash_equivalence": "2/2",
+    "policy_commit": "COMMITTED_POLICY_V2_RECONCILED",
+    "policy_committed_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
+    "policy_committed_policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+    "policy_record_id": "B02-G5-V5-policy-v2",
+    "policy_commit_authenticated_as": "solveris_test",
+    "policy_commit_reconciled_by": "solveris_b02_policy_writer",
+    "policy_commit_test_delta": "6/6 PASS",
+    "policy_commit_evidence": "User-provided Windows PostgreSQL terminal output 2026-10-29; real commit distinct from mocked unit-test 'a'*64",
+    "policy_postcommit_version_2_rows": 1
   },
   "authorization_received": {
     "literal": "INSTALA E ATIVA",
@@ -42,7 +51,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "POLICY_OWNER_PHYSICAL_ROLLBACK_GREEN_INSTITUTIONAL_COMMIT_NOT_AUTHORIZED",
+  "technical_readiness": "G5_V5_POLICY_COMMITTED_RECONCILED_DECISIONS_AND_ACTIVATION_PENDING",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -71,8 +80,8 @@
     {
       "field": "policy_version_record_id",
       "consumer": "authorize(), reconcile()",
-      "source": "approved unique V5 record identity",
-      "status": "PENDING"
+      "source": "B02-G5-V5-policy-v2 with SHA256 fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9 verified via restricted session",
+      "status": "SATISFIED_BY_PHYSICAL_COMMIT"
     },
     {
       "field": "legitimate_decision_and_predecessor_hashes",
@@ -85,8 +94,19 @@
     "institutional_row_owner": "solveris_test",
     "technical_activation_writer": "solveris_b02_policy_writer",
     "institutional_policy_writer_actual": "solveris_test",
-    "institutional_policy_writer_authorized": false,
+    "institutional_policy_writer_authorized": "POLICY_VERSION_ONLY_UNDER_EXISTING_INSTALA_E_ATIVA_ORDER",
     "source": "physical ACL read-only inventory and physically rolled back single policy INSERT, user-provided 2026-10-29 terminal results",
-    "note": "Owner's technical ability to INSERT does not constitute institutional authority. Existing policy-only runner still expects policy_writer and must not be used for irreversible commit."
+    "note": "Policy V5 v2 one-shot commit is now reconciled with full content and physical record hash. This does not authorize impersonating institutional decision actors or lifting G5's separate gates."
+  },
+  "policy_commit_reconciliation": {
+    "status": "COMMITTED_POLICY_V2_RECONCILED",
+    "record_id": "B02-G5-V5-policy-v2",
+    "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+    "record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
+    "institutional_decisions_created": 0,
+    "activations_created": 0,
+    "grants": 0,
+    "source": "physical execution terminal log presented by user",
+    "time_evidence": "2026-10-29 evening America/Belem; exact PostgreSQL COMMIT time not in output"
   }
 }
