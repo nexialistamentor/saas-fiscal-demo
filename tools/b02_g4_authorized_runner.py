@@ -282,6 +282,8 @@ def main():
     if len(sys.argv)!=1:
         stop("STOP_NO_ARGS_EXPECTED_APPROVAL_ALREADY_PINNED")
     os.chdir(REPO)
+    if str(REPO) not in sys.path:
+        sys.path.insert(0,str(REPO))
     source=assert_repo_and_approval()
     running=check_container()
     started=False
