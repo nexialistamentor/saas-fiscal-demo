@@ -119,5 +119,15 @@
     "No valid policy extension from proposed dates or historical acts",
     "No fabricated reviewer identity, signature or segregated acceptance",
     "No MEI changes and no B03 release until B02 final gates"
-  ]
+  ],
+  "public_key_continuity_check": {
+    "raw_ed25519_public_key_hex": "ab8dc926512061fee370dfcabc5f11752229c6583546a65592c97ce24c6ae381",
+    "der_spki_prefix_hex": "302a300506032b6570032100",
+    "computed_spki_der_sha256": "6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c",
+    "historic_document": "SOLVERIS_B02_RECONHECIMENTO_DOCUMENTAL_CHAVE_MIGUEL_20261021.md",
+    "historic_documental_valid_until_utc": "2026-10-29T00:00:00+00:00",
+    "result": "PUBLIC_KEY_MATCHES_HISTORIC_DOCUMENTARY_FINGERPRINT",
+    "approval": "NO_CURRENT_KEY_AUTHORITY_OR_NONREVOCATION_PROOF",
+    "implication": "Can propose reauthorizing same public key after verified custody and current revocation check; do not generate a new private key by default. Historical expired authority cannot be inherited."
+  }
 }
