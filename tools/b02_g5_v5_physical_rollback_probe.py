@@ -15,7 +15,7 @@ CONTAINER="solveris-pg17-migration-test"
 def probe():
     sql="""BEGIN;
 SELECT current_database(),session_user,current_user;
-CREATE TEMP TABLE pg_temp.b02_g5_v5_rollback_probe (probe_id integer PRIMARY KEY) ON COMMIT DROP;
+CREATE TEMP TABLE b02_g5_v5_rollback_probe (probe_id integer PRIMARY KEY) ON COMMIT DROP;
 INSERT INTO pg_temp.b02_g5_v5_rollback_probe (probe_id) VALUES (1);
 SELECT count(*) FROM pg_temp.b02_g5_v5_rollback_probe;
 ROLLBACK;
@@ -25,7 +25,8 @@ SELECT to_regclass('pg_temp.b02_g5_v5_rollback_probe') IS NULL;
         "-v","ON_ERROR_STOP=1","-U",ROLE,"-d",DB,"-At"],
         input=sql,text=True,capture_output=True)
     if proc.returncode:
-        raise RuntimeError("STOP_PHYSICAL_TRANSACTION_PROBE_FAILED")
+        detail=(proc.stderr or "").strip()[-1200:]
+        raise RuntimeError("STOP_PHYSICAL_TRANSACTION_PROBE_FAILED: "+detail)
     lines=proc.stdout.strip().splitlines()
     expected=["BEGIN",DB+"|"+ROLE+"|"+ROLE,"CREATE TABLE","INSERT 0 1","1","ROLLBACK","t"]
     if lines!=expected:
