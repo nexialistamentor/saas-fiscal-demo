@@ -71,5 +71,22 @@ class G5ChainInventoryDeltaTests(unittest.TestCase):
             p._g5_v2_chain_inventory(self.engine)
 
 
+    def test_predecessor_hash_mismatch_fails_even_when_ids_match(self):
+        first={"decision_id":"d1","decision_event":"submetida",
+            "previous_decision_id":None,"predecessor_record_hash":None,
+            "institutional_role":"proponente_institucional",
+            "actor":"proponent","record_hash":"a"*64,
+            "policy_hash":p.POLICY_HASH,"hash_ok":True,"evidence_present":True}
+        second={"decision_id":"d2","decision_event":"auditoria_iniciada",
+            "previous_decision_id":"d1","predecessor_record_hash":"b"*64,
+            "institutional_role":"auditor_independente",
+            "actor":"auditor","record_hash":"c"*64,
+            "policy_hash":p.POLICY_HASH,"hash_ok":True,"evidence_present":True}
+        self.seed(decisions=(first,second))
+        with self.assertRaisesRegex(RuntimeError,"STOP_G5_CHAIN_PREDECESSOR"):
+            p._g5_v2_chain_inventory(self.engine)
+
+
+
 if __name__=="__main__":
     unittest.main()
