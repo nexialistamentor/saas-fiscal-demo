@@ -316,6 +316,8 @@ def execute():
         if completed is None and "G4_OCTOBER_UNIT_NOT_PRESENT" not in check_stdout:
             stop("STOP_EXISTING_UNIT_UNDETERMINED")
         if completed:
+            if not existing_auth():
+                stop("STOP_EXISTING_G4_UNIT_AUTHORIZATION_RECORD_MISSING")
             print("G4_OCTOBER_EXISTING_UNIT_RECONCILED_NO_NEW_INSERT")
         else:
             if (ROOT/ATTEMPT).exists():
