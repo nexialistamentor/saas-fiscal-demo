@@ -49,7 +49,7 @@ def authorize(path, reference):
         if a.get(k)!=v:stop('AUTHORIZATION_'+k.upper())
     for k in ('authority_actor','authority_evidence','validity_evidence','key_custody_evidence','schema_hash_evidence'):
         if not a.get(k):stop('AUTHORIZATION_MISSING_'+k.upper())
-    if a.get('server_record_hash_trigger_verified') is not True:stop('SERVER_HASH_TRIGGER_ATTESTATION')
+    if a.get('server_record_hash_contract_verified') is not True:stop('SERVER_HASH_CONTRACT_ATTESTATION')
     record_id=a.get('policy_version_record_id')
     if not isinstance(record_id,str) or not record_id or len(record_id)>64:stop('RECORD_ID')
     return a
@@ -85,26 +85,33 @@ def execute(repo,body,a):
                 c.execute(text('SELECT pg_advisory_xact_lock(hashtextextended(:k,0))'),{'k':POLICY_ID+':2'})
                 existing=c.execute(text('SELECT count(*) FROM public.policy_versions WHERE policy_id=:p AND policy_version=2'),{'p':POLICY_ID}).scalar_one()
                 if existing:stop('ALREADY_PRESENT_RECONCILE')
-                # Physical trigger is mandatory: client must never invent server record_hash.
-                triggers=c.execute(text("SELECT count(*) FROM pg_trigger WHERE tgrelid='public.policy_versions'::regclass AND NOT tgisinternal AND tgenabled IN ('O','A') AND (tgtype & 4)=4")).scalar_one()
-                if triggers<1:stop('POLICY_INSERT_TRIGGER_MISSING')
-                # A trigger existing is not proof that it computes record_hash.
-                definitions=[r[0] for r in c.execute(text("SELECT pg_get_triggerdef(oid) FROM pg_trigger WHERE tgrelid='public.policy_versions'::regclass AND NOT tgisinternal AND tgenabled IN ('O','A')"))]
-                if not definitions:stop('POLICY_TRIGGER_DEFINITION_MISSING')
+                # PolicyVersion has no INSERT trigger; require the known PostgreSQL hash function.
+                fn=c.execute(text("SELECT pg_get_functiondef('public.b02_json_hash(jsonb)'::regprocedure)")).scalar_one()
+                if "public.b02_canonical_json(v)" not in fn or "'sha256'" not in fn:
+                    stop('SERVER_HASH_CONTRACT')
                 if not c.execute(text("SELECT has_table_privilege(current_user,'public.policy_versions','INSERT')")).scalar_one():stop('POLICY_INSERT_PRIVILEGE')
                 cols={r['column_name']:(r['is_nullable'],r['column_default']) for r in c.execute(text("SELECT column_name,is_nullable,column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='policy_versions'")).mappings()}
                 for col in (*FIELDS,'policy_hash','policy_version_record_id','record_hash'):
                     if col not in cols:stop('SCHEMA_MISSING_'+col)
-                # Require database-side generation of record_hash; NULL is the established G4 atomic-writer convention.
-                if a.get('server_record_hash_trigger_verified') is not True:stop('SERVER_HASH_TRIGGER_ATTESTATION')
                 table=Table('policy_versions',MetaData(),autoload_with=c,schema='public')
-                payload=dict(body,policy_version_record_id=record_id,policy_hash=POLICY_HASH,record_hash=None)
+                # The physical record hash includes created_at. Calculate it on the
+                # database using the same timestamp and JSONB values being inserted.
+                created_at=c.execute(text('SELECT transaction_timestamp()')).scalar_one()
+                payload=dict(body,policy_version_record_id=record_id,policy_hash=POLICY_HASH,created_at=created_at)
+                material=dict(payload,created_at=created_at.isoformat())
+                payload['record_hash']=c.execute(
+                    text('SELECT public.b02_json_hash(CAST(:material AS jsonb))'),
+                    {'material':json.dumps(material,ensure_ascii=False,allow_nan=False)}
+                ).scalar_one()
+                if not HEX.fullmatch(payload['record_hash'] or ''):stop('SERVER_HASH_RESULT')
                 result=c.execute(table.insert().values(**payload).returning(table.c.policy_version_record_id,table.c.policy_hash,table.c.record_hash)).mappings().one()
                 if result['policy_version_record_id']!=record_id or result['policy_hash']!=POLICY_HASH or not HEX.fullmatch(result['record_hash'] or ''):stop('SERVER_RESULT')
                 c.execute(text('SET CONSTRAINTS ALL IMMEDIATE'))
                 # Verify the stored row inside the transaction, before COMMIT.
                 stored=c.execute(text('SELECT * FROM public.policy_versions WHERE policy_version_record_id=:id'),{'id':record_id}).mappings().one()
                 if stored['policy_hash']!=POLICY_HASH or not HEX.fullmatch(stored['record_hash'] or ''):stop('PRECOMMIT_ROW_MISMATCH')
+                physical_hash=c.execute(text("SELECT public.b02_json_hash(to_jsonb(p)-'record_hash') FROM public.policy_versions p WHERE policy_version_record_id=:id"),{'id':record_id}).scalar_one()
+                if stored['record_hash']!=physical_hash:stop('PRECOMMIT_PHYSICAL_HASH_MISMATCH')
                 for field in FIELDS:
                     if stored[field]!=body[field]:stop('PRECOMMIT_FIELD_MISMATCH_'+field.upper())
                 txid=c.execute(text('SELECT txid_current()')).scalar_one()
