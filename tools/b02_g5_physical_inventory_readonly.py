@@ -27,6 +27,10 @@ finally:
 '''.encode("utf-8")
 def main():
  if len(sys.argv)!=1:raise RuntimeError("STOP_UNEXPECTED_ARGS")
+ # Running a file directly from tools/ puts tools/, not the repository root,
+ # on sys.path. The approved bridge imports app.database before the read-only
+ # payload; resolve that existing package without changing application code.
+ if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
  spec=importlib.util.spec_from_file_location("g5_bridge",ROOT/"tools"/"b02_g4_authorized_runner.py")
  b=importlib.util.module_from_spec(spec);spec.loader.exec_module(b)
  if b.git("branch","--show-current")!=BRANCH:raise RuntimeError("STOP_BRANCH")
