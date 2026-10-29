@@ -25,8 +25,16 @@
   "validation": {
     "runner_dry_run": "PASS",
     "historic_jsonb_hash_equivalence": "4/4 PASS",
-    "transaction_rollback_reconciliation": "ISOLATED_TESTS_ADDED_NOT_EXECUTED",
-    "g5_decisions_and_activation": "PENDING"
+    "transaction_rollback_reconciliation": "PHYSICAL_G5_V5_OWNER_INSERT_ROLLBACK_RECONCILED",
+    "g5_decisions_and_activation": "PENDING",
+    "owner_rollback_regression_tests": "6/6 PASS user Windows isolated PostgreSQL",
+    "physical_acl": "7/7 tables inventoried; solveris_test owns all; policy writer has SELECT not INSERT on policy_versions/policy_decisions/bootstrap; has INSERT on four activation tables",
+    "physical_identity": "solveris_b02_r4g_test; alembic 0063_adr020_policy_activation_atomicity",
+    "post_probe_policy_version_2_rows": 0,
+    "post_probe_decision_version_2_rows": 0,
+    "physical_committed_writes": 0,
+    "grants": 0,
+    "g4_historical_hash_equivalence": "2/2"
   },
   "authorization_received": {
     "literal": "INSTALA E ATIVA",
@@ -34,7 +42,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "PENDING",
+  "technical_readiness": "POLICY_OWNER_PHYSICAL_ROLLBACK_GREEN_INSTITUTIONAL_COMMIT_NOT_AUTHORIZED",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -72,5 +80,13 @@
       "source": "existing ratified decision and superior/bootstrap authority with exact hashes",
       "status": "PENDING"
     }
-  ]
+  ],
+  "verified_technical_privilege_separation": {
+    "institutional_row_owner": "solveris_test",
+    "technical_activation_writer": "solveris_b02_policy_writer",
+    "institutional_policy_writer_actual": "solveris_test",
+    "institutional_policy_writer_authorized": false,
+    "source": "physical ACL read-only inventory and physically rolled back single policy INSERT, user-provided 2026-10-29 terminal results",
+    "note": "Owner's technical ability to INSERT does not constitute institutional authority. Existing policy-only runner still expects policy_writer and must not be used for irreversible commit."
+  }
 }
