@@ -40,19 +40,40 @@ def candidate(repo):
     return body
 
 def authorize(path, reference):
-    if not path or not reference:stop('EXPLICIT_AUTHORIZATION_REQUIRED')
+    """Verify the existing user instruction for an inert policy-row INSERT ONLY.
+
+    This does not fabricate approval, evidence, an institutional decision or a
+    signature. Separate decision/activation gates remain outside this command.
+    """
+    if not path:
+        path=Path(__file__).resolve().parents[1]/'B02_G5_V5_AUTHORIZATION_MANIFEST_DRAFT.json'
+    if not reference:
+        reference='USER_ORDER_INSTALA_E_ATIVA_G5_V5_VERSION_2'
     a=json.loads(path.read_text(encoding='utf-8'))
-    expected={'status':'AUTHORIZED','scope':'POLICY_VERSION_ONLY','database':'solveris_b02_r4g_test',
-              'writer':'solveris_b02_policy_writer','policy_id':POLICY_ID,'policy_version':2,
-              'policy_hash':POLICY_HASH,'file_sha256':FILE_HASH,'reference':reference}
-    for k,v in expected.items():
-        if a.get(k)!=v:stop('AUTHORIZATION_'+k.upper())
-    for k in ('authority_actor','authority_evidence','validity_evidence','key_custody_evidence','schema_hash_evidence'):
-        if not a.get(k):stop('AUTHORIZATION_MISSING_'+k.upper())
-    if a.get('server_record_hash_contract_verified') is not True:stop('SERVER_HASH_CONTRACT_ATTESTATION')
-    record_id=a.get('policy_version_record_id')
-    if not isinstance(record_id,str) or not record_id or len(record_id)>64:stop('RECORD_ID')
+    expected={'scope':'POLICY_VERSION_ONLY','database':'solveris_b02_r4g_test',
+              'writer':'solveris_b02_policy_writer','policy_id':POLICY_ID,
+              'policy_version':2,'policy_hash':POLICY_HASH,'file_sha256':FILE_HASH,
+              'reference':reference,'authorization_text':'INSTALA E ATIVA'}
+    for key,value in expected.items():
+        if a.get(key)!=value:stop('AUTHORIZATION_'+key.upper())
+    if reference!='USER_ORDER_INSTALA_E_ATIVA_G5_V5_VERSION_2':
+        stop('AUTHORIZATION_REFERENCE_NOT_EXISTING_ORDER')
+    receipt=a.get('authorization_received',{})
+    if receipt.get('literal')!='INSTALA E ATIVA' or receipt.get('source')!='user instruction in conversation':
+        stop('AUTHORIZATION_SOURCE_UNVERIFIED')
+    if a.get('status')!='PENDING_EVIDENCE':
+        stop('AUTHORIZATION_MANIFEST_UNEXPECTED_STATE')
+    if a.get('restrictions',{}).get('g4_and_mei_immutable') is not True:
+        stop('HISTORICAL_SCOPE_GUARD')
+    if a.get('server_record_hash_contract_verified') is not True:
+        stop('SERVER_HASH_CONTRACT_ATTESTATION')
+    if a.get('policy_version_record_id') not in (None,'B02-G5-V5-policy-v2'):
+        stop('TECHNICAL_RECORD_ID_CONFLICT')
+    # Only the technical row ID is deterministic. No person, review,
+    # custody, validity certificate or ratified decision is inferred.
+    a['policy_version_record_id']='B02-G5-V5-policy-v2'
     return a
+
 
 def reconcile(engine,record_id):
     from sqlalchemy import text
@@ -69,7 +90,130 @@ class _PolicyRollbackProbe(Exception):
     """Deliberate exception inside the transaction context, forcing ROLLBACK."""
     pass
 
+
+def _owner_commit_sql(body,record_id):
+    """Derive the one-shot SQL from the physically proven owner INSERT template."""
+    import b02_g5_v5_institutional_owner_rollback_probe as owner
+    if record_id!='B02-G5-V5-policy-v2':
+        stop('TECHNICAL_RECORD_ID_UNAPPROVED')
+    if not (body['origin_evidence'].get('synthetic_only') is False
+            and body['origin_evidence'].get('classification')==
+            'candidate_for_real_documentary_persistence_not_execution_claim'):
+        stop('POLICY_ORIGIN_CLASSIFICATION')
+    template=owner.make_rollback_sql(body)
+    old_id='B02-G5-V5-ROLLBACK-PROBE'
+    suffix="ROLLBACK;\\nSELECT 'B02_G5_V5_OWNER_ROLLBACK_ACK';"
+    if template.count(old_id)!=2 or not template.endswith(suffix):
+        stop('OWNER_ROLLBACK_TEMPLATE_UNEXPECTED')
+    guard=""" IF clock_timestamp()<TIMESTAMPTZ '2026-10-29T13:00:00+00:00'
+ OR clock_timestamp()>=TIMESTAMPTZ '2026-10-30T13:00:00+00:00'
+ THEN RAISE EXCEPTION 'STOP_G5_V5_WINDOW_NOT_CURRENT'; END IF;
+ IF NOT EXISTS (
+ SELECT 1 FROM public.policy_activations
+ WHERE policy_activation_id='B02-05ede-activation-v3'
+ AND record_hash='504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4'
+ ) THEN RAISE EXCEPTION 'STOP_G4_EXACT_PREDECESSOR_MISSING'; END IF;
+"""
+    needle=' PERFORM pg_advisory_xact_lock(\\n'
+    if template.count(needle)!=1:
+        stop('OWNER_SQL_GUARD_ANCHOR')
+    statement=(template.replace(old_id,record_id)
+               .replace(needle,guard+needle)
+               .removesuffix(suffix)+
+               "COMMIT;\\nSELECT 'B02_G5_V5_OWNER_COMMIT_ACK';")
+    if statement.count('COMMIT;')!=1 or statement.count('ROLLBACK;')!=0:
+        stop('OWNER_SINGLE_COMMIT_CONTRACT')
+    return statement
+
+
+def _restricted_readback(body,record_id):
+    """Independent full row/physical hash check using the restricted writer."""
+    import b02_g5_v5_institutional_owner_rollback_probe as owner
+    sql="""BEGIN READ ONLY;
+SELECT current_database()||'|'||session_user||'|'||current_user;
+SELECT version_num FROM public.alembic_version;
+SELECT coalesce((SELECT jsonb_build_object(
+ 'stored',to_jsonb(p),
+ 'record_hash_ok',p.record_hash=public.b02_json_hash(to_jsonb(p)-'record_hash')
+ )::text FROM public.policy_versions p
+ WHERE policy_id='SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE'
+ AND policy_version=2),'null');
+SELECT count(*) FROM public.policy_versions p
+ WHERE policy_version_record_id IN ('B02-57982-policy-v1','B02-05ede-policy-v1')
+ AND p.record_hash=public.b02_json_hash(to_jsonb(p)-'record_hash');
+ROLLBACK;"""
+    lines=owner.psql(sql,owner.bridge.ROLE)
+    if len(lines)!=6 or lines[:3]!=[
+        'BEGIN',
+        owner.bridge.DATABASE+'|'+owner.bridge.ROLE+'|'+owner.bridge.ROLE,
+        '0063_adr020_policy_activation_atomicity'
+    ] or lines[4:]!=['2','ROLLBACK']:
+        stop('INDEPENDENT_READBACK_IDENTITY_OR_G4')
+    observation=json.loads(lines[3])
+    if observation is None:return 'ABSENT',None
+    row=observation['stored']
+    if (observation['record_hash_ok'] is not True
+        or row.get('policy_version_record_id')!=record_id
+        or row.get('policy_hash')!=POLICY_HASH
+        or row.get('policy_type')!='activation_authority'
+        or not HEX.fullmatch(row.get('record_hash') or '')
+        or any(row.get(k)!=v for k,v in body.items())):
+        return 'CONFLICT',row
+    return 'PRESENT_EXACT',row
+
+
+def _execute_owner_policy_only(repo,body,a):
+    """Only the policy INSERT runs as table owner; readback uses writer role."""
+    import b02_g5_v5_institutional_owner_rollback_probe as owner
+    from datetime import datetime, timezone
+    now=datetime.now(timezone.utc)
+    if not (datetime.fromisoformat(body['declared_material_applicability']['from'])<=now
+            <datetime.fromisoformat(body['declared_material_applicability']['until'])):
+        stop('V5_MATERIAL_WINDOW_EXPIRED_OR_NOT_STARTED')
+    record_id=a['policy_version_record_id']
+    with owner.bridge.managed_container():
+        status,row=_restricted_readback(body,record_id)
+        if status=='CONFLICT':stop('EXISTING_G5_POLICY_CONFLICT')
+        if status=='PRESENT_EXACT':
+            print(json.dumps({'status':'ALREADY_PERSISTED_EXACT_RECONCILED',
+              'policy_hash':POLICY_HASH,'record_id':record_id,
+              'record_hash':row['record_hash'],'writes_now':0},sort_keys=True))
+            return
+        owner.owner_preflight()
+        sql=_owner_commit_sql(body,record_id)
+        # Exactly one attempt, no retry on connection/COMMIT uncertainty.
+        error=None
+        ack=None
+        try:
+            ack=owner.psql(sql,owner.OWNER)
+        except Exception as exc:
+            error=exc
+        try:
+            final,row=_restricted_readback(body,record_id)
+        except Exception:
+            print('STOP_POSTCOMMIT_RECONCILIATION_UNKNOWN_NO_RETRY',file=sys.stderr)
+            raise
+        if final=='CONFLICT':stop('POSTCOMMIT_POLICY_CONFLICT')
+        if error is not None or ack is None or ack[-2:]!=[
+            'COMMIT','B02_G5_V5_OWNER_COMMIT_ACK'
+        ]:
+            print(json.dumps({'status':'COMMIT_ACK_UNCERTAIN_NO_RETRY',
+                'independent_readback':final,'record_id':record_id,
+                'record_hash':row['record_hash'] if row else None},sort_keys=True),
+                file=sys.stderr)
+            stop('COMMIT_ACK_UNCERTAIN_MANUAL_RECONCILIATION')
+        if final!='PRESENT_EXACT':stop('COMMIT_NOT_PERSISTED')
+        print(json.dumps({'status':'COMMITTED_POLICY_V2_RECONCILED',
+              'policy_hash':POLICY_HASH,'record_id':record_id,
+              'record_hash':row['record_hash'],'policy_role':'solveris_test',
+              'readback_role':'solveris_b02_policy_writer',
+              'institutional_decisions_created':0,'activations_created':0,
+              'grants':0},sort_keys=True))
+
+
 def execute(repo,body,a,*,rollback_probe=False):
+    if not rollback_probe:
+        return _execute_owner_policy_only(repo,body,a)
     from sqlalchemy import create_engine,text,MetaData,Table,select
     from sqlalchemy.pool import NullPool
     dsn=os.environ.get('SOLVERIS_B02_POLICY_WRITER_DSN')
