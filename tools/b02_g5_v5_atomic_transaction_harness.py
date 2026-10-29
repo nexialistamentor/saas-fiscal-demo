@@ -77,6 +77,9 @@ def run(engine, request, *, commit=False):
     execution_id = request["execution"]["policy_activation_execution_id"]
     activation_id = request["activation"]["policy_activation_id"]
     generation_id, outbox_id = request["generation_id"], request["outbox_id"]
+    baseline = reconcile_unit(engine, execution_id, activation_id, generation_id, outbox_id)
+    if baseline not in ("ABSENT", "PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED"):
+        raise Stop("PREEXISTING_UNIT_CONFLICT_" + baseline)
     try:
         with engine.begin() as conn:
             result = stage(conn, request)
@@ -84,8 +87,8 @@ def run(engine, request, *, commit=False):
                 raise _RollbackProbe(result)
     except _RollbackProbe as probe:
         status = reconcile_unit(engine, execution_id, activation_id, generation_id, outbox_id)
-        if status != "ABSENT":
-            raise Stop("ROLLBACK_NOT_ABSENT_" + status)
+        if status != baseline:
+            raise Stop("ROLLBACK_CHANGED_BASELINE_" + baseline + "_TO_" + status)
         return {"status": "ROLLBACK_RECONCILED", "staged": probe.result}
     except Exception:
         # Unknown COMMIT ACK must be classified, never retried automatically.
