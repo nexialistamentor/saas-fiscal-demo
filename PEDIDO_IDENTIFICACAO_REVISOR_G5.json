@@ -1,0 +1,17 @@
+{
+  "schema": "B02_G5_REVIEWER_IDENTIFICATION_REQUEST_V1",
+  "endereco_a": "execucao revisora segregada designada por Miguel para apreciar o sucessor G5",
+  "objeto_a_rever": {
+    "candidato_sha256": "fd5920cd3268d12d1c0e78e9b50fca9fd1ef102cd937a6e377a3064d782631ab",
+    "diff": "DIFF_POLICY_G5_PARA_AUDITORIA.diff",
+    "predecessor_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa"
+  },
+  "campos_que_a_propria_execucao_revisora_deve_preencher": {
+    "identificacao_propria": null,
+    "aceitacao_ou_recusa_do_papel": null,
+    "declaracao_de_conflitos_de_interesse": null,
+    "confirmacao_de_segregacao_funcional_do_proponente": null,
+    "parecer_sobre_as_questoes_listadas_na_submissao": null
+  },
+  "aviso": "Nenhum destes campos e preenchido pelo proponente, pelo executor ou por Miguel. Aguarda manifestacao propria da execucao designada."
+}

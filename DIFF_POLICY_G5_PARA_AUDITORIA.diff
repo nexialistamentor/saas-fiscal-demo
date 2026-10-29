@@ -1,0 +1,14 @@
+--- ORIGINAL_57982f46.json
++++ CANDIDATO_PARA_AUDITORIA_body.json
+@@ -1,9 +1,9 @@
+ {
+   "declared_material_applicability": {
+-    "from": "2026-10-22T12:00:00+00:00",
++    "from": "2026-11-03T12:00:00+00:00",
+     "kind": "documentary_persistence_only_not_fiscal_validity",
+     "no_retroactive_authority": true,
+-    "until": "2026-10-23T07:56:30.910737+00:00"
++    "until": "2026-11-04T07:56:30.910737+00:00"
+   },
+   "domain": "SEFA_PR_B02_DOCUMENTAL_G5_PERSISTENCE",
+   "exact_references": {

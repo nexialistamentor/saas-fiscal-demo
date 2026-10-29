@@ -1,0 +1,50 @@
+{
+  "schema": "B02_G5_SUCCESSOR_SUBMISSION_PACKAGE_V1",
+  "status": "SUBMISSAO_PREPARADA_AGUARDA_ACEITACAO_DO_REVISOR",
+  "candidato": {
+    "ficheiro": "POLICY_G5_CANDIDATO_PARA_AUDITORIA.json",
+    "sha256": "fd5920cd3268d12d1c0e78e9b50fca9fd1ef102cd937a6e377a3064d782631ab",
+    "predecessor_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa"
+  },
+  "diff": "DIFF_POLICY_G5_PARA_AUDITORIA.diff",
+  "janela_proposta": {
+    "from": "2026-11-03T12:00:00+00:00",
+    "until": "2026-11-04T07:56:30.910737+00:00",
+    "eficacia": "NENHUMA ate ratificacao de Miguel sobre este hash exato"
+  },
+  "evidencias_reutilizadas_do_predecessor": [
+    {
+      "id": "B02-G5-MANDATES-AND-COMMIT-PURPOSE-1",
+      "sha256": "11ad4a27cce80380659b94a54404877e7b7b65eb9431b7acc5a07e96299b97fe",
+      "limite": "manifestacao documental, nao assinatura criptografica, sem valid_from/until proprios"
+    },
+    {
+      "id": "B02-G5-METHOD-TECHNICAL-REVIEW-1",
+      "sha256": "4bbbd811d7cc6434e9e4ecdf9d33a2f1cac46bee1e004e54d88dd9a2a2c83c5d",
+      "limite": "exame previo, sanitizacao operacional INCONCLUSIVA, nao auditoria completa"
+    },
+    {
+      "id": "B02-G5-PROPONENT-ACCEPTANCE-1",
+      "sha256": "a9dfd277eaf1b750bc23388c10d6adb1c8b9966f47d324954e41efc7212db424",
+      "limite": "aceitacao historica do predecessor; condicao para o sucessor exige nova aceitacao (ver pedido ao revisor em paralelo)"
+    },
+    {
+      "id": "B02-G5-REVIEWER-ACCEPTANCE-1",
+      "sha256": "6a6ad0f34d8ef879f1a264ac7691cd0376ce124d898e71e4824fa41252bc4035",
+      "limite": "aceitacao historica do predecessor; NAO transferida automaticamente para o sucessor"
+    }
+  ],
+  "limites_explicitos": [
+    "nao e assinatura transacional real",
+    "nao abre janela operacional G5",
+    "nao instala",
+    "nao ativa",
+    "nao escreve no PostgreSQL protegido",
+    "se as datas mudarem, novo hash e novo delta serao apresentados -- este objeto fica imutavel"
+  ],
+  "questoes_para_parecer_do_revisor": [
+    "O metodo referenciado em 'c79d8916...' (funcional proposto) permanece sem alteracoes desde o exame previo (4bbbd811...)? Exige confirmacao atual.",
+    "A sanitizacao operacional, marcada INCONCLUSIVA no exame previo, tem desde entao resultado atualizado?",
+    "A janela proposta (03/11 12:00Z a 04/11 07:56:30Z) e compativel com o tempo necessario para auditoria completa antes do inicio proposto?"
+  ]
+}
