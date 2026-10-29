@@ -8,7 +8,7 @@ import json
 import os
 import subprocess
 import time
-from sqlalchemy import create_engine, text
+from sqlalchemy import bindparam, create_engine, text
 from sqlalchemy.pool import NullPool
 
 DB="solveris_b02_r4g_test"
@@ -60,6 +60,44 @@ def inspect(engine):
         return {"status":"PHYSICAL_READ_ONLY_PREFLIGHT_PASS","database":db,"revision":revision,
           "role":current_user,"g4_hash_equivalence":len(historical),
           "g5_v5_policy_rows":len(candidate),"g5_v5_decision_rows":decisions["total"],"atomic_tables":len(tables),"writes":0}
+
+def _acl_inventory(engine):
+    """Read-only physical ACL/owner inventory; no grants, DDL, role switch or data writes."""
+    names = (
+        "policy_versions", "policy_decisions", "bootstrap_authority_records",
+        "policy_activation_executions", "policy_activations",
+        "policy_activation_generations", "policy_activation_outbox_events",
+    )
+    with engine.connect() as c:
+        c.execute(text("SET TRANSACTION READ ONLY"))
+        db,session_user,current_user,revision = c.execute(text(
+            "SELECT current_database(),session_user,current_user,"
+            "(SELECT version_num FROM public.alembic_version)"
+        )).one()
+        if (db,session_user,current_user,revision)!=(
+            DB,"solveris_b02_policy_writer","solveris_b02_policy_writer",REV
+        ):raise RuntimeError("STOP_ACL_IDENTITY_REVISION")
+        query=text("""
+            SELECT cls.relname AS table_name,
+                   pg_get_userbyid(cls.relowner) AS owner,
+                   has_table_privilege(current_user,cls.oid,'SELECT') AS can_select,
+                   has_table_privilege(current_user,cls.oid,'INSERT') AS can_insert,
+                   has_table_privilege(current_user,cls.oid,'UPDATE') AS can_update,
+                   has_table_privilege(current_user,cls.oid,'DELETE') AS can_delete
+            FROM pg_class cls JOIN pg_namespace ns ON ns.oid=cls.relnamespace
+            WHERE ns.nspname='public' AND cls.relkind IN ('r','p')
+              AND cls.relname IN :names
+            ORDER BY cls.relname
+        """).bindparams(bindparam("names",expanding=True))
+        rows=c.execute(query,{"names":list(names)}).mappings().all()
+        if {r["table_name"] for r in rows}!=set(names):
+            raise RuntimeError("STOP_ACL_TABLES_MISSING")
+        inventory=[dict(r) for r in rows]
+        c.rollback()
+    return {"status":"PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS","database":db,
+            "revision":revision,"writer":current_user,"tables":inventory,
+            "writes":0,"grants":0}
+
 
 def _database_preflight():
     dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
@@ -130,6 +168,16 @@ def _docker(*args, timeout=15):
     return result.stdout.strip()
 
 def main():
+    import sys
+    if len(sys.argv)>1:
+        if sys.argv[1:]!=["--acl-inventory"]:
+            raise RuntimeError("STOP_UNKNOWN_PREFLIGHT_OPTION")
+        dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
+        if not dsn:raise RuntimeError("STOP_ACL_INVENTORY_REQUIRES_BRIDGE")
+        engine=create_engine(dsn,poolclass=NullPool)
+        try:print(json.dumps(_acl_inventory(engine),sort_keys=True))
+        finally:engine.dispose()
+        return
     # Preserve initial Docker state; do not require passwords or change pg_hba.
     if os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN"):
         return _database_preflight()
