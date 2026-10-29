@@ -28,9 +28,21 @@ Os IDs literais aprováveis (ainda não executados) estão no script: `B02-05ede
 - Nenhum INSERT, UPDATE, DELETE, DDL, GRANT, ALTER ROLE, ativação G4/G5, COMMIT de escrita, migração, assinatura ou ensaio normativo. O `scope_hash` é derivado pelo código do serviço a partir da política real; não é parâmetro de entrada e não se inventa.
 - O G5 V3, MEI, serviço de escrita, regras de autenticação e PASS anteriores permanecem inalterados. **Preflight G4 fechado; ativação G4 NÃO realizada.**
 
+## Autorização e execução Windows — preparação em 29/10/2026
+
+- A autorização institucional **já existe**, no ficheiro \`AUTORIZACAO_G4_MIGUEL_20261029.json\`, commit \`a78cc8ec152d45846f226df1de2784be131c5544\`, referência \`B02-G4-AUTH-MIGUEL-20261029-01\`. Procedimento expressamente abrangido: \`executar_ativacao_g4_real.py\`, blob Git \`1729e6d62c77510ef4dd7db0af56a6cbe985c168\`. Não solicitar nova autorização para a mesma unidade.
+- Pacote de revisão histórico: \`a91bd50b130cd6529ed2abe35bf21fae2718039a\`. Reutilizado sem reabrir exames fechados.
+- Runner GitHub preparado: \`tools/b02_g4_authorized_runner.py\`. Requer o checkout Windows \`candidate/g5-successor-window-prep\` atualizado exclusivamente por \`git fetch\` e \`git merge --ff-only\`. Não apaga nem modifica untracked.
+- Reusa o caminho fisicamente aprovado, **Python Windows → listener efémero 127.0.0.1 → docker exec → TCP loopback interno 127.0.0.1:5432**. O pacote de revisão descreve este transporte de forma imprecisa como «socket»; socket administrativo e ponte TCP do Python são percursos distintos. Não usar a porta publicada 55432.
+- O runner fixa autorização, procedimento e blob, base, writer, política, IDs, janela, código do serviço e SHA-256 do V3; verifica container/volume, executa exatamente uma invocação aprovada \`--execute --approval-reference B02-G4-AUTH-MIGUEL-20261029-01\`, e **não faz INSERT adicional**. Mesmo que o COMMIT fique incerto, abre uma segunda ponte da mesma tipologia, numa nova sessão SQLAlchemy \`NullPool\`, exclusivamente \`READ ONLY\`, para reconciliar os quatro registos. Sem \`FOUR_RECORDS_RECONCILED\` na sessão independente, STOP sem nova escrita.
+- Após sucesso verificado, grava localmente \`B02_G4_RESULTADO_RECONCILIADO_20261029.json\` e \`POLICY_G5_CANDIDATO_SUCESSOR_G4_PARA_REVISAO.json\` (não ratificado), este último atualizado apenas nos dois vínculos \`g4.policy_binding\` dos documentos existentes. Imprime diff. G5 V3 é imutável.
+- \`finally\`: fecha listener/conexões/subprocessos, remove \`SOLVERIS_B02_POLICY_WRITER_DSN\`, e restaura container se tiver sido iniciado pelo runner e não houver outro cliente ativo.
+- Verificação realizada nesta sessão antes de disponibilizar a execução: revisão estática do código do runner, compilação Python e exercício offline da guarda de hashes e da geração das duas vinculações G5, sem Docker/BD.
+- **Estado nesta entrega: execução Windows não observada neste chat; não afirmar G4 ativo, não inventar record hashes, não criar G5 final.** A próxima evidência deve ser o resultado terminal verdadeiro da execução autorizada.
+
 ## Passos posteriores (não iniciar)
-1. **Não repetir o preflight físico concluído.** Miguel decide expressamente se autoriza **esta unidade G4 de quatro registos**, com IDs, janela e papel exatos. O preflight PASS não constitui autorização operacional.
-2. Apenas com autorização específica e acesso legítimo à mesma identidade, operador autorizado poderá usar `--execute --approval-reference` com referência verdadeira do ato. Validar novamente o contexto no instante da futura operação. Não executar antecipadamente.
+1. **Não repetir o preflight físico nem solicitar nova autorização.** Executar o runner autorizado no Windows pelo percurso de loopback anteriormente validado. Só aceitar resultado da reconciliação independente da unidade completa.
+2. O runner utiliza a autorização existente e executa o procedimento aprovado uma única vez; em resultado incerto, apenas leituras independentes. Não repetir INSERT automaticamente.
 3. Custodiar exclusivamente o resultado `FOUR_RECORDS_RECONCILED` (IDs, `execution_hash`, `activation_hash`, `generation_hash`, `outbox_hash`, `outbox_payload_hash`, `scope_hash`, `policy_hash`). Não inferir sucesso por um INSERT isolado ou ACK.
 4. Apenas depois, preparar **novo candidato G5 sucessor**, atualizando as duas vinculações documentais `g4.policy_binding.policy_activation_id` e `policy_activation_record_hash` com os valores observados, e referenciar execução/geração/outbox conforme contrato G5 efetivo. Preservar V3, obter revisão segregada e nova decisão institucional antes de o considerar final.
 5. Os três testes integrados G5, instalação 0064/0065, assinatura real e operação continuam pendentes. B02 não fechado.
