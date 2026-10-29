@@ -1,0 +1,76 @@
+{
+  "schema": "B02_G5_G4_ACTIVATION_PROCEDURE_PROPOSAL_V2",
+  "status": "PROPOSTA_CORRIGIDA_PARA_REVISAO_NAO_EXECUTADA",
+  "supersede_proposta_anterior": "PROPOSTA_ATIVACAO_G4_PARA_DECISAO.json (commit 9729aef6) -- incompleta nos 3 pontos abaixo",
+
+  "1_servidor_container_porta_base_papel": {
+    "conhecido_com_certeza": {
+      "database_name": "solveris_b02_r4g_test",
+      "system_identifier": "7688884600396267558",
+      "database_oid": 40962,
+      "writer_oid": 40961,
+      "writer_role": "solveris_b02_policy_writer",
+      "fonte": "ROOT_CONSTRAINTS_CANDIDATE.json 'server' block, ja confirmado nesta sessao como identidade do mesmo alvo onde a ativacao G5 historica (57982f46) ocorreu"
+    },
+    "NAO_conhecido_precisa_confirmacao": [
+      "nome/estado atual do container (se o container historico da sessao de 22/10 ainda existe parado/ativo, ou se e preciso provisionar um novo)",
+      "porta exposta atual (muda a cada `docker run`, ja visto nesta sessao com 32768/32769)",
+      "se este alvo (solveris_b02_r4g_test) e o mesmo que 0064/0065 usam, ou uma instancia distinta -- precisa confirmacao direta antes de qualquer ligacao"
+    ],
+    "comando_para_confirmar": "docker ps -a --filter \"label=solveris.b02\" ; docker ps -a | findstr r4g_test"
+  },
+
+  "2_consulta_apenas_leitura": {
+    "autorizacao_existente_cobre_execucao_desta_consulta": false,
+    "motivo": "Este executor nao tem ligacao direta a BD nesta sessao -- so acesso a ficheiros via o operador humano. A consulta e ENTREGUE PRONTA, nunca executada por este lado.",
+    "sql_pronto_para_o_operador_executar": "BEGIN; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; SELECT current_database(), session_user, current_user; SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolinherit FROM pg_roles WHERE rolname=current_user; SELECT count(*) AS memberships FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname=current_user); SELECT policy_id,policy_version,policy_hash,domain FROM public.policy_versions WHERE policy_id='SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY' AND policy_hash='05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a'; SELECT decision_id,record_hash,decision_event,previous_decision_id,timestamp FROM public.policy_decisions WHERE policy_id='SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY' AND policy_hash='05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a' ORDER BY timestamp; SELECT bootstrap_authority_record_id,record_hash,independent_audit_result,validity FROM public.bootstrap_authority_records WHERE policy_id='SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY' AND policy_hash='05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a'; SELECT policy_activation_id,state,operational_interval,domain,modality FROM public.policy_activations WHERE policy_id='SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY' AND policy_hash='05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a'; SELECT pid,mode,granted FROM pg_locks WHERE relation IN (to_regclass('public.policy_activations'),to_regclass('public.policy_decisions'),to_regclass('public.policy_versions'),to_regclass('public.bootstrap_authority_records')); SELECT has_table_privilege(current_user,'public.policy_activations','INSERT'), has_table_privilege(current_user,'public.policy_activation_executions','INSERT'); ROLLBACK;",
+    "nota": "Transacao aberta e encerrada com ROLLBACK -- puramente diagnostica, zero escrita. Confirma, antes de qualquer execucao real: identidade do writer, privilegios insuficientes para administracao, existencia e exatidao da decisao/bootstrap/politica, e se ha bloqueios concorrentes."
+  },
+
+  "3_parametros_reais_de_stage_policy_activation": {
+    "achado_critico": "O g4.policy_binding JA EMBUTIDO no V3 (2 ocorrencias, uma por documento) referencia policy_activation_id='B02-05ede-activation-v1' e policy_activation_record_hash='06321ef4c9df17e251a08428a534ab6af8e1f868df2c48b64c3342ecc703dae5' -- a ATIVACAO HISTORICA. Isto tem de ser atualizado para a NOVA ativacao antes de o binding ser valido para a janela proposta (ver ponto 4).",
+    "ids_novos_propostos_deterministicos": {
+      "policy_activation_execution_id": "B02-05ede-execution-v2",
+      "policy_activation_id": "B02-05ede-activation-v2",
+      "generation_id": "B02-05ede-generation-v2",
+      "outbox_id": "B02-05ede-outbox-v2",
+      "idempotency_key_execution": "B02-05ede-execution-v2-20261103T120000Z (derivado do id + inicio da janela, explicito e reproduzivel)"
+    },
+    "parametro_execution_dict": {
+      "state": "concluida", "execution_mode": "manual",
+      "policy_decision_id": "B02-05ede-ratificada-v1",
+      "policy_decision_record_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018",
+      "bootstrap_authority_record_id": "B02-05ede-bootstrap-v1",
+      "policy_type": "activation_authority", "policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY",
+      "policy_version": 1, "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a"
+    },
+    "parametro_activation_dict": {
+      "state": "activa", "domain": "SEFA_PR_B02_DOCUMENTAL",
+      "operational_interval": {"from": "2026-11-03T12:00:00+00:00", "until": "2026-11-04T07:56:30.910737+00:00"}
+    },
+    "NAO_fabricado": "O record_hash de saida de cada linha (policy_activation_execution_record_hash, policy_activation record_hash) e calculado pelo PROPRIO servidor dentro de stage_policy_activation() -- NAO e previsto, inventado nem simulado aqui. So existe apos execucao real."
+  },
+
+  "4_incorporacao_no_candidato_preservando_v3": {
+    "v3_permanece": "POLICY_G5_CANDIDATO_V3_COMPLETO.json (hash 8b3b0cc0..., commit a8c4be17) NAO e editado. Fica como historico imutavel desta fase da preparacao.",
+    "sequencia_exata": [
+      "1. Executar (ato real, fora deste executor) stage_policy_activation() com os parametros da secao 3 -- so depois disso existem policy_activation_id/record_hash reais.",
+      "2. Copiar V3 integralmente para um candidato V4 novo.",
+      "3. Em V4, para CADA um dos 2 documentos, substituir g4.policy_binding.policy_activation_id='B02-05ede-activation-v1' -> 'B02-05ede-activation-v2' (valor real, nao hipotetico) e g4.policy_binding.policy_activation_record_hash -> o hash devolvido pelo servidor (valor real, a inserir so apos existir).",
+      "4. Recalcular o hash do V4 pela MESMA fronteira ja confirmada (ficheiro completo, bytes exatos, sem metadados de preparacao incluidos no calculo de policy_hash final).",
+      "5. V4 e entao o candidato submetido a ratificacao -- nao V3."
+    ],
+    "nota": "Nenhum destes passos e executado nesta proposta -- ficam descritos para execucao apos a leitura da secao 2 confirmar as pre-condicoes e apos a ativacao real da secao 3 ocorrer."
+  },
+
+  "5_rollback_e_reconciliacao": {
+    "falha_durante_a_transacao": "stage_policy_activation() nao comita internamente (confirmado na docstring) -- qualquer excecao capturada pelo chamador deve emitir ROLLBACK explicito; nada fica persistido.",
+    "perda_de_confirmacao_do_commit_ACK_loss": {
+      "procedimento": "Reabrir ligacao independente (nova sessao) e correr, so leitura: SELECT * FROM policy_activation_executions WHERE policy_activation_execution_id='B02-05ede-execution-v2'; e equivalente para policy_activations/generations/outbox com os IDs exatos da secao 3.",
+      "se_presente": "Tratar como committed -- NAO repetir com novos IDs (violaria unique constraints e o aviso explicito da funcao: 'Changed input is a conflict, never ON CONFLICT DO NOTHING').",
+      "se_ausente": "Seguro reentregar com os MESMOS IDs exatos -- a funcao valida reentrega identica antes de reuso, conforme a propria docstring."
+    }
+  },
+
+  "nao_fabricado_nesta_proposta": ["nenhuma ligacao de BD aberta por este executor", "nenhum hash de saida inventado", "nenhuma linha escrita", "nenhum V4 criado ainda", "nenhuma ativacao executada"]
+}
