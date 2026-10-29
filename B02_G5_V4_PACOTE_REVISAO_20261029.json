@@ -90,5 +90,15 @@
     "result": "G5_NATIVE_ABSENT",
     "container": "RESTORED_STOPPED",
     "claim": "Existing protected PG17.10 has no native library at /usr/lib/postgresql/17/lib/b02_g5_native_REAL_CLOSED.so"
+  },
+  "review_workflow": {
+    "github_pr": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26",
+    "pr_number": 26,
+    "base": "work/fiscal-assumptions-c0",
+    "head": "candidate/g5-successor-window-prep",
+    "stage": "OPEN_READY_FOR_REVIEW_NOT_MERGED",
+    "independent_reviewer_assigned": false,
+    "independent_review_status": "NOT_SUBMITTED",
+    "limitation": "PR readiness is not a reviewer mandate, technical approval, Miguel ratification, operational G5 authority or release"
   }
 }
