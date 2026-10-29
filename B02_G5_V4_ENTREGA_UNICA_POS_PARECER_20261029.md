@@ -3,6 +3,44 @@
 **Estado: PROPOSTA CONSOLIDADA, NÃO EMITIDA, SEM AUTORIZAÇÃO DE INSTALAÇÃO OU OPERAÇÃO.**
 **Objeto de revisão fixo:** PR #26, commit `909fd78b2db6add6727f834a0abf189511eddf47`. Esta entrega é posterior ao objeto fixo, não modifica o V4, não constitui revisão GitHub independente e não é aprovação criptográfica/física.
 
+## 0. Ratificação documental V5 — texto único pronto para Miguel, **NÃO EMITIDO**
+
+**PONTO DE ENTREGA:** este é o único texto de ratificação preparado para apresentação a Miguel **depois** do aditamento favorável do revisor sobre o delta V4→V5. Não é uma segunda ficha, nem ratificação por este executor. Referência de revisão atual: [PR #26, comentário 6501412721](https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6501412721). Até prova de aditamento próprio, este texto fica em estado **PRONTO_PARA_DECISÃO_NÃO_SUBMETIDO**.
+
+> **SOLVERIS — ATO ÚNICO DE RATIFICAÇÃO DOCUMENTAL DA POLÍTICA G5 SUCESSORA, VERSÃO 2**
+>
+> Na qualidade de autoridade institucional final, **Miguel**, examino o objeto **POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json**, identificado pelo SHA-256 dos bytes integrais **bf7cdb951ac8e4fb8e5b8e2a1aa6fa3095fad194cbd5845a0dc0e20afd7a3ae9**, Git blob **87dd0560d842f8b9f20d808363496fa60786710c**, e o seu corpo **policy_candidate_body**.
+>
+> O sujeito canónico proposto é **policy_type=activation_authority**, **policy_id=SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE**, **policy_version=2**. O SHA-256 calculado sobre a serialização canónica do corpo é **007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf** (12268 bytes); **este é um candidato de identidade do conteúdo, distinto do hash do ficheiro e do record_hash da base**. Exijo conferência do contrato canónico e dos bytes aceites pelo motor antes da inserção em policy_versions e antes da assinatura da cadeia.
+>
+> **Base causal:** a versão 1 dessa política já existe na base solveris_b02_r4g_test com policy_hash **57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa** e record_hash **705c7e2879abb37069f65eb39b544aa3028fc4b0dea282e60d3dd1628046171d**. O V5 diferencia-se do V4 por uma alteração única: **policy_candidate_body.policy_version de 1 para 2**. Não altera as referências dos dois documentos ao G4, cuja política mantém a versão 1.
+>
+> **Escopo material:** apenas persistência documental das resoluções SEFA/PR **101202501245** (258302 bytes, SHA-256 e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832) e **101201900571** (1944929 bytes, SHA-256 af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d). Preservo G4 **B02-05ede-activation-v3**, hash **504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4**, txid **926**, sem repetição de exame, ativação ou escrita G4.
+>
+> **Apreciação:** considero o parecer técnico G5 V4 **favorável condicionado**, cujo autor reconheceu participação anterior e **não demonstrou segregação material**. Antes de atribuir eficácia institucional ao V5, apreciarei o aditamento de revisão sobre o único delta 1→2, mantendo expressamente as condições B1–B4 e exigindo qualquer aceitação segregada que a governação e os contratos em vigor efetivamente requeiram. Não transformo um parecer GPT em assinatura institucional independente.
+>
+> **Janela proposta original, sem antecipação:** de **2026-10-29T13:00:00+00:00** a **2026-10-30T13:00:00+00:00** para declared_material_applicability e g5_release. A ratificação documental pode ser deliberada sobre este objeto exato, mas **não retroage, não prolonga automaticamente o G4 e não habilita operações após o fim dessa janela**. Se a execução não couber em uma janela e cobertura G4 efetivamente vigentes, será necessário percurso temporal atualizado com novo objeto/hash e deliberação correspondente; não se editará a vigência por conveniência.
+>
+> **Decisão reservada a minha manifestação expressa:** **RATIFICO / NÃO RATIFICO** o corpo canónico **V5 versão 2** nos limites acima, à vista do aditamento e das reservas B1–B4. Esta minuta não é decisão enquanto não existir manifestação identificável de Miguel; o executor não deve preencher a decisão em seu nome.
+>
+> **Efeitos e exclusões:** eventual ratificação identifica documentalmente o corpo V5 e seus limites. **Não** é por si só: aceitação segregada não demonstrada, inserção em policy_versions, decisão/ativação efetiva do G5 na base, autoridade de novo header/ELF, aprovação de binário futuro, autorização de instalação 0064/0065, GRANT/DDL, assinatura Ed25519, concessão de reserva one-shot, COMMIT documental, validação da sanitização, abertura comercial ou liberação do B03. Cada ato de efeito diferente exige prova exata, e a aprovação administrativa e operacional pode ser consolidada em um só instrumento condicionado a hashes conhecidos e gates verificados, sem recomeçar a cadeia técnica.
+
+**Propagação de identidade obrigatória, depois da decisão real (não antes):**
+
+| Elemento | Versão/identidade correta | Fonte de prova |
+| --- | --- | --- |
+| Ficheiro V5 submetido | SHA-256 bf7cdb951ac8e4fb8e5b8e2a1aa6fa3095fad194cbd5845a0dc0e20afd7a3ae9 | Bytes exatos da submissão |
+| Corpo V5 | policy_version=2; SHA canónico candidato 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf | canonical_bytes; hash definitivo pelo contrato de registo |
+| policy_versions / policy_decisions / policy_activations G5 | **policy_version=2**, mesmo policy_id e policy_hash canónico final; IDs e record_hash de decisão/ativação G5 **reais** | Atos e inserções institucionais autorizadas |
+| native root: g5_policy_binding | policy_version=2 e **decision_hash, decision_id, activation_id, activation_record_hash G5 emitidos**; nunca os do G4 | Hash do header novo após provas reais |
+| native root: release_policy_hash | Hash canónico do corpo G5 **realmente ratificado** | Coincidência com tabela e decisão efetiva |
+| reservation 0065 / manifesto assinado | policy_version=2 derivada do binding G5 real; txid do PostgreSQL | Precommit e COMMIT único |
+| Referências g4.policy_binding em ambos os PDFs | **policy_version=1** mantida | G4 txid 926, sem alteração |
+
+**Preparação executável sem autoridade:** fontes C recuperados e hashes pinados, candidatas 0064→0065 preservadas e sua revisão estática focada concluída; nenhuma restrição literal à versão 1 foi encontrada nas candidatas. Resta gerar header novo apenas após a decisão/ativação reais, compilar ELF específico em descartável PG17.10, realizar backup **e restauro** no alvo autorizado e confirmar ACL/owner/lock e situação de sanitização. Não executar DDL nem DB writes com base nesta minuta.
+
+---
+
 ## Adenda causal obrigatória — colisão `policy_version=1` confirmada fisicamente
 
 **Observação PostgreSQL somente leitura, 29/10/2026:** na base `solveris_b02_r4g_test`, `policy_versions` já possui `policy_id=SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE`, `policy_version=1`, `policy_hash=57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa`, `record_hash=705c7e2879abb37069f65eb39b544aa3028fc4b0dea282e60d3dd1628046171d`. `RUNNER_EXIT=0`, sem alterações; a versão 1 não pode ser reinserida porque `app/models.py:PolicyVersion` exige unicidade `(policy_id,policy_version)`. Trata-se de falha de identidade objetiva não abrangida pelo parecer V4: **não ratificar nem tentar inserir o V4 com versão 1.**
