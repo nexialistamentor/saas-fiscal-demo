@@ -94,7 +94,21 @@ class AtomicCallerTests(TestCase):
             engine=MagicMock()
             conn=engine.connect.return_value.__enter__.return_value
             conn.execute.return_value.mappings.return_value.one_or_none.side_effect=rows
-            with patch.object(mod,"assert_writer"):
+            import sys, types
+            from sqlalchemy import Table, Column, MetaData, String
+            metadata=MetaData()
+            fake_models=types.ModuleType("app.models")
+            fake_atomic=types.ModuleType("app.models_policy_activation_atomicity")
+            for module,attr,name,key in (
+                (fake_models,"PolicyActivationExecution","policy_activation_executions","policy_activation_execution_id"),
+                (fake_models,"PolicyActivation","policy_activations","policy_activation_id"),
+                (fake_atomic,"PolicyActivationGeneration","policy_activation_generations","policy_activation_generation_id"),
+                (fake_atomic,"PolicyActivationOutboxEvent","policy_activation_outbox_events","policy_activation_outbox_event_id")):
+                table=Table(name,metadata,Column(key,String,primary_key=True))
+                setattr(module,attr,type(attr,(),{"__table__":table}))
+            with patch.object(mod,"assert_writer"),patch.dict(sys.modules,{
+                    "app.models":fake_models,
+                    "app.models_policy_activation_atomicity":fake_atomic}):
                 return mod.reconcile_unit(engine,"e1","a1","g1","o1")
         self.assertEqual(check([e,a,g,o]),"PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED")
         broken=dict(o,policy_activation_generation_hash="wrong")
