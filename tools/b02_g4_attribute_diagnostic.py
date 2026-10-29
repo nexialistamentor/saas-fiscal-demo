@@ -69,9 +69,11 @@ def read_only_engine(url,*args,**kwargs):
     # same ephemeral host/port and identity from the approved bridge.
     sep="&" if "?" in url else "?"
     url=url+sep+"options=-c%20default_transaction_read_only%3Don"
+    # The physically validated bridge accepts one DB connection. Reuse it
+    # across independent_read and preflight; libpq startup still forces READ ONLY.
     opts=dict(kwargs)
     opts.pop("poolclass",None)
-    engine=real_create_engine(url,*args,poolclass=NullPool,**opts)
+    engine=real_create_engine(url,*args,**opts)
 
     @event.listens_for(engine,"connect")
     def check_read_only(dbapi_conn,conn_record):
