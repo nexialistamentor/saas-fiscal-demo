@@ -57,15 +57,13 @@ def authorize(path, reference):
 def reconcile(engine,record_id):
     from sqlalchemy import text
     with engine.connect() as c:
-        c.exec_driver_sql('SET TRANSACTION READ ONLY')
         row=c.execute(text('SELECT * FROM public.policy_versions WHERE policy_id=:p AND policy_version=2'),{'p':POLICY_ID}).mappings().one_or_none()
         c.rollback()
     if row is None:return 'ABSENT',None
     data=dict(row)
     if (data['policy_version_record_id']!=record_id or data['policy_hash']!=POLICY_HASH
         or data['policy_type']!='activation_authority' or not HEX.fullmatch(data['record_hash'] or '')):return 'CONFLICT',data
-    # The policy must match every field, not merely its identifying hash.
-    return 'PRESENT_EXACT',data
+    return 'PRESENT_IDENTITY',data
 
 def execute(repo,body,a):
     from sqlalchemy import create_engine,text,MetaData,Table,select
@@ -123,15 +121,18 @@ def execute(repo,body,a):
                 txid=c.execute(text('SELECT txid_current()')).scalar_one()
             # COMMIT was acknowledged; independent connection reconciliation follows.
         status,stored=reconcile(engine,record_id)
-        if status!='PRESENT_EXACT':stop('POSTCOMMIT_RECONCILIATION_'+status)
+        if status!='PRESENT_IDENTITY':stop('POSTCOMMIT_RECONCILIATION_'+status)
         for field in FIELDS:
             if stored[field]!=body[field]:stop('POSTCOMMIT_FIELD_MISMATCH_'+field.upper())
-        print(json.dumps({'status':'COMMITTED_RECONCILED','txid':txid,'row':stored},sort_keys=True))
+        with engine.connect() as check:
+            actual=check.execute(text("SELECT public.b02_json_hash(to_jsonb(p)-'record_hash') FROM public.policy_versions p WHERE policy_version_record_id=:id"),{'id':record_id}).scalar_one()
+            if stored['record_hash']!=actual:stop('POSTCOMMIT_PHYSICAL_HASH_MISMATCH')
+        print(json.dumps({'status':'COMMITTED_RECONCILED','txid':txid,'record_id':record_id,'record_hash':stored['record_hash']},sort_keys=True))
     except Exception:
         # An uncertain network ACK must not be retried automatically.
         try:
             status,stored=reconcile(engine,record_id)
-            print(json.dumps({'reconciliation':status,'row':stored},sort_keys=True),file=sys.stderr)
+            print(json.dumps({'reconciliation':status,'record_id':record_id,'record_hash':stored['record_hash'] if stored else None},sort_keys=True),file=sys.stderr)
         except Exception:
             print('RECONCILIATION_UNKNOWN_STOP_NO_RETRY',file=sys.stderr)
         raise
