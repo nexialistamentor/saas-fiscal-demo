@@ -1,0 +1,92 @@
+
+====================================================================================================
+A. Procurar literal "g4'->>'valid_from" no ficheiro real de 0064
+====================================================================================================
+Primeira ocorrencia de "g4" na string _SQL: index 17515
+>'until')::timestamptz
+ AND (a.operational_interval->>'from')::timestamptz<(q.operational_interval->>'until')::timestamptz))
+ THEN RAISE EXCEPTION 'G5_CURRENT_ACTIVATION_AMBIGUOUS'; END IF;
+ PERFORM public.b02p_require_complete(a.policy_activation_execution_id,false);
+ release:=g->'g5_release';
+ IF release->>'schema' IS DISTINCT FROM 'B02_G5_SEFA_PR_REAL_RELEASE_V1'
+ OR release->>'mode' IS DISTINCT FROM 'LOCAL_CAS_INCORPORATION' OR release->>'actor' IS DISTINCT FROM b.actor
+ OR release->'synthetic_only' IS DISTINCT FROM 'false'::jsonb
+ OR clock_timestamp()<(release->>'from')::timestamptz OR clock_timestamp()>=(release->>'until')::timestamptz
+ OR release->>'from' IS NULL OR release->>'until' IS NULL
+ OR jsonb_typeof(release->'documents') IS DISTINCT FROM 'array' OR jsonb_array_length(release->'documents')<>2
+ OR (SELECT count(DISTINCT x->>'sha256') FROM jsonb_array_elements(release->'documents') x)<>2
+ THEN RAISE EXCEPTION 'G5_EXACT_REAL_RELEASE_REQUIRED'; END IF;
+ -- Ratification is resolved from the actual activation above, not embedded
+ -- inside its own immutable policy (which would create a hash cycle).
+ SELECT item INTO doc FROM jsonb_array_elements(release->'documents') item
+ WHERE item->>'acquisition_execution_id'=b.acquisition_execution_id;
+ IF NOT FOUND OR (SELECT count(*) FROM jsonb_array_elements(release->'documents') x WHERE x->>'acquisition_execution_id'=b.acquisition_execution_id)<>1
+ OR EXISTS(SELECT 1 FROM unnest(ARRAY['acquisition_execution_id','mode_binding_id','artifact_reference_id','receipt_id','verification_id','normative_artifact_id']) k WHERE coalesce(doc->>k,'')='')
+ OR doc->>'mode_binding_id' IS DISTINCT FROM b.mode_binding_id OR doc->>'artifact_reference_id' IS DISTINCT FROM b.artifact_reference_id
+ OR b.source_identity_binding->>'source_id' IS DISTINCT FROM 'SEFA-PR-B02-DOCUMENTAL'
+ OR doc->>'url' IS DISTINCT FROM b.source_identity_binding->>'exact_locator'
+ OR NOT coalesce(((doc->>'sha256'='e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832' AND doc->>'byte_size'='258302' AND doc->>'url'='https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf')
+ OR (doc->>'sha256'='af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d' AND doc->>'byte_size'='1944929' AND doc->>'url'='https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf')),false)
+ OR (document_hash IS NOT NULL AND (document_hash IS DISTINCT FROM doc->>'sha256' OR size_bytes::text IS DISTINCT FROM doc->>'byte_size'))
+ OR doc->'g4'->>'valid_from' IS NULL OR doc->'g4'->>'valid_until' IS NULL
+ OR clock_timestamp()<(doc->'g4'->>'valid_from')::timestamptz OR clock_timestamp()>=(doc->'g4'->>'valid_until')::timestamptz
+ OR doc->'g4'->>'outcome' IS DISTINCT FROM 'conclusivo_favoravel' OR doc->'g4'->'synthetic_only' IS DISTINCT FROM 'false'::jsonb
+ OR coalesce(doc->'g4'->'origin_report_binding'->>'sha256','') !~ '^[0-9a-f]{64}$'
+ OR coalesce(doc->'g4'->'verifier'->>'hash','') !~ '^[0-9a-f]{64}$'
+ OR doc->'g4'->'verifier' IS DISTINCT FROM jsonb_build_object('id','SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN','version','1','hash','fab0
+
+====================================================================================================
+B. Procurar tambem nos outputs ja gravados desta sessao (partes do 0064)
+====================================================================================================
+
+--- tracar_assinatura_g5_PARTE_A.txt (primeira ocorrencia 'valid_from') ---
+from the actual activation above, not embedded
+ -- inside its own immutable policy (which would create a hash cycle).
+ SELECT item INTO doc FROM jsonb_array_elements(release->'documents') item
+ WHERE item->>'acquisition_execution_id'=b.acquisition_execution_id;
+ IF NOT FOUND OR (SELECT count(*) FROM jsonb_array_elements(release->'documents') x WHERE x->>'acquisition_execution_id'=b.acquisition_execution_id)<>1
+ OR EXISTS(SELECT 1 FROM unnest(ARRAY['acquisition_execution_id','mode_binding_id','artifact_reference_id','receipt_id','verification_id','normative_artifact_id']) k WHERE coalesce(doc->>k,'')='')
+ OR doc->>'mode_binding_id' IS DISTINCT FROM b.mode_binding_id OR doc->>'artifact_reference_id' IS DISTINCT FROM b.artifact_reference_id
+ OR b.source_identity_binding->>'source_id' IS DISTINCT FROM 'SEFA-PR-B02-DOCUMENTAL'
+ OR doc->>'url' IS DISTINCT FROM b.source_identity_binding->>'exact_locator'
+ OR NOT coalesce(((doc->>'sha256'='e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832' AND doc->>'byte_size'='258302' AND doc->>'url'='https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf')
+ OR (doc->>'sha256'='af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d' AND doc->>'byte_size'='1944929' AND doc->>'url'='https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf')),false)
+ OR (document_hash IS NOT NULL AND (document_hash IS DISTINCT FROM doc->>'sha256' OR size_bytes::text IS DISTINCT FROM doc->>'byte_size'))
+ OR doc->'g4'->>'valid_from' IS NULL OR doc->'g4'->>'valid_until' IS NULL
+ OR clock_timestamp()<(doc->'g4'->>'valid_from')::timestamptz OR clock_timestamp()>=(doc->'g4'->>'valid_until')::timestamptz
+ OR doc->'g4'->>'outcome' IS DISTINCT FROM 'conclusivo_favoravel' OR doc->'g4'->'synthetic_only' IS DISTINCT FROM 'false'::jsonb
+ OR coalesce(doc->'g4'->'origin_report_binding'->>'sha256','') !~ '^[0-9a-f]{64}$'
+ OR coalesce(doc->'g4'->'verifier'->>'hash','') !~ '^[0-9a-f]{64}$'
+ OR doc->'g4'->'verifier' IS DISTINCT FROM jsonb_build_object('id','SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN','version','1','hash','fab019b18d21f8e47e59ff96fd783dc9732cc3ae1d6e1ed429bddf957f0b9472')
+ OR (doc->>'sha256'='e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832' AND doc->>'document_id' IS DISTINCT FROM '101202501245')
+
+
+--- tracar_assinatura_g5_OUTPUT.txt (primeira ocorrencia 'valid_from') ---
+from the actual activation above, not embedded
+ -- inside its own immutable policy (which would create a hash cycle).
+ SELECT item INTO doc FROM jsonb_array_elements(release->'documents') item
+ WHERE item->>'acquisition_execution_id'=b.acquisition_execution_id;
+ IF NOT FOUND OR (SELECT count(*) FROM jsonb_array_elements(release->'documents') x WHERE x->>'acquisition_execution_id'=b.acquisition_execution_id)<>1
+ OR EXISTS(SELECT 1 FROM unnest(ARRAY['acquisition_execution_id','mode_binding_id','artifact_reference_id','receipt_id','verification_id','normative_artifact_id']) k WHERE coalesce(doc->>k,'')='')
+ OR doc->>'mode_binding_id' IS DISTINCT FROM b.mode_binding_id OR doc->>'artifact_reference_id' IS DISTINCT FROM b.artifact_reference_id
+ OR b.source_identity_binding->>'source_id' IS DISTINCT FROM 'SEFA-PR-B02-DOCUMENTAL'
+ OR doc->>'url' IS DISTINCT FROM b.source_identity_binding->>'exact_locator'
+ OR NOT coalesce(((doc->>'sha256'='e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832' AND doc->>'byte_size'='258302' AND doc->>'url'='https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf')
+ OR (doc->>'sha256'='af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d' AND doc->>'byte_size'='1944929' AND doc->>'url'='https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf')),false)
+ OR (document_hash IS NOT NULL AND (document_hash IS DISTINCT FROM doc->>'sha256' OR size_bytes::text IS DISTINCT FROM doc->>'byte_size'))
+ OR doc->'g4'->>'valid_from' IS NULL OR doc->'g4'->>'valid_until' IS NULL
+ OR clock_timestamp()<(doc->'g4'->>'valid_from')::timestamptz OR clock_timestamp()>=(doc->'g4'->>'valid_until')::timestamptz
+ OR doc->'g4'->>'outcome' IS DISTINCT FROM 'conclusivo_favoravel' OR doc->'g4'->'synthetic_only' IS DISTINCT FROM 'false'::jsonb
+ OR coalesce(doc->'g4'->'origin_report_binding'->>'sha256','') !~ '^[0-9a-f]{64}$'
+ OR coalesce(doc->'g4'->'verifier'->>'hash','') !~ '^[0-9a-f]{64}$'
+ OR doc->'g4'->'verifier' IS DISTINCT FROM jsonb_build_object('id','SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN','version','1','hash','fab019b18d21f8e47e59ff96fd783dc9732cc3ae1d6e1ed429bddf957f0b9472')
+ OR (doc->>'sha256'='e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832' AND doc->>'document_id' IS DISTINCT FROM '101202501245')
+
+
+====================================================================================================
+C. Confirmar: a verificacao cruza com policy_activations/policy_decisions, ou e so valor embutido vs relogio?
+====================================================================================================
+Ocorrencias de 'policy_activations' na SQL completa: 13
+Ocorrencias de 'policy_decisions' na SQL completa: 18
+Ocorrencias de 'SELECT.*INTO.*policy_activations' na SQL completa: 3
+Ocorrencias de 'operational_interval' na SQL completa: 25
