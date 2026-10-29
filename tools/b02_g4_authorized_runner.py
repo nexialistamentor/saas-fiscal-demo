@@ -5,6 +5,7 @@ No password files, grants, migrations or G5 execution.
 from __future__ import annotations
 import difflib
 import hashlib
+from datetime import datetime, timezone
 import io
 import json
 import os
@@ -318,6 +319,15 @@ def main():
     if str(REPO) not in sys.path:
         sys.path.insert(0,str(REPO))
     source=assert_repo_and_approval()
+    # Exact institutional window; prevent a premature INSERT rejected by
+    # b02p_stamp_and_validate() without altering the approved procedure.
+    now=datetime.now(timezone.utc)
+    start=datetime.fromisoformat("2026-11-03T12:00:00+00:00")
+    end=datetime.fromisoformat("2026-11-04T07:56:30.910737+00:00")
+    if now<start:
+        stop("STOP_G4_BEFORE_AUTHORIZED_WINDOW_2026-11-03T12:00:00Z")
+    if now>=end:
+        stop("STOP_G4_AUTHORIZED_WINDOW_ENDED")
     running=check_container()
     started=False
     try:
