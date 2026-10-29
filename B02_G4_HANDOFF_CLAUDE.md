@@ -16,16 +16,21 @@ O novo script confere role/base, permissões, política/decisão/bootstrap exato
 
 Os IDs literais aprováveis (ainda não executados) estão no script: `B02-05ede-execution-v2`, `B02-05ede-activation-v2`, `B02-05ede-generation-v2`, `B02-05ede-outbox-v2`; idempotência `B02-05ede-execution-v2-20261103T120000Z`. Janela proposta: 03/11/2026 12:00 UTC a 04/11/2026 07:56:30.910737 UTC.
 
-## Evidência e limites
-- GitHub: commit inicial e serviço/modelos lidos; sem alteração em serviço, migrations, papéis, G5 V3 ou MEI.
-- Preparação local: `py_compile` e dry-run de um protótipo do procedimento concluídos; a versão final do GitHub recebeu inspeção estática da assinatura, campos, transação e reconciliação. **Não afirmar que a versão final foi importada com todo o checkout nem que o PostgreSQL local foi observado nesta sessão.**
-- Nenhuma ativação, INSERT/UPDATE/DELETE/DDL, assinatura ou ensaio Docker nesta missão. Não existe novo hash G4 observado.
-- A evidência anterior sobre o escritor restrito, a decisão ratificada e o bootstrap é aproveitada, mas o preflight atual foi codificado para **confirmá-los novamente apenas na futura invocação**. Não converter observações históricas em provas operacionais atuais.
+## Preflight G4 físico concluído — 29/10/2026 (evidência terminal Windows)
+
+- Diagnóstico administrativo local, exclusivamente leitura: `SERVER|solveris_b02_r4g_test|solveris_test|solveris_test`; writer `LOGIN=true`, password configurada e validade ilimitada; `HBA_ERRORS|0`. A via TCP publicada exige SCRAM; as entradas locais do servidor para socket e loopback são `trust`, tal como observadas. Não houve edição do HBA.
+- Ligação direta pelo socket do container **sem SET ROLE**: `DIRECT_WRITER|solveris_b02_r4g_test|solveris_b02_policy_writer|solveris_b02_policy_writer`.
+- SQL sob o writer, `BEGIN READ ONLY`: nove verificações `PASS` — `IDENTITY`, `ROLE`, `TABLE_PERMISSIONS`, `PREDECESSOR_READ`, `SQL_FUNCTIONS`, `POLICY`, `DECISION`, `BOOTSTRAP`, `IDS_AVAILABLE`. `CONTAINER|RESTORED_STOPPED`.
+- Preflight **Python final**: executado na `.venv-release` do checkout Windows; código `executar_ativacao_g4_real.py` lido de `FETCH_HEAD` com verificação do blob Git `1729e6d62c77510ef4dd7db0af56a6cbe985c168`; identidade PostgreSQL via ponte TCP de loopback efémera `docker exec` para o loopback interno já autorizado, sem password e sem alteração do servidor. Execução por stdin para preservar aspas (`python -`), **sem `--execute`**.
+- Resultado final recebido do terminal de Miguel: `mode=DRY_RUN`; `DRY_RUN_DB_READ_ONLY_PASS: exact predecessors, IDs available`; `PYTHON_EXIT|0`; `CONTAINER|RESTORED_STOPPED`. A função `independent_read()` impõe `SET TRANSACTION READ ONLY` e executa `preflight()`. Portanto, esta é uma confirmação física do preflight **read-only**, não mera ligação SQL nem apenas `DRY_RUN_STATIC_ONLY`.
+- Primeiro ensaio Python falhou por perda das aspas em `python -c` (`SyntaxError` antes da ligação); corrigido executando o mesmo código via stdin, sem alterar o procedimento versionado. Não repetir esse ensaio.
+- **Não é necessária redefinição de password** para este percurso comprovado. Não criar, divulgar ou custodiar credenciais adicionais; não instalar dependências no container.
+- Nenhum INSERT, UPDATE, DELETE, DDL, GRANT, ALTER ROLE, ativação G4/G5, COMMIT de escrita, migração, assinatura ou ensaio normativo. O `scope_hash` é derivado pelo código do serviço a partir da política real; não é parâmetro de entrada e não se inventa.
+- O G5 V3, MEI, serviço de escrita, regras de autenticação e PASS anteriores permanecem inalterados. **Preflight G4 fechado; ativação G4 NÃO realizada.**
 
 ## Passos posteriores (não iniciar)
-1. Miguel decide expressamente se autoriza **esta unidade G4 de quatro registos**, com IDs, janela e papel exatos. Sem essa decisão, apenas dry-run.
-2. No ambiente Windows real, após disponibilização segura da variável `SOLVERIS_B02_POLICY_WRITER_DSN`, executar o script por omissão para o preflight `READ ONLY`; avaliar qualquer STOP. Não expor DSN.
-3. Só com autorização específica, operador autorizado poderá usar `--execute --approval-reference` com a referência verdadeira do ato. Não executar antecipadamente.
-4. Custodiar exclusivamente o resultado `FOUR_RECORDS_RECONCILED` (IDs, `execution_hash`, `activation_hash`, `generation_hash`, `outbox_hash`, `outbox_payload_hash`, `scope_hash`, `policy_hash`). Não inferir sucesso por um INSERT isolado ou ACK.
-5. Apenas depois, preparar **novo candidato G5 sucessor**, atualizando as duas vinculações documentais `g4.policy_binding.policy_activation_id` e `policy_activation_record_hash` com os valores observados, e referenciar execução/geração/outbox conforme contrato G5 efetivo. Preservar V3, obter revisão segregada e nova decisão institucional antes de o considerar final.
-6. Os três testes integrados G5, instalação 0064/0065, assinatura real e operação continuam pendentes. B02 não fechado.
+1. **Não repetir o preflight físico concluído.** Miguel decide expressamente se autoriza **esta unidade G4 de quatro registos**, com IDs, janela e papel exatos. O preflight PASS não constitui autorização operacional.
+2. Apenas com autorização específica e acesso legítimo à mesma identidade, operador autorizado poderá usar `--execute --approval-reference` com referência verdadeira do ato. Validar novamente o contexto no instante da futura operação. Não executar antecipadamente.
+3. Custodiar exclusivamente o resultado `FOUR_RECORDS_RECONCILED` (IDs, `execution_hash`, `activation_hash`, `generation_hash`, `outbox_hash`, `outbox_payload_hash`, `scope_hash`, `policy_hash`). Não inferir sucesso por um INSERT isolado ou ACK.
+4. Apenas depois, preparar **novo candidato G5 sucessor**, atualizando as duas vinculações documentais `g4.policy_binding.policy_activation_id` e `policy_activation_record_hash` com os valores observados, e referenciar execução/geração/outbox conforme contrato G5 efetivo. Preservar V3, obter revisão segregada e nova decisão institucional antes de o considerar final.
+5. Os três testes integrados G5, instalação 0064/0065, assinatura real e operação continuam pendentes. B02 não fechado.
