@@ -51,6 +51,15 @@ Os IDs literais aprováveis (ainda não executados) estão no script: `B02-05ede
 - Autorização B02-G4-AUTH-MIGUEL-20261029-01 e procedimento aprovado blob 1729e6d62c77510ef4dd7db0af56a6cbe985c168 preservados. Sem nova autorização e sem revisão normativa.
 - Estado: ativação G4 continua não executada neste chat; correção validada estaticamente no GitHub, execução Windows ainda pendente.
 
+## Falha na primeira entrada de escrita — causa e correção (29/10/2026)
+
+- Evidência Windows observada: `STOP: AttributeError`, `APPROVED_PROCEDURE_EXIT|2`, `STOP|INDEPENDENT_READ_NO_UNIT`, `CONTAINER|RESTORED_STOPPED`. Não há unidade completa reconciliada nem novos hashes, nem prova positiva de COMMIT. Não repetir INSERT automaticamente sem a correção.
+- Diagnóstico em sessão posterior exclusivamente de leitura: `DIAG_EXCEPTION|AttributeError`; traceback: `executar_ativacao_g4_real.py:29` (import), `models_policy_activation_atomicity.py:7`, `models.py:25`, `database.py:259` e `database.py:248 ensure_sqlite_schema_compat`. `DIAG_PYTHON_EXIT|0`, `CONTAINER|RESTORED_STOPPED`.
+- Causa confirmada no código do repositório: o procedimento usa `SOLVERIS_B02_POLICY_WRITER_DSN` para o writer, mas o import `app.database` depende separadamente de `DATABASE_URL`; quando ausente e em desenvolvimento, cai em `sqlite:///./test.db` e tenta a compatibilização legada durante o import circular. A falha é anterior à escrita do serviço.
+- Correção estritamente no wrapper `tools/b02_g4_authorized_runner.py`: durante `execute_exact_bridge`, passar temporariamente `DATABASE_URL` igual ao mesmo DSN efémero do writer. O import de `app.database` passa ao caminho PostgreSQL, que não executa a compatibilização SQLite. Antes de invocar o G4 autorizado, o wrapper importa serviço e modelos reais e valida o destino (PostgreSQL, base, writer e loopback), emitindo `G4_POSTGRESQL_MODEL_IMPORT_PASS`; erro no import provoca STOP sem entrada na escrita. Em `finally` restaura ou remove `DATABASE_URL`, além de remover o DSN efémero.
+- O procedimento G4 permanece com blob imutável `1729e6d62c77510ef4dd7db0af56a6cbe985c168`; nenhuma alteração em `app/database.py`, modelos, migrations, credenciais ou pg_hba.conf. O V3 também permanece intocado. A autorização G4 existente continua a mesma.
+- **Execução após a correção ainda não observada neste chat.** Só ratificar G4 quando a leitura independente apresentar `FOUR_RECORDS_RECONCILED` com quatro IDs e hashes verificados. Sem sucesso, não produzir G5 sucessor nem repetir tentativas cegas.
+
 ## Passos posteriores (não iniciar)
 1. **Não repetir o preflight físico nem solicitar nova autorização.** Executar o runner autorizado no Windows pelo percurso de loopback anteriormente validado. Só aceitar resultado da reconciliação independente da unidade completa.
 2. O runner utiliza a autorização existente e executa o procedimento aprovado uma única vez; em resultado incerto, apenas leituras independentes. Não repetir INSERT automaticamente.
