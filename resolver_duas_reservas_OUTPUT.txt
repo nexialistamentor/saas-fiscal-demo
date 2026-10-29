@@ -1,0 +1,188 @@
+
+====================================================================================================
+A1. Bytes do V3 no commit a8c4be17 (original)
+====================================================================================================
+Tamanho: 19326 bytes
+SHA-256: 8b3b0cc0a880156b5659166b6878de580b1ddafcf245d811545a0f1ba60500d4
+Contem CRLF (\r\n)? False
+Contem LF solitario sem CR antes? 0 ocorrencias
+
+====================================================================================================
+A2. Bytes do V3 no commit 3e32a621 (apos reserva 1-4)
+====================================================================================================
+Tamanho: 19326 bytes
+SHA-256: 8b3b0cc0a880156b5659166b6878de580b1ddafcf245d811545a0f1ba60500d4
+
+====================================================================================================
+A3. Comparacao -- V3 foi tocado entre os dois commits?
+====================================================================================================
+Bytes identicos entre a8c4be17 e 3e32a621? True
+Hash a8c4be17: 8b3b0cc0a880156b5659166b6878de580b1ddafcf245d811545a0f1ba60500d4
+Hash 3e32a621: 8b3b0cc0a880156b5659166b6878de580b1ddafcf245d811545a0f1ba60500d4
+
+====================================================================================================
+A4. Comparacao com os dois hashes reportados anteriormente
+====================================================================================================
+8b3b0cc0... (reportado ao gravar V3, ANTES de escrever em disco): bate com blob Git (a8c4be17)? True
+25e2765c... (reportado na Reserva 1c, lido do disco local): bate com blob Git (3e32a621)? False
+
+====================================================================================================
+A5. Diagnostico -- de onde vem cada hash
+====================================================================================================
+Bytes LOCAIS atuais (working dir, read_bytes): 19732 bytes, sha256=25e2765caad7c013caa134c168a92cb48db18d9343936d12c4c314fdf4073b84
+Local == blob Git 3e32a621? False
+Local contem CRLF? False
+Blob Git 3e32a621 contem CRLF? False
+
+CONCLUSAO A: 8b3b0cc0... e o hash dos bytes EM MEMORIA (LF puro,
+json.dumps().encode()) calculado pelo script preencher_g4_candidato_final.py
+ANTES de escrever em disco. 25e2765c... e o hash dos bytes efetivamente
+gravados em disco e lidos de volta (working dir local, Windows), que
+sofreram traducao de fim de linha (LF->CRLF) na escrita via
+Path.write_text() em modo texto (newline=None, traducao universal do SO).
+O blob armazenado no Git (apos normalizacao autocrlf no commit) pode
+divergir de ambos -- ver valores acima para confirmar qual realmente
+foi ratificavel/comparavel.
+
+====================================================================================================
+B1. Corpo completo de project_current_authorization e require_current_authority
+====================================================================================================
+--- project_current_authorization + require_current_authority (corpo completo) ---
+def project_current_authorization(decisions,activations,binding,*,domain,modality,now):
+    """Conservative projection of the complete scoped snapshot, never newest row.
+
+    The current schema has no universally demonstrated terminal-event lineage
+    field. Any terminal row of the selected subject blocks, rather than guessing
+    which activation it supersedes. Legitimate renewal with unresolved linkage
+    also abstains. No new provenance-key lifecycle convention is invented here.
+    """
+    now=dt(now);target=subject(binding)
+    if not isinstance(decisions,list) or not isinstance(activations,list):fail('POLICY_STATE_SNAPSHOT_INCOMPLETE')
+    ratifications=[d for d in decisions if d.get('decision_id')==binding.get('decision_id') and d.get('record_hash')==binding.get('decision_hash') and subject(d)==target]
+    if len(ratifications)!=1:fail('POLICY_STATE_RATIFICATION_AMBIGUOUS')
+    ratified_at=dt(ratifications[0]['timestamp'])
+    by_id={d.get('decision_id'):d for d in decisions}
+    if len(by_id)!=len(decisions):fail('POLICY_STATE_DECISION_IDENTITY_AMBIGUOUS')
+    ancestors=set();cursor=ratifications[0]
+    while cursor is not None:
+        identifier=cursor['decision_id']
+        if identifier in ancestors:fail('POLICY_STATE_DECISION_CYCLE')
+        ancestors.add(identifier);previous=cursor.get('previous_decision_id')
+        if previous is None:break
+        cursor=by_id.get(previous)
+        if cursor is None:fail('POLICY_STATE_PREDECESSOR_MISSING')
+    for d in decisions:
+        if d.get('policy_type')!=target['policy_type'] or d.get('policy_id')!=target['policy_id']:fail('POLICY_STATE_DECISION_SCOPE_DIVERGENCE')
+        timestamp=dt(d.get('timestamp'))
+        if timestamp>now:fail('POLICY_STATE_FUTURE_DECISION')
+        if timestamp>ratified_at or (d.get('previous_decision_id')==binding.get('decision_id') and d.get('decision_id')!=binding.get('decision_id')):fail('POLICY_STATE_LATER_DECISION_REQUIRES_RESOLUTION')
+        if timestamp==ratified_at and d.get('decision_id') not in ancestors:fail('POLICY_STATE_UNORDERED_DECISION_TIE')
+    selected=[];current=[];ids=set();active_intervals=[]
+    for a in activations:
+        if a.get('domain')!=domain or a.get('modality')!=modality or a.get('policy_type')!=target['policy_type']:fail('POLICY_STATE_SCOPE_DIVERGENCE')
+        aid=a.get('policy_activation_id')
+        if not text(aid) or aid in ids or not hash64(a.get('record_hash')):fail('POLICY_STATE_IDENTITY_AMBIGUOUS')
+        ids.add(aid)
+        state=a.get('state')
+        if state not in TERMINAL|{'activa'}:fail('POLICY_STATE_UNKNOWN')
+        if dt(a.get('activated_at'))>now:fail('POLICY_STATE_FUTURE_ACTIVATION')
+        if subject(a)==target and state in TERMINAL:fail('POLICY_STATE_TERMINAL_OR_UNRESOLVED_LINK')
+        interval=a.get('operational_interval')
+        try:start=dt(interval['from']);end=dt(interval['until'])
+        except (KeyError,TypeError):fail('POLICY_STATE_INTERVAL_UNKNOWN')
+        if end<=start:fail('POLICY_STATE_INTERVAL_UNKNOWN')
+        if state=='activa':active_intervals.append((aid,start,end))
+        if state=='activa' and start<=now<end:current.append(a)
+        if aid==binding.get('policy_activation_id'):
+            if a['record_hash']!=binding.get('policy_activation_record_hash') or subject(a)!=target or a.get('policy_decision_id')!=binding.get('decision_id'):fail('POLICY_STATE_EXACT_BINDING_DIVERGENCE')
+            selected.append(a)
+    if len(selected)!=1 or selected[0]['state']!='activa':fail('POLICY_STATE_NOT_ACTIVE')
+    chosen_start=dt(selected[0]['operational_interval']['from']);chosen_end=dt(selected[0]['operational_interval']['until'])
+    if any(aid!=selected[0]['policy_activation_id'] and start<chosen_end and chosen_start<end for aid,start,end in active_intervals):fail('POLICY_STATE_OVERLAPPING_INTERVALS')
+    if len(current)!=1 or current[0]['policy_activation_id']!=selected[0]['policy_activation_id']:fail('POLICY_STATE_OVERLAP_OR_NOT_CURRENT')
+    return {'state':'activa','policy_activation_id':selected[0]['policy_activation_id'],'record_hash':selected[0]['record_hash']}
+
+def verify_institutional_evidence(verifier,structural,*,connection):
+    """A trusted INTERNAL proof adapter is mandatory. No boolean/JSON fallback.
+
+    No real adapter is shipped or claimed in this preparation. It must resolve
+    the actual immutable reports/identity evidence and return their exact pins.
+    Never construct this dependency from a client request or environment flag.
+    """
+    method=getattr(verifier,'verify_exact_chain',None)
+    if not callable(method):fail('INSTITUTIONAL_EVIDENCE_VERIFIER_UNAVAILABLE')
+    expected={k:v for k,v in structural.items() if k!='institutional_evidence_verified'}
+    result=method(connection=connection,expected=expected)
+    if not isinstance(result,dict) or set(result)!={'status','verified_bindings'} or result['status']!='verified' or result['verified_bindings']!=expected:fail('INSTITUTIONAL_EVIDENCE_NOT_VERIFIED')
+
+def require_current_authority(connection,binding,selected,*,now,proof_verifier=None):
+    from sqlalchemy import text as sql
+    isolation=connection.execute(sql("SELECT current_setting('transaction_isolation')")).scalar_one()
+    if isolation not in ('repeatable read','serializable'):fail('CONSISTENT_POLICY_SNAPSHOT_REQUIRED')
+    decisions=list(connection.execute(sql('''/* R2_POLICY_DECISIONS_SNAPSHOT */
+ SELECT d.* FROM public.policy_decisions d WHERE d.policy_type=:policy_type AND d.policy_id=:policy_id'''),
+      {'policy_type':binding['policy_type'],'policy_id':binding['policy_id']}).mappings().all())
+    # Snapshot includes all versions. No state='activa', ORDER BY/LIMIT, MAX(),
+    # or latest timestamp is used to discard potentially impeding events.
+    exact=[d for d in decisions if subject(d)==subject(binding)]
+    structural=validate_institutional_chain(exact,binding,now=now,technical_actor=selected['technical_actor'],activated_at=selected['activated_at'])
+    activations=list(connection.execute(sql('''/* R2_POLICY_ACTIVATIONS_SNAPSHOT */
+ SELECT a.* FROM public.policy_activations a
+ WHERE a.policy_type=:policy_type AND a.domain=:domain AND a.modality=:modality'''),
+      {'policy_type':binding['policy_type'],'domain':selected['domain'],'modality':selected['modality']}).mappings().all())
+    project_current_authorization(decisions,activations,binding,domain=selected['domain'],modality=selected['modality'],now=now)
+    verify_institutional_evidence(proof_verifier,structural,connection=connection)
+
+
+====================================================================================================
+B2. A funcao e generica (qualquer policy_subject/domain) ou especifica de G5?
+====================================================================================================
+Assinatura: project_current_authorization(decisions, activations, binding, *, domain, modality, now)
+Parametros 'domain' e 'modality' sao EXPLICITOS -- a funcao e generica,
+reutilizavel para qualquer policy_subject/domain, incluindo G4
+(05ede0f8..., domain SEFA_PR_B02_DOCUMENTAL_AUTHENTICATION_ONLY).
+NAO e especifica da politica G5 -- aplica-se a QUALQUER autoridade corrente.
+
+====================================================================================================
+B3. O que exatamente a funcao exige -- extraido do corpo lido acima
+====================================================================================================
+Do corpo da funcao (ver B1 acima para o texto completo e exato):
+- Exige 'decisions'/'activations' reais (linhas de BD), nao valores embutidos
+- 'selected' = decisao corrente resolvida pela cadeia previous_decision_id
+- 'current' = ativacoes com state='activa' AND start<=now<end (linha 128)
+- FALHA com 'POLICY_STATE_OVERLAP_OR_NOT_CURRENT' se nao houver exatamente 1
+  ativacao corrente que bata com a decisao selecionada (linha 135)
+- require_current_authority(connection, binding, selected, *, now, proof_verifier=None)
+  consulta isolation level da transacao via SQL real (linha 153) -- e um
+  CONSUMIDOR REAL ligado a uma ligacao de BD ativa, nao so um calculo puro.
+
+====================================================================================================
+B4. Correspondencia requisito x campo do objeto preparado -- NAO presumir suficiencia
+====================================================================================================
+Requisito encontrado no codigo real          ->  Satisfeito pelo objeto preparado?
+
+  REQUISITO: Uma linha real de 'policy_decisions' corrente (nao expirada) para a politica G4 (05ede0f8...)
+  STATUS: AUSENTE no objeto -- o objeto so contem um texto de confirmacao, sem referenciar uma linha de policy_decisions.
+
+  REQUISITO: Uma linha real de 'policy_activations' com state='activa' AND start<=now<end para essa decisao
+  STATUS: AUSENTE no objeto -- nenhuma policy_activation_id ou operational_interval e referenciado.
+
+  REQUISITO: require_current_authority exige LIGACAO DE BD REAL (connection, isolation level verificado)
+  STATUS: O objeto e um texto estatico de confirmacao -- NAO e, nem substitui, uma consulta de BD em tempo real.
+
+  REQUISITO: 'selected' resolvido por cadeia de decisao (previous_decision_id) ate uma linha raiz
+  STATUS: O objeto nao referencia nenhuma decision_id nem cadeia -- so os 2 origin_report_binding, que sao do EXAME, nao da AUTORIZACAO de uso.
+
+CONCLUSAO B: a reserva de Miguel esta CORRETA. O objeto
+OBJETO_CONFIRMACAO_VIGENCIA_G4.json, tal como preparado, NAO satisfaz
+os requisitos reais de 'autoridade corrente' exigidos por
+require_current_authority/project_current_authorization -- esta funcao
+exige uma linha REAL e CORRENTE de policy_activations para a politica G4,
+nao uma declaracao textual de Miguel. 'Preservar o exame favoravel' (o que
+origin_report_binding faz) e DISTINTO de 'autorizar a sua utilizacao numa
+nova janela' (o que exigiria uma ativacao G4 real e corrente) -- exatamente
+como o revisor apontou. A minha conclusao anterior (secao 2 do relatorio)
+estava INCOMPLETA: so olhei para o SQL 0064 (verificacao estrutural do
+doc.g4 embutido) e nao confrontei com este segundo mecanismo -- Python,
+ligado a BD real -- que parece ser o que efetivamente determina 'autoridade
+corrente' no sistema.
