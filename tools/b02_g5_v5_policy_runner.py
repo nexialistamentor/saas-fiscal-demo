@@ -65,13 +65,19 @@ def reconcile(engine,record_id):
         or data['policy_type']!='activation_authority' or not HEX.fullmatch(data['record_hash'] or '')):return 'CONFLICT',data
     return 'PRESENT_IDENTITY',data
 
-def execute(repo,body,a):
+class _PolicyRollbackProbe(Exception):
+    """Deliberate exception inside the transaction context, forcing ROLLBACK."""
+    pass
+
+def execute(repo,body,a,*,rollback_probe=False):
     from sqlalchemy import create_engine,text,MetaData,Table,select
     from sqlalchemy.pool import NullPool
     dsn=os.environ.get('SOLVERIS_B02_POLICY_WRITER_DSN')
     if not dsn:stop('DSN_REQUIRED')
     engine=create_engine(dsn,poolclass=NullPool)
     record_id=a['policy_version_record_id']
+    if rollback_probe and record_id != 'B02-G5-V5-ROLLBACK-PROBE':
+        stop('ROLLBACK_PROBE_IDENTITY')
     try:
         with engine.connect() as c:
             # Explicit outer transaction. Any exception rolls back.
@@ -119,6 +125,10 @@ def execute(repo,body,a):
                 for field in FIELDS:
                     if stored[field]!=body[field]:stop('PRECOMMIT_FIELD_MISMATCH_'+field.upper())
                 txid=c.execute(text('SELECT txid_current()')).scalar_one()
+                # This is intentionally raised BEFORE the transaction context
+                # exits. It forces SQLAlchemy to ROLLBACK the fully staged row.
+                if rollback_probe:
+                    raise _PolicyRollbackProbe()
             # COMMIT was acknowledged; independent connection reconciliation follows.
         status,stored=reconcile(engine,record_id)
         if status!='PRESENT_IDENTITY':stop('POSTCOMMIT_RECONCILIATION_'+status)
@@ -128,6 +138,16 @@ def execute(repo,body,a):
             actual=check.execute(text("SELECT public.b02_json_hash(to_jsonb(p)-'record_hash') FROM public.policy_versions p WHERE policy_version_record_id=:id"),{'id':record_id}).scalar_one()
             if stored['record_hash']!=actual:stop('POSTCOMMIT_PHYSICAL_HASH_MISMATCH')
         print(json.dumps({'status':'COMMITTED_RECONCILED','txid':txid,'record_id':record_id,'record_hash':stored['record_hash']},sort_keys=True))
+    except _PolicyRollbackProbe:
+        # Separate session after ROLLBACK; do not mistake transaction-local
+        # INSERT/readback for durable persistence.
+        status,stored=reconcile(engine,record_id)
+        if status!='ABSENT':
+            stop('ROLLBACK_POSTREAD_CONFLICT_'+status)
+        print(json.dumps({'status':'PHYSICAL_POLICY_ROLLBACK_RECONCILED',
+                          'policy_hash':POLICY_HASH,'record_id':record_id,
+                          'writes_committed':0},sort_keys=True))
+        return
     except Exception:
         # An uncertain network ACK must not be retried automatically.
         try:
@@ -143,9 +163,16 @@ def main():
     p.add_argument('--repo',type=Path,default=Path.cwd())
     p.add_argument('--manifest',type=Path)
     p.add_argument('--approval-reference')
-    p.add_argument('--execute-policy-only',action='store_true')
+    mode=p.add_mutually_exclusive_group()
+    mode.add_argument('--execute-policy-only',action='store_true')
+    mode.add_argument('--probe-policy-rollback',action='store_true')
     a=p.parse_args()
     body=candidate(a.repo)
+    if a.probe_policy_rollback:
+        # No institutional event is generated; the DB row is rolled back.
+        execute(a.repo,body,{'policy_version_record_id':'B02-G5-V5-ROLLBACK-PROBE'},
+                rollback_probe=True)
+        return
     if not a.execute_policy_only:
         print(json.dumps({'status':'DRY_RUN_PASS','policy_hash':POLICY_HASH,'version':2,'db_connected':False,'db_writes':0,'required_authorization':'POLICY_VERSION_ONLY'},sort_keys=True))
         return
