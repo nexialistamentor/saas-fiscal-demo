@@ -109,6 +109,13 @@ Os IDs literais aprováveis (ainda não executados) estão no script: `B02-05ede
 - Uma sessão SQL independente `READ ONLY` verifica os quatro hashes, vínculos, manifesto, payload, scope e igualdade dos quatro txids; devolve `transaction_id` real. Só `FOUR_RECORDS_RECONCILED` permite custodiar o resultado e gerar o novo `POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V4_PARA_REVISAO.json` e `DIFF_G5_V3_PARA_SUCESSOR_OUTUBRO_V4.diff` com **12 referências temporais/G4** corrigidas. O V3 permanece imutável; o candidato G5 não é ratificado nem ativado. Os artefactos são enviados ao remoto após limpeza.
 - **Estado até nova saída Windows:** G4 v3 somente preflight PASS. Nenhum INSERT confirmado, nem hashes G4 reconciliados. B02 não fechado; G5 e B03 não liberados.
 
+## Atualização de prova G4 e transição G5 V4 (29/10/2026)
+
+**G4 CLOSED:** evidência independente em `B02_G4_RESULTADO_RECONCILIADO_OUTUBRO_20261029.json`, `transaction_id=926`, quatro registos `FOUR_RECORDS_RECONCILED`, writer `solveris_b02_policy_writer`, janela 29–30/10, autorização específica `AUTORIZACAO_G4_MIGUEL_20261029_02.json`. Commit físico GitHub `3feff96665da788a3f62d1b7711446602f2565a5`. Não repetir G4.
+
+**G5 OPEN:** `POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V4_PARA_REVISAO.json`, SHA-256 reportado `2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e`, blob `b8538623a53ff4f75a78f44454751259ccfb943e`. Comparação de objetos JSON V3/V4 por leitura direta: 15 folhas alteradas (12 data/binding, 3 campos status/avisos); nenhum outro campo alterado; dois IDs e hashes reais G4 coincidem.
+
+Submissão revisora específica `B02_G5_V4_PACOTE_REVISAO_20261029.json` e ferramenta de consulta física **somente leitura** `tools/b02_g5_physical_inventory_readonly.py` preparados no remoto. Não executar G5 nem migrations por inferência; requer parecer segregado e homologação reais. Emissão de parecer pelo mesmo executor não equivale à revisão segregada.
 ## Passos posteriores (não iniciar)
 1. **Não repetir o preflight físico nem solicitar nova autorização.** Executar o runner autorizado no Windows pelo percurso de loopback anteriormente validado. Só aceitar resultado da reconciliação independente da unidade completa.
 2. O runner utiliza a autorização existente e executa o procedimento aprovado uma única vez; em resultado incerto, apenas leituras independentes. Não repetir INSERT automaticamente.
