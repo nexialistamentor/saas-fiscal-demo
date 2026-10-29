@@ -84,7 +84,8 @@ def _g5_v2_chain_inventory(engine):
             SELECT decision_id,decision_event,previous_decision_id,
                    institutional_role,actor,policy_hash,record_hash,
                    record_hash=public.b02_json_hash(to_jsonb(d)-'record_hash') AS hash_ok,
-                   evidence IS NOT NULL AS evidence_present
+                   evidence IS NOT NULL AS evidence_present,
+                   evidence->>'previous_decision_record_hash' AS predecessor_record_hash
             FROM public.policy_decisions d
             WHERE policy_id=:pid AND policy_version=2
             ORDER BY timestamp,decision_id
@@ -123,8 +124,11 @@ def _g5_v2_chain_inventory(engine):
             raise RuntimeError("STOP_G5_CHAIN_ROLE_OR_EVIDENCE")
         if index==0 and record["previous_decision_id"] is not None:
             raise RuntimeError("STOP_G5_CHAIN_FIRST_PREDECESSOR")
-        if index>0 and record["previous_decision_id"]!=records[index-1]["decision_id"]:
+        if index>0 and (record["previous_decision_id"]!=records[index-1]["decision_id"]
+                       or record["predecessor_record_hash"]!=records[index-1]["record_hash"]):
             raise RuntimeError("STOP_G5_CHAIN_PREDECESSOR")
+    if len(records)>=2 and records[0]["actor"]==records[1]["actor"]:
+        raise RuntimeError("STOP_G5_CHAIN_PROPOSER_AUDITOR_SEGREGATION")
     if len(records)>=3 and records[1]["actor"]!=records[2]["actor"]:
         raise RuntimeError("STOP_G5_CHAIN_AUDITOR_IDENTITY")
     if len(records)==4 and (len({records[0]["actor"],records[1]["actor"],records[3]["actor"]})!=3):
