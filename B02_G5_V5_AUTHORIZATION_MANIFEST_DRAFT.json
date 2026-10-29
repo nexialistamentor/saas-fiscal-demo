@@ -1,0 +1,31 @@
+{
+  "status": "PENDING_EVIDENCE",
+  "scope": "POLICY_VERSION_ONLY",
+  "database": "solveris_b02_r4g_test",
+  "writer": "solveris_b02_policy_writer",
+  "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+  "policy_version": 2,
+  "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+  "file_sha256": "bf7cdb951ac8e4fb8e5b8e2a1aa6fa3095fad194cbd5845a0dc0e20afd7a3ae9",
+  "reference": "USER_ORDER_INSTALA_E_ATIVA_G5_V5_VERSION_2",
+  "authorization_text": "INSTALA E ATIVA",
+  "authority_actor": null,
+  "authority_evidence": "User instruction in current conversation: INSTALA E ATIVA; documentary approval does not authorize private signing or one-shot commit",
+  "validity_evidence": null,
+  "key_custody_evidence": null,
+  "schema_hash_evidence": null,
+  "server_record_hash_contract_verified": true,
+  "policy_version_record_id": null,
+  "restrictions": {
+    "private_signature_authorized": false,
+    "documentary_one_shot_commit_authorized": false,
+    "native_g5_artifacts_approved": false,
+    "g4_and_mei_immutable": true
+  },
+  "validation": {
+    "runner_dry_run": "PASS",
+    "historic_jsonb_hash_equivalence": "4/4 PASS",
+    "transaction_rollback_reconciliation": "PENDING",
+    "g5_decisions_and_activation": "PENDING"
+  }
+}
