@@ -1,0 +1,66 @@
+{
+  "schema": "SOLVERIS_B02_G5_HISTORICAL_NATIVE_SOURCE_CUSTODY_V1",
+  "status": "HISTORICAL_SOURCE_RECOVERED_NOT_APPROVED_FOR_CURRENT_G5",
+  "source": "Original Library COMPILAR_CANDIDATO_ISOLADO_SEM_INSTALAR.ps1, base64 payload; each raw SHA256 checked from original bytes",
+  "files": [
+    {
+      "path": "native/g5/historical_20261022/b02_precommit_guard.c",
+      "sha256": "ea0f49d9d686bb9dc33a041b85473f734b41b76236411ce4f7942f47538ad278",
+      "bytes": 8356
+    },
+    {
+      "path": "native/g5/historical_20261022/b02_g5_native_signature.c",
+      "sha256": "83fbffa030ed861c4f7e70f654db5179574d986e0cab8f21cf657054ceb4b669",
+      "bytes": 9730
+    },
+    {
+      "path": "native/g5/historical_20261022/b02_g5_approved_roots.h",
+      "sha256": "ff513972cd19d123af9d1a85b1b57f76c0935c18c5bc172b07722972bbe254cd",
+      "bytes": 1903
+    }
+  ],
+  "historic_root": {
+    "policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+    "activation_id": "B02-57982-activation-v1",
+    "root_window_utc": {
+      "from": "2026-10-22T12:00:00+00:00",
+      "until": "2026-10-23T07:56:30.910737+00:00"
+    },
+    "status": "EXPIRED_CANNOT_INSTALL_AS_CURRENT_G5_ROOT"
+  },
+  "current_candidate": {
+    "policy_file": "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V4_PARA_REVISAO.json",
+    "policy_sha256_reported": "2dd00187b3348847a4deb845167d4554749aaa71cdce8556a03163ea1f4f252e",
+    "status": "NOT_RATIFIED",
+    "g4_activation_id": "B02-05ede-activation-v3",
+    "g4_activation_hash": "504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4",
+    "window_utc": {
+      "from": "2026-10-29T13:00:00+00:00",
+      "until": "2026-10-30T13:00:00+00:00"
+    }
+  },
+  "physical_observation": {
+    "postgres": "17.10",
+    "alembic": "0063_adr020_policy_activation_atomicity",
+    "g5_native_file": "ABSENT",
+    "g5_sql_functions": "ABSENT",
+    "g5_one_shot_table": "ABSENT",
+    "container": "RESTORED_STOPPED"
+  },
+  "next_dependency": [
+    "current G5 policy review and decision tied to exact V4 bytes and temporal scope",
+    "new genuinely approved current native root constrained to real G5 decision/activation and two real documents, distinct institutional signers",
+    "build in fresh disposable PG17.10 ABI identical; verify native symbols SHA256 and dependencies, never install obsolete header or library",
+    "independent review and specific authorization for installing migration 0064 then 0065, backup and readback",
+    "real authorized G5 two-document one-shot transaction and independently verified COMMIT",
+    "B02 final acceptance and B03 only after all proof"
+  ],
+  "explicitly_forbidden": [
+    "install historical source or binary as currently trusted",
+    "alter existing C header in place and call it previously approved",
+    "create fictitious reviewer signature, institution, ratification or Ed25519 key",
+    "run G5 DDL on current database without explicit authorization",
+    "reuse G4 authorization as G5 authorization",
+    "repeat successful G4"
+  ]
+}
