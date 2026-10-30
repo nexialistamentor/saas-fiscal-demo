@@ -613,15 +613,15 @@
     "gates": {
       "R1": {
         "existing": "tools/b02_g5_native_pg1710_isolated_build.py; tests/test_b02_g5_native_pg1710_isolated_build.py; historical native/g5 source hashes and prior 7/7 Windows focused tests",
-        "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED",
+        "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED Existing RCV31-R3 original physical PG17 disposable positive two-document stage + separate-process readback and bounded negatives completed 2026-10-25; exact final 9-file archive SHA256 474d99de34a1817f94b85ffe86d2b549df7c12a0edc2a830cca19bf427b647d8. Independent reviewer found code AST equivalent to exercised operator; A1 approved in disposable scope. Delta4 V3 later reran ONLY the observer-source tamper delta in disposable scope; no repeat needed. Synthetic C/PRE_COMMIT evidence is not new institutional V3 signed native authority.",
         "remaining_gap": "approved successor V3 header + SHA-256, exact approved root/key/validity, actual PG17.10 ELF, signature and binary approval",
-        "next_action": "After valid successor bindings and exact header approval, reuse existing isolated compiler; never use expired V1/V2."
+        "next_action": "Do not repeat historical RCV31-R3 A1 positive/negative or Delta4 V3 V7. Resolve only open specific A2 observer source TOCTOU and corroborate independent reviewer judgment if required; native successor ELF/root/header remains an independently authorized later gate when exact temporal G5 authority exists."
       },
       "R2": {
-        "existing": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md; B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json; tools/b02_g5_v5_institutional_audit_result_runner.py",
-        "accepted_proof": "G4-specific R2 fields not a direct proven G5 activation block; functional reviewer provenance recovered; audit start COMMITTED hash da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
-        "remaining_gap": "own audit result auditada_favoravelmente OR auditada_desfavoravelmente from original reviewer, followed by exact event reconciliation; no conversion of earlier noninstitutional documentary opinion",
-        "next_action": "Consume reviewer act if issued, validate immutable Git blob with existing runner; preserve previous opinions and do not reissue audit-start or redesignate reviewer."
+        "existing": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md; B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json; tools/b02_g5_v5_institutional_audit_result_runner.py; SOLVERIS_B02_RCV31_R3_PARECER_SEGREGADO_20261025.md (historical RCV31 code-review, distinct from G5 V5 institutional reviewer)",
+        "accepted_proof": "G4-specific R2 fields not a direct proven G5 activation block; functional reviewer provenance recovered; audit start COMMITTED hash da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3 Historical RCV31-R3 reviewer concluded FAVORABLE for concrete A1 disposable correction, PARTIAL for A2 independent root verification; A3/A4 only no static regression. Delta4 V3 subsequent observer tamper negative tested, but no final segregated approval of TOCTOU mitigation shown. Preserve this code review separately from the original G5 V5 institutional audit chain.",
+        "remaining_gap": "Two distinct reviews must not be confused: historical RCV31 code-review needs targeted resolution/review of A2 observer executable TOCTOU (no full baseline rerun), while G5 V5 institutional decision-event still needs own reviewer result if not later issued. Do not hold preparation of isolated technical delta waiting on G5 institutional result.",
+        "next_action": "Technical executor closes ONLY A2 code delta against real observer and archived R3 candidate, with focused evidence and review (no re-audit V13-V30). The separately authorized original G5 V5 reviewer, not technical executor, supplies any missing own institutional audit event on its exact policy subject before real G5 activation; no automatic audit fabrication."
       },
       "R3": {
         "existing": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
@@ -637,7 +637,7 @@
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain; original isolated V21 PRE_COMMIT C and invalid signature tests; V23 successful synthetic two-unit commit/readback; V28 receipt/tampering/rollback; V30 one-shot concurrency/orphan/unknown-ACK synthetic exercises, accepted with original scope (handoff V31 20261024)",
-        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate.",
+        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task.",
         "remaining_gap": "Only real currently authorized G5 successor and original R5 gate: original reviewer own audit result followed by valid ratification and successor temporal authority, live G4 validity for each PDF, exact approved native root/ELF and 0064/0065 installation, real documented/custodied two-unit CAS operation, original R5 one-shot PRE_COMMIT/COMMIT and independent readback. No evidence these are completed by historic V1 activation, previous synthetic tests, or R4 protected backup.",
         "next_action": "Use original existing institutional audit_result runner only upon actually issued reviewer act; no reissue submission/audit start. Once authority, dates, hashes, signing and approvals valid, reuse existing 0064/0065 and original one-shot consumers, reconcile before write, never duplicate successful SQL. Do not repeat V21/V23/V28/V30 or G4 V1/V3."
       },
@@ -655,7 +655,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "e3c78319b0d21d73e64cf546431b7b8014ec0ed5",
+    "last_reconciled_git_commit": "c5e726f9835ae3276209a1b66bb08b95cb40f1fe",
     "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN. 2026-10-30 follow-up: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, 7/7 canonical tables owner solveris_test, writer SELECT all, INSERT only 4 activation tables, UPDATE/DELETE none, grants=0, writes=0; revision 0063.",
     "historical_R4_R5_disambiguation": {
       "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
@@ -735,6 +735,35 @@
         "DO_NOT_DUPLICATE_NORMATIVE_BINDING_ADAPTER",
         "DO_NOT_ASSUME_RULE_TABLES_EMPTY_ON_SELECT_DENIED",
         "DO_NOT_REDOWNLOAD_SAME_TWO_PDFS_WITHOUT_C3_RECONCILIATION"
+      ]
+    },
+    "preexisting_RCV31_R3_and_Delta4_verification": {
+      "verification_date": "2026-10-30",
+      "historical_runtime_date": "2026-10-25",
+      "origin": "original archived Library artifacts + original segregated reviewer opinion; independently checked archive SHA256 and R3 operator AST in current execution; no Windows Docker/SQL run repeated",
+      "frozen_V28_V30_transport_sha256": "1579bd83967b1392599e20f0dd808c6eb8d3340d260997dab3526609234faf9e",
+      "RCV31_R3_final_bundle_sha256": "474d99de34a1817f94b85ffe86d2b549df7c12a0edc2a830cca19bf427b647d8",
+      "RCV31_R3_reviewer": "SOLVERIS_B02_RCV31_R3_PARECER_SEGREGADO_20261025.md",
+      "RCV31_R3_operator_candidate_sha256": "32f4cdb1bd29487caf05bb940d01a832490b67e27ff5e84d8ab3f48ac",
+      "RCV31_R3_operator_exercised_sha256": "50352fcdcb42b8e063c6b73189e87866e34f2988cebdb8fd6834033c4a1765d5",
+      "same_ast_after_BOM_CRLF_normalization": true,
+      "positive_R3_primary_sha256": "69389f92b88e3caea44ab3ab42786a8d66dd26b6f07c1c14762bee3bf7e7545a",
+      "negative_incomplete_R3_primary_sha256": "aa5add905744d5da640c8c501281a8a82ca6f58b13da8063fec7b1d14c8c3a2f",
+      "negative_immediate_R3_primary_sha256": "ba6e6540633289040e5b6194937f6ae6aadc6b5629745b665483b9f6cf1a6fd7",
+      "reviewer_scope": "A1 concrete stage completion on PG17 disposable: FAVORABLE; A2 independent chain partly proven, full externally rooted reconstruction not ratified; A3/A4 static non-regression only; no protected deployment authorized",
+      "exact_negative_scope": "incomplete B unit rejected by Python injected pre-receipt error and transaction rolled back; no assertion that deferred SQL gate itself vetoed that case; immediate nondeferrable rejection observed but particular trigger not identified",
+      "Delta4_V3_bundle_sha256": "b90855ecc7a90a499b93b225516ae289ba98f2d8c1d35f597781d1b832a5a304",
+      "Delta4_V3_proposed_concrete_path_sha256": "1fae5b1aefe9630e077eae9c98b44c91d4f9dd99f9e4560a6dab83b74e5e7779",
+      "Delta4_V3_real_observer_sha256": "4dc2b18af2942353b788b43bf41a2b6ef37b406bb16c942f335c94f6bc369e2e",
+      "Delta4_V3_real_concrete_path_sha256": "2927a9b10e6e47f45088522fae15c39800ae75966a1cca340c7bb3564e63ef46",
+      "Delta4_V3_evidence": "V7 positive and pre-operation tampered observer negative passed in disposable PG17; diff between exercised and candidate documented; residual read-hash-to-python-file-execution TOCTOU remains; no independent final institutional approval of Delta4 V3 established",
+      "precise_remaining_technical_gap": "A2 observer source identity TOCTOU between hashlib read and python execution, plus reviewer decision on externally-pinned root and reconstruction; verify exact code with targeted technical delta only, not a full V31 rerun",
+      "prohibitions": [
+        "DO_NOT_RERUN_RCV31_R3_POSITIVE_OR_NEGATIVES",
+        "DO_NOT_RERUN_DELTA4_V3_V7",
+        "DO_NOT_REOPEN_V13_TO_V30",
+        "DO_NOT_PROMOTE_SYNTHETIC_COMMIT_TO_PROTECTED_R5",
+        "DO_NOT_REISSUE_ALREADY_EMITTED_SEGREGATED_OPINION"
       ]
     }
   }
