@@ -70,7 +70,9 @@ class R4PrivateRestoreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             archive=Path(tmp)/"protected_pg1710.dump"
             archive.write_bytes(b"PGDMP"+b"synthetic")
-            p=MagicMock(returncode=0,stdout=b"; TOC Entries: 3\\n",stderr=b"")
+            listing=(";     dbname: "+r4.bridge.DATABASE+"\n;     TOC Entries: 3\n"+
+                     ";     Dumped from database version: 17.10 (Debian)\n")
+            p=MagicMock(returncode=0,stdout=listing.encode("utf8"),stderr=b"")
             with patch.object(r4.subprocess,"run",return_value=p) as call:
                 result=r4.inspect_private_archive(archive)
         self.assertEqual(call.call_args.args[0][-2:],["pg_restore","--list"])
@@ -85,6 +87,67 @@ class R4PrivateRestoreTests(unittest.TestCase):
             with patch.object(r4.subprocess,"run") as call:
                 with self.assertRaisesRegex(RuntimeError,"PRIVATE_ARCHIVE_NOT_CUSTOM_FORMAT"):
                     r4.inspect_private_archive(archive)
+                call.assert_not_called()
+
+    def test_toc_rejects_wrong_database_without_restore(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive=Path(tmp)/"protected_pg1710.dump"
+            archive.write_bytes(b"PGDMP"+b"synthetic")
+            listing=(b"; dbname: WRONG_DATABASE\\n; TOC Entries: 2\\n"+
+                     b"; Dumped from database version: 17.10 (Debian)\\n")
+            p=MagicMock(returncode=0,stdout=listing,stderr=b"")
+            with patch.object(r4.subprocess,"run",return_value=p):
+                with self.assertRaisesRegex(RuntimeError,"ARCHIVE_SOURCE_DATABASE_MISMATCH"):
+                    r4.inspect_private_archive(archive)
+
+    def test_multiple_incomplete_backups_still_fail_without_explicit_opt_in(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/"SOLVERIS"/"B02R4Privado"
+            for token in ("a"*32,"b"*32):
+                p=root/token
+                p.mkdir(parents=True)
+                (p/"protected_pg1710.dump").write_bytes(b"PGDMPsynthetic")
+            fake_os=SimpleNamespace(name="nt",environ={"LOCALAPPDATA":tmp})
+            with patch.object(r4,"os",fake_os), patch.object(r4,"invoke") as call:
+                with self.assertRaisesRegex(RuntimeError,"EXACTLY_ONE_INCOMPLETE_ARCHIVE_FOUND_2"):
+                    r4.find_unique_incomplete_private_backup()
+                call.assert_not_called()
+
+    def test_explicit_latest_validated_preserves_older_candidates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/"SOLVERIS"/"B02R4Privado"
+            paths=[]
+            for token in ("a"*32,"b"*32,"c"*32):
+                p=root/token
+                p.mkdir(parents=True)
+                (p/"protected_pg1710.dump").write_bytes(b"PGDMPsynthetic")
+                paths.append(p)
+            for i,p in enumerate(paths):
+                (p/"protected_pg1710.dump").touch()
+                import os as real_os
+                real_os.utime(p,ns=(1_000_000_000+i,1_000_000_000+i))
+            fake_os=SimpleNamespace(name="nt",environ={"LOCALAPPDATA":tmp})
+            with patch.object(r4,"os",fake_os),patch.object(r4,"invoke") as call, \\
+                 patch.object(r4,"inspect_private_archive",return_value={"backup_sha256":"a"*64}):
+                selected=r4.find_unique_incomplete_private_backup(latest_validated=True)
+            self.assertEqual(selected,paths[2])
+            self.assertEqual(len(list(root.glob("*/protected_pg1710.dump"))),3)
+            self.assertEqual(call.call_args.args[0][0],"icacls")
+
+    def test_latest_validated_tie_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/"SOLVERIS"/"B02R4Privado"
+            import os as real_os
+            for token in ("a"*32,"b"*32):
+                p=root/token
+                p.mkdir(parents=True)
+                (p/"protected_pg1710.dump").write_bytes(b"PGDMPsynthetic")
+                real_os.utime(p,ns=(1_000_000_000,1_000_000_000))
+            fake_os=SimpleNamespace(name="nt",environ={"LOCALAPPDATA":tmp})
+            with patch.object(r4,"os",fake_os),patch.object(r4,"invoke") as call, \\
+                 patch.object(r4,"inspect_private_archive",return_value={"backup_sha256":"a"*64}):
+                with self.assertRaisesRegex(RuntimeError,"TIMESTAMP_AMBIGUOUS"):
+                    r4.find_unique_incomplete_private_backup(latest_validated=True)
                 call.assert_not_called()
 
     def test_backup_command_streams_without_password_or_host_network(self):
