@@ -170,7 +170,8 @@ ROLLBACK;""",ROLE)
         "source_database":bridge.DATABASE,"source_role":ROLE,
         "source_postgres_version":version,"source_image":image,
         "protected_database_writes":0,"protected_volume_mutations":0,
-        "source_count_snapshot":before,\n        "source_database_size_bytes":size_bytes,"private_disk_free_prebackup":free_bytes,
+        "source_count_snapshot":before,
+        "source_database_size_bytes":size_bytes,"private_disk_free_prebackup":free_bytes,
         "backup_location_private":str(backup),
         "private_acl":"CURRENT_USER_AND_SYSTEM_ONLY",
         **metadata,**result}
