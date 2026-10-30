@@ -112,5 +112,54 @@
     "one_shot_table_installed": false,
     "physical_basis": "PG17.10 protected read-only, restricted writer. No DML.",
     "boundary": "Technical preparation permitted; no operative G5 activation until new valid G4 and G5 scope, exact root/ELF approved, real sanitization proven and contractual chain completed"
+  },
+  "temporal_field_contract_20261030": {
+    "checked_against_policy_source_git_blob": "87dd0560d842f8b9f20d808363496fa60786710c",
+    "clock_fields_detected": 8,
+    "clock_paths_exact": [
+      "$.policy_candidate_body.declared_material_applicability.from",
+      "$.policy_candidate_body.declared_material_applicability.until",
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.from",
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.until",
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[0].g4.valid_from",
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[0].g4.valid_until",
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[1].g4.valid_from",
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[1].g4.valid_until"
+    ],
+    "source_interval_value": "2026-10-29T13:00:00+00:00 / 2026-10-30T13:00:00+00:00",
+    "not_a_successor_policy_and_no_selected_interval": true,
+    "g4_binding_per_document": [
+      {
+        "document_id": "101202501245",
+        "path": "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[0].g4.policy_binding",
+        "currently_bound_activation_id": "B02-05ede-activation-v3",
+        "current_activation_expired": true,
+        "successor_requirement": "Exact current G4 actor/decision/activation/hash/validity must be established physically before V3 substitution"
+      },
+      {
+        "document_id": "101201900571",
+        "path": "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[1].g4.policy_binding",
+        "currently_bound_activation_id": "B02-05ede-activation-v3",
+        "current_activation_expired": true,
+        "successor_requirement": "Exact current G4 actor/decision/activation/hash/validity must be established physically before V3 substitution"
+      }
+    ],
+    "additional_non_clock_bindings": [
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.capability_root_id",
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.actor",
+      "$.policy_candidate_body.roles",
+      "$.policy_candidate_body.segregation_of_duties",
+      "$.policy_candidate_body.exact_references",
+      "$.policy_candidate_body.origin_evidence.institutional_evidence_bindings",
+      "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[*].sanitization"
+    ],
+    "causal_diff_prepared": "Field-level reference only: version 2->3, eight clock fields, per-document verified G4 authority and changed root/actor/artifact hashes. Actual SHA-256 and unified diff must be generated from the exact newly authorized V3 body, not manufactured before G4 authority and Miguel interval decision.",
+    "validation_stop_rules": [
+      "Do not assign future UTC interval, G4 successor id/hash or signing identity without verified real source.",
+      "No V2 event migration or reattachment to V3: institutional event genesis must be unique to V3.",
+      "V2 and V1 remain append-only historical, no updates, deletes, backup rewriting or old header reuse.",
+      "Technical preparation of isolated R4 and R6 paths independent of selecting new interval."
+    ],
+    "state": "STRUCTURAL_TEMPORAL_DELTA_EXACT_PATHS_PREPARED__NOT_AUTHORIZED_OR_PHYSICALLY_VALIDATED"
   }
 }
