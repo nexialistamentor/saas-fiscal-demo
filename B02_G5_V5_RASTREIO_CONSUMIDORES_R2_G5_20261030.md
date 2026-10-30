@@ -67,3 +67,27 @@ O V5 fixa `segregation_of_duties.reviewer_not_author_or_integrator=true`, `share
 **C1 = incompatibilidade R2 real, mas bloqueio de G5 indevidamente transportado e removido do diagnóstico.** **C2 = identidade/aceitação documental de revisor registadas, sem evento institucional SQL próprio ainda.** **C3 = gates operacionais independentes preservados.**
 
 Trabalho executado: rastreio de chamadas Python/SQL, separação do domínio G4/R2, testes estáticos focais e reconciliação documental. **Sem DML, DDL, assinatura, new root, deploy, alterações G4 ou MEI.** Política e `submetida` permanecem COMMITTED. **B02 OPEN; B03 BLOCKED.**
+
+## 7. Proveniência e continuidade do auditor após COMMIT do início
+
+**Rastreio executado em 30/10/2026:** o emissor documental original da declaração e do aditamento é uma **outra conversa**, a instância funcional `GPT-6/revisor-documental-chat-b02-g5-v5-20261030`. Esta conversa, de execução técnica proponente, **não é a emissora revisora** e não pode produzir o resultado com o seu identificador.
+
+**Originais pinados no Git:**
+- `B02_G5_V5_MANIFESTACAO_PROPRIA_INICIO_REVISAO_20261030.json`: identificação, aceitação, conflitos e participação anterior declarados pela execução revisora, preservado na Biblioteca do utilizador.
+- `B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json`: commit `061daa7c3af1c496bbcd06bc7519b6035af1b640`, Git blob `93cead223b473998d816ba8e6a09e58b56a5c94f`; explicita contribuição anterior limitada a ferramenta read-only e não reivindica identidade material permanente.
+- `B02_G5_V5_AUDITORIA_INICIADA_DECLARACAO_PROPRIA_20261030.json`: commit `8b1dff286ea09529ade4dc30c09456639a4e0929`, Git blob `d17ac2ba04be468b92285e76774737c29a3a36df`; ato próprio `auditoria_iniciada`, ainda sem resultado.
+- `tools/b02_g5_v5_institutional_audit_start_runner.py` fixa essas duas evidências e o `actor` revisor, sem substituir a identidade pelo proponente; o operador local persistiu e reconciliou pelo papel `solveris_test`, com releitura `solveris_b02_policy_writer` (prova reportada no comentário PR #26 `6527016818`).
+
+**Início SQL reconciliado, conforme log local comunicado pelo operador:**
+- `decision_id=B02-G5-V5-GPT6-auditoria-iniciada-v1`;
+- `record_hash=da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3`;
+- `previous_decision_id=B02-G5-V5-GPT6-submetida-v1` / `previous_decision_record_hash=dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a`;
+- política G5 V5 v2, `policy_hash=007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf`.
+
+**Resultado próprio ainda não emitido.** A trigger aplicada `migrations/versions/0022_adr020_policy_foundation.py::adr020_validate_policy_decision_chain` obriga `auditada_favoravelmente` **ou** `auditada_desfavoravelmente` a suceder a `auditoria_iniciada` com **mesmo `actor`** e `institutional_role=auditor_independente`; a 0064 candidata reforça a cadeia sem ramos, quatro eventos e atores distintos. Não criar segundo início para outro auditor nem mutar a linha existente: o contrato atual não demonstra substituição de ator compatível com o mesmo encadeamento. Como a emissora foi localizada, **não se iniciou substituição** nem um expediente novo.
+
+**Encaminhamento à execução revisora original:** deve concluir por exame próprio e emitir parecer fundamentado com a mesma identidade funcional, contendo a decisão favorável ou desfavorável que a sua evidência sustente. A emissão documental do resultado **precede** qualquer inserção, que terá de respeitar o predecessor/hash exatos, cronologia e reconciliação. A análise R2 já foi delimitada e não pode ser reaplicada como bloqueio G5 por inferência. Não solicitar identidade permanente ou chave criptográfica G4 ao revisor; não atribuir assinatura de Miguel.
+
+**Relógios separados:** mandato revisor até `2026-11-08T00:00:00Z`; política material V5 até `2026-10-30T13:00:00Z`, já expirada ao corte desta secção. O exame documental pode prosseguir dentro do mandato sem supor direito de operação retroativa. Proibida qualquer ativação/instalação baseada em janela expirada. O comentário no PR é canal de entrega documental compartilhado, **não prova de leitura pela execução revisora original**.
+
+**Preservação:** nenhuma escrita nova SQL, política e submissão COMMITTED intactas, G4/MEI intocados, testes anteriormente encerrados não reexecutados.
