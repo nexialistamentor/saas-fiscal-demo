@@ -169,6 +169,13 @@ def inspect():
         report=json.loads(lines[1])
         if not isinstance(report,dict):raise RuntimeError("STOP_INVENTORY_JSON")
         if report["one_shot_table"]:
+            permission=owner.psql("""BEGIN READ ONLY;
+SELECT has_table_privilege(current_user,
+  'public.b02_g5_operational_approval_uses','SELECT');
+ROLLBACK;""",bridge.ROLE)
+            if permission != ["BEGIN","t","ROLLBACK"]:
+                report["one_shot_reservations"]="NOT_READABLE_BY_RESTRICTED_POLICY_WRITER"
+                return classify(report)
             extra=owner.psql("""BEGIN READ ONLY;
 SELECT coalesce(jsonb_agg(jsonb_build_object(
   'approval_id',approval_id,'release_id',release_id,'txid',assigned_txid,
