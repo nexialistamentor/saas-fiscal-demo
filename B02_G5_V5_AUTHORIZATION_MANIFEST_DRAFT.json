@@ -181,7 +181,11 @@
       "physical_evidence": "Operator-provided PostgreSQL local result B02_G5_V5_AUDIT_START_COMMITTED_RECONCILED, repeated in PR26 comment 6527016818",
       "independent_readback_role": "solveris_b02_policy_writer",
       "original_issuer_conversation": "separate G5 V5 documentary reviewer conversation, not current proponent conversation",
-      "physical_db_readback_by_this_execution": false
+      "physical_db_readback_by_this_execution": false,
+      "original_reviewer_handoff_url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6527498767",
+      "continuity_status": "ORIGINAL_DISTINCT_REVIEWER_CONVERSATION_IDENTIFIED_REVIEW_RESULT_PENDING",
+      "no_substitute_actor_assumed": true,
+      "window_status": "MATERIAL_WINDOW_EXPIRED_MANAGEMENT_MANDATE_DISTINCT"
     }
   },
   "mandate_v5_review": {
@@ -303,6 +307,9 @@
     "sql_auditoria_iniciada_record_hash": "da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
     "actor_provenance_resolution": "IDENTIFIED_ORIGINAL_DISTINCT_REVIEWER_CONVERSATION",
     "result_must_share_start_actor": true,
-    "reviewer_result_issued_in_this_conversation": false
+    "reviewer_result_issued_in_this_conversation": false,
+    "provenance_report": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md",
+    "original_reviewer_handoff_url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6527498767",
+    "review_result_not_issued_by_this_executor": true
   }
 }
