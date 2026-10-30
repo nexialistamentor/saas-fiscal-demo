@@ -1,0 +1,29 @@
+{
+  "schema": "SOLVERIS_B02_G5_V5_OWN_AUDIT_START_DECLARATION_V1",
+  "issued_at_utc": "2026-10-30T10:57:45.590Z",
+  "actor": "GPT-6/revisor-documental-chat-b02-g5-v5-20261030",
+  "institutional_role": "auditor_independente",
+  "event": "auditoria_iniciada",
+  "policy": {
+    "policy_type": "activation_authority",
+    "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+    "policy_version": 2,
+    "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf"
+  },
+  "previous_decision_id": "B02-G5-V5-GPT6-submetida-v1",
+  "evidence": {
+    "previous_decision_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
+    "manifestation": "B02_G5_V5_MANIFESTACAO_PROPRIA_INICIO_REVISAO_20261030.json",
+    "mandate": "MANDATO_G5_SUCESSOR_EMITIDO.json",
+    "report": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md",
+    "conflict_disclosure": "B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json",
+    "note": "Own start declaration for authorized executor to independently validate and materialize only if exact G5 SQL role and chronology are satisfied; no SQL row is asserted"
+  },
+  "rationale": "Begin institutional review of G5 V5 under distinct functional actor and expressly disclosed limits; no positive or negative audit result is issued.",
+  "persistence_status": "DECLARED_NOT_COMMITTED",
+  "decision_id": "PENDING_EXECUTOR_ID_ALLOCATION",
+  "record_hash": null,
+  "idempotency_key": "PENDING_EXECUTOR_CANONICAL_DERIVATION",
+  "result": "PENDING_EXAMINATION",
+  "not_audit_result": true
+}
