@@ -609,9 +609,9 @@
       },
       "R4": {
         "existing": "tools/b02_r4_private_backup_disposable_restore.py; tests/test_b02_r4_private_backup_disposable_restore.py; tools/b02_g5_v5_local_bridge.py",
-        "accepted_proof": "Original six R4 tests: 6/6 PASS on Windows 2026-10-30. Physical runner reached archive TOC validation and STOP_B02_R4_ARCHIVE_TOC_INVALID; pg_dump had returned exit 0 with nonempty private archive, but TOC not confirmed and disposable restore not started. No DB protected DML/DDL.",
-        "remaining_gap": "Validate existing private PGDMP archive TOC with corrected stdin call, then one disposable structural restore and comparison; preserve original backup. Full OWNER/ACL/authority not proved by --no-owner/--no-acl.",
-        "next_action": "Fast-forward and run only R4 focused suite now containing 8 tests; on PASS run tools/b02_r4_private_backup_disposable_restore.py --resume-existing exactly once. Never run default dumping mode again for this preserved backup. On STOP reconcile stderr/result before retry."
+        "accepted_proof": "2026-10-30 Windows focused R4 suite 8/8 PASS. --resume-existing STOP_B02_R4_RESUME_REQUIRES_EXACTLY_ONE_INCOMPLETE_ARCHIVE_FOUND_3. Three private archive candidates exist, no disposable restore and no source DB writes; no candidate was deleted.",
+        "remaining_gap": "Choose only a TOC-validated custom archive proven to originate from source DB on PG17.10; compare disposable structural restore with protected read-only snapshot. Full OWNER/ACL not proven by --no-owner/--no-acl.",
+        "next_action": "After fast-forward, run R4 focused tests now totaling 12. On 12 PASS use --resume-existing --resume-latest-validated to validate all candidates, select newest unique valid archive, preserve all archives, and perform one disposable restore. On STOP do not regenerate dump; reconcile exact cause."
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain",
@@ -633,7 +633,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "f2d659a66184ea5d5f12f9cdca1ae58f8facbb45",
-    "recent_focused_windows_evidence": "2026-10-30: 6/6 original R4 focused tests passed, then pg_dump nonempty and TOC invalid before disposable restore; exact archive unverified, no R4 gate closure. Stdin fix and resume existing private archive published, untested on Windows."
+    "last_reconciled_git_commit": "da3f6fdd0772c3fca0ef924c1a86ca56aea35aeb",
+    "recent_focused_windows_evidence": "2026-10-30: R4 8/8 PASS on Windows, then resume stopped before Docker restore because three incomplete private PGDMP candidates; no deletion. Verified-latest opt-in with unique timestamp, source TOC database/version validation and new regression tests published, not yet executed on Windows."
   }
 }
