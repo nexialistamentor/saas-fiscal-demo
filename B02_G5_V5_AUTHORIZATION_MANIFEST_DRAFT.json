@@ -57,7 +57,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V5_POLICY_AND_SUBMETIDA_COMMITTED_RECONCILED_REVIEWER_ACCEPTANCE_AND_AUDIT_PENDING",
+  "technical_readiness": "G5_V5_SUBMETIDA_COMMITTED_R2_NOT_A_G5_ACTIVATION_BLOCKER_REVIEW_AND_OPERATIONAL_GATES_PENDING",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -225,5 +225,47 @@
     "next_event": "auditoria_iniciada",
     "db_commit_clock": "Not independently observed; no absolute COMMIT timestamp asserted",
     "reviewer_handoff_status": "DOCUMENTARY_HANDOFF_PUBLISHED_NO_CLAIM_OF_REVIEWER_RECEIPT"
+  },
+  "r2_applicability_resolution": {
+    "status": "R2_EVIDENCE_FIELDS_NOT_PROVEN_MANDATORY_FOR_G5_ACTIVATION",
+    "finding_C1": "Submission evidence lacks R2 policy_subject/actor_identity/record_evidence/technical_author but G5 SQL and stage_policy_activation do not call R2. No G5 invalidity inferred.",
+    "r2_own_consumers": [
+      "app/services/sefa_pr_documentary_admission.py::admit_documentary_verification -> require_current_authority -> validate_institutional_chain; domain SEFA_PR_B02_DOCUMENTAL (G4)",
+      "app/services/enterprise_b02_institutional_verifier.py::admit_with_preserved_institutional_proofs -> G4 admission",
+      "app/services/enterprise_b02_founder_runtime.py::admit_with_founder_runtime -> G4 admission"
+    ],
+    "g5_consumers": [
+      "app/services/enterprise_b02_policy_activation_atomicity.py::stage_policy_activation",
+      "migrations/versions/0063_adr020_policy_activation_atomicity.py::b02p_check_authority",
+      "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py::b02g5_require_real_release",
+      "migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py"
+    ],
+    "required_by_actual_g5_genesis": "policy_decisions.previous_decision_id NULL and evidence.previous_decision_record_hash JSON null; actor proponente_institucional; exact policy id/version/hash; publication and physical record hash reconciled",
+    "r2_fields_not_in_committed_evidence": [
+      "policy_subject",
+      "actor_identity",
+      "record_evidence",
+      "technical_author"
+    ],
+    "immutable_submission_preserved": true,
+    "code_change_to_existing_policy_or_decision": false,
+    "documentary_report": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md",
+    "focused_static_contract_tests": "tests/test_b02_g5_v5_r2_applicability_delta.py",
+    "focused_test_count": 7,
+    "focused_tests_executed": false,
+    "status_of_0064_and_0065": "CANDIDATES_NOT_INSTALLED",
+    "no_additional_crypto_requirements_imposed_on_G5": true
+  },
+  "reviewer_documentary_evidence": {
+    "manifest": "B02_G5_V5_MANIFESTACAO_PROPRIA_INICIO_REVISAO_20261030.json",
+    "opinion": "B02_G5_V5_PARECER_DOCUMENTAL_REVISOR_20261030.json",
+    "actor": "GPT-6/revisor-documental-chat-b02-g5-v5-20261030",
+    "documentary_mandate_acceptance": "declared by reviewer, functional and limited",
+    "independence": "declared no proven material/cryptographic independence; actual authorship segregation requires own review and contractual verification",
+    "sql_auditoria_iniciada": "NOT_ISSUED",
+    "sql_auditada_favoravelmente": "NOT_ISSUED",
+    "user_ratification_documentary": "PRESERVED",
+    "sql_ratificada": "NOT_ISSUED",
+    "warning": "No automatic reviewer action; do not treat opinion as institutional favorable/negative SQL event."
   }
 }
