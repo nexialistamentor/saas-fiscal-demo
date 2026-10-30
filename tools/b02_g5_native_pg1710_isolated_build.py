@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \\
 WORKDIR /work
 COPY b02_precommit_guard.c b02_g5_native_signature.c b02_g5_approved_roots.h ./
 RUN set -eu; \\
-    test "$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release | tr -d '\\"')" = "trixie"; \\
+    . /etc/os-release; test "$VERSION_CODENAME" = "trixie"; \\
     test "$(pg_config --version)" = "PostgreSQL 17.10"; \\
     case "$(dpkg-query -W -f='${Version}' postgresql-server-dev-17)" in 17.10*) ;; *) echo STOP_PG1710_SERVER_HEADERS_MISMATCH >&2; exit 33;; esac; \\
     gcc -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter \\
