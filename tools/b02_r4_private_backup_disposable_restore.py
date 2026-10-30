@@ -173,7 +173,7 @@ ROLLBACK;""",ROLE)
         "source_count_snapshot":before,
         "source_database_size_bytes":size_bytes,"private_disk_free_prebackup":free_bytes,
         "backup_location_private":str(backup),
-        "private_acl":"CURRENT_USER_AND_SYSTEM_ONLY",
+        "private_acl":"ICACLS_APPLIED_NOT_INDEPENDENTLY_RECONCILED",
         **metadata,**result}
     report.write_text(json.dumps(output,indent=2,sort_keys=True)+"\n",encoding="utf8")
     print(json.dumps(output,ensure_ascii=False,sort_keys=True))
