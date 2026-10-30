@@ -137,5 +137,16 @@
     ],
     "writes": 0,
     "no_retries_or_rollback_repeated": true
+  },
+  "mandate_v5_review": {
+    "status": "REQUIRES_SUCCESSOR_MANDATE_LINK",
+    "prior_mandate": "MANIFESTACAO_RECEBIDA.md (11ad4a27cce80380659b94a54404877e7b7b65eb9431b7acc5a07e96299b97fe) designates /root for initial G5 proposed version 1",
+    "prior_acceptance": "ACEITACAO_PROPONENTE.md (a9dfd277eaf1b750bc23388c10d6adb1c8b9966f47d324954e41efc7212db424) accepted by the historical /root session only",
+    "successor_proposal": "PROPOSTA_NOVA_MANDATOS_G5_SUCESSOR (1).json remains not issued or signed",
+    "this_executor": "GPT-6 technical execution; not the historical /root instance",
+    "minimum_missing_act": "Named successor mandate for the actual proposing execution, exact policy version 2 and hash 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf, plus the actual proponent's acceptance",
+    "review_handoff_pr26_comment_id": 6511464090,
+    "institutional_submission_issued": false,
+    "decisions_inserted": 0
   }
 }
