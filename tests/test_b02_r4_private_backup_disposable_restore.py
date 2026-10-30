@@ -125,7 +125,7 @@ class R4PrivateRestoreTests(unittest.TestCase):
             for i,p in enumerate(paths):
                 (p/"protected_pg1710.dump").touch()
                 import os as real_os
-                real_os.utime(p/"protected_pg1710.dump",ns=(1_000_000_000+i,1_000_000_000+i))
+                real_os.utime(p/"protected_pg1710.dump",ns=(1_000_000_000+i*1_000_000_000,1_000_000_000+i*1_000_000_000))
             fake_os=SimpleNamespace(name="nt",environ={"LOCALAPPDATA":tmp})
             with patch.object(r4,"os",fake_os),patch.object(r4,"invoke") as call, \
                  patch.object(r4,"inspect_private_archive",return_value={"backup_sha256":"a"*64}):
