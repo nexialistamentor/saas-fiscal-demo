@@ -57,16 +57,13 @@ def verify_private_directory(base:Path, token:str):
 
 
 def snapshot(role,table_list=TABLES):
-    if role not in (ROLE,"postgres"):
+    if role != ROLE:
         stop("SNAPSHOT_ROLE")
     prefix="BEGIN READ ONLY;\nSELECT current_database()||'|'||current_user;\n"
     query="SELECT jsonb_build_object(" + ",".join(
       "'"+t+"',(SELECT count(*) FROM public."+t+")" for t in table_list
     ) + ")::text;\nROLLBACK;"
-    if role==ROLE:
-        reply=owner.psql(prefix+query,ROLE)
-    else:
-        raise RuntimeError("DISPOSABLE_SNAPSHOT_REQUIRES_SEPARATE_DOCKER_TARGET")
+    reply=owner.psql(prefix+query,ROLE)
     if len(reply)!=4 or reply[0]!="BEGIN" or reply[1]!=bridge.DATABASE+"|"+ROLE or reply[3]!="ROLLBACK":
         stop("SOURCE_SNAPSHOT_IDENTITY")
     return json.loads(reply[2])
