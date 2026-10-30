@@ -195,6 +195,12 @@
     "reviewer_action": "PENDING_OWN_ACCEPTANCE_AND_SEGREGATED_REVIEW",
     "ratification": "USER_PRIOR_RATIFICATION_RECORDED_NOT_SQL_EVENT",
     "actuation": "PENDING_VALID_DECISION_CHAIN",
-    "policy_version_insert_not_repeated": true
+    "policy_version_insert_not_repeated": true,
+    "reviewer_handoff_pr26_comment_id": 6511734285,
+    "reviewer_handoff_url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6511734285",
+    "runner_git_pinned_sources": true,
+    "focussed_tests_added": 6,
+    "focussed_tests_execution": "PENDING_WIN_LOCAL",
+    "policy_material_until_utc": "2026-10-30T13:00:00Z"
   }
 }
