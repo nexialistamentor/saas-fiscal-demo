@@ -22,6 +22,17 @@ O que G5 exige de facto é **cadeia institucional válida**, papéis distintos, 
 
 **Prova negativa delimitada:** procuradas chamadas a `validate_institutional_chain`, `require_current_authority`, `verify_exact_chain` nos caminhos de ativação acima e nas SQL 0064/0065. A ausência de chamada direta **não significa ausência de gates de autoridade**; as funções SQL fazem validações próprias. Não se afirma análise de funções futuras não publicadas.
 
+### 2-A. Exigências R2 individualizadas
+
+| Campo R2 | Verificador e linha | Chamador que o torna necessário | Aplicabilidade ao G5 |
+|---|---|---|---|
+| `policy_subject` | `sefa_pr_policy_projection.py::validate_institutional_chain` linha 67 | `require_current_authority` (chamado pela admissão documental G4) | Nenhum chamador demonstrado no `stage_policy_activation`, 0063, 0064 ou 0065 |
+| `actor_identity` | mesmo verificador, linha 69 | mesmo percurso G4/R2; adaptador `verify_exact_chain` | Não transportar automaticamente ao G5 |
+| `record_evidence` | mesmo verificador, linhas 69 e 81 | mesmo percurso G4/R2 e verificação externa dos pins | Não transportar automaticamente ao G5 |
+| `technical_author` | mesmo verificador, linhas 73–74 | mesmo percurso G4/R2, segregação do autor e auditor | Não transportar automaticamente ao G5 |
+
+**Sobre o revisor real:** o JSON imutável V5 ainda nomeia `roles.functional_reviewer=/root/canonical_executor_technical_review`, ao passo que a manifestação nova se identifica `GPT-6/revisor-documental-chat-b02-g5-v5-20261030`. O SQL G5 0063/0064 não exige literalmente que o `actor` da decisão coincida com o campo histórico `roles.functional_reviewer`; exige papel `auditor_independente`, diferença de ator, sequência e hashes. **Isso não autoriza atribuição automática de mandato:** a correspondência de designação entre execução e âmbito deve continuar sustentada pela manifestação emitida e verificada institucionalmente, sem alterar os bytes da política V5.
+
 ## 3. Comparação literal da evidência persistida
 
 A submissão física real já reconciliada tem:
