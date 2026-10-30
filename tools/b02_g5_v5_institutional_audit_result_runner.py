@@ -120,7 +120,7 @@ def expected_payload(doc, event, filename, commit, blob):
         },
         "rationale": doc["rationale"],
         "previous_decision_id": START_ID,
-        "idempotency_key": "B02-G5-V5-OWN-AUDIT-RESULT-" + blob,
+        "idempotency_key": "B02-G5-V5-AUDIT-" + blob,
     }
 
 
