@@ -33,6 +33,63 @@ class R6EvidenceContract(unittest.TestCase):
         self.assertIn("public.normative_relation_versions",r6.CATALOGUE)
         self.assertIn("public.tabela_mva",r6.CATALOGUE)
 
+    def test_r6_source_has_no_duplicate_tail_or_truncated_sql(self):
+        import ast
+        source = (ROOT/"tools/b02_r6_normative_linkage_readonly.py").read_text(
+            encoding="utf8")
+        tree = ast.parse(source)
+        definitions = [node.name for node in tree.body
+                       if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef))]
+        self.assertEqual(definitions.count("inspect"),1)
+        self.assertEqual(definitions.count("main"),1)
+        self.assertEqual(source.count("CATALOGUE="),1)
+        self.assertEqual(source.count("if __name__==\"__main__\":"),1)
+        self.assertTrue(source.rstrip().endswith("raise SystemExit(2)"))
+        self.assertIn("a.record_hash ~ '^[0-9a-f]{64}
+        with patch.object(r6.bridge,"managed_container",return_value=contextlib.nullcontext()),\
+             patch.object(r6,"read",return_value=privileges(False)) as read:
+            result=r6.inspect()
+        self.assertEqual(result["status"],"R6_SOURCE_TABLES_INACCESSIBLE_WITH_EXISTING_ROLE")
+        self.assertEqual(len(result["unreadable_tables"]),5)
+        self.assertEqual(result["writes"],0)
+        self.assertEqual(result["new_grants"],0)
+        read.assert_called_once()
+
+    def test_even_candidates_do_not_prove_fiscal_authority(self):
+        data={"artifacts":[{"record_hash_shape_valid":True,"normative_artifact_id":"some"}],
+              "rule_candidates":[{"rule_version_record_id":"some"}],
+              "normative_relations_total":4,"rule_versions_total":3,
+              "mva_pr_12119090":[{"id":12}]}
+        with patch.object(r6.bridge,"managed_container",return_value=contextlib.nullcontext()),\
+             patch.object(r6,"read",side_effect=[privileges(),data]):
+            result=r6.inspect()
+        self.assertFalse(result["canonical_l2_ruleversion_item_binding_proven"])
+        self.assertFalse(result["legal_applicability_for_item_proven"])
+        self.assertFalse(result["external_source_revisions_exhaustively_verified"])
+        self.assertFalse(result["fiscal_authority"])
+        self.assertFalse(result["checkout"])
+        self.assertEqual(result["writes"],0)
+
+    def test_corrupt_artifact_row_hash_stops(self):
+        data={"artifacts":[{"record_hash_shape_valid":False}],
+              "rule_candidates":[],"normative_relations_total":0,
+              "rule_versions_total":0,"mva_pr_12119090":[]}
+        with patch.object(r6.bridge,"managed_container",return_value=contextlib.nullcontext()),\
+             patch.object(r6,"read",side_effect=[privileges(),data]):
+            with self.assertRaisesRegex(RuntimeError,"ARTIFACT_RECORD_HASH_FORMAT_INVALID"):
+                r6.inspect()
+
+    def test_bridge_uses_existing_document_writer(self):
+        self.assertIn(r6.PATH,r6.bridge.ALLOWED)
+        self.assertEqual(r6.ROLE,"solveris_b02_writer")
+        self.assertEqual(r6.bridge.DATABASE,"solveris_b02_r4g_test")
+
+
+if __name__=="__main__":
+    unittest.main()
+",r6.CATALOGUE)
+        self.assertNotIn("a.record_hash ~ '^[0-9a-f]{64})",r6.CATALOGUE)
+
     def test_insufficient_acl_not_upgraded(self):
         with patch.object(r6.bridge,"managed_container",return_value=contextlib.nullcontext()),\
              patch.object(r6,"read",return_value=privileges(False)) as read:
