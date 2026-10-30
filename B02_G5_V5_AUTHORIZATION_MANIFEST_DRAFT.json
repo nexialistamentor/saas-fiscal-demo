@@ -26,13 +26,10 @@
     "runner_dry_run": "PASS",
     "historic_jsonb_hash_equivalence": "4/4 PASS",
     "transaction_rollback_reconciliation": "PHYSICAL_G5_V5_OWNER_INSERT_ROLLBACK_RECONCILED",
-    "g5_decisions_and_activation": "V5_SUBMETIDA_PHYSICAL_COMMIT_RECONCILED_AUDIT_AND_ACTIVATION_PENDING",
+    "g5_decisions_and_activation": "V2_POLICY_SUBMETIDA_AUDITORIA_INICIADA_COMMITTED_2_DECISIONS_ZERO_ACTIVATIONS_PHYSICAL_READBACK_20261030",
     "owner_rollback_regression_tests": "6/6 PASS user Windows isolated PostgreSQL",
     "physical_acl": "7/7 tables inventoried; solveris_test owns all; policy writer has SELECT not INSERT on policy_versions/policy_decisions/bootstrap; has INSERT on four activation tables",
     "physical_identity": "solveris_b02_r4g_test; alembic 0063_adr020_policy_activation_atomicity",
-    "post_probe_policy_version_2_rows": 0,
-    "post_probe_decision_version_2_rows": 0,
-    "physical_committed_writes": 0,
     "grants": 0,
     "g4_historical_hash_equivalence": "2/2",
     "policy_commit": "COMMITTED_POLICY_V2_RECONCILED",
@@ -46,10 +43,29 @@
     "policy_postcommit_version_2_rows": 1,
     "g5_v2_chain_focus_tests": "5/5 PASS on user Windows 2026-10-29",
     "g5_v2_chain_readonly_writes": 0,
-    "g5_v2_chain_next_required_event": "submetida",
+    "g5_v2_chain_next_required_event": "auditada_favoravelmente_OR_auditada_desfavoravelmente_OWN_REVIEWER",
     "g5_v2_submission_decision_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
     "g5_v2_submission_tests": "6/6 PASS mock, real commit separately reconciled",
-    "g5_v2_submission_policy_insert_count": 0
+    "g5_v2_submission_policy_insert_count": 0,
+    "historical_rollback_probe": {
+      "source": "Earlier isolated pre-policy-commit rollback-only checks; not a current chain inventory",
+      "policy_version_2_rows_after_probe": 0,
+      "decision_version_2_rows_after_probe": 0,
+      "physical_committed_writes_at_probe": 0,
+      "scope": "ROLLBACK_PROBE_BEFORE_SUBSEQUENT_POLICY_AND_DECISION_COMMITS"
+    },
+    "physical_read_only_20261030": {
+      "observed_at_utc": "2026-10-30T16:51:33.765376Z",
+      "evidence_sha256": "477d4ac1c724908bf8aa1f2d9786394b34ccfe20edc0725fea7b1774c58895e1",
+      "g5_version_1_activations": 1,
+      "g5_version_1_txid": "920",
+      "g5_version_2_activations": 0,
+      "g5_version_2_decisions": 2,
+      "revision": "0063_adr020_policy_activation_atomicity",
+      "g5_native_function_count": 0,
+      "g5_one_shot_table_present": false,
+      "tests_passed": 18
+    }
   },
   "authorization_received": {
     "literal": "INSTALA E ATIVA",
@@ -109,11 +125,11 @@
     "record_id": "B02-G5-V5-policy-v2",
     "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
     "record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
-    "institutional_decisions_created": 0,
-    "activations_created": 0,
     "grants": 0,
     "source": "physical execution terminal log presented by user",
-    "time_evidence": "2026-10-29 evening America/Belem; exact PostgreSQL COMMIT time not in output"
+    "time_evidence": "2026-10-29 evening America/Belem; exact PostgreSQL COMMIT time not in output",
+    "institutional_decisions_created_at_policy_commit": 0,
+    "activations_created_at_policy_commit": 0
   },
   "institutional_chain_reconciliation": {
     "status": "AUDIT_START_COMMITTED_OPERATOR_RECONCILED",
@@ -244,7 +260,7 @@
     "sql_runner": "tools/b02_g5_v5_submission_runner.py",
     "sql_committed": true,
     "db_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
-    "reviewer_action": "AUDITORIA_INICIADA_COMMITTED_RESULT_NOT_YET_EMITTED",
+    "reviewer_action": "AUDITORIA_INICIADA_COMMITTED_AT_2026_10_30T15_49_05Z; OWN_RESULT_PENDING",
     "ratification": "USER_PRIOR_RATIFICATION_RECORDED_NOT_SQL_EVENT",
     "actuation": "PENDING_VALID_DECISION_CHAIN",
     "policy_version_insert_not_repeated": true,
@@ -255,7 +271,7 @@
     "focussed_tests_execution": "6/6 PASS on user Windows, mock aaaa... values only",
     "policy_material_until_utc": "2026-10-30T13:00:00Z",
     "physical_commit_evidence": "Windows PostgreSQL execution output reported by user; owner solveris_test; independent readback solveris_b02_policy_writer; event submetida; policy_insert_count 0; audits 0; ratifications 0; activations 0; grants 0",
-    "next_event": "auditoria_iniciada",
+    "next_event": "auditada_favoravelmente_OR_auditada_desfavoravelmente_BY_ORIGINAL_REVIEWER",
     "db_commit_clock": "Not independently observed; no absolute COMMIT timestamp asserted",
     "reviewer_handoff_status": "DOCUMENTARY_HANDOFF_PUBLISHED_NO_CLAIM_OF_REVIEWER_RECEIPT"
   },
