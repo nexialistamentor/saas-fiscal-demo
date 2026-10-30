@@ -84,6 +84,7 @@ def dump_to_private(path:Path):
     with path.open("xb") as handle:
         p=subprocess.run(cmd,stdout=handle,stderr=subprocess.PIPE,timeout=MAX_TIME)
     if p.returncode or not path.stat().st_size:
+        path.unlink(missing_ok=True)
         stop("DUMP_FAILED_"+p.stderr.decode("utf8",errors="replace")[-250:])
     with path.open("rb") as handle:
         toc=subprocess.run(["docker","exec","-i",bridge.CONTAINER,
