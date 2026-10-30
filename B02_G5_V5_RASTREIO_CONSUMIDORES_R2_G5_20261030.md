@@ -91,3 +91,33 @@ Trabalho executado: rastreio de chamadas Python/SQL, separação do domínio G4/
 **Relógios separados:** mandato revisor até `2026-11-08T00:00:00Z`; política material V5 até `2026-10-30T13:00:00Z`, já expirada ao corte desta secção. O exame documental pode prosseguir dentro do mandato sem supor direito de operação retroativa. Proibida qualquer ativação/instalação baseada em janela expirada. O comentário no PR é canal de entrega documental compartilhado, **não prova de leitura pela execução revisora original**.
 
 **Preservação:** nenhuma escrita nova SQL, política e submissão COMMITTED intactas, G4/MEI intocados, testes anteriormente encerrados não reexecutados.
+
+## 8. Inventário físico de versões e matriz original de fecho B02
+
+**Ferramenta única publicada:** `tools/b02_g5_v5_current_inventory_readonly.py` usa `b02_g5_v5_local_bridge.py` com sessão SQL `READ ONLY`, verifica leitor restrito e consulta versões 1/2, decisões, bootstrap, ativações, execução, geração, outbox, intervalo, hashes, identificadores, TXID quando presente, rotinas nativas e existência de reserva one-shot. O repositório e o serviço físico são distintos: **a ferramenta ainda requer execução no Windows do operador**. Se a tabela one-shot não conceder SELECT ao leitor restrito, o resultado marca **não legível**, sem elevar privilégios.
+
+| Objeto | Âmbito/evidência já disponível | Conclusão atual |
+|---|---|---|
+| G4 | `B02_G4_RESULTADO_RECONCILIADO_OUTUBRO_20261029.json`: txid `926`, ativação `B02-05ede-activation-v3`, hash `504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4` | **Reconciliado no âmbito G4**, sem delegação automática G5 |
+| G5 V1 | Hash `57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa`; header histórico `native/g5/historical_20261022/b02_g5_approved_roots.h` fixa `B02-57982-activation-v1`, raízes válidas somente até 23/10 | Política histórica conhecida; **ativação física atual não determinada**, sem declarar desaparecimento |
+| G5 V2 | Hash `007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf`, política `B02-G5-V5-policy-v2`, `record_hash=fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9`; duas decisões SQL reconciliadas por operador | **Apenas política e eventos `submetida`/`auditoria_iniciada` COMMITTED**. `activation_id`/hash/txid não demonstrados por leitura atual |
+| Instalação G5 | `migrations/candidates/0064_...` e `0065_...` não pertencem à árvore `migrations/versions`; 0063 aplicada na última prova | Candidatas; sem confirmação de instalação física sucessora |
+| Binário G5 | C e header históricos em `native/g5/historical_20261022/`; root original V1 expirada, não há ELF sucessor aprovado | **Não homologado** para V2 ou futuro V3 |
+| One-shot real | V30 sintético comprovou concorrência e ACK simulado nos seus limites; nenhum comprovativo de duas unidades reais atual | **Operação protegida não demonstrada** |
+
+**Matriz de fecho original recuperada:** `SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md`, secção 11. Não substituir os critérios por novo checklist.
+
+| Gate original | Saída exigida | Estado com prova atual |
+|---|---|---|
+| R1 | Prova nativa V31 no Docker Windows com binário exato, incluindo negativos, recuperação e evidência primária | Ensaios V30 sintéticos preservados; **sem homologação V31/ELF sucessor PG 17.10** |
+| R3 | Sucessores temporais aprovados pelo titular, decisões, operador, raiz/binário e hashes coerentes | Plano `B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json`; janela nova **não decidida** |
+| R4 | Preparação protegida, identidade, migração/ACL, backup privado e restauro em descartável, confiança e sanitização | **Pendente prova física atual**, não reutilizar V13 como backup privado atual |
+| R5 | 0064/0065 no alvo, duas unidades reais, reserva PRE_COMMIT/COMMIT, one-shot, prova atómica e reconciliação independente | **Não comprovado**; nenhum COMMIT operacional inferido de testes ou de início de auditoria |
+| R6 | Pertinência normativa por item, vigência/alterações/revogação e vínculo norma→RuleVersion→item | **Não comprovado**, sem redução da prateleira Enterprise |
+| R7 | Centro de Comando/Miguel ratificam fecho somente com provas R1–R6 | **B02 OPEN; B03 BLOCKED** |
+
+**Rastreio temporal específico V5:** há **nove campos de identidade/tempo** diretamente afetados pela proposta de versão sucessora: `policy_version`; `declared_material_applicability.from/until`; `rules.b02_noncredential.security.g5_release.from/until`; `documents[0].g4.valid_from/valid_until`; `documents[1].g4.valid_from/valid_until`. Mudar os últimos quatro sem autoridade G4 efetivamente vigente produziria falsa validade. O próximo hash canónico permanece **indeterminado** até a versão livre, os vínculos reais e a janela decidida por Miguel.
+
+**Verificação de capacidade nativa deste executor:** o ambiente de trabalho aqui disponível anuncia PostgreSQL **17.11** e não contém `postgres.h` do servidor. Não serve para homologar o ELF de **17.10** no Docker Windows alvo. A compilação e o ensaio de backup/restauro do protegido exigem o runtime físico; não foram fingidos.
+
+**Regra de fecho:** uma alegação de `G5 ativado` é `NAO_DEMONSTRADA` sem `activation_id`, hash válido, decisão `ratificada`, intervalo e transação coerente na **base correta**. Não afirmar que um registo físico desapareceu sem esse inventário; não confundir rollbacks, perfis sintéticos e provas protegidas.
