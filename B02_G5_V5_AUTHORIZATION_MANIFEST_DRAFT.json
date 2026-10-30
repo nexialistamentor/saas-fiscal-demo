@@ -557,31 +557,52 @@
     "R4_private_disposable_restore": {
       "runner": "tools/b02_r4_private_backup_disposable_restore.py",
       "tests": "tests/test_b02_r4_private_backup_disposable_restore.py",
-      "test_cases": 8,
-      "runner_code_status": "PHYSICAL_PG_DUMP_WRITTEN_NONEMPTY_BUT_TOC_STOP_BEFORE_RESTORE; RESUME_IMPLEMENTED_NOT_EXECUTED",
-      "test_status": "6_OF_6_ORIGINAL_WINDOWS_PASS_20261030; 2_NEW_REGRESSION_TESTS_PUBLISHED_NOT_YET_EXECUTED",
+      "test_cases": 12,
+      "runner_code_status": "RESUME_LATEST_VALIDATED_PHYSICAL_SUCCESS",
+      "test_status": "12_OF_12_WINDOWS_PASS_20261030",
       "source_role": "solveris_test",
       "source_db": "solveris_b02_r4g_test",
       "source_postgres": "17.10",
       "safety": "ONLY_PRIVATE_LOCALAPPDATA_BACKUP_AND_NEW_NETWORKLESS_DISPOSABLE_CONTAINER;NO_WRITE_TO_PROTECTED;NO_VOLUME_PRUNE",
-      "result_status": "STOP_B02_R4_ARCHIVE_TOC_INVALID_NO_DISPOSABLE_RESTORE",
+      "result_status": "R4_DISPOSABLE_STRUCTURAL_RESTORE_MATCHED_NOT_FULL_R4",
       "approval_boundary": "STRUCTURAL_COUNT_AND_RESTORE_PARTIAL_ONLY;ACL_OWNER_NATIVE_SIGNATURE_SANITIZATION_AND_CAS_VERIFICATION_STILL_NEEDED",
       "physical_result_sha256": null,
-      "source_git_blob": "d169bdf6f7430ba264b2b11ea7b288a43640937e",
-      "test_git_blob": "3fc618fdc2639612f8286729c1fc2af890a089bd",
+      "source_git_blob": "418a7bdbe96514c516d8f19748df56f9c7604f6c",
+      "test_git_blob": "6e97e5e38e103567e368889b8aa291bfb7fe131d",
       "archive_compression": "pg_dump_custom_level_6",
       "preflight_disk_space": "max_2GiB_or_twice_source_database_size",
       "incomplete_archive_deleted_on_pg_dump_failure": true,
-      "acl_evidence_status": "ICACLS_APPLIED_ON_NEW_PRIVATE_DIR_NOT_INDEPENDENTLY_READBACK",
+      "acl_evidence_status": "NTFS_ICACLS_APPLIED_TO_PRIVATE_BACKUP_NOT_INDEPENDENTLY_RECONCILED; ORIGINAL_OWNER_ACL_UNRESTORED",
       "protected_target_restore": false,
       "isolated_restore_no_owner_no_acl": true,
       "code_lexical_scan": "BRACKETS_QUOTED_LITERALS_BALANCED_NOT_PYTHON_COMPILE",
-      "integration_status": "TEST_6_PUBLISHED_NOT_EXECUTED_NO_PHYSICAL_R4_RESULT",
+      "integration_status": "PHYSICAL_DISPOSABLE_STRUCTURAL_RESTORE_MATCHED_WINDOWS_USER_RUN",
       "no_mei_or_g4_writes": true,
       "resume_code_commit": "3bdd4ce4c76f679bf9da6011392435dd94c4cca5",
       "resume_tests_commit": "f2d659a66184ea5d5f12f9cdca1ae58f8facbb45",
       "resume_only_existing": true,
-      "no_docker_restore_yet": true
+      "no_docker_restore_yet": false,
+      "physical_archive_sha256": "3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e",
+      "physical_archive_bytes": 741807,
+      "physical_toc_sha256": "7709152f89650a169b4dbbeaa5422cdc2bd878753637f7100f57b837c1d3de66",
+      "physical_source_counts": {
+        "bootstrap_authority_records": 4,
+        "extraction_results": 0,
+        "normative_artifacts": 1,
+        "policy_activation_executions": 10,
+        "policy_activation_generations": 10,
+        "policy_activation_outbox_events": 10,
+        "policy_activations": 10,
+        "policy_decisions": 34,
+        "policy_versions": 9
+      },
+      "physical_restore_counts_match": true,
+      "disposable_network": "none",
+      "disposable_ports": [],
+      "protected_database_writes": 0,
+      "protected_volume_mutations": 0,
+      "backup_candidates_retained": 3,
+      "archive_reused": true
     }
   },
   "r1_r7_continuity_matrix": {
@@ -609,9 +630,9 @@
       },
       "R4": {
         "existing": "tools/b02_r4_private_backup_disposable_restore.py; tests/test_b02_r4_private_backup_disposable_restore.py; tools/b02_g5_v5_local_bridge.py",
-        "accepted_proof": "2026-10-30 Windows focused R4 suite 8/8 PASS. --resume-existing STOP_B02_R4_RESUME_REQUIRES_EXACTLY_ONE_INCOMPLETE_ARCHIVE_FOUND_3. Three private archive candidates exist, no disposable restore and no source DB writes; no candidate was deleted.",
-        "remaining_gap": "Choose only a TOC-validated custom archive proven to originate from source DB on PG17.10; compare disposable structural restore with protected read-only snapshot. Full OWNER/ACL not proven by --no-owner/--no-acl.",
-        "next_action": "After fast-forward, run R4 focused tests now totaling 12. On 12 PASS use --resume-existing --resume-latest-validated to validate all candidates, select newest unique valid archive, preserve all archives, and perform one disposable restore. On STOP do not regenerate dump; reconcile exact cause."
+        "accepted_proof": "Windows 2026-10-30: 12/12 focused tests PASS and real private archive reuse / one networkless disposable PostgreSQL 17.10 structural restore succeeded: R4_DISPOSABLE_STRUCTURAL_RESTORE_MATCHED. Protected source and disposable counts equal across 9 whitelisted tables (policy_versions=9, policy_decisions=34, policy_activations=10, executions/generations/outbox=10 each, bootstrap_authority_records=4, normative_artifacts=1, extraction_results=0). Archive 741807 bytes; SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e; TOC SHA256 7709152f89650a169b4dbbeaa5422cdc2bd878753637f7100f57b837c1d3de66. Archive reused, 3 candidates retained; protected writes=0, protected volume mutations=0, disposable network=none and host ports=[]. User provided runner result; evidence.json file and Windows ACL not independently inspected.",
+        "remaining_gap": "Structural backup and isolated restore proved. Original full R4 OWNER/ACL/role grants/security recovery and private NTFS ACL independent readback not evidenced: restore explicitly NO_OWNER_NO_ACL_STRUCTURAL_ONLY. Do not infer full R4 closed.",
+        "next_action": "Preserve matched structural proof and unchanged private backup; do not run pg_dump or disposable restore again. Inspect preexisting R4 gate and only missing OWNER/ACL/permission/NTFS evidence via read-only independent verification. Do not escalate privilege or modify protected roles without separately valid approval."
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain",
@@ -633,7 +654,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "da3f6fdd0772c3fca0ef924c1a86ca56aea35aeb",
-    "recent_focused_windows_evidence": "2026-10-30: R4 8/8 PASS on Windows, then resume stopped before Docker restore because three incomplete private PGDMP candidates; no deletion. Verified-latest opt-in with unique timestamp, source TOC database/version validation and new regression tests published, not yet executed on Windows."
+    "last_reconciled_git_commit": "93e6a4f9501c2dadaeb6ded0a219f18f6f3a5971",
+    "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN."
   }
 }
