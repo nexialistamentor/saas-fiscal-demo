@@ -30,6 +30,7 @@ ALLOWED = {
     'tools/b02_g5_v5_institutional_owner_rollback_probe.py',
     'tools/b02_g5_v5_submission_runner.py',
     'tools/b02_g5_v5_institutional_audit_start_runner.py',
+    'tools/b02_g5_v5_institutional_audit_result_runner.py',
 }
 
 
