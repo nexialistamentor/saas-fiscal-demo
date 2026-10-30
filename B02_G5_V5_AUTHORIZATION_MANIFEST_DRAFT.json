@@ -848,7 +848,7 @@
           "SET CONSTRAINTS": 4
         },
         "unit_checkpoints_count": 4,
-        "unit_checkpoints_actual_events": "4 SET_CONSTRAINTS_ALL_IMMEDIATE checkpoints logged (their times are 2026-10-30T22:27:42.692969Z; 22:27:44.494966Z; 22:27:44.659911Z; 22:27:45.692261Z), while full SQL statement log has 2 DEFERRED and 2 ALL IMMEDIATE commands; therefore four unit_checkpoints is NOT proof of four independent transaction units",
+        "unit_checkpoints_actual_events": "Primary JSON labels all four unit_checkpoint events SET_CONSTRAINTS_ALL_IMMEDIATE, but cross-checking exact timestamps with full_log shows they align to 2 'SET CONSTRAINTS z_b02_complete_unit DEFERRED' and 2 'SET CONSTRAINTS ALL IMMEDIATE' (in that order, alternating). Diagnostic event labels are therefore inaccurate for the 1st and 3rd checkpoint. Not four immediate checks or four independent units. No effect on positive status; reviewer must preserve this instrumentation limitation.",
         "correspondence_checkpoints_count": 0,
         "inserted_sql_head_counts": {
           "artifact_references": 2,
