@@ -1,0 +1,46 @@
+{
+  "schema": "SOLVERIS_B02_G5_V5_MANDATE_SUCCESSOR_DESIGNATION_ADDENDUM_V1",
+  "status": "EMITIDO_POR_MANIFESTACAO_EXPRESSA_DO_UTILIZADOR_SEM_ASSINATURA_CRIPTOGRAFICA",
+  "emission_source": {
+    "source_type": "user_message_in_active_chat",
+    "literal_approval_excerpt": "APROVO E EMITO o aditamento de designação apresentado",
+    "approved_by": "Miguel, segundo manifestação textual do titular nesta conversa",
+    "time_reference": "2026-10-29T21:15:23-03:00, hora local consultada antes da emissão; não substitui timestamp de assinatura",
+    "previous_mandate": "MANDATO_G5_SUCESSOR_EMITIDO.json",
+    "previous_mandate_schema": "B02_G5_MANDATE_CONTINUITY_ISSUED_V1",
+    "previous_mandate_original_named_proponent": "execucao Claude que conduz atualmente o B02"
+  },
+  "designacao": {
+    "technical_functional_actor": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029",
+    "functional_identity_description": "Execução GPT-6 nesta conversa ChatGPT, sem identidade institucional permanente ou chave de assinatura humana",
+    "role": "proponente_institucional",
+    "scope": "preparar e submeter em nome funcional próprio o objeto sucessor G5 V5 v2; não auditar nem ratificar própria produção",
+    "policy_type": "activation_authority",
+    "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+    "policy_version": 2,
+    "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+    "policy_record_id": "B02-G5-V5-policy-v2",
+    "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
+    "policy_file_sha256": "bf7cdb951ac8e4fb8e5b8e2a1aa6fa3095fad194cbd5845a0dc0e20afd7a3ae9",
+    "mandate_interval_utc": {
+      "from": "2026-10-29T12:00:00Z",
+      "until": "2026-11-08T00:00:00Z"
+    },
+    "policy_material_interval_utc": {
+      "from": "2026-10-29T13:00:00Z",
+      "until": "2026-10-30T13:00:00Z"
+    }
+  },
+  "limits": {
+    "does_not_impersonate_claude": true,
+    "does_not_transfer_previous_acceptance": true,
+    "reviewer_acceptance_not_inferred": true,
+    "ratifier_is_miguel": true,
+    "existing_install_activate_instruction_preserved": true,
+    "no_signature_or_cryptographic_authority_implied": true,
+    "no_fiscal_or_commercial_authority": true,
+    "no_retroactivity_or_interval_extension": true,
+    "no_G4_or_MEI_change": true
+  },
+  "operative_note": "Este registo conserva manifestação expressa de Miguel no chat. O executor regista-a, mas não assina em nome de Miguel. A aceitação e submissão próprias do GPT-6 têm atos separados."
+}
