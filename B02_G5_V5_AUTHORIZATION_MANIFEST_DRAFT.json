@@ -73,7 +73,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V1_HISTORICAL_TX920_EXPIRED_V2_2_DECISIONS_0_ACTIVATIONS_R6_0_MATCHING_ADR020_ARTIFACTS_OR_EXTRACTIONS_B02_OPEN",
+  "technical_readiness": "R1_TESTS_PASS_R6_TESTS_PASS_0_NORMATIVE_INGEST_R4_RESTORE_CODE_PUBLISHED_NO_ACTUAL_BACKUP_B02_OPEN",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -442,7 +442,7 @@
     "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md section 11",
     "R1": "PG17_10_NATIVE_ISOLATED_BUILD_CONTRACT_7_TESTS_PASS_NO_REAL_ELF_APPROVED",
     "R3": "V3_NEXT_FREE_CONFIRMED; NEW_G4_G5_WINDOW_UNDECIDED",
-    "R4": "G4_TX_926_RECONCILED_BUT_TIME_EXPIRED; PRIVATE_BACKUP_RESTORE_ACL_CUSTODY_PENDING",
+    "R4": "R4_PRIVATE_BACKUP_DISPOSABLE_RESTORE_RUNNER_6_NEW_TESTS_PUBLISHED_NOT_EXECUTED__FULL_ACL_AND_CUSTODY_GATE_STILL_OPEN",
     "R5": "G5_V1_HISTORICAL_FOUR_RECORDS_TX_920; V2_0_ACTIVATIONS; 0064_0065_NOT_INSTALLED; REAL_ONESHOT_PENDING",
     "R6": "OPEN_PHYSICAL_READONLY_R6_8_PASS_BOTH_CUSTODIED_PDF_HASHES_ABSENT_FROM_ACCESSIBLE_ADR020_ARTIFACT_AND_EXTRACTION_ROWS; THREE_FURTHER_RELATION_TABLES_ACL_DENIED",
     "R7": "FINAL_INSTITUTIONAL_CLOSURE_NOT_ISSUED",
@@ -553,6 +553,20 @@
     "protected_DDL_DML": false,
     "new_focused_tests_pending_total": 0,
     "operational_safety": "NO_NEW_DB_ACCESS_OR_WRITES; R1/R6 CODE_ONLY; NOT CLOSED",
-    "new_focus_tests_status": "NATIVE_7_PASS_R6_8_PASS; ACTUAL_R6_PHYSICAL_ZERO_MATCHING_ADR020_SOURCES"
+    "new_focus_tests_status": "NATIVE_7_PASS_R6_8_PASS; ACTUAL_R6_PHYSICAL_ZERO_MATCHING_ADR020_SOURCES",
+    "R4_private_disposable_restore": {
+      "runner": "tools/b02_r4_private_backup_disposable_restore.py",
+      "tests": "tests/test_b02_r4_private_backup_disposable_restore.py",
+      "test_cases": 6,
+      "runner_code_status": "PUBLISHED_NOT_EXECUTED_ON_WINDOWS",
+      "test_status": "NOT_EXECUTED_ON_WINDOWS",
+      "source_role": "solveris_test",
+      "source_db": "solveris_b02_r4g_test",
+      "source_postgres": "17.10",
+      "safety": "ONLY_PRIVATE_LOCALAPPDATA_BACKUP_AND_NEW_NETWORKLESS_DISPOSABLE_CONTAINER;NO_WRITE_TO_PROTECTED;NO_VOLUME_PRUNE",
+      "result_status": "NOT_AVAILABLE",
+      "approval_boundary": "STRUCTURAL_COUNT_AND_RESTORE_PARTIAL_ONLY;ACL_OWNER_NATIVE_SIGNATURE_SANITIZATION_AND_CAS_VERIFICATION_STILL_NEEDED",
+      "physical_result_sha256": null
+    }
   }
 }
