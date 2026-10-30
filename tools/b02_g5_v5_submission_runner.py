@@ -42,10 +42,10 @@ def stop(reason):
 
 
 def sources():
-    """Verify literal bytes of the three actually published, immutable documents."""
+    """Verify committed Git blobs; validate_checkout enforces a clean, synced tree."""
     output={}
     for name,blob in BLOBS.items():
-        result=subprocess.run(["git","hash-object",name],cwd=ROOT,
+        result=subprocess.run(["git","rev-parse","HEAD:"+name],cwd=ROOT,
                               capture_output=True,text=True,timeout=15,check=True)
         if result.stdout.strip()!=blob:
             stop("GIT_BLOB_"+name)
