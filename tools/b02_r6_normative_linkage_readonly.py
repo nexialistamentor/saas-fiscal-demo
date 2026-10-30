@@ -62,7 +62,7 @@ SELECT jsonb_build_object(
    SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'source_pdf_hash',a.artifact_hash,'normative_artifact_id',a.normative_artifact_id,
     'record_hash',a.record_hash,
-    'record_hash_shape_valid',a.record_hash ~ '^[0-9a-f]{64}$')
+    'record_hash_shape_valid',(char_length(a.record_hash) = 64 AND a.record_hash !~ '[^0-9a-f]'))
     ORDER BY a.normative_artifact_id),'[]'::jsonb)
    FROM public.normative_artifacts a WHERE a.artifact_hash IN
     ('e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832',
@@ -103,99 +103,30 @@ SELECT jsonb_build_object(
 ROLLBACK;"""
 
 
-
-# Read only the tables explicitly permitted to the documentary writer.
-# No reference to RuleVersion, normative relation, or L2 in this statement.
+# Read only the two source relations already allowed by the documentary role.
 SOURCE_ONLY_CATALOGUE="""BEGIN READ ONLY;
 SELECT jsonb_build_object(
  'artifacts_total',(
-  SELECT count(*) FROM public.normative_artifacts
-  WHERE artifact_hash IN (
-   'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832',
-   'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d')),
+  SELECT count(*) FROM public.normative_artifacts WHERE artifact_hash IN (
+  'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832',
+  'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d')),
  'artifacts',(
   SELECT coalesce(jsonb_agg(jsonb_build_object(
    'normative_artifact_id',a.normative_artifact_id,
    'source_pdf_hash',a.artifact_hash,
    'record_hash',a.record_hash,
-   'record_hash_shape_valid',a.record_hash ~ '^[0-9a-f]{64}
-    with bridge.managed_container():
-        ident=read(PRIVILEGES)
-        if (ident.get("database"),ident.get("role"),ident.get("current_user"))!=(
-            bridge.DATABASE,ROLE,ROLE):
-            fail("DATABASE_OR_ROLE_MISMATCH")
-        acl=ident.get("select_privileges")
-        if not isinstance(acl,dict):
-            fail("PRIVILEGES_UNKNOWN")
-        inaccessible=[table for table in TABLES if acl.get(table) is not True]
-        if inaccessible:
-            # Use only the two tables proven readable in this session.
-            # Never query the denied relations in the partial branch.
-            if not all(acl.get(name) is True for name in
-                       ("normative_artifacts","extraction_results")):
-                return {"status":"R6_SOURCE_TABLES_INACCESSIBLE_WITH_EXISTING_ROLE",
-                    "unreadable_tables":inaccessible,"source_identity":ident,
-                    "writes":0,"new_grants":0,"fiscal_authority":False}
-            source=read(SOURCE_ONLY_CATALOGUE)
-            if (not isinstance(source,dict)
-                or not isinstance(source.get("artifacts"),list)
-                or not isinstance(source.get("extraction_results"),list)
-                or type(source.get("artifacts_total")) is not int
-                or type(source.get("extraction_results_total")) is not int
-                or len(source["artifacts"])>20
-                or len(source["extraction_results"])>30):
-                fail("PARTIAL_SOURCE_REPORT_INVALID")
-            if any(a.get("record_hash_shape_valid") is not True
-                   for a in source["artifacts"]):
-                fail("ARTIFACT_RECORD_HASH_FORMAT_INVALID")
-            return {"status":"R6_PARTIAL_SOURCE_READ_ONLY_RULE_TABLES_DENIED",
-                "unreadable_tables":inaccessible,"source_identity":ident,
-                "available_source_catalogue":source,
-                "rule_or_item_binding_proven":False,
-                "legal_applicability_for_item_proven":False,
-                "fiscal_authority":False,"writes":0,"new_grants":0}
-        data=read(CATALOGUE)
-        artifacts=data["artifacts"]
-        if len(artifacts)>20 or len(data["rule_candidates"])>30:
-            fail("RESULT_BOUND_EXCEEDED")
-        if any(not a["record_hash_shape_valid"] for a in artifacts):
-            fail("ARTIFACT_RECORD_HASH_FORMAT_INVALID")
-        return {
-            "status":"R6_PHYSICAL_DOCUMENTARY_INVENTORY_ONLY",
-            "source_identity":ident,
-            "source_sha256":SOURCE_HASHES,
-            "catalogue":data,
-            "canonical_l2_ruleversion_item_binding_proven":False,
-            "external_source_revisions_exhaustively_verified":False,
-            "legal_applicability_for_item_proven":False,
-            "fiscal_authority":False,
-            "checkout":False,
-            "writes":0,"new_grants":0}
-
-
-def main():
-    bridge.validate_checkout(PATH)
-    print(json.dumps(inspect(),sort_keys=True,ensure_ascii=False,default=str))
-
-
-if __name__=="__main__":
-    try:main()
-    except Exception as e:
-        print(str(e),file=sys.stderr)
-        raise SystemExit(2)
-
-   ) ORDER BY a.normative_artifact_id),'[]'::jsonb)
+   'record_hash_shape_valid',
+     (char_length(a.record_hash) = 64 AND a.record_hash !~ '[^0-9a-f]')
+  ) ORDER BY a.normative_artifact_id),'[]'::jsonb)
   FROM (
    SELECT normative_artifact_id,artifact_hash,record_hash
-   FROM public.normative_artifacts
-   WHERE artifact_hash IN (
-    'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832',
-    'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d')
+   FROM public.normative_artifacts WHERE artifact_hash IN (
+   'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832',
+   'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d')
    ORDER BY normative_artifact_id LIMIT 20
   ) a),
  'extraction_results_total',(
-  SELECT count(*) FROM public.extraction_results
-  WHERE artifact_hash IN (
+  SELECT count(*) FROM public.extraction_results WHERE artifact_hash IN (
    'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832',
    'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d')),
  'extraction_results',(
@@ -203,20 +134,18 @@ if __name__=="__main__":
    'extraction_result_id',e.extraction_result_id,
    'normative_artifact_id',e.normative_artifact_id,
    'source_pdf_hash',e.artifact_hash,
-   'record_hash',e.record_hash,
-   'outcome',e.outcome
-   ) ORDER BY e.extraction_result_id),'[]'::jsonb)
+   'record_hash',e.record_hash,'outcome',e.outcome
+  ) ORDER BY e.extraction_result_id),'[]'::jsonb)
   FROM (
-   SELECT extraction_result_id,normative_artifact_id,artifact_hash,
-          record_hash,outcome
-   FROM public.extraction_results
-   WHERE artifact_hash IN (
-    'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832',
-    'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d')
+   SELECT extraction_result_id,normative_artifact_id,artifact_hash,record_hash,outcome
+   FROM public.extraction_results WHERE artifact_hash IN (
+   'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832',
+   'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d')
    ORDER BY extraction_result_id LIMIT 30
   ) e)
 )::text;
 ROLLBACK;"""
+
 
 def inspect():
     with bridge.managed_container():
@@ -229,9 +158,31 @@ def inspect():
             fail("PRIVILEGES_UNKNOWN")
         inaccessible=[table for table in TABLES if acl.get(table) is not True]
         if inaccessible:
-            return {"status":"R6_SOURCE_TABLES_INACCESSIBLE_WITH_EXISTING_ROLE",
+            if not all(acl.get(t) is True for t in
+                       ("normative_artifacts","extraction_results")):
+                return {"status":"R6_SOURCE_TABLES_INACCESSIBLE_WITH_EXISTING_ROLE",
+                    "unreadable_tables":inaccessible,"source_identity":ident,
+                    "writes":0,"new_grants":0,"fiscal_authority":False}
+            source=read(SOURCE_ONLY_CATALOGUE)
+            if (not isinstance(source,dict)
+                or not isinstance(source.get("artifacts"),list)
+                or not isinstance(source.get("extraction_results"),list)
+                or type(source.get("artifacts_total")) is not int
+                or type(source.get("extraction_results_total")) is not int
+                or source["artifacts_total"] < len(source["artifacts"])
+                or source["extraction_results_total"] < len(source["extraction_results"])
+                or len(source["artifacts"])>20
+                or len(source["extraction_results"])>30):
+                fail("PARTIAL_SOURCE_REPORT_INVALID")
+            if any(a.get("record_hash_shape_valid") is not True
+                   for a in source["artifacts"]):
+                fail("ARTIFACT_RECORD_HASH_FORMAT_INVALID")
+            return {"status":"R6_PARTIAL_SOURCE_READ_ONLY_RULE_TABLES_DENIED",
                 "unreadable_tables":inaccessible,"source_identity":ident,
-                "writes":0,"new_grants":0,"fiscal_authority":False}
+                "available_source_catalogue":source,
+                "rule_or_item_binding_proven":False,
+                "legal_applicability_for_item_proven":False,
+                "fiscal_authority":False,"writes":0,"new_grants":0}
         data=read(CATALOGUE)
         artifacts=data["artifacts"]
         if len(artifacts)>20 or len(data["rule_candidates"])>30:
