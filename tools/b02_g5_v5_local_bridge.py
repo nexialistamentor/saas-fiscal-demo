@@ -33,6 +33,7 @@ ALLOWED = {
     'tools/b02_g5_v5_institutional_audit_result_runner.py',
     'tools/b02_g5_v5_current_inventory_readonly.py',
     'tools/b02_r6_normative_linkage_readonly.py',
+    'tools/b02_r4_private_backup_disposable_restore.py',
 }
 
 
