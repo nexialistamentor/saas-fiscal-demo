@@ -1,0 +1,85 @@
+{
+  "schema": "SOLVERIS_B02_G5_V5_PROPONENT_SUBMISSION_V1",
+  "status": "SUBMETIDA_DOCUMENTALMENTE_PELO_PROPRIO_PROPONENTE_PERSISTENCIA_DB_A_RECONCILIAR",
+  "decision_event": "submetida",
+  "decision_id": "B02-G5-V5-GPT6-submetida-v1",
+  "previous_decision_id": null,
+  "institutional_role": "proponente_institucional",
+  "actor": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029",
+  "policy": {
+    "policy_type": "activation_authority",
+    "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+    "policy_version": 2,
+    "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+    "policy_file": "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json",
+    "policy_file_sha256": "bf7cdb951ac8e4fb8e5b8e2a1aa6fa3095fad194cbd5845a0dc0e20afd7a3ae9",
+    "policy_version_record_id": "B02-G5-V5-policy-v2",
+    "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9"
+  },
+  "authority_and_acceptance": {
+    "issued_successor_mandate": "MANDATO_G5_SUCESSOR_EMITIDO.json",
+    "issued_gpt6_addendum": "B02_G5_V5_ADITAMENTO_DESIGNACAO_GPT6_EMITIDO_20261029.json",
+    "issued_gpt6_addendum_commit": "d65558f9c12db974903ce87fcc53b24fbcb87813",
+    "proponent_self_acceptance": "B02_G5_V5_ACEITACAO_PROPONENTE_GPT6_20261029.json",
+    "proponent_self_acceptance_commit": "a18d7297de929a4c0023dabeef96273ddf0f6981",
+    "user_literal_authorization": "APROVO E EMITO o aditamento de designação apresentado",
+    "legacy_install_activate_order": "INSTALA E ATIVA (previously received; not requested again)"
+  },
+  "scope": {
+    "purpose": "Formal own documentary submission of exact G5 V5 policy for independent institutional review and downstream authorized decision chain",
+    "documentary_material_applicability_utc": {
+      "from": "2026-10-29T13:00:00Z",
+      "until": "2026-10-30T13:00:00Z"
+    },
+    "mandate_window_utc": {
+      "from": "2026-10-29T12:00:00Z",
+      "until": "2026-11-08T00:00:00Z"
+    },
+    "documents": [
+      {
+        "id": "101202501245",
+        "sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832"
+      },
+      {
+        "id": "101201900571",
+        "sha256": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d"
+      }
+    ],
+    "jurisdiction": "BR-PR",
+    "product_scope": "SOLVERIS Enterprise national scope unchanged; B02 documentary source perimeter only"
+  },
+  "provenance": {
+    "source_user_message": "Explicit emission by Miguel of GPT-6 successor mandate amendment in this active conversation",
+    "functional_actor_self_statement": "GPT-6 of this ChatGPT conversation; not the previous Claude instance, not /root, and not a cryptographic identity",
+    "execution_evidence": "Published, append-only GitHub commit of this own submission; commit creation timestamp is the reproducible public audit time",
+    "policy_commit_evidence": "User-presented physical PostgreSQL COMMITTED_POLICY_V2_RECONCILED and restricted independent readback",
+    "policy_commit_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
+    "predecessor_decision": null,
+    "initial_chain_evidence": "2026-10-29 physical read-only G5 V2 chain count decisions=0 bootstrap=0 activations=0",
+    "scope_limit": "This is not yet a PostgreSQL policy_decisions row; database COMMIT must be independently reconciled"
+  },
+  "rationale": "As designated and self-accepting V5 v2 proponent, submit the exact persisted policy for distinct auditor actions, preserving V4 favorable-conditional examination and V4->V5 delta within their stated limits. No favorable audit or current sanitation proof is asserted.",
+  "review_handoff": {
+    "reviewer": "execucao revisora segregada anteriormente designada para o sucessor; identity and own acceptance pending",
+    "required_acts": [
+      "identificacao propria",
+      "aceitacao propria",
+      "declaracao propria de conflitos",
+      "auditoria_iniciada",
+      "auditada_favoravelmente OU auditada_desfavoravelmente"
+    ],
+    "prior_exam": "G5 V4 favorable conditioned technical examination and V4→V5 delta aditamento; do not convert to a fresh, independent final audit",
+    "reviewer_not_impersonated": true
+  },
+  "exclusions": {
+    "does_not_create_audit": true,
+    "does_not_ratify": true,
+    "does_not_activate": true,
+    "does_not_grant_privileges": true,
+    "does_not_install_migrations": true,
+    "does_not_sign_transaction": true,
+    "does_not_repeat_policy_insert": true,
+    "g4_and_mei_unchanged": true
+  },
+  "idempotency_key": "SOLVERIS-B02-G5-V5-GPT6-submetida-007f6e919816365d-20261029"
+}
