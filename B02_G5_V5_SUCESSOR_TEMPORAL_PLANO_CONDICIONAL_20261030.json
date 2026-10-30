@@ -1,0 +1,101 @@
+{
+  "schema": "SOLVERIS_B02_G5_V5_TEMPORAL_SUCCESSOR_PREDECISION_PLAN_V1",
+  "status": "PREPARED_NO_INTERVAL_APPROVED_NO_NEW_POLICY_COMMITTED",
+  "base": {
+    "policy_file": "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json",
+    "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+    "policy_version": 2,
+    "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+    "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
+    "material_from_utc": "2026-10-29T13:00:00Z",
+    "material_until_utc": "2026-10-30T13:00:00Z",
+    "successor_record_policy_version": "NEXT_FREE_FROM_PHYSICAL_READ_ONLY_INVENTORY__3_IF_NO_LATER_VERSION",
+    "versions_1_and_2": "IMMUTABLE"
+  },
+  "decision_reserved_for_miguel": {
+    "material_from_utc": null,
+    "material_until_utc": null,
+    "scope": "Only after technical readiness and G4 current authority, reviewer assessment and exact native/SQL artifact approvals",
+    "not_derived_from_mandate_until": "2026-11-08T00:00:00Z",
+    "no_implicit_approval": true
+  },
+  "causal_field_edits": [
+    {
+      "path": "$.policy_candidate_body.policy_version",
+      "current": 2,
+      "next": "NEXT_FREE_VERSION_AFTER_PHYSICAL_READBACK",
+      "consumer": "PolicyVersion identity unique and G5 decision chain"
+    },
+    {
+      "path": "$.policy_candidate_body.declared_material_applicability.from",
+      "next": "MIGUEL_APPROVED_FROM_UTC",
+      "consumer": "PolicyVersion material interval"
+    },
+    {
+      "path": "$.policy_candidate_body.declared_material_applicability.until",
+      "next": "MIGUEL_APPROVED_UNTIL_UTC",
+      "consumer": "PolicyVersion material interval"
+    },
+    {
+      "path": "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.from",
+      "next": "MIGUEL_APPROVED_FROM_UTC",
+      "consumer": "0064 real release"
+    },
+    {
+      "path": "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.until",
+      "next": "MIGUEL_APPROVED_UNTIL_UTC",
+      "consumer": "0064 real release"
+    },
+    {
+      "path": "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[0].g4.valid_from",
+      "next": "ACTUAL_G4_VALID_FROM",
+      "consumer": "0064 current G4 doc 1245"
+    },
+    {
+      "path": "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[0].g4.valid_until",
+      "next": "ACTUAL_G4_VALID_UNTIL",
+      "consumer": "0064 current G4 doc 1245"
+    },
+    {
+      "path": "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[1].g4.valid_from",
+      "next": "ACTUAL_G4_VALID_FROM",
+      "consumer": "0064 current G4 doc 571"
+    },
+    {
+      "path": "$.policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[1].g4.valid_until",
+      "next": "ACTUAL_G4_VALID_UNTIL",
+      "consumer": "0064 current G4 doc 571"
+    }
+  ],
+  "additional_exact_bindings_to_reconcile": [
+    "G4 physical activation ID/hash and current interval per each document; do not extend dates unless actual G4 authority exists",
+    "G5 g5_release.capability_root_id and actor, native approved root validity/key/pin and actual authorization",
+    "G5 exact policy decision/ratification IDs and record hashes from new successor chain: cannot transplant V2 decisions to V3",
+    "G5 stage_policy_activation execution, activation, generation, outbox IDs/hashes and transaction",
+    "B02 0064/0065 SQL candidate identity and legal review of changes affected by time",
+    "G5 native header and ELF hash/ABI/signature/roots/expiry, PostgreSQL 17.10",
+    "G4 valid current official-origin authentic proof and independent sanitization per document",
+    "G5 policy-body roles still historically /root; actor mandates are separate; review delta for role evolution without impersonation"
+  ],
+  "re_ratification_boundary": {
+    "historical_V5_policy_and_decisions": "PRESERVED_ONLY_AS_HISTORICAL_EVIDENCE",
+    "successor_policy": "NEW_CANONICAL_HASH_ONLY_AFTER_ALL_REQUIRED_MATERIAL_AND_G4_LINKS_READY",
+    "successor_submitted_and_reviewer": "NEW_EXACT_SUBJECT_AND_PREDECESSOR_CHAIN_REQUIRED_AFTER_POLICY_COMMIT",
+    "document_delta_review": "TARGET_ONLY_TIME_AND_CONSUMED_BINDINGS_AFTER_MIGUEL_WINDOW_DECISION",
+    "native_root": "NEW_EXACT_BINDING_AND_VALIDITY__DO_NOT_REUSE_EXPIRED_HEADER",
+    "signature": "FRESH_AUTHORIZED_SIGNING_WITH_REAL_KEY_AFTER_APPROVAL",
+    "old_V1_V2_records": "NO_UPDATE_DELETE_OR_DUPLICATE_INSERT"
+  },
+  "prepared_technical_sequence": [
+    "Read-only inventory all versions and activations, identify next free version without inventing activation ID",
+    "Finish original reviewer-result event and exact SQL reconciliation for V2 as historical chain within mandate",
+    "Complete native/SQL candidate/backup/restore/ACL/atomicity technical gates independent of material window",
+    "Present one concrete prospective temporal decision to Miguel after technical readiness",
+    "Apply only approved time/binding delta on new version; canonical SHA256 and byte diff",
+    "Solicit focal auditor review/ratification for new subject; preserve older acts",
+    "After exact approbation and current authority, only Alembic-controlled installation and one-shot"
+  ],
+  "evidence_limit": "Neither native compilation, private backup/restore, migrations installation nor current G4/real CAS verification is claimed here.",
+  "no_sql_writes": true,
+  "no_g4_mei_mutation": true
+}
