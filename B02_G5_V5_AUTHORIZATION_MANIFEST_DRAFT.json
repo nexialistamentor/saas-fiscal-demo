@@ -254,7 +254,11 @@
     "focused_test_count": 7,
     "focused_tests_executed": false,
     "status_of_0064_and_0065": "CANDIDATES_NOT_INSTALLED",
-    "no_additional_crypto_requirements_imposed_on_G5": true
+    "no_additional_crypto_requirements_imposed_on_G5": true,
+    "technical_report_commit": "b643bc151c98a9f1cf9e6bf8904db1991332dfad",
+    "reviewer_handoff_pr26_comment_id": 6520454560,
+    "reviewer_handoff_url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6520454560",
+    "integrated_status": "CAUSAL_CLASSIFICATION_CORRECTED_NO_R2_SCHEMA_MUTATION"
   },
   "reviewer_documentary_evidence": {
     "manifest": "B02_G5_V5_MANIFESTACAO_PROPRIA_INICIO_REVISAO_20261030.json",
@@ -266,6 +270,8 @@
     "sql_auditada_favoravelmente": "NOT_ISSUED",
     "user_ratification_documentary": "PRESERVED",
     "sql_ratificada": "NOT_ISSUED",
-    "warning": "No automatic reviewer action; do not treat opinion as institutional favorable/negative SQL event."
+    "warning": "No automatic reviewer action; do not treat opinion as institutional favorable/negative SQL event.",
+    "next_event_reserved_for_reviewer": "auditoria_iniciada",
+    "no_new_actor_authorizations_requested": true
   }
 }
