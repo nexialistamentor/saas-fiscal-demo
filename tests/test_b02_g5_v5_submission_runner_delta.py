@@ -1,5 +1,6 @@
 """Focused submission tests only: no Docker, no database, no historical reruns."""
 import contextlib
+from datetime import datetime, timezone
 import json
 import sys
 import unittest
@@ -59,7 +60,8 @@ class SubmissionDeltaTests(unittest.TestCase):
     def test_single_commit_attempt_and_restricted_readback(self):
         submission=json.loads((ROOT/runner.SUBMISSION).read_text(encoding="utf8"))
         row={"record_hash":"a"*64}
-        with patch.object(runner.bridge,"managed_container",return_value=contextlib.nullcontext()), \
+        with patch.object(runner.datetime,"now",return_value=datetime(2026,10,30,0,30,tzinfo=timezone.utc)), \
+             patch.object(runner.bridge,"managed_container",return_value=contextlib.nullcontext()), \
              patch.object(runner.owner,"psql",return_value=["COMMIT","B02_G5_V5_SUBMISSION_COMMIT_ACK"]) as psql, \
              patch.object(runner,"independent_readback",side_effect=[
                 ("ABSENT",None),("PRESENT_EXACT",row)]) as readback:
@@ -70,7 +72,8 @@ class SubmissionDeltaTests(unittest.TestCase):
 
     def test_network_failure_never_retries_even_if_record_is_present(self):
         submission=json.loads((ROOT/runner.SUBMISSION).read_text(encoding="utf8"))
-        with patch.object(runner.bridge,"managed_container",return_value=contextlib.nullcontext()), \
+        with patch.object(runner.datetime,"now",return_value=datetime(2026,10,30,0,30,tzinfo=timezone.utc)), \
+             patch.object(runner.bridge,"managed_container",return_value=contextlib.nullcontext()), \
              patch.object(runner.owner,"psql",side_effect=RuntimeError("ACK_LOST")) as psql, \
              patch.object(runner,"independent_readback",side_effect=[
                 ("ABSENT",None),("PRESENT_EXACT",{"record_hash":"a"*64})]) as readback:
