@@ -7,6 +7,7 @@ directory in LOCALAPPDATA and an isolated Docker container (no network/ports).
 Never alters/restarts/replaces existing volumes, source schema or credentials.
 """
 from __future__ import annotations
+import argparse
 import hashlib
 import json
 import os
@@ -86,14 +87,53 @@ def dump_to_private(path:Path):
     if p.returncode or not path.stat().st_size:
         path.unlink(missing_ok=True)
         stop("DUMP_FAILED_"+p.stderr.decode("utf8",errors="replace")[-250:])
+    return inspect_private_archive(path)
+
+
+def inspect_private_archive(path:Path):
+    """Validate an existing custom-format archive without creating another dump."""
+    if not path.is_file() or path.is_symlink() or path.stat().st_size<6:
+        stop("PRIVATE_ARCHIVE_MISSING_OR_UNSAFE")
+    with path.open("rb") as handle:
+        if handle.read(5)!=b"PGDMP":
+            stop("PRIVATE_ARCHIVE_NOT_CUSTOM_FORMAT")
+    # pg_restore reads the archive from stdin only when no filename is supplied.
+    # Passing '-' as a positional filename was the original TOC failure candidate.
     with path.open("rb") as handle:
         toc=subprocess.run(["docker","exec","-i",bridge.CONTAINER,
-                            "pg_restore","--list","-"],
+                            "pg_restore","--list"],
                            stdin=handle,capture_output=True,timeout=120)
-    if toc.returncode or b"TOC Entries:" not in toc.stdout:
-        stop("ARCHIVE_TOC_INVALID")
+    if toc.returncode:
+        stop("ARCHIVE_TOC_COMMAND_FAILED_"+toc.stderr.decode(
+             "utf8",errors="replace")[-300:])
+    if b"TOC Entries:" not in toc.stdout:
+        stop("ARCHIVE_TOC_LIST_MISSING")
     return {"backup_sha256":sha_file(path),"backup_bytes":path.stat().st_size,
             "toc_sha256":hashlib.sha256(toc.stdout).hexdigest()}
+
+
+def find_unique_incomplete_private_backup():
+    """Resume exactly one preserved R4 archive; never silently choose among many."""
+    if os.name!="nt":stop("WINDOWS_REQUIRED")
+    root=Path(os.environ["LOCALAPPDATA"])/"SOLVERIS"/"B02R4Privado"
+    if not root.is_dir() or root.is_symlink():
+        stop("PRIVATE_BACKUP_ROOT_MISSING")
+    candidates=[]
+    for p in root.iterdir():
+        if not re.fullmatch(r"[0-9a-f]{32}",p.name) or not p.is_dir() or p.is_symlink():
+            continue
+        archive=p/"protected_pg1710.dump"
+        if (archive.is_file() and not archive.is_symlink()
+            and not (p/"evidence.json").exists()):
+            candidates.append(p)
+    if len(candidates)!=1:
+        stop("RESUME_REQUIRES_EXACTLY_ONE_INCOMPLETE_ARCHIVE_FOUND_"+str(len(candidates)))
+    base=candidates[0]
+    if base.resolve().parent != root.resolve():
+        stop("RESUME_PRIVATE_PATH_ESCAPE")
+    # Check ACL structural integrity; not a claim of full OWNER/ACL restoration.
+    invoke(["icacls",str(base),"/verify"])
+    return base
 
 
 def wait_ready(container):
@@ -138,14 +178,24 @@ def disposable_restore(path:Path,image:str,token:str):
                 stop("DISPOSABLE_CLEANUP_FAILED")
 
 
-def main():
+def main(argv=None):
+    ap=argparse.ArgumentParser()
+    ap.add_argument("--resume-existing",action="store_true",
+                    help="Validate and restore the single existing incomplete private backup; no new pg_dump")
+    opts=ap.parse_args(argv)
     bridge.validate_checkout(PATH)
     if os.name!="nt":stop("WINDOWS_REQUIRED")
-    token=uuid4().hex
-    base=Path(os.environ["LOCALAPPDATA"])/"SOLVERIS"/"B02R4Privado"/token
-    verify_private_directory(base,token)
+    if opts.resume_existing:
+        base=find_unique_incomplete_private_backup()
+        token=base.name
+    else:
+        token=uuid4().hex
+        base=Path(os.environ["LOCALAPPDATA"])/"SOLVERIS"/"B02R4Privado"/token
+        verify_private_directory(base,token)
     backup=base/"protected_pg1710.dump"
     report=base/"evidence.json"
+    if report.exists():
+        stop("R4_EVIDENCE_ALREADY_PRESENT_NO_REPEAT")
     with bridge.managed_container():
         info=bridge.container_info()
         image=info.get("Image","")
@@ -160,9 +210,11 @@ ROLLBACK;""",ROLE)
             stop("SOURCE_DATABASE_SIZE_PROTOCOL")
         size_bytes=int(size_reply[1])
         free_bytes=__import__("shutil").disk_usage(base).free
-        if size_bytes<0 or free_bytes < max(2147483648,2*size_bytes):
+        if size_bytes<0 or (not opts.resume_existing and
+                             free_bytes < max(2147483648,2*size_bytes)):
             stop("INSUFFICIENT_PRIVATE_BACKUP_DISK_SPACE")
-        metadata=dump_to_private(backup)
+        metadata=(inspect_private_archive(backup) if opts.resume_existing
+                  else dump_to_private(backup))
         result=disposable_restore(backup,image,token)
         if before!=result["counts"]:
             stop("DISPOSABLE_RESTORE_COUNTS_DIVERGE")
@@ -172,7 +224,10 @@ ROLLBACK;""",ROLE)
         "source_postgres_version":version,"source_image":image,
         "protected_database_writes":0,"protected_volume_mutations":0,
         "source_count_snapshot":before,
-        "source_database_size_bytes":size_bytes,"private_disk_free_prebackup":free_bytes,
+        "source_database_size_bytes":size_bytes,
+        "private_disk_free_prebackup":None if opts.resume_existing else free_bytes,
+        "private_disk_free_at_validation":free_bytes,
+        "reused_existing_private_archive":bool(opts.resume_existing),
         "backup_location_private":str(backup),
         "private_acl":"ICACLS_APPLIED_NOT_INDEPENDENTLY_RECONCILED",
         **metadata,**result}
