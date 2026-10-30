@@ -457,8 +457,8 @@
     "compiler": {
       "runner": "tools/b02_g5_native_pg1710_isolated_build.py",
       "focused_tests": "tests/test_b02_g5_native_pg1710_isolated_build.py",
-      "focused_test_count": 7,
-      "status": "7_OF_7_FOCUSED_TESTS_PASS_WINDOWS_20261030_NO_ELF_COMPILED",
+      "focused_test_count": 10,
+      "status": "10_OF_10_FOCUSED_TESTS_PASS_WINDOWS_TWICE_20261030_NO_ELF",
       "requires": "APPROVED_NEW_NATIVE_ROOT_HEADER_WITH_PINNED_SHA_AND_SUCCESSOR_POLICY_HASH",
       "scope": "Build isolated Docker PG17.10, ABI/header/ELF symbols SHA, no mounting protected DB, no signing or installation",
       "historical_v1_header_reused": false,
@@ -467,7 +467,8 @@
         2
       ],
       "native_successor_policy_version": "3_ONLY_AFTER_EXACT_APPROVED_HEADER_AND_G4_CURRENT_AUTHORITY",
-      "require_exact_pg1710_headers": true
+      "require_exact_pg1710_headers": true,
+      "test_evidence": "Operator Windows PowerShell 2026-10-30: 10/10 OK in 1.528s after 395effe1 and 10/10 OK in 1.059s after 58848aae, same tests/test_b02_g5_native_pg1710_isolated_build.py. Test contract only; no real ELF build."
     },
     "normative_R6": {
       "runner": "tools/b02_r6_normative_linkage_readonly.py",
@@ -553,7 +554,7 @@
     "protected_DDL_DML": false,
     "new_focused_tests_pending_total": 0,
     "operational_safety": "NO_NEW_DB_ACCESS_OR_WRITES; R1/R6 CODE_ONLY; NOT CLOSED",
-    "new_focus_tests_status": "NATIVE_7_PASS_R6_8_PASS; ACTUAL_R6_PHYSICAL_ZERO_MATCHING_ADR020_SOURCES",
+    "new_focus_tests_status": "NATIVE_10_PASS_TWICE_R6_8_PASS; ACTUAL_R6_PHYSICAL_ZERO_MATCHING_ADR020_SOURCES",
     "R4_private_disposable_restore": {
       "runner": "tools/b02_r4_private_backup_disposable_restore.py",
       "tests": "tests/test_b02_r4_private_backup_disposable_restore.py",
@@ -613,7 +614,7 @@
     "gates": {
       "R1": {
         "existing": "tools/b02_g5_native_pg1710_isolated_build.py; tests/test_b02_g5_native_pg1710_isolated_build.py; historical native/g5 source hashes and prior 7/7 Windows focused tests",
-        "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED Existing RCV31-R3 original physical PG17 disposable positive two-document stage + separate-process readback and bounded negatives completed 2026-10-25; exact final 9-file archive SHA256 474d99de34a1817f94b85ffe86d2b549df7c12a0edc2a830cca19bf427b647d8. Independent reviewer found code AST equivalent to exercised operator; A1 approved in disposable scope. Delta4 V3 later reran ONLY the observer-source tamper delta in disposable scope; no repeat needed. Synthetic C/PRE_COMMIT evidence is not new institutional V3 signed native authority. Current A2 V4 focal physical PG17 disposable positive 2026-10-30 PASS with original two SEFA/PR C3 SHA256, pinned observer, cleanup REMOVED, no protected writes; reported 28 triggers, 1057 SQL statements, 4 unit checkpoints and 0 correspondence checkpoints. The detailed primary JSON is on local Windows path; do not infer full independent chain. 2026-10-30 original primary PG17 JSON 313542 bytes SHA256 99d544143e1155c1cc50f9d71d11ccfa333fe06dcc8bb7e98e1f5d68a4651f16 was independently parsed, confirms PASS positive and cleanup REMOVED, two matching C3 SHA256, 19 INSERT category counts (2 normative documents by INSERT heads), but correspondence_checkpoints=[] and observer_field_diagnostics=null; do not inflate to independent cryptographic trust-root proof.",
+        "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED Existing RCV31-R3 original physical PG17 disposable positive two-document stage + separate-process readback and bounded negatives completed 2026-10-25; exact final 9-file archive SHA256 474d99de34a1817f94b85ffe86d2b549df7c12a0edc2a830cca19bf427b647d8. Independent reviewer found code AST equivalent to exercised operator; A1 approved in disposable scope. Delta4 V3 later reran ONLY the observer-source tamper delta in disposable scope; no repeat needed. Synthetic C/PRE_COMMIT evidence is not new institutional V3 signed native authority. Current A2 V4 focal physical PG17 disposable positive 2026-10-30 PASS with original two SEFA/PR C3 SHA256, pinned observer, cleanup REMOVED, no protected writes; reported 28 triggers, 1057 SQL statements, 4 unit checkpoints and 0 correspondence checkpoints. The detailed primary JSON is on local Windows path; do not infer full independent chain. 2026-10-30 original primary PG17 JSON 313542 bytes SHA256 99d544143e1155c1cc50f9d71d11ccfa333fe06dcc8bb7e98e1f5d68a4651f16 was independently parsed, confirms PASS positive and cleanup REMOVED, two matching C3 SHA256, 19 INSERT category counts (2 normative documents by INSERT heads), but correspondence_checkpoints=[] and observer_field_diagnostics=null; do not inflate to independent cryptographic trust-root proof. Native focal post-correction contract 10/10 PASS twice Windows (operator output, 2026-10-30; 1.528s at 395effe1 and 1.059s at 58848aae). This does not prove ELF compilation/approval.",
         "remaining_gap": "Focal Windows 10/10 native builder tests passed twice on 2026-10-30 (operator terminal output; at remote 395effe1 and 58848aae). R1 final native release still requires exact approved successor G5 V3 root/header and policy hash, prospective G4/G5 temporal authority, isolated PG17.10 Trixie ELF compilation, signature/custody proof and independent release approval. No ELF or installation demonstrated.",
         "next_action": "Do not rerun focal 10 tests. When legitimate V3 policy/root/header/time and signing authority are fixed, reuse existing isolated builder; verify actual ELF hash/ABI/symbols, obtain distinct approval before protected installation. Never reuse expired V1/V2 roots."
       },
@@ -972,15 +973,15 @@
         "ef4ac2601bd066a8cbebcd39d7b2aabc65ef8724",
         "8ee4b9deaf7529ace4f17ea0c13df7aa5b2de963"
       ],
-      "test_change": "Docker base mismatch corrected to postgres:17.10-trixie and source/header bytes now bound to verified snapshots; 10 tests published including TOCTOU tamper; no Windows test execution yet.",
+      "test_change": "Docker base mismatch corrected to postgres:17.10-trixie and source/header bytes now bound to verified snapshots; 10 tests published including TOCTOU tamper; 10/10 tests subsequently PASS twice Windows.",
       "reason": "Compiler native runtime distro must match original PostgreSQL 17.10 trixie instead of previous bookworm, otherwise binary/linkage compatibility is unverified.",
       "no_protected_mutations": true,
-      "still_missing": "Executed 10 focused Windows tests; approved V3 exact root/header SHA, signing custody/authorization, isolated native ELF compilation, signature verification and independent release review. No protected installation or real CAS.",
+      "still_missing": "approved V3 exact root/header SHA, signing custody/authorization, isolated native ELF compilation, signature verification and independent release review. No protected installation or real CAS.",
       "toc_tou_elimination": {
         "code_commit": "d0a11d2f15242fa6013c681fa1f991b997096a54",
         "test_commit": "8ee4b9deaf7529ace4f17ea0c13df7aa5b2de963",
         "code_description": "Verified source C and successor header bytes are captured immediately after pinned hash/source checks, rechecked for SHA256 changes, then written to a temporary isolated Docker build context from frozen snapshots only; no reopened filesystem copy source/header after verification.",
-        "negative_tests": "3 focal additions: preserved source/header bytes; header modified after check; C file modified after check. Total 10 unit tests in targeted suite, pending execution.",
+        "negative_tests": "3 focal additions: preserved source/header bytes; header modified after check; C file modified after check. Total 10 unit tests in targeted suite, PASS twice Windows 2026-10-30.",
         "execution_status": "FOCUSED_WINDOWS_10_OF_10_PASS_TWICE_NO_ELF_COMPILED",
         "security_scope": "No root, key, HSM, signature, G5 authority or protected binary invented."
       }
