@@ -93,6 +93,17 @@ class AtomicCallerTests(TestCase):
             with self.assertRaisesRegex(mod.Stop, "EXACT_REQUEST_FIELDS_REQUIRED"):
                 mod.stage(conn, {"execution": {}})
 
+    def test_reconciliation_requires_canonical_record_hashes_and_read_only_tx(self):
+        import inspect
+        source=inspect.getsource(mod.reconcile_unit)
+        self.assertIn('SET TRANSACTION READ ONLY', source)
+        self.assertIn('RECORD_HASH_CONFLICT', source)
+        self.assertEqual(source.count("public.b02_json_hash(to_jsonb(t)-'record_hash')"), 4)
+        for table in ("policy_activation_executions", "policy_activations",
+                      "policy_activation_generations", "policy_activation_outbox_events"):
+            self.assertIn("FROM public."+table+" t", source)
+        self.assertIn("hashes_valid is not True", source)
+
     def test_reconciliation_rejects_wrong_links(self):
         from unittest.mock import MagicMock
         from sqlalchemy import select
@@ -105,10 +116,11 @@ class AtomicCallerTests(TestCase):
                is_complete=True,provenance={"source":"verified"})
         o=dict(g,policy_activation_outbox_event_id="o1",
                policy_activation_generation_hash="gh",provenance={"source":"verified"})
-        def check(rows):
+        def check(rows, hashes_valid=True):
             engine=MagicMock()
             conn=engine.connect.return_value.__enter__.return_value
             conn.execute.return_value.mappings.return_value.one_or_none.side_effect=rows
+            conn.execute.return_value.scalar_one.return_value=hashes_valid
             import sys, types
             from sqlalchemy import Table, Column, MetaData, String
             metadata=MetaData()
@@ -126,6 +138,8 @@ class AtomicCallerTests(TestCase):
                     "app.models_policy_activation_atomicity":fake_atomic}):
                 return mod.reconcile_unit(engine,"e1","a1","g1","o1")
         self.assertEqual(check([e,a,g,o]),"PRESENT_FOUR_RECORDS_EXACT_LINKS_VERIFIED")
+        self.assertEqual(check([e,a,g,o], hashes_valid=False),"RECORD_HASH_CONFLICT")
+        self.assertEqual(check([e,a,g,o], hashes_valid=None),"RECORD_HASH_CONFLICT")
         broken=dict(o,policy_activation_generation_hash="wrong")
         self.assertEqual(check([e,a,g,broken]),"GENERATION_HASH_LINK_CONFLICT")
         broken_a=dict(a,policy_activation_execution_record_hash="wrong")
