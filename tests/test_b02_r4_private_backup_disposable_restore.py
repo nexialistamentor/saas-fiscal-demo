@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -37,7 +38,7 @@ class R4PrivateRestoreTests(unittest.TestCase):
                 r4.snapshot(r4.ROLE)
 
     def test_private_ntfs_guard_fails_off_windows(self):
-        with patch.object(r4.os,"name","posix"):
+        with patch.object(r4,"os",SimpleNamespace(name="posix")):
             with self.assertRaisesRegex(RuntimeError,"NTFS_WINDOWS"):
                 r4.verify_private_directory(Path(tempfile.gettempdir())/"never-create","0"*32)
 
