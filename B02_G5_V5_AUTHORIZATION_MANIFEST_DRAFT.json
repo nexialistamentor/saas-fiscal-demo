@@ -655,7 +655,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "ed835ac279fa9bddf11f7faccf18a0942a043f93",
+    "last_reconciled_git_commit": "5192fdad2a3110598f34e5ff72f4c3b0d9bba656",
     "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN. 2026-10-30 follow-up: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, 7/7 canonical tables owner solveris_test, writer SELECT all, INSERT only 4 activation tables, UPDATE/DELETE none, grants=0, writes=0; revision 0063.",
     "historical_R4_R5_disambiguation": {
       "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
@@ -895,6 +895,21 @@
       "approved_reviewer_G5_institutional_result": "NONE_SHOWN_AFTER_COMMITTED_AUDIT_START",
       "reason": "Native PG1710 isolated builder explicitly rejects expired historical root and requires separately approved successor header+hash and current authority. Candidate migrations deliberately live outside versions. Do not compile root or install using expired G5 V1 or obsolete synthetic authority.",
       "action": "Proceed with static readiness only; independent G5 V5 reviewer result, approved successor root/header, authorised temporal G5 release must be supplied by their own actors before any protected installation/DDL/DML."
+    },
+    "R5_readback_canonical_hash_hardening": {
+      "status": "SOURCE_AND_FOCAL_TESTS_COMMITTED_EXECUTION_PENDING",
+      "commit": "5192fdad2a3110598f34e5ff72f4c3b0d9bba656",
+      "files": [
+        "tools/b02_g5_v5_atomic_transaction_harness.py",
+        "tests/test_b02_g5_v5_atomic_transaction_harness.py"
+      ],
+      "change": "In reconcile_unit, start SET TRANSACTION READ ONLY; after four rows are found, a fixed SELECT recomputes server-side b02_json_hash(to_jsonb(row)-'record_hash') for execution, activation, generation and outbox in one read-only transaction; false/null -> RECORD_HASH_CONFLICT before any PRESENT_EXACT success.",
+      "rationale": "Old independent readback compared record_hash references but did not independently recalculate every persisted record hash; this is a distinct verification gap, not a completed protected G5 activation.",
+      "tests": "New explicit true/false/None and static SQL contract committed, not executed on Windows yet; no PASS claimed.",
+      "static_source_review": "GitHub readback confirmed only the two files changed, four canonical hash predicates, fixed bound identifiers, no DB write SQL in integrity block; not equivalent to run-time test or PG physical observation",
+      "evidence": "Original RCV31 A2 physical PostgreSQL17 disposable PASS preserved; G5 V1 tx920 expired; G5 V2 no activation; 0064/0065 uninstalled",
+      "protected_activity": "NONE",
+      "next_action": "Run one focal no-database unit test in existing Windows checkout; if PASS then reserve independent real DB readback for the next authorized reconciliation only; no protected mutation, no repeat of RCV31/A2/G4/R4."
     }
   }
 }
