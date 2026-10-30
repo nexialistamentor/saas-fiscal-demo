@@ -27,7 +27,7 @@ REQUIRED_SYMBOLS=("_PG_init","b02g5_register_real_precommit",
                   "b02g5_assert_signature","b02g5_native_profile")
 DOCKERFILE="""FROM postgres:17.10-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \\
-    gcc libc6-dev make binutils libssl-dev postgresql-server-dev-17 \\
+    gcc libc6-dev make binutils file libssl-dev postgresql-server-dev-17 \\
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /work
 COPY b02_precommit_guard.c b02_g5_native_signature.c b02_g5_approved_roots.h ./
