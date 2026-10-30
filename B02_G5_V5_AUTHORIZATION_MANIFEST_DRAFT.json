@@ -457,11 +457,17 @@
     "compiler": {
       "runner": "tools/b02_g5_native_pg1710_isolated_build.py",
       "focused_tests": "tests/test_b02_g5_native_pg1710_isolated_build.py",
-      "focused_test_count": 6,
+      "focused_test_count": 7,
       "status": "CODE_PUBLISHED_NOT_EXECUTED_NO_ELF_PRODUCED",
       "requires": "APPROVED_NEW_NATIVE_ROOT_HEADER_WITH_PINNED_SHA_AND_SUCCESSOR_POLICY_HASH",
       "scope": "Build isolated Docker PG17.10, ABI/header/ELF symbols SHA, no mounting protected DB, no signing or installation",
-      "historical_v1_header_reused": false
+      "historical_v1_header_reused": false,
+      "disallowed_policy_versions": [
+        1,
+        2
+      ],
+      "native_successor_policy_version": "3_ONLY_AFTER_EXACT_APPROVED_HEADER_AND_G4_CURRENT_AUTHORITY",
+      "require_exact_pg1710_headers": true
     },
     "normative_R6": {
       "runner": "tools/b02_r6_normative_linkage_readonly.py",
@@ -470,12 +476,16 @@
       "status": "CODE_PUBLISHED_NOT_EXECUTED_NO_NEW_NORMATIVE_EVIDENCE",
       "role": "solveris_b02_writer",
       "scope": "Read-only two SEFA/PR PDF SHA to artifact, extraction, RuleVersion, relation and L2 candidate; mark inaccessible without grants",
-      "approval_inference": false
+      "approval_inference": false,
+      "canonical_record_hash_equivalence_not_inferred": true,
+      "artifact_hash_format_only": true
     },
     "prior_focal_18_tests": "18/18 PASS user Windows PG17.10 2026-10-30, previously reconciled",
     "new_focus_tests_executed": false,
     "policy_insert_repeated": false,
     "audit_result_issued_by_this_executor": false,
-    "protected_DDL_DML": false
+    "protected_DDL_DML": false,
+    "new_focused_tests_pending_total": 12,
+    "operational_safety": "NO_NEW_DB_ACCESS_OR_WRITES; R1/R6 CODE_ONLY; NOT CLOSED"
   }
 }
