@@ -215,14 +215,15 @@
     "ratification": "USER_PRIOR_RATIFICATION_RECORDED_NOT_SQL_EVENT",
     "actuation": "PENDING_VALID_DECISION_CHAIN",
     "policy_version_insert_not_repeated": true,
-    "reviewer_handoff_pr26_comment_id": 6511734285,
-    "reviewer_handoff_url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6511734285",
+    "reviewer_handoff_pr26_comment_id": 6519290256,
+    "reviewer_handoff_url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6519290256",
     "runner_git_pinned_sources": true,
     "focussed_tests_added": 6,
     "focussed_tests_execution": "6/6 PASS on user Windows, mock aaaa... values only",
     "policy_material_until_utc": "2026-10-30T13:00:00Z",
     "physical_commit_evidence": "Windows PostgreSQL execution output reported by user; owner solveris_test; independent readback solveris_b02_policy_writer; event submetida; policy_insert_count 0; audits 0; ratifications 0; activations 0; grants 0",
     "next_event": "auditoria_iniciada",
-    "db_commit_clock": "Not independently observed; no absolute COMMIT timestamp asserted"
+    "db_commit_clock": "Not independently observed; no absolute COMMIT timestamp asserted",
+    "reviewer_handoff_status": "DOCUMENTARY_HANDOFF_PUBLISHED_NO_CLAIM_OF_REVIEWER_RECEIPT"
   }
 }
