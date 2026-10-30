@@ -579,5 +579,55 @@
       "integration_status": "TEST_6_PUBLISHED_NOT_EXECUTED_NO_PHYSICAL_R4_RESULT",
       "no_mei_or_g4_writes": true
     }
+  },
+  "r1_r7_continuity_matrix": {
+    "source_anchor_commit": "411dd069936e742c2deafa39c79200fb8e5ad31f",
+    "scope": "READ_ONLY_RECONCILIATION_OF_EXISTING_PROOFS__NO_NEW_PHYSICAL_TEST_OR_AUTHORIZATION",
+    "status": "B02_OPEN_B03_BLOCKED",
+    "gates": {
+      "R1": {
+        "existing": "tools/b02_g5_native_pg1710_isolated_build.py; tests/test_b02_g5_native_pg1710_isolated_build.py; historical native/g5 source hashes and prior 7/7 Windows focused tests",
+        "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED",
+        "remaining_gap": "approved successor V3 header + SHA-256, exact approved root/key/validity, actual PG17.10 ELF, signature and binary approval",
+        "next_action": "After valid successor bindings and exact header approval, reuse existing isolated compiler; never use expired V1/V2."
+      },
+      "R2": {
+        "existing": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md; B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json; tools/b02_g5_v5_institutional_audit_result_runner.py",
+        "accepted_proof": "G4-specific R2 fields not a direct proven G5 activation block; functional reviewer provenance recovered; audit start COMMITTED hash da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
+        "remaining_gap": "own audit result auditada_favoravelmente OR auditada_desfavoravelmente from original reviewer, followed by exact event reconciliation; no conversion of earlier noninstitutional documentary opinion",
+        "next_action": "Consume reviewer act if issued, validate immutable Git blob with existing runner; preserve previous opinions and do not reissue audit-start or redesignate reviewer."
+      },
+      "R3": {
+        "existing": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
+        "accepted_proof": "next free policy version 3 confirmed by physical inventory; V2 G5 and G4 926 material expired 2026-10-30T13:00:00Z",
+        "remaining_gap": "future prospective interval selected by Miguel, current G4 authority for both PDFs and coherent new V3 time/root/operator/decisions/activation IDs and hashes, focused temporal delta review",
+        "next_action": "Complete predecision technical and source preparations only. Preserve V1/V2; no dates selected or synthetic G4 authority."
+      },
+      "R4": {
+        "existing": "tools/b02_r4_private_backup_disposable_restore.py; tests/test_b02_r4_private_backup_disposable_restore.py; tools/b02_g5_v5_local_bridge.py",
+        "accepted_proof": "runner and 6 test cases implemented and integrated at Git commit 411dd069936e742c2deafa39c79200fb8e5ad31f; no later physical completion proof located",
+        "remaining_gap": "one Windows test execution and private protected-db backup/disposable restore evidence; structural --no-owner/--no-acl mode alone cannot prove full original protected ACL/OWNER/custody/authority criterion",
+        "next_action": "Use existing runner once on user protected Windows Docker when accessible; if previously accepted R4 closure evidence surfaces, reconcile it instead; do not rewrite runner or create rival backup."
+      },
+      "R5": {
+        "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain",
+        "accepted_proof": "PostgreSQL 17.10 revision 0063, G4 txid 926; historical G5 V1 activation txid 920; V2 policy + two decisions COMMITTED with zero activations at 2026-10-30T16:51:33Z",
+        "remaining_gap": "actual approved successor header/root and binary, owner/ACL checks, 0064/0065 Alembic installation, real CAS two-document verification/sanitization, one-shot PRE_COMMIT/COMMIT and independent reconciliation; no installation proof",
+        "next_action": "Only after exact G4/G5 authority and artifact approvals: existing candidate->approved Alembic path->one-shot guarded real operation->independent readback. Separate DDL commit from documentary COMMIT and reconcile unknown ACK."
+      },
+      "R6": {
+        "existing": "app/services/enterprise_b02_noncredential_acquisition.py::stage_completion; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; tools/b02_r6_normative_linkage_readonly.py",
+        "accepted_proof": "8/8 R6 focused PASS; protected read-only 0063 found zero exact 1245/2025 and 571/2019 hashes in accessible normative_artifacts and extraction_results; SELECT denied on rule_versions/normative_relation_versions/tabela_mva",
+        "remaining_gap": "verify existing custodied PDF bytes under the known SHA-256 values; insert governed two real CAS units via authorized transaction, extraction, versioned RuleVersion, legitimate normative relation and real item with scope/revocation validation",
+        "next_action": "Reuse stage_completion and consumers only; independently authorized verifier callback, real byte hashes, controlled external transaction COMMIT and exact readback. Do not infer inaccessible tables empty or fabricate TabelaMVA relation/ACL."
+      },
+      "R7": {
+        "existing": "original SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md R1-R7 closure criteria and preserved historical gates",
+        "accepted_proof": "prior physical snapshots, authorizations, tests and historical G4/G5 events remain scoped accepted evidence",
+        "remaining_gap": "R1-R6 original criteria not all satisfied, no competent final B02 closure decision",
+        "next_action": "Reconcile all exact artifacts/IDs/hashes and original gate criteria before B02 CLOSED; B03 remains blocked; MEI/G4 historic immutable."
+      }
+    },
+    "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed."
   }
 }
