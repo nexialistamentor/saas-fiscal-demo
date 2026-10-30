@@ -1,0 +1,45 @@
+{
+  "schema": "SOLVERIS_B02_G5_V5_ADITAMENTO_PROPRIO_REAPRECIACAO_V1",
+  "issued_at_utc": "2026-10-30T10:57:45.590Z",
+  "actor": "GPT-6/revisor-documental-chat-b02-g5-v5-20261030",
+  "scope": {
+    "policy_type": "activation_authority",
+    "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+    "policy_version": 2,
+    "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf"
+  },
+  "precedent": {
+    "mandate": "MANDATO_G5_SUCESSOR_EMITIDO.json",
+    "mandate_clause": "designacoes.revisor_segregado.condicao",
+    "prior_manifestation": "B02_G5_V5_MANIFESTACAO_PROPRIA_INICIO_REVISAO_20261030.json",
+    "causal_report_commit": "c1bc2c8a338803461695db6c53285d7a2e1620e7",
+    "predecessor_decision_id": "B02-G5-V5-GPT6-submetida-v1",
+    "predecessor_decision_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a"
+  },
+  "own_declaration": {
+    "functional_identification": "GPT-6 acting in reviewer-documental capacity for this G5 V5 reassessment, without cryptographic or persistent-instance identity claims",
+    "acceptance": "Acceptance of the G5 V5 v2 review scope and its functional separation from the proponent; not an acceptance of operational signing authority",
+    "conflicts_and_limits": [
+      "Shared GPT-6/model context with prior SOLVERIS work and other sessions",
+      "Current conversation previously produced an ancillary read-only G5 authority inventory script, but did not author the V5 policy body or the COMMITTED submission; this contribution must be considered in functional segregation assessment",
+      "No cryptographic identity, separate credential, direct PostgreSQL access or representation as /root/canonical_executor_technical_review"
+    ],
+    "not_proponent": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029"
+  },
+  "findings": {
+    "C1": "R2 evidence keys belong to G4 documentary admission and are not directly required by G5 activation SQL 0022/0063/0064",
+    "C2": "Mandate's identification, own acceptance and conflict declaration satisfied by prior own documentary manifestation; functional segregation is compatible with V5's acknowledged shared context, subject to institutional verification of actor linkage and disclosed ancillary tool contribution",
+    "C3": "Operational candidate 0064/0065, current G4 receipts and sanitization, native root, custody and one-shot conditions remain unhomologated"
+  },
+  "merit": "FAVORAVEL_LIMITADO_INTEGRIDADE_E_ADMISSIBILIDADE_DA_SUBMISSAO_G5",
+  "audit_result": "NOT_ISSUED_NOT_PREJUDGED",
+  "operational_activation": "NOT_AUTHORIZED_BY_THIS_ADENDUM",
+  "preserve": [
+    "old technical opinion",
+    "V5 candidate exact bytes",
+    "COMMITTED policy version 2",
+    "COMMITTED submission",
+    "G4",
+    "MEI"
+  ]
+}
