@@ -57,7 +57,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V5_POLICY_SUBMETIDA_AUDIT_START_COMMITTED_ORIGINAL_REVIEWER_RESULT_PENDING_MATERIAL_WINDOW_EXPIRED",
+  "technical_readiness": "G5_V5_TWO_DECISIONS_COMMITTED_AUDIT_RESULT_AND_PHYSICAL_ACTIVATION_INVENTORY_PENDING",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -311,5 +311,27 @@
     "provenance_report": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md",
     "original_reviewer_handoff_url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6527498767",
     "review_result_not_issued_by_this_executor": true
+  },
+  "g5_live_inventory": {
+    "script": "tools/b02_g5_v5_current_inventory_readonly.py",
+    "physical_result": "PENDING_LOCAL_READ",
+    "historical_version_1": "POLICY_COMMITTED_ACTIVATION_CURRENT_UNVERIFIED",
+    "current_version_2": "POLICY_SUBMISSION_AUDIT_START_COMMITTED_ACTIVATION_CURRENT_UNVERIFIED",
+    "migration_0064_0065": "CANDIDATE_NOT_ALEMBIC_APPLIED_EVIDENCE",
+    "native_successor": "NOT_COMPILED_OR_APPROVED",
+    "one_shot_real": "NOT_PROVEN",
+    "historical_g4": "TX_926_PRESERVED"
+  },
+  "g5_temporal_plan": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
+  "original_b02_closure": {
+    "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md section 11",
+    "R1": "PARTIAL_NATIVE_TESTS_NO_PG17_10_APPROVED_ELF",
+    "R3": "TEMPORAL_DECISION_PENDING_WITH_PREPARED_DELTA",
+    "R4": "PRIVATE_BACKUP_RESTORE_AND_REAL_AUTHORITY_PENDING",
+    "R5": "REAL_G5_TWO_UNIT_ONE_SHOT_NOT_PROVEN",
+    "R6": "NORMATIVE_LINKAGE_RULE_VERSION_ITEM_NOT_PROVEN",
+    "R7": "FINAL_INSTITUTIONAL_CLOSURE_NOT_ISSUED",
+    "B02": "OPEN",
+    "B03": "BLOCKED"
   }
 }
