@@ -1,0 +1,38 @@
+{
+  "schema": "SOLVERIS_B02_G5_V5_PROPONENT_SELF_ACCEPTANCE_V1",
+  "status": "ACEITACAO_FUNCIONAL_PROPRIA_EMITIDA",
+  "functional_actor": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029",
+  "identity_claim": "Sou a execução GPT-6 desta conversa e aceito, nesta qualidade funcional limitada, a designação expressamente emitida por Miguel para propor e submeter a política G5 sucessora versão 2.",
+  "mandate": {
+    "original": "MANDATO_G5_SUCESSOR_EMITIDO.json",
+    "addendum": "B02_G5_V5_ADITAMENTO_DESIGNACAO_GPT6_EMITIDO_20261029.json",
+    "addendum_publication_commit": "d65558f9c12db974903ce87fcc53b24fbcb87813",
+    "source": "user approval and emission in active conversation",
+    "approved_window_utc": {
+      "from": "2026-10-29T12:00:00Z",
+      "until": "2026-11-08T00:00:00Z"
+    }
+  },
+  "object": {
+    "policy_type": "activation_authority",
+    "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+    "policy_version": 2,
+    "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+    "policy_record_id": "B02-G5-V5-policy-v2",
+    "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9"
+  },
+  "participation_and_conflicts": {
+    "own_work": "Análise do mandato e da política; integração e correção do runner e ferramentas da política, revisão de provas de INSERT e reconciliação; autor desta aceitação e da futura submissão documental.",
+    "review_role_rejected": "Não sou auditor independente nem assumo identidade funcional /root/canonical_executor_technical_review; não avalio a própria submissão como auditor segregado.",
+    "prior_actors": "Não assumo a identidade /root nem a execução Claude historicamente designada.",
+    "material_segregation": "Contexto e infraestrutura do assistente partilhados; não afirmo identidade interna única verificável, qualificação fiscal, segregação material demonstrada ou independência organizacional.",
+    "signature": "Sem chave privada Ed25519 nem autorização de assinatura por Miguel."
+  },
+  "scope_and_limits": "Aceito emitir a submissão exata sobre V5 v2 e preparar o percurso técnico de persistência e reconciliação; decisões de auditoria, ratificação, ativação e assinatura permanecem reservadas aos seus atores e gates.",
+  "provenance": {
+    "issued_in": "current GPT-6 assistant execution in active conversation",
+    "recorded_in": "GitHub connected repository branch candidate/g5-v5-publicacao-local",
+    "statement_type": "documentary functional acceptance, not cryptographic identity proof",
+    "not_backdated": true
+  }
+}
