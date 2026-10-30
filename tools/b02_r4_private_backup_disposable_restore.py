@@ -79,7 +79,7 @@ def sha_file(path:Path):
 
 def dump_to_private(path:Path):
     cmd=["docker","exec","-i",bridge.CONTAINER,"pg_dump",
-         "--format=custom","--compress=0","--no-password","--lock-wait-timeout=10000",
+         "--format=custom","--compress=6","--no-password","--lock-wait-timeout=10000",
          "-U",ROLE,"-d",bridge.DATABASE]
     with path.open("xb") as handle:
         p=subprocess.run(cmd,stdout=handle,stderr=subprocess.PIPE,timeout=MAX_TIME)
@@ -152,6 +152,15 @@ def main():
         if "PostgreSQL) 17.10" not in version:
             stop("SOURCE_NOT_PG1710")
         before=snapshot(ROLE)
+        size_reply=owner.psql("""BEGIN READ ONLY;
+SELECT pg_database_size(current_database())::text;
+ROLLBACK;""",ROLE)
+        if len(size_reply)!=3 or size_reply[0]!="BEGIN" or size_reply[2]!="ROLLBACK":
+            stop("SOURCE_DATABASE_SIZE_PROTOCOL")
+        size_bytes=int(size_reply[1])
+        free_bytes=__import__("shutil").disk_usage(base).free
+        if size_bytes<0 or free_bytes < max(2147483648,2*size_bytes):
+            stop("INSUFFICIENT_PRIVATE_BACKUP_DISK_SPACE")
         metadata=dump_to_private(backup)
         result=disposable_restore(backup,image,token)
         if before!=result["counts"]:
@@ -161,7 +170,7 @@ def main():
         "source_database":bridge.DATABASE,"source_role":ROLE,
         "source_postgres_version":version,"source_image":image,
         "protected_database_writes":0,"protected_volume_mutations":0,
-        "source_count_snapshot":before,
+        "source_count_snapshot":before,\n        "source_database_size_bytes":size_bytes,"private_disk_free_prebackup":free_bytes,
         "backup_location_private":str(backup),
         "private_acl":"CURRENT_USER_AND_SYSTEM_ONLY",
         **metadata,**result}
