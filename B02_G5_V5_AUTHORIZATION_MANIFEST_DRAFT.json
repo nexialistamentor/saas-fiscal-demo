@@ -73,7 +73,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V1_HISTORICALLY_ACTIVATED_EXPIRED_V2_TWO_DECISIONS_NO_ACTIVATION_R1_R6_CODE_PREPARED_NO_NEW_OPERATION_B02_OPEN",
+  "technical_readiness": "G5_V1_HISTORICAL_TX920_EXPIRED_V2_2_DECISIONS_0_ACTIVATIONS_R6_0_MATCHING_ADR020_ARTIFACTS_OR_EXTRACTIONS_B02_OPEN",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -444,7 +444,7 @@
     "R3": "V3_NEXT_FREE_CONFIRMED; NEW_G4_G5_WINDOW_UNDECIDED",
     "R4": "G4_TX_926_RECONCILED_BUT_TIME_EXPIRED; PRIVATE_BACKUP_RESTORE_ACL_CUSTODY_PENDING",
     "R5": "G5_V1_HISTORICAL_FOUR_RECORDS_TX_920; V2_0_ACTIVATIONS; 0064_0065_NOT_INSTALLED; REAL_ONESHOT_PENDING",
-    "R6": "R6_ROLE_ACL_PHYSICALLY_KNOWN_SOURCE_2_OF_5_TABLES_READABLE; PARTIAL_EVIDENCE_RUNNER_READY_UNEXECUTED_RULE_LINKAGE_PENDING",
+    "R6": "OPEN_PHYSICAL_READONLY_R6_8_PASS_BOTH_CUSTODIED_PDF_HASHES_ABSENT_FROM_ACCESSIBLE_ADR020_ARTIFACT_AND_EXTRACTION_ROWS; THREE_FURTHER_RELATION_TABLES_ACL_DENIED",
     "R7": "FINAL_INSTITUTIONAL_CLOSURE_NOT_ISSUED",
     "B02": "OPEN",
     "B03": "BLOCKED"
@@ -473,7 +473,7 @@
       "runner": "tools/b02_r6_normative_linkage_readonly.py",
       "focused_tests": "tests/test_b02_r6_normative_linkage_readonly.py",
       "focused_test_count": 8,
-      "status": "PARTIAL_ACL_INVENTORY_8_TEST_SOURCE_PENDING_EXECUTION_ON_WINDOWS",
+      "status": "EIGHT_TESTS_PASS_WINDOWS_PARTIAL_READ_ONLY_ZERO_MATCHING_SOURCE_ROWS",
       "role": "solveris_b02_writer",
       "scope": "Read-only two SEFA/PR PDF SHA to artifact, extraction, RuleVersion, relation and L2 candidate; mark inaccessible without grants",
       "approval_inference": false,
@@ -509,15 +509,50 @@
       "read_only_partial_tests_commit": "a12847724ef20b7080b8af478d8ecea0ea2f2fca",
       "partial_access_policy": "USE_EXACT_TWO_READABLE_TABLES_NO_OWNER_SWITCH_NO_ACL_EDITS",
       "only_acl_read_executed": true,
-      "partial_inventory_executed": false
+      "partial_inventory_executed": true,
+      "verified_current_test_result": "8/8 PASS Windows 2026-10-30, validated patched source-only reader",
+      "verified_current_physical_result": {
+        "status": "R6_PARTIAL_SOURCE_READ_ONLY_RULE_TABLES_DENIED",
+        "database": "solveris_b02_r4g_test",
+        "role": "solveris_b02_writer",
+        "revision": "0063_adr020_policy_activation_atomicity",
+        "accessible_sources": [
+          "normative_artifacts",
+          "extraction_results"
+        ],
+        "inaccessible_tables": [
+          "rule_versions",
+          "normative_relation_versions",
+          "tabela_mva"
+        ],
+        "normative_artifacts_matching_two_sha256": 0,
+        "normative_artifacts_matching_two_sha256_count": 0,
+        "extraction_results_matching_two_sha256": 0,
+        "extraction_results_matching_two_sha256_count": 0,
+        "applies_only_to_exact_two_document_hashes": true,
+        "no_inference_about_other_hashes_or_inaccessible_tables": true,
+        "rules_to_items_proven": false,
+        "legal_applicability_for_item_proven": false,
+        "fiscal_authority": false,
+        "grants": 0,
+        "writes": 0,
+        "evidence": "Operator's Windows PowerShell output 2026-10-30, directly in current conversation"
+      },
+      "authoritative_acquisition_path": "app/services/enterprise_b02_noncredential_acquisition.py::stage_completion; real CAS read and independently authorized verifier callback required; this collector does not provide ingestion or authority",
+      "authenticated_source_files_in_repo": "NONE_FOR_THE_TWO_EXACT_PDFS",
+      "causes_not_proved": [
+        "No matching ADR020 artifacts ingested or indexed under those hashes in accessible source tables",
+        "No legitimate RuleVersion->L2 versioned normative link established for this exact session"
+      ],
+      "next_independent_work": "Investigate existing source CAS custodian and callback evidence contracts; do not generate provenance or GRANT"
     },
     "prior_focal_18_tests": "18/18 PASS user Windows PG17.10 2026-10-30, previously reconciled",
-    "new_focus_tests_executed": false,
+    "new_focus_tests_executed": true,
     "policy_insert_repeated": false,
     "audit_result_issued_by_this_executor": false,
     "protected_DDL_DML": false,
-    "new_focused_tests_pending_total": 8,
+    "new_focused_tests_pending_total": 0,
     "operational_safety": "NO_NEW_DB_ACCESS_OR_WRITES; R1/R6 CODE_ONLY; NOT CLOSED",
-    "new_focus_tests_status": "NATIVE_7_PASS_R6_6_PREVIOUS_PASS_NEW_8_TESTS_PENDING"
+    "new_focus_tests_status": "NATIVE_7_PASS_R6_8_PASS; ACTUAL_R6_PHYSICAL_ZERO_MATCHING_ADR020_SOURCES"
   }
 }
