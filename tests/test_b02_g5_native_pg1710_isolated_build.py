@@ -38,6 +38,14 @@ class NativePrebuildContract(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,"EXPIRED_V1_ROOT_FORBIDDEN"):
             build.check_input(build.LEGACY_HEADER,sha,V3_HASH)
 
+    def test_expired_v2_policy_hash_cannot_be_successor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            p=Path(temp)/"b02_g5_approved_roots.h"
+            expired="007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf"
+            sha=header_fixture(p,expired)
+            with self.assertRaisesRegex(RuntimeError,"EXPIRED_G5_V1_OR_V2_POLICY_FORBIDDEN"):
+                build.check_input(p,sha,expired)
+
     def test_header_must_be_immutable_verified_and_successor_bound(self):
         with tempfile.TemporaryDirectory() as temp:
             p=Path(temp)/"b02_g5_approved_roots.h"
