@@ -637,7 +637,7 @@
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain; original isolated V21 PRE_COMMIT C and invalid signature tests; V23 successful synthetic two-unit commit/readback; V28 receipt/tampering/rollback; V30 one-shot concurrency/orphan/unknown-ACK synthetic exercises, accepted with original scope (handoff V31 20261024)",
-        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task.",
+        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task. Focused R5 independent hash-check enhancement: 12/12 Windows unit tests PASS; on the original PostgreSQL 17.10 container the historical G5 V1 four records were physically recalculated and all four canonical record hashes matched in one READ ONLY query; guarded PowerShell success emitted after parsed JSON. Does NOT prove V2/V3 real one-shot or install 0064/0065.",
         "remaining_gap": "Only real currently authorized G5 successor and original R5 gate: original reviewer own audit result followed by valid ratification and successor temporal authority, live G4 validity for each PDF, exact approved native root/ELF and 0064/0065 installation, real documented/custodied two-unit CAS operation, original R5 one-shot PRE_COMMIT/COMMIT and independent readback. No evidence these are completed by historic V1 activation, previous synthetic tests, or R4 protected backup.",
         "next_action": "Use original existing institutional audit_result runner only upon actually issued reviewer act; no reissue submission/audit start. Once authority, dates, hashes, signing and approvals valid, reuse existing 0064/0065 and original one-shot consumers, reconcile before write, never duplicate successful SQL. Do not repeat V21/V23/V28/V30 or G4 V1/V3."
       },
@@ -655,7 +655,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "ed10d66b84756c3045bf198ae957bc094b22fb1d",
+    "last_reconciled_git_commit": "b9494321c6e257a780b34993b9ddd2ce4c8ba59e",
     "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN. 2026-10-30 follow-up: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, 7/7 canonical tables owner solveris_test, writer SELECT all, INSERT only 4 activation tables, UPDATE/DELETE none, grants=0, writes=0; revision 0063.",
     "historical_R4_R5_disambiguation": {
       "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
@@ -909,21 +909,38 @@
       "static_source_review": "GitHub readback confirmed only the two files changed, four canonical hash predicates, fixed bound identifiers, no DB write SQL in integrity block; not equivalent to run-time test or PG physical observation",
       "evidence": "Original RCV31 A2 physical PostgreSQL17 disposable PASS preserved; G5 V1 tx920 expired; G5 V2 no activation; 0064/0065 uninstalled",
       "protected_activity": "NONE",
-      "next_action": "Do not repeat 12 focused tests. Single targeted, read-only physical PostgreSQL probe of the four stored canonical record hashes, using existing role/bridge without migrations, GRANT, R4 or G4; only if warranted; original institutional G5 reviewer remains separate.",
+      "next_action": "No repetition of 12 unit tests or historical V1 PG readback; this does not release the V2/V3 protected G5 R5 one-shot gate. Continue authorized successor evidence chain.",
       "windows_checkout_head": "d42291b1b08a1b9c0b9e9543b0267ea8d7da97c5",
       "windows_execution_kind": "LOCAL_UNIT_TESTS_NO_REAL_DB",
-      "preexisting_evidence_preserved": true
+      "preexisting_evidence_preserved": true,
+      "physical_historical_v1": "FOUR_OF_FOUR_RECORD_HASHES_PHYSICAL_READ_ONLY_PASS"
     },
     "R5_four_hashes_physical_readback": {
-      "status": "NOT_RUN_STOPPED_CONTAINER",
-      "evidence": "Actual Windows PowerShell output from operator: docker exec -i solveris-pg17-migration-test returned 'container 35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948 is not running'. LASTEXITCODE nonzero and STOP_R5_LEITURA_FISICA; $out empty, $dados null, follow-up STOP_R5_RELATORIO_AUSENTE and STOP_R5_HASH_OU_IDENTIDADE_DIVERGENTE.",
+      "status": "G5_V1_HISTORICAL_FOUR_HASHES_PHYSICAL_READ_ONLY_PASS",
+      "evidence": "User-provided Windows PowerShell from 2026-10-30: verified docker inspect container 35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948, exact postgres:17.10-trixie image and pinned original volume, exited status/ExitCode=0/OOM=false; docker start returned solveris-pg17-migration-test; running state checked; read-only SQL via psql -X -w ON_ERROR_STOP=1 -U solveris_b02_policy_writer -d solveris_b02_r4g_test -At, guarded LASTEXITCODE, single JSON object parsed, database/actor/Alembic revision and 4 equality predicates checked true before PASS emitted. Visible output: solveris-pg17-migration-test; R5_FOUR_HASHES_PHYSICAL_READ_ONLY_PASS. No error shown.",
       "false_positive_warning": "Trailing PowerShell Write-Output R5_FOUR_HASHES_PHYSICAL_READ_ONLY_PASS ran independently despite previous terminating statements; it is NOT a genuine verification success. Never accept that text without actual parsed 4 true hashes and successful Docker exit.",
-      "primary_db_query_executed": false,
-      "four_hashes_verified": false,
+      "primary_db_query_executed": true,
+      "four_hashes_verified": true,
       "local_unit_tests": "12/12 PASS; unchanged",
       "protected_sql_writes_executed": false,
       "docker_container_id_observed": "35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948",
-      "next_step": "Inspect Docker container state, exit code, exact image and volume mounts via docker inspect/read-only before deciding any start. No docker start/stop/rm/prune, no volume mutation, no repeated tests. Only execute one read-only hash check after confirming container is running and matches original guarded identity."
+      "next_step": "Preserve 12/12 local PASS and G5 V1 4-hash physical PASS; do not repeat. Advance only remaining R5 successor active authority/institutional auditor result, R1 signed native successor, R3 valid G4 and prospective interval, R6 exact CAS source linkage before R7 closure.",
+      "previous_stop_preserved": {
+        "status": "NOT_RUN_STOPPED_CONTAINER",
+        "evidence": "Actual Windows PowerShell output from operator: docker exec -i solveris-pg17-migration-test returned 'container 35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948 is not running'. LASTEXITCODE nonzero and STOP_R5_LEITURA_FISICA; $out empty, $dados null, follow-up STOP_R5_RELATORIO_AUSENTE and STOP_R5_HASH_OU_IDENTIDADE_DIVERGENTE.",
+        "false_positive_warning": "Trailing PowerShell Write-Output R5_FOUR_HASHES_PHYSICAL_READ_ONLY_PASS ran independently despite previous terminating statements; it is NOT a genuine verification success. Never accept that text without actual parsed 4 true hashes and successful Docker exit."
+      },
+      "exact_scope": "One historical G5 V1 activation 57982: execution B02-57982-execution-v1; activation B02-57982-activation-v1; generation B02-57982-generation-v1; outbox B02-57982-outbox-v1. Their stored record_hash matches public.b02_json_hash(to_jsonb(t)-'record_hash') for all 4. This is not a V2/V3 activation, live CAS, nor new R5 final protected approval.",
+      "source_checkpoint": "2026-10-30 operator output; do not invent timestamp beyond given",
+      "container_original_verified": {
+        "id": "35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948",
+        "image": "postgres:17.10-trixie",
+        "volume": "4fe15764d8f4c6c2b5aaaad634c0ed54ec42200f1a35edcc3e693da153a0410d",
+        "reason": "stopped normally EXIT=0 OOM=false then started same original container after identity check"
+      },
+      "previous_pass_invalidated_and_superseded": false,
+      "instrumented_result_kind": "READ_ONLY_PHYSICAL_G5_V1_HISTORICAL_HASH_INTEGRITY",
+      "no_further_replay_needed": true
     }
   }
 }
