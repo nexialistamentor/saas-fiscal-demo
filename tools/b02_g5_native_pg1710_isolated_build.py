@@ -64,6 +64,9 @@ def check_input(header:Path,sha:str,policy_hash:str):
         stop("EXPIRED_V1_ROOT_FORBIDDEN")
     if not header.name.endswith(".h"):
         stop("ROOT_MUST_BE_C_HEADER")
+    if policy_hash in ("57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+                       "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf"):
+        stop("EXPIRED_G5_V1_OR_V2_POLICY_FORBIDDEN")
     check_sha_file(header,sha)
     source=header.read_text(encoding="utf8")
     if ("SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE" not in source
