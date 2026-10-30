@@ -614,8 +614,8 @@
       "R1": {
         "existing": "tools/b02_g5_native_pg1710_isolated_build.py; tests/test_b02_g5_native_pg1710_isolated_build.py; historical native/g5 source hashes and prior 7/7 Windows focused tests",
         "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED Existing RCV31-R3 original physical PG17 disposable positive two-document stage + separate-process readback and bounded negatives completed 2026-10-25; exact final 9-file archive SHA256 474d99de34a1817f94b85ffe86d2b549df7c12a0edc2a830cca19bf427b647d8. Independent reviewer found code AST equivalent to exercised operator; A1 approved in disposable scope. Delta4 V3 later reran ONLY the observer-source tamper delta in disposable scope; no repeat needed. Synthetic C/PRE_COMMIT evidence is not new institutional V3 signed native authority. Current A2 V4 focal physical PG17 disposable positive 2026-10-30 PASS with original two SEFA/PR C3 SHA256, pinned observer, cleanup REMOVED, no protected writes; reported 28 triggers, 1057 SQL statements, 4 unit checkpoints and 0 correspondence checkpoints. The detailed primary JSON is on local Windows path; do not infer full independent chain. 2026-10-30 original primary PG17 JSON 313542 bytes SHA256 99d544143e1155c1cc50f9d71d11ccfa333fe06dcc8bb7e98e1f5d68a4651f16 was independently parsed, confirms PASS positive and cleanup REMOVED, two matching C3 SHA256, 19 INSERT category counts (2 normative documents by INSERT heads), but correspondence_checkpoints=[] and observer_field_diagnostics=null; do not inflate to independent cryptographic trust-root proof.",
-        "remaining_gap": "Isolated native builder original base-image mismatch with protected PostgreSQL 17.10 trixie corrected in source, awaiting one targeted Windows test; approved successor V3 root/header, exact signed custody/validity, real ELF compile in matching distro, signature test and independent release approval remain pending.",
-        "next_action": "Run only the updated focused unit test (7 tests; no DB) when operator checkout updated, then use approved successor V3 root/header once issued to compile truly isolated on exact trixie PG17.10; never apply historical V1 header. R1 remains OPEN until executed ELF/signature/approval proof."
+        "remaining_gap": "R1 isolated native source preparation fixes: postgres:17.10-trixie distro exact and source/header immutable snapshot instead of reopening verified files; 10 focused unit tests await execution, and no ELF/signature produced. Still needs actual current G5 V3 approved root, exact header/authority/time, native ELF build on correct PG17.10 distro, signature and release audit.",
+        "next_action": "Execute only R1 focused native build contract tests once; do not repeat R4/A2/R5; inspect original segregated review separately. Actual isolated ELF compile only AFTER approved V3 successor root/header and exact canonical policy hash, never using expired roots or synthetic test data for real release."
       },
       "R2": {
         "existing": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md; B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json; tools/b02_g5_v5_institutional_audit_result_runner.py; SOLVERIS_B02_RCV31_R3_PARECER_SEGREGADO_20261025.md (historical RCV31 code-review, distinct from G5 V5 institutional reviewer)",
@@ -655,7 +655,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "cdd5a1cd57b8704ad6550b3a308c12eee902c8f8",
+    "last_reconciled_git_commit": "8ee4b9deaf7529ace4f17ea0c13df7aa5b2de963",
     "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN. 2026-10-30 follow-up: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, 7/7 canonical tables owner solveris_test, writer SELECT all, INSERT only 4 activation tables, UPDATE/DELETE none, grants=0, writes=0; revision 0063.",
     "historical_R4_R5_disambiguation": {
       "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
@@ -958,7 +958,7 @@
       "next_action": "R4 structural restoration, source OWNER/ACL inventory and private backup ACL evidence accepted in their tested bounds; no routine replay. Continue R2 reviewer, R3 valid temporal G4/G5, R1 successor root/ELF, R5 real one-shot, R6 legal exact links before R7."
     },
     "R1_native_isolated_image_alignment": {
-      "status": "R1_PG1710_TRIXIE_BUILD_SOURCE_ALIGNED_STATIC_NOT_BUILT",
+      "status": "R1_TRIXIE_NATIVE_SOURCE_AND_FROZEN_INPUTS_READY_10_UNIT_TESTS_PENDING",
       "source_image_observed": "postgres:17.10-trixie",
       "source_container_id": "35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948",
       "source_image_evidence": "Real Windows docker inspect previous turn 2026-10-30 confirmed postgres:17.10-trixie; expected original postgres volume has been verified, no new Docker engine access assumed.",
@@ -967,12 +967,23 @@
       "commits": [
         "d8a17c42a59ff3554b2a986f602bf25a665773c3",
         "dfd43e1b542936ac42cc56dbfbaedf4c977ba9b3",
-        "cdd5a1cd57b8704ad6550b3a308c12eee902c8f8"
+        "cdd5a1cd57b8704ad6550b3a308c12eee902c8f8",
+        "d0a11d2f15242fa6013c681fa1f991b997096a54",
+        "ef4ac2601bd066a8cbebcd39d7b2aabc65ef8724",
+        "8ee4b9deaf7529ace4f17ea0c13df7aa5b2de963"
       ],
-      "test_change": "Existing isolated-native build test now asserts trixie and denies bookworm. Source/test GitHub committed, Windows unit tests and actual ELF compile NOT executed in this turn. Previously 7/7 native unit tests were run against bookworm code and are not evidence of the changed distro guard.",
+      "test_change": "Docker base mismatch corrected to postgres:17.10-trixie and source/header bytes now bound to verified snapshots; 10 tests published including TOCTOU tamper; no Windows test execution yet.",
       "reason": "Compiler native runtime distro must match original PostgreSQL 17.10 trixie instead of previous bookworm, otherwise binary/linkage compatibility is unverified.",
       "no_protected_mutations": true,
-      "still_missing": "Approved V3 exact root/header SHA and real signing custody/authorization, actual isolated ELF compile and signature tests, independent release review. Never use expired V1/V2 root or invent keys and material time."
+      "still_missing": "Executed 10 focused Windows tests; approved V3 exact root/header SHA, signing custody/authorization, isolated native ELF compilation, signature verification and independent release review. No protected installation or real CAS.",
+      "toc_tou_elimination": {
+        "code_commit": "d0a11d2f15242fa6013c681fa1f991b997096a54",
+        "test_commit": "8ee4b9deaf7529ace4f17ea0c13df7aa5b2de963",
+        "code_description": "Verified source C and successor header bytes are captured immediately after pinned hash/source checks, rechecked for SHA256 changes, then written to a temporary isolated Docker build context from frozen snapshots only; no reopened filesystem copy source/header after verification.",
+        "negative_tests": "3 focal additions: preserved source/header bytes; header modified after check; C file modified after check. Total 10 unit tests in targeted suite, pending execution.",
+        "execution_status": "STATIC_REVIEW_ONLY_NO_WINDOWS_UNIT_RUN_NO_ELF_COMPILED",
+        "security_scope": "No root, key, HSM, signature, G5 authority or protected binary invented."
+      }
     }
   }
 }
