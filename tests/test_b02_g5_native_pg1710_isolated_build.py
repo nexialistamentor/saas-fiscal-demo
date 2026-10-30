@@ -23,7 +23,9 @@ def header_fixture(path:Path,policy_hash=V3_HASH):
 class NativePrebuildContract(unittest.TestCase):
     def test_docker_image_runtime_and_matching_development_headers_guarded(self):
         dockerfile=build.DOCKERFILE
-        self.assertIn("FROM postgres:17.10-bookworm",dockerfile)
+        self.assertIn("FROM postgres:17.10-trixie",dockerfile)
+        self.assertNotIn("postgres:17.10-bookworm",dockerfile)
+        self.assertIn('test "$VERSION_CODENAME" = "trixie"',dockerfile)
         self.assertIn('pg_config --version',dockerfile)
         self.assertIn('test "$(pg_config --version)" = "PostgreSQL 17.10"',dockerfile)
         self.assertIn('postgresql-server-dev-17',dockerfile)
