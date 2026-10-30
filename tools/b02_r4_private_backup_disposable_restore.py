@@ -108,12 +108,20 @@ def inspect_private_archive(path:Path):
              "utf8",errors="replace")[-300:])
     if b"TOC Entries:" not in toc.stdout:
         stop("ARCHIVE_TOC_LIST_MISSING")
+    listing=toc.stdout.decode("utf8",errors="replace")
+    source_db=re.search(r"(?mi)^;\\s*dbname:\\s*(\\S+)\\s*$",listing)
+    source_ver=re.search(
+        r"(?mi)^;\\s*Dumped from database version:\\s*(17\\.10)(?:\\s|$)",listing)
+    if not source_db or source_db.group(1)!=bridge.DATABASE:
+        stop("ARCHIVE_SOURCE_DATABASE_MISMATCH")
+    if not source_ver:
+        stop("ARCHIVE_SOURCE_PG1710_NOT_PROVED")
     return {"backup_sha256":sha_file(path),"backup_bytes":path.stat().st_size,
             "toc_sha256":hashlib.sha256(toc.stdout).hexdigest()}
 
 
-def find_unique_incomplete_private_backup():
-    """Resume exactly one preserved R4 archive; never silently choose among many."""
+def find_unique_incomplete_private_backup(*,latest_validated=False):
+    """Select a preserved backup; multiple candidates require explicit verified-latest opt-in."""
     if os.name!="nt":stop("WINDOWS_REQUIRED")
     root=Path(os.environ["LOCALAPPDATA"])/"SOLVERIS"/"B02R4Privado"
     if not root.is_dir() or root.is_symlink():
@@ -126,9 +134,35 @@ def find_unique_incomplete_private_backup():
         if (archive.is_file() and not archive.is_symlink()
             and not (p/"evidence.json").exists()):
             candidates.append(p)
-    if len(candidates)!=1:
+    if not candidates:
+        stop("RESUME_NO_INCOMPLETE_PRIVATE_ARCHIVE")
+    if len(candidates)==1:
+        base=candidates[0]
+    elif not latest_validated:
         stop("RESUME_REQUIRES_EXACTLY_ONE_INCOMPLETE_ARCHIVE_FOUND_"+str(len(candidates)))
-    base=candidates[0]
+    else:
+        valid=[]
+        for candidate in candidates:
+            try:
+                inspected=inspect_private_archive(candidate/"protected_pg1710.dump")
+                valid.append((candidate.stat().st_mtime_ns,candidate,inspected))
+            except (OSError,RuntimeError,subprocess.TimeoutExpired):
+                # Preserve and skip invalid candidates. Nothing is unlinked.
+                continue
+        if not valid:
+            stop("RESUME_NO_ARCHIVE_WITH_VERIFIED_PG1710_TOC")
+        valid.sort(key=lambda item:item[0],reverse=True)
+        if len(valid)>1 and valid[0][0]==valid[1][0]:
+            stop("RESUME_VALID_ARCHIVE_TIMESTAMP_AMBIGUOUS")
+        base=valid[0][1]
+        print(json.dumps({
+            "r4_private_resume":"LATEST_VALIDATED_ARCHIVE_SELECTED",
+            "selected_token":base.name,
+            "validated_archive_sha256":valid[0][2]["backup_sha256"],
+            "candidates_found":len(candidates),
+            "candidates_valid":len(valid),
+            "other_archives_deleted":0,
+            "new_pg_dump":False},sort_keys=True),file=sys.stderr)
     if base.resolve().parent != root.resolve():
         stop("RESUME_PRIVATE_PATH_ESCAPE")
     # Check ACL structural integrity; not a claim of full OWNER/ACL restoration.
@@ -181,22 +215,29 @@ def disposable_restore(path:Path,image:str,token:str):
 def main(argv=None):
     ap=argparse.ArgumentParser()
     ap.add_argument("--resume-existing",action="store_true",
-                    help="Validate and restore the single existing incomplete private backup; no new pg_dump")
+                    help="Validate and restore an existing private backup; no new pg_dump")
+    ap.add_argument("--resume-latest-validated",action="store_true",
+                    help="When multiple incomplete backups exist, select latest unique TOC-validated PG17.10 backup")
     opts=ap.parse_args(argv)
+    if opts.resume_latest_validated and not opts.resume_existing:
+        ap.error("--resume-latest-validated requires --resume-existing")
     bridge.validate_checkout(PATH)
     if os.name!="nt":stop("WINDOWS_REQUIRED")
-    if opts.resume_existing:
-        base=find_unique_incomplete_private_backup()
-        token=base.name
-    else:
+    base=None
+    token=None
+    if not opts.resume_existing:
         token=uuid4().hex
         base=Path(os.environ["LOCALAPPDATA"])/"SOLVERIS"/"B02R4Privado"/token
         verify_private_directory(base,token)
-    backup=base/"protected_pg1710.dump"
-    report=base/"evidence.json"
-    if report.exists():
-        stop("R4_EVIDENCE_ALREADY_PRESENT_NO_REPEAT")
     with bridge.managed_container():
+        if opts.resume_existing:
+            base=find_unique_incomplete_private_backup(
+                latest_validated=opts.resume_latest_validated)
+            token=base.name
+        backup=base/"protected_pg1710.dump"
+        report=base/"evidence.json"
+        if report.exists():
+            stop("R4_EVIDENCE_ALREADY_PRESENT_NO_REPEAT")
         info=bridge.container_info()
         image=info.get("Image","")
         version=invoke(["docker","exec",bridge.CONTAINER,"postgres","--version"])
