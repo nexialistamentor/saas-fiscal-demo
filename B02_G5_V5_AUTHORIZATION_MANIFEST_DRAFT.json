@@ -73,7 +73,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V1_ACTIVATED_HISTORICALLY_TX_920_EXPIRED_V2_TWO_DECISIONS_NO_ACTIVATION_NO_G5_NATIVE_OR_ONESHOT_B02_OPEN",
+  "technical_readiness": "G5_V1_HISTORICALLY_ACTIVATED_EXPIRED_V2_TWO_DECISIONS_NO_ACTIVATION_R1_R6_CODE_PREPARED_NO_NEW_OPERATION_B02_OPEN",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -440,11 +440,11 @@
   "g5_temporal_plan": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
   "original_b02_closure": {
     "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md section 11",
-    "R1": "NO_G5_NATIVE_SYMBOLS_LIVE_20261030; HISTORICAL_NATIVE_V30_SYNTHETIC_LIMITED; REAL_ELF_PENDING",
+    "R1": "PG17_10_NATIVE_ISOLATED_BUILD_CONTRACT_PREPARED_NOT_EXECUTED; SUCCESSOR_ROOT/ELF_APPROVAL_PENDING",
     "R3": "V3_NEXT_FREE_CONFIRMED; NEW_G4_G5_WINDOW_UNDECIDED",
     "R4": "G4_TX_926_RECONCILED_BUT_TIME_EXPIRED; PRIVATE_BACKUP_RESTORE_ACL_CUSTODY_PENDING",
     "R5": "G5_V1_HISTORICAL_FOUR_RECORDS_TX_920; V2_0_ACTIVATIONS; 0064_0065_NOT_INSTALLED; REAL_ONESHOT_PENDING",
-    "R6": "NORMATIVE_LINKAGE_RULE_VERSION_ITEM_NOT_PROVEN",
+    "R6": "R6_PHYSICAL_DOCUMENT_LINKAGE_READ_ONLY_RUNNER_PREPARED_NOT_EXECUTED; ORIGINAL_PER_ITEM_PROOF_PENDING",
     "R7": "FINAL_INSTITUTIONAL_CLOSURE_NOT_ISSUED",
     "B02": "OPEN",
     "B03": "BLOCKED"
@@ -452,5 +452,30 @@
   "temporal_successor_prepared": {
     "next_free_policy_version_confirmed": 3,
     "proof_timestamp_utc": "2026-10-30T16:51:33.765376Z"
+  },
+  "technical_independent_work": {
+    "compiler": {
+      "runner": "tools/b02_g5_native_pg1710_isolated_build.py",
+      "focused_tests": "tests/test_b02_g5_native_pg1710_isolated_build.py",
+      "focused_test_count": 6,
+      "status": "CODE_PUBLISHED_NOT_EXECUTED_NO_ELF_PRODUCED",
+      "requires": "APPROVED_NEW_NATIVE_ROOT_HEADER_WITH_PINNED_SHA_AND_SUCCESSOR_POLICY_HASH",
+      "scope": "Build isolated Docker PG17.10, ABI/header/ELF symbols SHA, no mounting protected DB, no signing or installation",
+      "historical_v1_header_reused": false
+    },
+    "normative_R6": {
+      "runner": "tools/b02_r6_normative_linkage_readonly.py",
+      "focused_tests": "tests/test_b02_r6_normative_linkage_readonly.py",
+      "focused_test_count": 5,
+      "status": "CODE_PUBLISHED_NOT_EXECUTED_NO_NEW_NORMATIVE_EVIDENCE",
+      "role": "solveris_b02_writer",
+      "scope": "Read-only two SEFA/PR PDF SHA to artifact, extraction, RuleVersion, relation and L2 candidate; mark inaccessible without grants",
+      "approval_inference": false
+    },
+    "prior_focal_18_tests": "18/18 PASS user Windows PG17.10 2026-10-30, previously reconciled",
+    "new_focus_tests_executed": false,
+    "policy_insert_repeated": false,
+    "audit_result_issued_by_this_executor": false,
+    "protected_DDL_DML": false
   }
 }
