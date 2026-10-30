@@ -43,16 +43,42 @@ def reconcile_unit(engine, execution_id, activation_id, generation_id, outbox_id
         (PolicyActivationOutboxEvent.__table__, "policy_activation_outbox_event_id", outbox_id),
     )
     from sqlalchemy import select
+    # Fixed SQL over the four versioned tables: no interpolated caller input.
+    # Recalculate the exact database canonical hashes, not merely hash links.
+    integrity_sql = text("""
+        SELECT
+          EXISTS(SELECT 1 FROM public.policy_activation_executions t
+                 WHERE t.policy_activation_execution_id = :execution_id
+                   AND t.record_hash = public.b02_json_hash(to_jsonb(t)-'record_hash'))
+          AND EXISTS(SELECT 1 FROM public.policy_activations t
+                 WHERE t.policy_activation_id = :activation_id
+                   AND t.record_hash = public.b02_json_hash(to_jsonb(t)-'record_hash'))
+          AND EXISTS(SELECT 1 FROM public.policy_activation_generations t
+                 WHERE t.policy_activation_generation_id = :generation_id
+                   AND t.record_hash = public.b02_json_hash(to_jsonb(t)-'record_hash'))
+          AND EXISTS(SELECT 1 FROM public.policy_activation_outbox_events t
+                 WHERE t.policy_activation_outbox_event_id = :outbox_id
+                   AND t.record_hash = public.b02_json_hash(to_jsonb(t)-'record_hash'))
+    """)
     with engine.connect() as conn:
+        conn.execute(text("SET TRANSACTION READ ONLY"))
         assert_writer(conn)
         rows = []
         for table, column, value in tables:
             rows.append(conn.execute(select(table).where(table.c[column] == value)).mappings().one_or_none())
+        hashes_valid = None
+        if all(row is not None for row in rows):
+            hashes_valid = conn.execute(integrity_sql, {
+                "execution_id": execution_id, "activation_id": activation_id,
+                "generation_id": generation_id, "outbox_id": outbox_id
+            }).scalar_one()
         conn.rollback()
     if all(row is None for row in rows):
         return "ABSENT"
     if any(row is None for row in rows):
         return "PARTIAL_CONFLICT"
+    if hashes_valid is not True:
+        return "RECORD_HASH_CONFLICT"
     e,a,g,o=rows
     for row in (a,g,o):
         for key in ("policy_activation_execution_id","policy_decision_id",
