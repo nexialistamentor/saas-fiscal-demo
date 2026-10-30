@@ -50,8 +50,14 @@ def main():
    cmd.append(str(patch))
    r=subprocess.run(cmd,capture_output=True,text=True,timeout=30)
    if r.returncode:raise RuntimeError('STOP_GIT_APPLY:'+r.stderr[-400:])
-  changed=(work/SOURCE).read_bytes()
+  changed_raw=(work/SOURCE).read_bytes()
+  # Windows git apply can convert LF source to CRLF under core.autocrlf.
+  # Canonicalize ONLY line endings before the immutable candidate hash check.
+  # The exact pin still rejects any semantic or non-newline byte change.
+  changed=changed_raw.replace(b'\r\n',b'\n')
+  if b'\r' in changed:raise RuntimeError('STOP_MIXED_OR_UNSUPPORTED_CANDIDATE_NEWLINES')
   check(changed,'candidate')
+  (work/SOURCE).write_bytes(changed)
   (work/CANDIDATE).write_bytes(changed)
   p=subprocess.run([sys.executable,'-m','unittest','discover','-s',str(work),
      '-p',TEST,'-v'],capture_output=True,text=True,timeout=90)
