@@ -57,7 +57,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V5_SUBMETIDA_COMMITTED_R2_NOT_A_G5_ACTIVATION_BLOCKER_REVIEW_AND_OPERATIONAL_GATES_PENDING",
+  "technical_readiness": "G5_V5_POLICY_SUBMETIDA_AUDIT_START_COMMITTED_ORIGINAL_REVIEWER_RESULT_PENDING_MATERIAL_WINDOW_EXPIRED",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -116,17 +116,17 @@
     "time_evidence": "2026-10-29 evening America/Belem; exact PostgreSQL COMMIT time not in output"
   },
   "institutional_chain_reconciliation": {
-    "status": "SUBMISSION_COMMITTED_EXACT_INDEPENDENT_READBACK",
-    "source": "User-presented PostgreSQL one-shot decision COMMIT result, restricted-role independent readback, 2026-10-30",
+    "status": "AUDIT_START_COMMITTED_OPERATOR_RECONCILED",
+    "source": "User-presented PostgreSQL one-shot decision COMMIT result, restricted-role independent readback, 2026-10-30; audit start physically committed/reconciled per operator report published in PR26 comment 6527016818",
     "target_database": "solveris_b02_r4g_test",
     "policy_version": 2,
     "policy_record_id": "B02-G5-V5-policy-v2",
     "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
-    "decision_count": 1,
+    "decision_count": 2,
     "bootstrap_count": 0,
     "activation_count": 0,
-    "next_required_event": "auditoria_iniciada",
-    "role": "proponente_institucional",
+    "next_required_event": "auditada_favoravelmente_OR_auditada_desfavoravelmente_OWN_REVIEWER",
+    "role": "auditor_independente (own reviewer only)",
     "requires": "own genuine G5 v2 proponent event with actor identity, accepted mandate, V5 policy identity, dated provenance and idempotency; no synthetic delegation or inherited V4 actor signature",
     "subsequent_events": [
       "auditoria_iniciada",
@@ -138,7 +138,7 @@
       "historical G4/G5 mandate bindings",
       "technical COMMIT as solveris_test"
     ],
-    "writes": 1,
+    "writes": 2,
     "no_retries_or_rollback_repeated": true,
     "committed_decision_id": "B02-G5-V5-GPT6-submetida-v1",
     "committed_decision_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
@@ -154,8 +154,35 @@
         "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
         "predecessor_id": null,
         "readback": "PRESENT_EXACT"
+      },
+      {
+        "decision_id": "B02-G5-V5-GPT6-auditoria-iniciada-v1",
+        "decision_event": "auditoria_iniciada",
+        "actor": "GPT-6/revisor-documental-chat-b02-g5-v5-20261030",
+        "record_hash": "da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
+        "policy_version": 2,
+        "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+        "predecessor_id": "B02-G5-V5-GPT6-submetida-v1",
+        "predecessor_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
+        "readback": "COMMITTED_RECONCILED_PER_OPERATOR_LOG"
       }
-    ]
+    ],
+    "committed_audit_start": {
+      "decision_id": "B02-G5-V5-GPT6-auditoria-iniciada-v1",
+      "event": "auditoria_iniciada",
+      "institutional_role": "auditor_independente",
+      "actor": "GPT-6/revisor-documental-chat-b02-g5-v5-20261030",
+      "record_hash": "da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
+      "previous_decision_id": "B02-G5-V5-GPT6-submetida-v1",
+      "previous_decision_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
+      "material_provenance": "B02_G5_V5_AUDITORIA_INICIADA_DECLARACAO_PROPRIA_20261030.json, git commit 8b1dff286ea09529ade4dc30c09456639a4e0929",
+      "own_adendum": "B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json, git commit 061daa7c3af1c496bbcd06bc7519b6035af1b640",
+      "runner": "tools/b02_g5_v5_institutional_audit_start_runner.py",
+      "physical_evidence": "Operator-provided PostgreSQL local result B02_G5_V5_AUDIT_START_COMMITTED_RECONCILED, repeated in PR26 comment 6527016818",
+      "independent_readback_role": "solveris_b02_policy_writer",
+      "original_issuer_conversation": "separate G5 V5 documentary reviewer conversation, not current proponent conversation",
+      "physical_db_readback_by_this_execution": false
+    }
   },
   "mandate_v5_review": {
     "status": "GPT6_EXPLICIT_DESIGNATION_EMITTED_AND_SELF_ACCEPTED",
@@ -211,7 +238,7 @@
     "sql_runner": "tools/b02_g5_v5_submission_runner.py",
     "sql_committed": true,
     "db_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
-    "reviewer_action": "PENDING_OWN_ACCEPTANCE_AND_SEGREGATED_REVIEW",
+    "reviewer_action": "AUDITORIA_INICIADA_COMMITTED_RESULT_NOT_YET_EMITTED",
     "ratification": "USER_PRIOR_RATIFICATION_RECORDED_NOT_SQL_EVENT",
     "actuation": "PENDING_VALID_DECISION_CHAIN",
     "policy_version_insert_not_repeated": true,
@@ -266,12 +293,16 @@
     "actor": "GPT-6/revisor-documental-chat-b02-g5-v5-20261030",
     "documentary_mandate_acceptance": "declared by reviewer, functional and limited",
     "independence": "declared no proven material/cryptographic independence; actual authorship segregation requires own review and contractual verification",
-    "sql_auditoria_iniciada": "NOT_ISSUED",
+    "sql_auditoria_iniciada": "COMMITTED_RECONCILED_PER_OPERATOR_LOG",
     "sql_auditada_favoravelmente": "NOT_ISSUED",
     "user_ratification_documentary": "PRESERVED",
     "sql_ratificada": "NOT_ISSUED",
     "warning": "No automatic reviewer action; do not treat opinion as institutional favorable/negative SQL event.",
     "next_event_reserved_for_reviewer": "auditoria_iniciada",
-    "no_new_actor_authorizations_requested": true
+    "no_new_actor_authorizations_requested": true,
+    "sql_auditoria_iniciada_record_hash": "da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
+    "actor_provenance_resolution": "IDENTIFIED_ORIGINAL_DISTINCT_REVIEWER_CONVERSATION",
+    "result_must_share_start_actor": true,
+    "reviewer_result_issued_in_this_conversation": false
   }
 }
