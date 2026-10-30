@@ -629,16 +629,16 @@
         "next_action": "Complete predecision technical and source preparations only. Preserve V1/V2; no dates selected or synthetic G4 authority."
       },
       "R4": {
-        "existing": "tools/b02_r4_private_backup_disposable_restore.py; tests/test_b02_r4_private_backup_disposable_restore.py; tools/b02_g5_v5_local_bridge.py",
-        "accepted_proof": "Windows 2026-10-30: 12/12 focused tests PASS and real private archive reuse / one networkless disposable PostgreSQL 17.10 structural restore succeeded: R4_DISPOSABLE_STRUCTURAL_RESTORE_MATCHED. Protected source and disposable counts equal across 9 whitelisted tables (policy_versions=9, policy_decisions=34, policy_activations=10, executions/generations/outbox=10 each, bootstrap_authority_records=4, normative_artifacts=1, extraction_results=0). Archive 741807 bytes; SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e; TOC SHA256 7709152f89650a169b4dbbeaa5422cdc2bd878753637f7100f57b837c1d3de66. Archive reused, 3 candidates retained; protected writes=0, protected volume mutations=0, disposable network=none and host ports=[]. User provided runner result; evidence.json file and Windows ACL not independently inspected.",
-        "remaining_gap": "Structural backup and isolated restore proved. Original full R4 OWNER/ACL/role grants/security recovery and private NTFS ACL independent readback not evidenced: restore explicitly NO_OWNER_NO_ACL_STRUCTURAL_ONLY. Do not infer full R4 closed.",
-        "next_action": "Preserve matched structural proof and unchanged private backup; do not run pg_dump or disposable restore again. Inspect preexisting R4 gate and only missing OWNER/ACL/permission/NTFS evidence via read-only independent verification. Do not escalate privilege or modify protected roles without separately valid approval."
+        "existing": "tools/b02_r4_private_backup_disposable_restore.py; tests/test_b02_r4_private_backup_disposable_restore.py; tools/b02_g5_v5_local_bridge.py; original V13 synthetic pg_dump/pg_restore catalog/content/sequences/ACL evidence; tools/b02_g5_v5_physical_readonly_preflight.py::_acl_inventory (existing read-only physical ACL/owner enumerator)",
+        "accepted_proof": "Windows 2026-10-30: 12/12 focused tests PASS and real private archive reuse / one networkless disposable PostgreSQL 17.10 structural restore succeeded: R4_DISPOSABLE_STRUCTURAL_RESTORE_MATCHED. Protected source and disposable counts equal across 9 whitelisted tables (policy_versions=9, policy_decisions=34, policy_activations=10, executions/generations/outbox=10 each, bootstrap_authority_records=4, normative_artifacts=1, extraction_results=0). Archive 741807 bytes; SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e; TOC SHA256 7709152f89650a169b4dbbeaa5422cdc2bd878753637f7100f57b837c1d3de66. Archive reused, 3 candidates retained; protected writes=0, protected volume mutations=0, disposable network=none and host ports=[]. User provided runner result; evidence.json file and Windows ACL not independently inspected. Previously completed V13 simulated restore covered catalog/content/sequences/ACL on disposable fixture; it was not a protected-source backup. These accepted synthetic results and 12/12 focused R4 tests MUST NOT be rerun by routine.",
+        "remaining_gap": "Backup of protected PG17.10 source and separate structural restoration of its nine whitelisted tables: VERIFIED, DO NOT REPEAT. V13 synthetic catalog/sequences/ACL recovery: accepted in that original isolated scope, DO NOT REPEAT. Original real-source OWNER/ACL/security/roles verification and private NTFS ACL independent readback: not established by --no-owner/--no-acl, requires only focused read-only reconciliation with existing ACL inventory tools, not another dump. Original R4 CAS/trust/current validity remains coupled to R3/R5 authority; no assumed PASS.",
+        "next_action": "Reuse existing tools/b02_g5_v5_physical_readonly_preflight.py --acl-inventory through tools/b02_g5_v5_local_bridge.py only if physical OWNER/ACL source verification remains missing; reconcile against prior ACL inventory before any new query. No new ACL script, no GRANT/ALTER ROLE, no backup/restoration rerun. Validate private NTFS ACL separately by read-only inspection if required; do not claim recoverable actual owner rights from NO_OWNER_NO_ACL dump."
       },
       "R5": {
-        "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain",
-        "accepted_proof": "PostgreSQL 17.10 revision 0063, G4 txid 926; historical G5 V1 activation txid 920; V2 policy + two decisions COMMITTED with zero activations at 2026-10-30T16:51:33Z",
-        "remaining_gap": "actual approved successor header/root and binary, owner/ACL checks, 0064/0065 Alembic installation, real CAS two-document verification/sanitization, one-shot PRE_COMMIT/COMMIT and independent reconciliation; no installation proof",
-        "next_action": "Only after exact G4/G5 authority and artifact approvals: existing candidate->approved Alembic path->one-shot guarded real operation->independent readback. Separate DDL commit from documentary COMMIT and reconcile unknown ACK."
+        "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain; original isolated V21 PRE_COMMIT C and invalid signature tests; V23 successful synthetic two-unit commit/readback; V28 receipt/tampering/rollback; V30 one-shot concurrency/orphan/unknown-ACK synthetic exercises, accepted with original scope (handoff V31 20261024)",
+        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate.",
+        "remaining_gap": "Only real currently authorized G5 successor and original R5 gate: original reviewer own audit result followed by valid ratification and successor temporal authority, live G4 validity for each PDF, exact approved native root/ELF and 0064/0065 installation, real documented/custodied two-unit CAS operation, original R5 one-shot PRE_COMMIT/COMMIT and independent readback. No evidence these are completed by historic V1 activation, previous synthetic tests, or R4 protected backup.",
+        "next_action": "Use original existing institutional audit_result runner only upon actually issued reviewer act; no reissue submission/audit start. Once authority, dates, hashes, signing and approvals valid, reuse existing 0064/0065 and original one-shot consumers, reconcile before write, never duplicate successful SQL. Do not repeat V21/V23/V28/V30 or G4 V1/V3."
       },
       "R6": {
         "existing": "app/services/enterprise_b02_noncredential_acquisition.py::stage_completion; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; tools/b02_r6_normative_linkage_readonly.py",
@@ -654,7 +654,46 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "93e6a4f9501c2dadaeb6ded0a219f18f6f3a5971",
-    "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN."
+    "last_reconciled_git_commit": "4e180507a877db6294835d1112a446f2b3374b74",
+    "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN.",
+    "historical_R4_R5_disambiguation": {
+      "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
+      "historical_G5_V1_activation": {
+        "id": "B02-57982-activation-v1",
+        "txid": "920",
+        "valid_until_utc": "2026-10-23T07:56:30.910737Z",
+        "state": "COMMITTED_HISTORICAL_EXPIRED_NOT_R5_CURRENT"
+      },
+      "G4_October_activation": {
+        "id": "B02-05ede-activation-v3",
+        "txid": "926",
+        "valid_until_utc": "2026-10-30T13:00:00Z",
+        "state": "COMMITTED_HISTORICAL_EXPIRED"
+      },
+      "G5_V2": {
+        "policy_record_id": "B02-G5-V5-policy-v2",
+        "policy_version": 2,
+        "decision_events": [
+          "submetida",
+          "auditoria_iniciada"
+        ],
+        "activation_count": 0,
+        "operational_release": "NOT_DEMONSTRATED",
+        "source_snapshot_utc": "2026-10-30T16:51:33.765376Z"
+      },
+      "R4_synthetic_V13": "pg_dump/pg_restore CATALOG_CONTENT_SEQUENCES_ACL DISPOSABLE_ONLY; already tested; do not redo",
+      "R4_physical_20261030": "12_12_TESTS_PASS; SOURCE_PGDMP_REUSED_741807_BYTES; DISPOSABLE_STRUCTURAL_9_TABLE_COUNTS_MATCHED; no_owner_no_acl; no protected writes; do not redo",
+      "R5_prior_synthetic": "V21_PRE_COMMIT_C,V23_TWO_UNITS_COMMIT,V28_RECEIPT_AND_ROLLBACK,V30_ONESHOT_CONCURRENCY_ORPHAN_UNKNOWN_ACK; preserves original tests and prior unfavorable reviewer findings",
+      "current_R5_gate": "REQUIRES_REAL_G5_SUCCESSOR_AUTHORIZED_TWO_PDF_CAS_AND_EXACT_COMMITTED_ONESHOT_PROOF; NOT_SATISFIED_BY_G5_V1_ACTIVATION",
+      "original_owner_acl_provenance": "tools/b02_g5_v5_physical_readonly_preflight.py::_acl_inventory exists; actual R4 source ACL/OWNER readback not yet supplied; do not invent current owner/role results",
+      "duplicate_work_prohibitions": [
+        "NO_SECOND_BACKUP",
+        "NO_SECOND_DISPOSABLE_RESTORE",
+        "NO_REEXECUTE_V13_TO_V30_SYNTHETIC_TESTS",
+        "NO_REISSUE_G4_OR_G5_SUBMISSION_OR_AUDIT_START",
+        "NO_DUPLICATE_SQL_COMMIT",
+        "NO_NEW_ACL_TOOL_UNLESS_EXISTING_PROVEN_DEFECT"
+      ]
+    }
   }
 }
