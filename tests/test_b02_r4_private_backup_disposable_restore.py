@@ -93,8 +93,8 @@ class R4PrivateRestoreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             archive=Path(tmp)/"protected_pg1710.dump"
             archive.write_bytes(b"PGDMP"+b"synthetic")
-            listing=(b"; dbname: WRONG_DATABASE\\n; TOC Entries: 2\\n"+
-                     b"; Dumped from database version: 17.10 (Debian)\\n")
+            listing=(b"; dbname: WRONG_DATABASE\n; TOC Entries: 2\n"+
+                     b"; Dumped from database version: 17.10 (Debian)\n")
             p=MagicMock(returncode=0,stdout=listing,stderr=b"")
             with patch.object(r4.subprocess,"run",return_value=p):
                 with self.assertRaisesRegex(RuntimeError,"ARCHIVE_SOURCE_DATABASE_MISMATCH"):
@@ -125,9 +125,9 @@ class R4PrivateRestoreTests(unittest.TestCase):
             for i,p in enumerate(paths):
                 (p/"protected_pg1710.dump").touch()
                 import os as real_os
-                real_os.utime(p,ns=(1_000_000_000+i,1_000_000_000+i))
+                real_os.utime(p/"protected_pg1710.dump",ns=(1_000_000_000+i,1_000_000_000+i))
             fake_os=SimpleNamespace(name="nt",environ={"LOCALAPPDATA":tmp})
-            with patch.object(r4,"os",fake_os),patch.object(r4,"invoke") as call, \\
+            with patch.object(r4,"os",fake_os),patch.object(r4,"invoke") as call, \
                  patch.object(r4,"inspect_private_archive",return_value={"backup_sha256":"a"*64}):
                 selected=r4.find_unique_incomplete_private_backup(latest_validated=True)
             self.assertEqual(selected,paths[2])
@@ -142,9 +142,9 @@ class R4PrivateRestoreTests(unittest.TestCase):
                 p=root/token
                 p.mkdir(parents=True)
                 (p/"protected_pg1710.dump").write_bytes(b"PGDMPsynthetic")
-                real_os.utime(p,ns=(1_000_000_000,1_000_000_000))
+                real_os.utime(p/"protected_pg1710.dump",ns=(1_000_000_000,1_000_000_000))
             fake_os=SimpleNamespace(name="nt",environ={"LOCALAPPDATA":tmp})
-            with patch.object(r4,"os",fake_os),patch.object(r4,"invoke") as call, \\
+            with patch.object(r4,"os",fake_os),patch.object(r4,"invoke") as call, \
                  patch.object(r4,"inspect_private_archive",return_value={"backup_sha256":"a"*64}):
                 with self.assertRaisesRegex(RuntimeError,"TIMESTAMP_AMBIGUOUS"):
                     r4.find_unique_incomplete_private_backup(latest_validated=True)
