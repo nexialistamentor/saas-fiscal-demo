@@ -54,7 +54,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V5_POLICY_COMMITTED_CHAIN_PHYSICALLY_EMPTY_AWAIT_REAL_SUBMISSION",
+  "technical_readiness": "G5_V5_POLICY_COMMITTED_SUCCESSOR_MANDATE_LOCATED_BUT_CURRENT_ACTOR_NOT_DESIGNATED",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -139,14 +139,34 @@
     "no_retries_or_rollback_repeated": true
   },
   "mandate_v5_review": {
-    "status": "REQUIRES_SUCCESSOR_MANDATE_LINK",
-    "prior_mandate": "MANIFESTACAO_RECEBIDA.md (11ad4a27cce80380659b94a54404877e7b7b65eb9431b7acc5a07e96299b97fe) designates /root for initial G5 proposed version 1",
-    "prior_acceptance": "ACEITACAO_PROPONENTE.md (a9dfd277eaf1b750bc23388c10d6adb1c8b9966f47d324954e41efc7212db424) accepted by the historical /root session only",
-    "successor_proposal": "PROPOSTA_NOVA_MANDATOS_G5_SUCESSOR (1).json remains not issued or signed",
-    "this_executor": "GPT-6 technical execution; not the historical /root instance",
-    "minimum_missing_act": "Named successor mandate for the actual proposing execution, exact policy version 2 and hash 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf, plus the actual proponent's acceptance",
-    "review_handoff_pr26_comment_id": 6511464090,
-    "institutional_submission_issued": false,
-    "decisions_inserted": 0
+    "status": "ISSUED_SUCCESSOR_MANDATE_FOUND_ACTOR_MISMATCH_WITH_THIS_EXECUTION",
+    "source_file": "MANDATO_G5_SUCESSOR_EMITIDO.json",
+    "source_schema": "B02_G5_MANDATE_CONTINUITY_ISSUED_V1",
+    "source_status": "MANDATO_EMITIDO_PROPONENTE_ACEITE_REVISOR_PENDENTE",
+    "issued_mandate_subject": "preparar, submeter e rever o sucessor da politica G5",
+    "stated_predecessor_policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+    "mandate_window_utc": {
+      "from": "2026-10-29T12:00:00Z",
+      "until": "2026-11-08T00:00:00Z"
+    },
+    "named_proponent": "execucao Claude que conduz atualmente o B02",
+    "proponent_acceptance_in_source": true,
+    "reviewer": "execucao revisora segregada anteriormente utilizada para apreciar o sucessor",
+    "reviewer_acceptance_in_source": null,
+    "current_execution": "GPT-6 technical executor of this chat, not the named Claude execution",
+    "exact_successor_hash_fixed_in_mandate": false,
+    "successor_policy": {
+      "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+      "policy_version": 2,
+      "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+      "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9"
+    },
+    "minimum_path": "Named Claude execution can issue its own V5 submission within its actual remit, or Miguel may issue one limited designation for the present GPT-6 execution with exact V5 version 2 and canonical hash; then actor accepts in own words",
+    "no_automatic_root_identity": true,
+    "no_automatic_reviewer_acceptance": true,
+    "no_automatic_instala_e_ativa_renewal": true,
+    "institutional_submission_issued_by_this_execution": false,
+    "policy_decisions_inserted_by_this_execution": 0,
+    "evidence_status": "READ_FULL_ORIGINAL_FROM_USER_LIBRARY; SELF_DESCRIBED_ISSUED_MANDATE_NOT_INDEPENDENT_CRYPTOGRAPHIC_ATTESTATION"
   }
 }
