@@ -201,7 +201,7 @@ def run(args):
     with tempfile.TemporaryDirectory(prefix='B02_RCV31_A2_V4_DISPOSABLE_') as d:
         tmp = Path(d)
         ps = materialize_focal(tmp, Path(args.archive).resolve(),
-                               BASE / PATCH)
+                               Path(args.patch).resolve())
         summary = {'status': 'A2_V4_PHYSICAL_PREFLIGHT_PASS',
                    'branch': HISTORIC_BRANCH, 'head': HISTORIC_HEAD,
                    'source': PINS['v4'], 'observer': PINS['observer_original'],
@@ -245,6 +245,7 @@ def run(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', default=str(Path.home() / 'Downloads' / HISTORIC_ARCHIVE))
+    parser.add_argument('--patch', default=str(Path(r'C:\dev\solveris-b02-g5-v5-publicacao') / 'evidence' / 'b02' / 'rcv31' / 'a2' / PATCH))
     parser.add_argument('--runner-dir', default=str(Path(os.environ.get('LOCALAPPDATA', '')) / 'SOLVERIS' / 'B02_RCV31_R3_BOOTSTRAP_CORRIGIDO'))
     parser.add_argument('--history', default=r'C:\dev\saas-fiscal-demo-a1')
     parser.add_argument('--cas1245', default=None)
