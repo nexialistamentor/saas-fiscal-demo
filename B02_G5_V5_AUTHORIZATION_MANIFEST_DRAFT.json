@@ -557,14 +557,14 @@
     "R4_private_disposable_restore": {
       "runner": "tools/b02_r4_private_backup_disposable_restore.py",
       "tests": "tests/test_b02_r4_private_backup_disposable_restore.py",
-      "test_cases": 6,
-      "runner_code_status": "PUBLISHED_NOT_EXECUTED_ON_WINDOWS",
-      "test_status": "NOT_EXECUTED_ON_WINDOWS",
+      "test_cases": 8,
+      "runner_code_status": "PHYSICAL_PG_DUMP_WRITTEN_NONEMPTY_BUT_TOC_STOP_BEFORE_RESTORE; RESUME_IMPLEMENTED_NOT_EXECUTED",
+      "test_status": "6_OF_6_ORIGINAL_WINDOWS_PASS_20261030; 2_NEW_REGRESSION_TESTS_PUBLISHED_NOT_YET_EXECUTED",
       "source_role": "solveris_test",
       "source_db": "solveris_b02_r4g_test",
       "source_postgres": "17.10",
       "safety": "ONLY_PRIVATE_LOCALAPPDATA_BACKUP_AND_NEW_NETWORKLESS_DISPOSABLE_CONTAINER;NO_WRITE_TO_PROTECTED;NO_VOLUME_PRUNE",
-      "result_status": "NOT_AVAILABLE",
+      "result_status": "STOP_B02_R4_ARCHIVE_TOC_INVALID_NO_DISPOSABLE_RESTORE",
       "approval_boundary": "STRUCTURAL_COUNT_AND_RESTORE_PARTIAL_ONLY;ACL_OWNER_NATIVE_SIGNATURE_SANITIZATION_AND_CAS_VERIFICATION_STILL_NEEDED",
       "physical_result_sha256": null,
       "source_git_blob": "d169bdf6f7430ba264b2b11ea7b288a43640937e",
@@ -577,7 +577,11 @@
       "isolated_restore_no_owner_no_acl": true,
       "code_lexical_scan": "BRACKETS_QUOTED_LITERALS_BALANCED_NOT_PYTHON_COMPILE",
       "integration_status": "TEST_6_PUBLISHED_NOT_EXECUTED_NO_PHYSICAL_R4_RESULT",
-      "no_mei_or_g4_writes": true
+      "no_mei_or_g4_writes": true,
+      "resume_code_commit": "3bdd4ce4c76f679bf9da6011392435dd94c4cca5",
+      "resume_tests_commit": "f2d659a66184ea5d5f12f9cdca1ae58f8facbb45",
+      "resume_only_existing": true,
+      "no_docker_restore_yet": true
     }
   },
   "r1_r7_continuity_matrix": {
@@ -605,9 +609,9 @@
       },
       "R4": {
         "existing": "tools/b02_r4_private_backup_disposable_restore.py; tests/test_b02_r4_private_backup_disposable_restore.py; tools/b02_g5_v5_local_bridge.py",
-        "accepted_proof": "Original R4 runner and six tests implemented. Windows 2026-10-30 first run: 5 PASS, 1 FAIL (mock mutated global os.name, pathlib PosixPath on Windows). Specific test isolation fixed in Git commit 1987972bf1002c0c6535a29863bbc88e37ac3baa; rerun still pending. No protected pg_dump/restore was executed.",
-        "remaining_gap": "Rerun same six focused tests after fast-forward; if all pass, perform one existing protected-db private backup/disposable structural restore and capture evidence.json. Full ACL/OWNER and original R4 authority remain independently scoped, not inferred from --no-owner/--no-acl.",
-        "next_action": "Windows fast-forward safely; run only six R4 focused tests. On exit code 0, execute existing tools/b02_r4_private_backup_disposable_restore.py once. On uncertain restore ACK, reconcile private evidence and disposable state before retry; no new backup design."
+        "accepted_proof": "Original six R4 tests: 6/6 PASS on Windows 2026-10-30. Physical runner reached archive TOC validation and STOP_B02_R4_ARCHIVE_TOC_INVALID; pg_dump had returned exit 0 with nonempty private archive, but TOC not confirmed and disposable restore not started. No DB protected DML/DDL.",
+        "remaining_gap": "Validate existing private PGDMP archive TOC with corrected stdin call, then one disposable structural restore and comparison; preserve original backup. Full OWNER/ACL/authority not proved by --no-owner/--no-acl.",
+        "next_action": "Fast-forward and run only R4 focused suite now containing 8 tests; on PASS run tools/b02_r4_private_backup_disposable_restore.py --resume-existing exactly once. Never run default dumping mode again for this preserved backup. On STOP reconcile stderr/result before retry."
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain",
@@ -629,7 +633,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "1987972bf1002c0c6535a29863bbc88e37ac3baa",
-    "recent_focused_windows_evidence": "2026-10-30: five passed, one mock isolation test failed before runner; PowerShell conditional correctly skipped R4 physical execution; source fixed but not retested."
+    "last_reconciled_git_commit": "f2d659a66184ea5d5f12f9cdca1ae58f8facbb45",
+    "recent_focused_windows_evidence": "2026-10-30: 6/6 original R4 focused tests passed, then pg_dump nonempty and TOC invalid before disposable restore; exact archive unverified, no R4 gate closure. Stdin fix and resume existing private archive published, untested on Windows."
   }
 }
