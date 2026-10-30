@@ -440,11 +440,11 @@
   "g5_temporal_plan": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
   "original_b02_closure": {
     "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md section 11",
-    "R1": "PG17_10_NATIVE_ISOLATED_BUILD_CONTRACT_PREPARED_NOT_EXECUTED; SUCCESSOR_ROOT/ELF_APPROVAL_PENDING",
+    "R1": "PG17_10_NATIVE_ISOLATED_BUILD_CONTRACT_7_TESTS_PASS_NO_REAL_ELF_APPROVED",
     "R3": "V3_NEXT_FREE_CONFIRMED; NEW_G4_G5_WINDOW_UNDECIDED",
     "R4": "G4_TX_926_RECONCILED_BUT_TIME_EXPIRED; PRIVATE_BACKUP_RESTORE_ACL_CUSTODY_PENDING",
     "R5": "G5_V1_HISTORICAL_FOUR_RECORDS_TX_920; V2_0_ACTIVATIONS; 0064_0065_NOT_INSTALLED; REAL_ONESHOT_PENDING",
-    "R6": "R6_PHYSICAL_DOCUMENT_LINKAGE_READ_ONLY_RUNNER_PREPARED_NOT_EXECUTED; ORIGINAL_PER_ITEM_PROOF_PENDING",
+    "R6": "R6_SYNTAX_CORRECTED_6_FOCUSED_TESTS_AND_READ_ONLY_PHYSICAL_QUERY_PENDING",
     "R7": "FINAL_INSTITUTIONAL_CLOSURE_NOT_ISSUED",
     "B02": "OPEN",
     "B03": "BLOCKED"
@@ -458,7 +458,7 @@
       "runner": "tools/b02_g5_native_pg1710_isolated_build.py",
       "focused_tests": "tests/test_b02_g5_native_pg1710_isolated_build.py",
       "focused_test_count": 7,
-      "status": "CODE_PUBLISHED_NOT_EXECUTED_NO_ELF_PRODUCED",
+      "status": "7_OF_7_FOCUSED_TESTS_PASS_WINDOWS_20261030_NO_ELF_COMPILED",
       "requires": "APPROVED_NEW_NATIVE_ROOT_HEADER_WITH_PINNED_SHA_AND_SUCCESSOR_POLICY_HASH",
       "scope": "Build isolated Docker PG17.10, ABI/header/ELF symbols SHA, no mounting protected DB, no signing or installation",
       "historical_v1_header_reused": false,
@@ -472,20 +472,28 @@
     "normative_R6": {
       "runner": "tools/b02_r6_normative_linkage_readonly.py",
       "focused_tests": "tests/test_b02_r6_normative_linkage_readonly.py",
-      "focused_test_count": 5,
-      "status": "CODE_PUBLISHED_NOT_EXECUTED_NO_NEW_NORMATIVE_EVIDENCE",
+      "focused_test_count": 6,
+      "status": "FIRST_WINDOWS_ATTEMPT_ABORTED_PYTHON_SYNTAX_BEFORE_SQL; REPAIRED_NOT_YET_RETESTED",
       "role": "solveris_b02_writer",
       "scope": "Read-only two SEFA/PR PDF SHA to artifact, extraction, RuleVersion, relation and L2 candidate; mark inaccessible without grants",
       "approval_inference": false,
       "canonical_record_hash_equivalence_not_inferred": true,
-      "artifact_hash_format_only": true
+      "artifact_hash_format_only": true,
+      "root_cause": "Truncated SQL regex and duplicated tail introduced by previous source replacement; restored source, test suite reconstructed and regression added",
+      "correction_commits": [
+        "ecc63cfea51f6e8e712a167e270ec378b1728c22",
+        "d69ac4b24fc32b164a370b0e972a6f4b578a649d"
+      ],
+      "db_reads_completed": false,
+      "db_writes": 0
     },
     "prior_focal_18_tests": "18/18 PASS user Windows PG17.10 2026-10-30, previously reconciled",
     "new_focus_tests_executed": false,
     "policy_insert_repeated": false,
     "audit_result_issued_by_this_executor": false,
     "protected_DDL_DML": false,
-    "new_focused_tests_pending_total": 12,
-    "operational_safety": "NO_NEW_DB_ACCESS_OR_WRITES; R1/R6 CODE_ONLY; NOT CLOSED"
+    "new_focused_tests_pending_total": 6,
+    "operational_safety": "NO_NEW_DB_ACCESS_OR_WRITES; R1/R6 CODE_ONLY; NOT CLOSED",
+    "new_focus_tests_status": "NATIVE_7_PASS_R6_6_PENDING_RERUN"
   }
 }
