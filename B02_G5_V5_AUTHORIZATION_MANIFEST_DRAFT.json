@@ -566,7 +566,18 @@
       "safety": "ONLY_PRIVATE_LOCALAPPDATA_BACKUP_AND_NEW_NETWORKLESS_DISPOSABLE_CONTAINER;NO_WRITE_TO_PROTECTED;NO_VOLUME_PRUNE",
       "result_status": "NOT_AVAILABLE",
       "approval_boundary": "STRUCTURAL_COUNT_AND_RESTORE_PARTIAL_ONLY;ACL_OWNER_NATIVE_SIGNATURE_SANITIZATION_AND_CAS_VERIFICATION_STILL_NEEDED",
-      "physical_result_sha256": null
+      "physical_result_sha256": null,
+      "source_git_blob": "d169bdf6f7430ba264b2b11ea7b288a43640937e",
+      "test_git_blob": "3fc618fdc2639612f8286729c1fc2af890a089bd",
+      "archive_compression": "pg_dump_custom_level_6",
+      "preflight_disk_space": "max_2GiB_or_twice_source_database_size",
+      "incomplete_archive_deleted_on_pg_dump_failure": true,
+      "acl_evidence_status": "ICACLS_APPLIED_ON_NEW_PRIVATE_DIR_NOT_INDEPENDENTLY_READBACK",
+      "protected_target_restore": false,
+      "isolated_restore_no_owner_no_acl": true,
+      "code_lexical_scan": "BRACKETS_QUOTED_LITERALS_BALANCED_NOT_PYTHON_COMPILE",
+      "integration_status": "TEST_6_PUBLISHED_NOT_EXECUTED_NO_PHYSICAL_R4_RESULT",
+      "no_mei_or_g4_writes": true
     }
   }
 }
