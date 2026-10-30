@@ -29,13 +29,14 @@ PINNED_C_SOURCE_BLOBS={
 ELF_NAME="b02_g5_native_REAL_CLOSED.so"
 REQUIRED_SYMBOLS=("_PG_init","b02g5_register_real_precommit",
                   "b02g5_assert_signature","b02g5_native_profile")
-DOCKERFILE="""FROM postgres:17.10-bookworm
+DOCKERFILE="""FROM postgres:17.10-trixie
 RUN apt-get update && apt-get install -y --no-install-recommends \\
     gcc libc6-dev make binutils file libssl-dev postgresql-server-dev-17 \\
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /work
 COPY b02_precommit_guard.c b02_g5_native_signature.c b02_g5_approved_roots.h ./
 RUN set -eu; \\
+    test "$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release | tr -d '\\"')" = "trixie"; \\
     test "$(pg_config --version)" = "PostgreSQL 17.10"; \\
     case "$(dpkg-query -W -f='${Version}' postgresql-server-dev-17)" in 17.10*) ;; *) echo STOP_PG1710_SERVER_HEADERS_MISMATCH >&2; exit 33;; esac; \\
     gcc -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter \\
