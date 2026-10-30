@@ -96,6 +96,22 @@ def check_input(header:Path,sha:str,policy_hash:str):
             for p in SOURCES}
 
 
+def capture_verified_inputs(header:Path,header_sha:str,policy_hash:str):
+    """Freeze exactly verified bytes; no filesystem re-open during build."""
+    hashes=check_input(header,header_sha,policy_hash)
+    snapshot={}
+    for p in SOURCES:
+        data=p.read_bytes()
+        if hashlib.sha256(data).hexdigest()!=hashes[str(p.relative_to(ROOT))]:
+            stop("C_SOURCE_CHANGED_AFTER_VERIFICATION_"+p.name)
+        snapshot[p.name]=data
+    root_bytes=header.read_bytes()
+    if hashlib.sha256(root_bytes).hexdigest()!=header_sha:
+        stop("HEADER_CHANGED_AFTER_VERIFICATION")
+    snapshot["b02_g5_approved_roots.h"]=root_bytes
+    return hashes,snapshot
+
+
 def command(*args,timeout=600):
     p=subprocess.run(args,capture_output=True,text=True,timeout=timeout)
     if p.returncode:
@@ -104,14 +120,14 @@ def command(*args,timeout=600):
 
 
 def build(header:Path,header_sha:str,policy_hash:str,out:Path):
-    source_hashes=check_input(header,header_sha,policy_hash)
+    source_hashes,snapshot=capture_verified_inputs(header,header_sha,policy_hash)
     if not shutil.which("docker"):stop("DOCKER_MISSING")
     if out.exists():stop("OUTPUT_ALREADY_EXISTS_PRESERVE")
     out.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="solveris-g5-pg1710-") as temp:
         tmp=Path(temp)
-        for p in SOURCES: shutil.copyfile(p,tmp/p.name)
-        shutil.copyfile(header,tmp/"b02_g5_approved_roots.h")
+        for name,data in snapshot.items():
+            (tmp/name).write_bytes(data)
         (tmp/"Dockerfile").write_text(DOCKERFILE,encoding="utf8")
         tag="solveris-b02-g5-pg1710-isolated:"+hashlib.sha256(
             (policy_hash+header_sha).encode()).hexdigest()[:12]
