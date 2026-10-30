@@ -66,6 +66,27 @@ class R4PrivateRestoreTests(unittest.TestCase):
         self.assertEqual(sub.call_args.args[0][:4],["docker","rm","-f","-v"])
         self.assertIn("disposable",sub.call_args.args[0][-1])
 
+    def test_pg_restore_toc_consumes_stdin_without_dash_filename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive=Path(tmp)/"protected_pg1710.dump"
+            archive.write_bytes(b"PGDMP"+b"synthetic")
+            p=MagicMock(returncode=0,stdout=b"; TOC Entries: 3\\n",stderr=b"")
+            with patch.object(r4.subprocess,"run",return_value=p) as call:
+                result=r4.inspect_private_archive(archive)
+        self.assertEqual(call.call_args.args[0][-2:],["pg_restore","--list"])
+        self.assertNotIn("-",call.call_args.args[0][-2:])
+        self.assertEqual(result["backup_bytes"],len(b"PGDMPsynthetic"))
+        self.assertEqual(len(result["toc_sha256"]),64)
+
+    def test_existing_backup_rejects_non_custom_header_without_docker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive=Path(tmp)/"protected_pg1710.dump"
+            archive.write_bytes(b"not-an-archive")
+            with patch.object(r4.subprocess,"run") as call:
+                with self.assertRaisesRegex(RuntimeError,"PRIVATE_ARCHIVE_NOT_CUSTOM_FORMAT"):
+                    r4.inspect_private_archive(archive)
+                call.assert_not_called()
+
     def test_backup_command_streams_without_password_or_host_network(self):
         src=(ROOT/"tools/b02_r4_private_backup_disposable_restore.py").read_text(
             encoding="utf8")
