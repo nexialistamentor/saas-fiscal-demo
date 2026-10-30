@@ -605,9 +605,9 @@
       },
       "R4": {
         "existing": "tools/b02_r4_private_backup_disposable_restore.py; tests/test_b02_r4_private_backup_disposable_restore.py; tools/b02_g5_v5_local_bridge.py",
-        "accepted_proof": "runner and 6 test cases implemented and integrated at Git commit 411dd069936e742c2deafa39c79200fb8e5ad31f; no later physical completion proof located",
-        "remaining_gap": "one Windows test execution and private protected-db backup/disposable restore evidence; structural --no-owner/--no-acl mode alone cannot prove full original protected ACL/OWNER/custody/authority criterion",
-        "next_action": "Use existing runner once on user protected Windows Docker when accessible; if previously accepted R4 closure evidence surfaces, reconcile it instead; do not rewrite runner or create rival backup."
+        "accepted_proof": "Original R4 runner and six tests implemented. Windows 2026-10-30 first run: 5 PASS, 1 FAIL (mock mutated global os.name, pathlib PosixPath on Windows). Specific test isolation fixed in Git commit 1987972bf1002c0c6535a29863bbc88e37ac3baa; rerun still pending. No protected pg_dump/restore was executed.",
+        "remaining_gap": "Rerun same six focused tests after fast-forward; if all pass, perform one existing protected-db private backup/disposable structural restore and capture evidence.json. Full ACL/OWNER and original R4 authority remain independently scoped, not inferred from --no-owner/--no-acl.",
+        "next_action": "Windows fast-forward safely; run only six R4 focused tests. On exit code 0, execute existing tools/b02_r4_private_backup_disposable_restore.py once. On uncertain restore ACK, reconcile private evidence and disposable state before retry; no new backup design."
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain",
@@ -628,6 +628,8 @@
         "next_action": "Reconcile all exact artifacts/IDs/hashes and original gate criteria before B02 CLOSED; B03 remains blocked; MEI/G4 historic immutable."
       }
     },
-    "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed."
+    "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
+    "last_reconciled_git_commit": "1987972bf1002c0c6535a29863bbc88e37ac3baa",
+    "recent_focused_windows_evidence": "2026-10-30: five passed, one mock isolation test failed before runner; PowerShell conditional correctly skipped R4 physical execution; source fixed but not retested."
   }
 }
