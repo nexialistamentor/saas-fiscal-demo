@@ -31,6 +31,7 @@ ALLOWED = {
     'tools/b02_g5_v5_submission_runner.py',
     'tools/b02_g5_v5_institutional_audit_start_runner.py',
     'tools/b02_g5_v5_institutional_audit_result_runner.py',
+    'tools/b02_g5_v5_current_inventory_readonly.py',
 }
 
 
