@@ -22,6 +22,10 @@ SOURCES=[
  ROOT/"native/g5/historical_20261022/b02_g5_native_signature.c",
 ]
 LEGACY_HEADER=ROOT/"native/g5/historical_20261022/b02_g5_approved_roots.h"
+PINNED_C_SOURCE_BLOBS={
+ "native/g5/historical_20261022/b02_precommit_guard.c":"d47a06ea98a91692f3e21662ee883e154e0496d2",
+ "native/g5/historical_20261022/b02_g5_native_signature.c":"46728de94bd8723bce96f9d970416f2c89b000b4",
+}
 ELF_NAME="b02_g5_native_REAL_CLOSED.so"
 REQUIRED_SYMBOLS=("_PG_init","b02g5_register_real_precommit",
                   "b02g5_assert_signature","b02g5_native_profile")
@@ -75,6 +79,18 @@ def check_input(header:Path,sha:str,policy_hash:str):
         stop("ROOT_SUBJECT_NOT_SUCCESSOR")
     if not all(p.is_file() for p in SOURCES):
         stop("NATIVE_SOURCES_MISSING")
+    for source_path,expected_blob in PINNED_C_SOURCE_BLOBS.items():
+        try:
+            actual=subprocess.run(["git","rev-parse","HEAD:"+source_path],
+                cwd=ROOT,capture_output=True,text=True,timeout=15,check=True).stdout.strip()
+        except (OSError,subprocess.SubprocessError):
+            stop("SOURCE_GIT_REFERENCE_UNAVAILABLE")
+        if actual!=expected_blob:
+            stop("SOURCE_GIT_BLOB_CHANGED_"+Path(source_path).name)
+    dirty=subprocess.run(["git","status","--porcelain","--untracked-files=no"],
+        cwd=ROOT,capture_output=True,text=True,timeout=15,check=True)
+    if dirty.stdout.strip():
+        stop("TRACKED_SOURCES_DIRTY_PRESERVE")
     return {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest()
             for p in SOURCES}
 
