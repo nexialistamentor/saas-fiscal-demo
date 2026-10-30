@@ -614,8 +614,8 @@
       "R1": {
         "existing": "tools/b02_g5_native_pg1710_isolated_build.py; tests/test_b02_g5_native_pg1710_isolated_build.py; historical native/g5 source hashes and prior 7/7 Windows focused tests",
         "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED Existing RCV31-R3 original physical PG17 disposable positive two-document stage + separate-process readback and bounded negatives completed 2026-10-25; exact final 9-file archive SHA256 474d99de34a1817f94b85ffe86d2b549df7c12a0edc2a830cca19bf427b647d8. Independent reviewer found code AST equivalent to exercised operator; A1 approved in disposable scope. Delta4 V3 later reran ONLY the observer-source tamper delta in disposable scope; no repeat needed. Synthetic C/PRE_COMMIT evidence is not new institutional V3 signed native authority. Current A2 V4 focal physical PG17 disposable positive 2026-10-30 PASS with original two SEFA/PR C3 SHA256, pinned observer, cleanup REMOVED, no protected writes; reported 28 triggers, 1057 SQL statements, 4 unit checkpoints and 0 correspondence checkpoints. The detailed primary JSON is on local Windows path; do not infer full independent chain. 2026-10-30 original primary PG17 JSON 313542 bytes SHA256 99d544143e1155c1cc50f9d71d11ccfa333fe06dcc8bb7e98e1f5d68a4651f16 was independently parsed, confirms PASS positive and cleanup REMOVED, two matching C3 SHA256, 19 INSERT category counts (2 normative documents by INSERT heads), but correspondence_checkpoints=[] and observer_field_diagnostics=null; do not inflate to independent cryptographic trust-root proof.",
-        "remaining_gap": "R1 isolated native source preparation fixes: postgres:17.10-trixie distro exact and source/header immutable snapshot instead of reopening verified files; 10 focused unit tests await execution, and no ELF/signature produced. Still needs actual current G5 V3 approved root, exact header/authority/time, native ELF build on correct PG17.10 distro, signature and release audit.",
-        "next_action": "Execute only R1 focused native build contract tests once; do not repeat R4/A2/R5; inspect original segregated review separately. Actual isolated ELF compile only AFTER approved V3 successor root/header and exact canonical policy hash, never using expired roots or synthetic test data for real release."
+        "remaining_gap": "Focal Windows 10/10 native builder tests passed twice on 2026-10-30 (operator terminal output; at remote 395effe1 and 58848aae). R1 final native release still requires exact approved successor G5 V3 root/header and policy hash, prospective G4/G5 temporal authority, isolated PG17.10 Trixie ELF compilation, signature/custody proof and independent release approval. No ELF or installation demonstrated.",
+        "next_action": "Do not rerun focal 10 tests. When legitimate V3 policy/root/header/time and signing authority are fixed, reuse existing isolated builder; verify actual ELF hash/ABI/symbols, obtain distinct approval before protected installation. Never reuse expired V1/V2 roots."
       },
       "R2": {
         "existing": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md; B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json; tools/b02_g5_v5_institutional_audit_result_runner.py; SOLVERIS_B02_RCV31_R3_PARECER_SEGREGADO_20261025.md (historical RCV31 code-review, distinct from G5 V5 institutional reviewer)",
@@ -958,7 +958,7 @@
       "next_action": "R4 structural restoration, source OWNER/ACL inventory and private backup ACL evidence accepted in their tested bounds; no routine replay. Continue R2 reviewer, R3 valid temporal G4/G5, R1 successor root/ELF, R5 real one-shot, R6 legal exact links before R7."
     },
     "R1_native_isolated_image_alignment": {
-      "status": "R1_TRIXIE_NATIVE_SOURCE_AND_FROZEN_INPUTS_READY_10_UNIT_TESTS_PENDING",
+      "status": "FOCUSED_WINDOWS_10_OF_10_PASS_TWICE_NO_ELF",
       "source_image_observed": "postgres:17.10-trixie",
       "source_container_id": "35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948",
       "source_image_evidence": "Real Windows docker inspect previous turn 2026-10-30 confirmed postgres:17.10-trixie; expected original postgres volume has been verified, no new Docker engine access assumed.",
@@ -981,7 +981,7 @@
         "test_commit": "8ee4b9deaf7529ace4f17ea0c13df7aa5b2de963",
         "code_description": "Verified source C and successor header bytes are captured immediately after pinned hash/source checks, rechecked for SHA256 changes, then written to a temporary isolated Docker build context from frozen snapshots only; no reopened filesystem copy source/header after verification.",
         "negative_tests": "3 focal additions: preserved source/header bytes; header modified after check; C file modified after check. Total 10 unit tests in targeted suite, pending execution.",
-        "execution_status": "STATIC_REVIEW_ONLY_NO_WINDOWS_UNIT_RUN_NO_ELF_COMPILED",
+        "execution_status": "FOCUSED_WINDOWS_10_OF_10_PASS_TWICE_NO_ELF_COMPILED",
         "security_scope": "No root, key, HSM, signature, G5 authority or protected binary invented."
       }
     }
