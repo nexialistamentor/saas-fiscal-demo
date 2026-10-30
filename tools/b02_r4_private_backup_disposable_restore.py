@@ -131,7 +131,10 @@ def disposable_restore(path:Path,image:str,token:str):
                 "network":"none","host_ports":[],"installed_to_protected":False}
     finally:
         if created:
-            subprocess.run(["docker","rm","-f","-v",name],capture_output=True,timeout=60)
+            cleanup=subprocess.run(["docker","rm","-f","-v",name],
+                                   capture_output=True,timeout=60)
+            if cleanup.returncode:
+                stop("DISPOSABLE_CLEANUP_FAILED")
 
 
 def main():
