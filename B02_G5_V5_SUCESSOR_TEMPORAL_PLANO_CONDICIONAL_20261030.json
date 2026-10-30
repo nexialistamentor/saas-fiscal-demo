@@ -9,13 +9,14 @@
     "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
     "material_from_utc": "2026-10-29T13:00:00Z",
     "material_until_utc": "2026-10-30T13:00:00Z",
-    "successor_record_policy_version": "NEXT_FREE_FROM_PHYSICAL_READ_ONLY_INVENTORY__3_IF_NO_LATER_VERSION",
-    "versions_1_and_2": "IMMUTABLE"
+    "successor_record_policy_version": 3,
+    "versions_1_and_2": "IMMUTABLE",
+    "version_source": "physical inventory 2026-10-30T16:51:33.765376Z, next free candidate=3, protected DB solveris_b02_r4g_test, SHA256 evidence 477d4ac1c724908bf8aa1f2d9786394b34ccfe20edc0725fea7b1774c58895e1"
   },
   "decision_reserved_for_miguel": {
     "material_from_utc": null,
     "material_until_utc": null,
-    "scope": "Only after technical readiness and G4 current authority, reviewer assessment and exact native/SQL artifact approvals",
+    "scope": "Choose one prospective window only after technical readiness and simultaneously validated G4 successor validity, revised G5 version 3 exact bindings/native/SQL evidence; no historical interval extension",
     "not_derived_from_mandate_until": "2026-11-08T00:00:00Z",
     "no_implicit_approval": true
   },
@@ -23,7 +24,7 @@
     {
       "path": "$.policy_candidate_body.policy_version",
       "current": 2,
-      "next": "NEXT_FREE_VERSION_AFTER_PHYSICAL_READBACK",
+      "next": 3,
       "consumer": "PolicyVersion identity unique and G5 decision chain"
     },
     {
@@ -87,7 +88,7 @@
     "old_V1_V2_records": "NO_UPDATE_DELETE_OR_DUPLICATE_INSERT"
   },
   "prepared_technical_sequence": [
-    "Read-only inventory all versions and activations, identify next free version without inventing activation ID",
+    "Completed 2026-10-30T16:51:33.765376Z: read-only inventory, version next free 3; historical V1 activated txid 920 expired; G4 txid 926 expired; V2 no activation",
     "Finish original reviewer-result event and exact SQL reconciliation for V2 as historical chain within mandate",
     "Complete native/SQL candidate/backup/restore/ACL/atomicity technical gates independent of material window",
     "Present one concrete prospective temporal decision to Miguel after technical readiness",
@@ -95,7 +96,21 @@
     "Solicit focal auditor review/ratification for new subject; preserve older acts",
     "After exact approbation and current authority, only Alembic-controlled installation and one-shot"
   ],
-  "evidence_limit": "Neither native compilation, private backup/restore, migrations installation nor current G4/real CAS verification is claimed here.",
+  "evidence_limit": "Version 3 identified but no G4 successor, future dates or SHA256 V3 chosen/approved. No claim of native compile, backup/restore, 0064/0065 installation or real CAS two-unit delivery.",
   "no_sql_writes": true,
-  "no_g4_mei_mutation": true
+  "no_g4_mei_mutation": true,
+  "physical_temporal_gates": {
+    "inventory_time_utc": "2026-10-30T16:51:33.765376Z",
+    "current_v2_material_expired": "2026-10-30T13:00:00Z",
+    "g4_926_material_expired": "2026-10-30T13:00:00Z",
+    "historical_g5_v1_material_expired": "2026-10-23T07:56:30.910737Z",
+    "no_current_g4_authority_from_this_activation": true,
+    "no_reuse_expired_g5_v1_native_root": true,
+    "no_direct_v2_to_v3_transplant_of_policy_decisions": true,
+    "v3_next_free": true,
+    "native_functions_installed": false,
+    "one_shot_table_installed": false,
+    "physical_basis": "PG17.10 protected read-only, restricted writer. No DML.",
+    "boundary": "Technical preparation permitted; no operative G5 activation until new valid G4 and G5 scope, exact root/ELF approved, real sanitization proven and contractual chain completed"
+  }
 }
