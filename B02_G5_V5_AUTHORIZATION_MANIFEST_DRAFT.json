@@ -613,15 +613,15 @@
     "gates": {
       "R1": {
         "existing": "tools/b02_g5_native_pg1710_isolated_build.py; tests/test_b02_g5_native_pg1710_isolated_build.py; historical native/g5 source hashes and prior 7/7 Windows focused tests",
-        "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED Existing RCV31-R3 original physical PG17 disposable positive two-document stage + separate-process readback and bounded negatives completed 2026-10-25; exact final 9-file archive SHA256 474d99de34a1817f94b85ffe86d2b549df7c12a0edc2a830cca19bf427b647d8. Independent reviewer found code AST equivalent to exercised operator; A1 approved in disposable scope. Delta4 V3 later reran ONLY the observer-source tamper delta in disposable scope; no repeat needed. Synthetic C/PRE_COMMIT evidence is not new institutional V3 signed native authority.",
+        "accepted_proof": "PG17.10 native builder contract 7/7 PASS, NO_REAL_ELF_COMPILED Existing RCV31-R3 original physical PG17 disposable positive two-document stage + separate-process readback and bounded negatives completed 2026-10-25; exact final 9-file archive SHA256 474d99de34a1817f94b85ffe86d2b549df7c12a0edc2a830cca19bf427b647d8. Independent reviewer found code AST equivalent to exercised operator; A1 approved in disposable scope. Delta4 V3 later reran ONLY the observer-source tamper delta in disposable scope; no repeat needed. Synthetic C/PRE_COMMIT evidence is not new institutional V3 signed native authority. Current A2 V4 focal physical PG17 disposable positive 2026-10-30 PASS with original two SEFA/PR C3 SHA256, pinned observer, cleanup REMOVED, no protected writes; reported 28 triggers, 1057 SQL statements, 4 unit checkpoints and 0 correspondence checkpoints. The detailed primary JSON is on local Windows path; do not infer full independent chain.",
         "remaining_gap": "approved successor V3 header + SHA-256, exact approved root/key/validity, actual PG17.10 ELF, signature and binary approval",
-        "next_action": "Do not repeat historical RCV31-R3 A1 positive/negative or Delta4 V3 V7. Resolve only open specific A2 observer source TOCTOU and corroborate independent reviewer judgment if required; native successor ELF/root/header remains an independently authorized later gate when exact temporal G5 authority exists."
+        "next_action": "Original RCV31-R3 and V7 historic results accepted; new A2 V4 disposable PG17 positive is PASS. No further broad technical replays. Only primary report readback, A2-specific reviewer appraisal of independent observer and acknowledged trust-root limits, then authorized successor native approval; actual protected binary remains pending."
       },
       "R2": {
         "existing": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md; B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json; tools/b02_g5_v5_institutional_audit_result_runner.py; SOLVERIS_B02_RCV31_R3_PARECER_SEGREGADO_20261025.md (historical RCV31 code-review, distinct from G5 V5 institutional reviewer)",
         "accepted_proof": "G4-specific R2 fields not a direct proven G5 activation block; functional reviewer provenance recovered; audit start COMMITTED hash da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3 Historical RCV31-R3 reviewer concluded FAVORABLE for concrete A1 disposable correction, PARTIAL for A2 independent root verification; A3/A4 only no static regression. Delta4 V3 subsequent observer tamper negative tested, but no final segregated approval of TOCTOU mitigation shown. Preserve this code review separately from the original G5 V5 institutional audit chain.",
-        "remaining_gap": "Two distinct reviews must not be confused: historical RCV31 code-review needs targeted resolution/review of A2 observer executable TOCTOU (no full baseline rerun), while G5 V5 institutional decision-event still needs own reviewer result if not later issued. Do not hold preparation of isolated technical delta waiting on G5 institutional result.",
-        "next_action": "Technical executor closes ONLY A2 code delta against real observer and archived R3 candidate, with focused evidence and review (no re-audit V13-V30). The separately authorized original G5 V5 reviewer, not technical executor, supplies any missing own institutional audit event on its exact policy subject before real G5 activation; no automatic audit fabrication."
+        "remaining_gap": "RCV31 code-review A2: physical disposable positive now passed; inspect primary JSON and obtain original segregated review of the precise source snapshot delta, including externally rooted cryptographic chain (not inferred from CORRESPONDENCE_CHECKPOINTS=0). Distinct G5 V5 institutional audit reviewer result if not yet issued remains separate. Technical preparation can continue without treating final R7 audit as predecessor.",
+        "next_action": "Consume already produced Windows primary report and the exact A2 V4 patch and reviewed candidate hashes. Seek only original segregated technical appraisal for A2, not a general RCV31 rerun or new audit identity. G5 original reviewer institutional event is a separate prerequisite before protected activation."
       },
       "R3": {
         "existing": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
@@ -655,7 +655,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "35a5e294e76f30d00009c2da07a0d6abcaaab87a",
+    "last_reconciled_git_commit": "94d3141d4c75c2f17a7a33f5482398249a6a14b2",
     "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN. 2026-10-30 follow-up: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, 7/7 canonical tables owner solveris_test, writer SELECT all, INSERT only 4 activation tables, UPDATE/DELETE none, grants=0, writes=0; revision 0063.",
     "historical_R4_R5_disambiguation": {
       "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
@@ -767,7 +767,7 @@
       ]
     },
     "A2_snapshot_candidate_local_not_operational": {
-      "status": "A2_V4_PUBLISHED_AND_REAL_WINDOWS_LOCAL_5_OF_5_PASS_NOT_PG17_TESTED",
+      "status": "A2_V4_LOCAL_5_OF_5_AND_PG17_DISPOSABLE_FOCAL_POSITIVE_PASS_REVIEW_PENDING",
       "source": "B02_RCV31_R3_CONCRETE_PATH_DELTA4_V3_SOBRE_REAL.py",
       "base_sha256": "1fae5b1aefe9630e077eae9c98b44c91d4f9dd99f9e4560a6dab83b74e5e7779",
       "candidate_file": "B02_RCV31_R3_CONCRETE_PATH_DELTA4_V4_A2_SNAPSHOT_CANDIDATO.py",
@@ -776,7 +776,7 @@
       "patch_sha256": "bfd8b397bb245923a7cff10b0b1c06480bef29aa8e2c707691bcc992c5f8ce7e",
       "observer_sha256": "4dc2b18af2942353b788b43bf41a2b6ef37b406bb16c942f335c94f6bc369e2e",
       "change": "Freeze observer Python source bytes with SHA256 before operate(), send verified immutable bytes via stdin to isolated -I interpreter, recheck digest in child, exec compiled captured bytes; avoid second path read and post-COMMIT failure after in-place swap",
-      "local_tests": "5_OF_5_PASS_LINUX_AND_WINDOWS 2026-10-30; real Windows canonical candidate SHA verified after CRLF correction, physical PostgreSQL NOT RUN",
+      "local_tests": "5/5 real Windows local and separate focal physical PG17 disposable positive PASS; source + real observer pinned; review and primary JSON inspection remain",
       "limitations": "No Docker Windows PostgreSQL physical replay or original RCV31 independent reviewer approval; no G5 institutional signature, migration, CAS release or protected DB access. Security check blocked automated GitHub publication of candidate. Incomplete temporary upload was reverted; only manifest updated.",
       "next_exact_step": "Use one existing R3 disposable runner to test only A2 source snapshot behavior with R3 real observer, anti-tamper after initial pin, independent session cryptographic chain; require reviewer focal appraisal before any promotion. DO NOT REEXECUTE R3 positive/negative or V28-V30 by default.",
       "patch_published_commit": "8c68d180c535e88792bc25715bf15f9f29b26d45",
@@ -802,6 +802,33 @@
         "REUSE_V7_DELTA4_TRIAL",
         "REUSE_R4_BACKUP_RESTORE"
       ]
+    },
+    "A2_pg17_disposable_focal_readback": {
+      "status": "RCV31_A2_V4_DISPOSABLE_PG17_FOCAL_POSITIVE_PASS",
+      "evidence_source": "Operator Windows PowerShell output supplied 2026-10-30; primary detailed JSON remains on operator's Windows host, not independently read in this GitHub update",
+      "commit_executed": "94d3141d4c75c2f17a7a33f5482398249a6a14b2",
+      "history_branch": "candidate/g5-successor-window-prep",
+      "history_commit": "56d8b23c8af5f8a9b7fdf1eb8fb01a9f008dc9f8",
+      "scenario": "positive_only",
+      "candidate_sha256": "2fd9c8b9fdae373ec7622971a6d5efdca0f3d18f5082769065f7cd1f0e6bda11",
+      "observer_sha256": "4dc2b18af2942353b788b43bf41a2b6ef37b406bb16c942f335c94f6bc369e2e",
+      "cas1245_sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+      "cas571_sha256": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d",
+      "diagnostic_status": "PASS_DIAGNOSTIC_POSITIVE",
+      "positive_data": {
+        "trigger_count": 28,
+        "statements_logged": 1057,
+        "unit_checkpoints": 4,
+        "correspondence_checkpoints": 0,
+        "cleanup": "REMOVED",
+        "log_lines": "RCV31_A2_V4_DISPOSABLE_PG17_FOCAL_POSITIVE_PASS; A2 V4 exact source snapshot active on disposable copy"
+      },
+      "primary_report_local_path": "C:\\Users\\Oem\\AppData\\Local\\SOLVERIS\\B02Ensaio\\R4G\\B02_RCV31_R3_DIAGNOSTICO_CAUSAL_20261030T222721Z.json",
+      "primary_report_read_by_this_execution": false,
+      "protected_writes": 0,
+      "institutional_audit": "NOT_INFERRED",
+      "interpretation": "PASS of exact A2-V4 source snapshot focal positive scenario on disposable PostgreSQL17; does not prove standalone complete independent-root cryptographic chain, native protected G5 release, migrations 0064/0065 or formal closure of B02. Original negative regressions accepted historically, not rerun.",
+      "next_action": "Read exact original primary report from fixed local path (no rerun), verify detailed observed receipt/signature/cross-session fields; submit only A2 diff plus hashes and original report to segregated RCV31 reviewer for limited appraisal. Do not retry any COMMIT on uncertain state."
     }
   }
 }
