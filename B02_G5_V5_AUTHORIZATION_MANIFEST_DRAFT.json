@@ -26,7 +26,7 @@
     "runner_dry_run": "PASS",
     "historic_jsonb_hash_equivalence": "4/4 PASS",
     "transaction_rollback_reconciliation": "PHYSICAL_G5_V5_OWNER_INSERT_ROLLBACK_RECONCILED",
-    "g5_decisions_and_activation": "PHYSICAL_G5_V2_CHAIN_READ_ONLY_DECISIONS_0_BOOTSTRAP_0_ACTIVATIONS_0",
+    "g5_decisions_and_activation": "V5_SUBMETIDA_PHYSICAL_COMMIT_RECONCILED_AUDIT_AND_ACTIVATION_PENDING",
     "owner_rollback_regression_tests": "6/6 PASS user Windows isolated PostgreSQL",
     "physical_acl": "7/7 tables inventoried; solveris_test owns all; policy writer has SELECT not INSERT on policy_versions/policy_decisions/bootstrap; has INSERT on four activation tables",
     "physical_identity": "solveris_b02_r4g_test; alembic 0063_adr020_policy_activation_atomicity",
@@ -46,7 +46,10 @@
     "policy_postcommit_version_2_rows": 1,
     "g5_v2_chain_focus_tests": "5/5 PASS on user Windows 2026-10-29",
     "g5_v2_chain_readonly_writes": 0,
-    "g5_v2_chain_next_required_event": "submetida"
+    "g5_v2_chain_next_required_event": "submetida",
+    "g5_v2_submission_decision_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
+    "g5_v2_submission_tests": "6/6 PASS mock, real commit separately reconciled",
+    "g5_v2_submission_policy_insert_count": 0
   },
   "authorization_received": {
     "literal": "INSTALA E ATIVA",
@@ -54,7 +57,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V5_POLICY_COMMITTED_GPT6_OWN_SUBMISSION_ISSUED_DB_DECISION_COMMIT_PENDING",
+  "technical_readiness": "G5_V5_POLICY_AND_SUBMETIDA_COMMITTED_RECONCILED_REVIEWER_ACCEPTANCE_AND_AUDIT_PENDING",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -113,16 +116,16 @@
     "time_evidence": "2026-10-29 evening America/Belem; exact PostgreSQL COMMIT time not in output"
   },
   "institutional_chain_reconciliation": {
-    "status": "PHYSICAL_G5_V2_CHAIN_READ_ONLY",
-    "source": "user-provided Windows PostgreSQL terminal output (2026-10-29), role solveris_b02_policy_writer",
+    "status": "SUBMISSION_COMMITTED_EXACT_INDEPENDENT_READBACK",
+    "source": "User-presented PostgreSQL one-shot decision COMMIT result, restricted-role independent readback, 2026-10-30",
     "target_database": "solveris_b02_r4g_test",
     "policy_version": 2,
     "policy_record_id": "B02-G5-V5-policy-v2",
     "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
-    "decision_count": 0,
+    "decision_count": 1,
     "bootstrap_count": 0,
     "activation_count": 0,
-    "next_required_event": "submetida",
+    "next_required_event": "auditoria_iniciada",
     "role": "proponente_institucional",
     "requires": "own genuine G5 v2 proponent event with actor identity, accepted mandate, V5 policy identity, dated provenance and idempotency; no synthetic delegation or inherited V4 actor signature",
     "subsequent_events": [
@@ -135,8 +138,24 @@
       "historical G4/G5 mandate bindings",
       "technical COMMIT as solveris_test"
     ],
-    "writes": 0,
-    "no_retries_or_rollback_repeated": true
+    "writes": 1,
+    "no_retries_or_rollback_repeated": true,
+    "committed_decision_id": "B02-G5-V5-GPT6-submetida-v1",
+    "committed_decision_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
+    "committed_decision_actor": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029",
+    "remaining_events_require_independent_actors": true,
+    "decisions": [
+      {
+        "decision_id": "B02-G5-V5-GPT6-submetida-v1",
+        "decision_event": "submetida",
+        "actor": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029",
+        "record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
+        "policy_version": 2,
+        "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+        "predecessor_id": null,
+        "readback": "PRESENT_EXACT"
+      }
+    ]
   },
   "mandate_v5_review": {
     "status": "GPT6_EXPLICIT_DESIGNATION_EMITTED_AND_SELF_ACCEPTED",
@@ -176,7 +195,7 @@
     "review_actor_acceptance_pending": true
   },
   "own_submission": {
-    "status": "DOCUMENTARY_SUBMISSION_ISSUED_SQL_COMMIT_NOT_YET_RUN",
+    "status": "B02_G5_V5_SUBMETIDA_COMMITTED_RECONCILED",
     "decision_id": "B02-G5-V5-GPT6-submetida-v1",
     "decision_event": "submetida",
     "actor": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029",
@@ -190,8 +209,8 @@
     "technical_owner_decision_insert_only": "solveris_test",
     "restricted_independent_reader": "solveris_b02_policy_writer",
     "sql_runner": "tools/b02_g5_v5_submission_runner.py",
-    "sql_committed": false,
-    "db_record_hash": null,
+    "sql_committed": true,
+    "db_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
     "reviewer_action": "PENDING_OWN_ACCEPTANCE_AND_SEGREGATED_REVIEW",
     "ratification": "USER_PRIOR_RATIFICATION_RECORDED_NOT_SQL_EVENT",
     "actuation": "PENDING_VALID_DECISION_CHAIN",
@@ -200,7 +219,10 @@
     "reviewer_handoff_url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/26#issuecomment-6511734285",
     "runner_git_pinned_sources": true,
     "focussed_tests_added": 6,
-    "focussed_tests_execution": "PENDING_WIN_LOCAL",
-    "policy_material_until_utc": "2026-10-30T13:00:00Z"
+    "focussed_tests_execution": "6/6 PASS on user Windows, mock aaaa... values only",
+    "policy_material_until_utc": "2026-10-30T13:00:00Z",
+    "physical_commit_evidence": "Windows PostgreSQL execution output reported by user; owner solveris_test; independent readback solveris_b02_policy_writer; event submetida; policy_insert_count 0; audits 0; ratifications 0; activations 0; grants 0",
+    "next_event": "auditoria_iniciada",
+    "db_commit_clock": "Not independently observed; no absolute COMMIT timestamp asserted"
   }
 }
