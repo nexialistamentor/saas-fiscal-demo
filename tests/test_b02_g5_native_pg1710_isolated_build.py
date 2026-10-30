@@ -116,10 +116,10 @@ class NativePrebuildContract(unittest.TestCase):
             first_source=build.SOURCES[0]
             def tampered_read(path):
                 return b"tampered C source" if path == first_source else original(path)
-            with patch.object(build,"check_input",return_value=hashes), \\
-                 patch.object(Path,"read_bytes",tampered_read):
-                with self.assertRaisesRegex(RuntimeError,"C_SOURCE_CHANGED_AFTER_VERIFICATION"):
-                    build.capture_verified_inputs(header,sha,V3_HASH)
+            with patch.object(build,"check_input",return_value=hashes):
+                with patch.object(Path,"read_bytes",tampered_read):
+                    with self.assertRaisesRegex(RuntimeError,"C_SOURCE_CHANGED_AFTER_VERIFICATION"):
+                        build.capture_verified_inputs(header,sha,V3_HASH)
 
     def test_existing_artifact_preserved(self):
         with tempfile.TemporaryDirectory() as temp:
