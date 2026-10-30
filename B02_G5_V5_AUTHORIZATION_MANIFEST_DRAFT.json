@@ -655,7 +655,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "5cdd7ff96e25741388ee3fda0b1497f1a372db19",
+    "last_reconciled_git_commit": "35a5e294e76f30d00009c2da07a0d6abcaaab87a",
     "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN. 2026-10-30 follow-up: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, 7/7 canonical tables owner solveris_test, writer SELECT all, INSERT only 4 activation tables, UPDATE/DELETE none, grants=0, writes=0; revision 0063.",
     "historical_R4_R5_disambiguation": {
       "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
@@ -767,7 +767,7 @@
       ]
     },
     "A2_snapshot_candidate_local_not_operational": {
-      "status": "LOCAL_TECHNICAL_CANDIDATE_ONLY_NOT_PUBLISHED_TO_GITHUB",
+      "status": "A2_V4_PUBLISHED_AND_REAL_WINDOWS_LOCAL_5_OF_5_PASS_NOT_PG17_TESTED",
       "source": "B02_RCV31_R3_CONCRETE_PATH_DELTA4_V3_SOBRE_REAL.py",
       "base_sha256": "1fae5b1aefe9630e077eae9c98b44c91d4f9dd99f9e4560a6dab83b74e5e7779",
       "candidate_file": "B02_RCV31_R3_CONCRETE_PATH_DELTA4_V4_A2_SNAPSHOT_CANDIDATO.py",
@@ -776,9 +776,32 @@
       "patch_sha256": "bfd8b397bb245923a7cff10b0b1c06480bef29aa8e2c707691bcc992c5f8ce7e",
       "observer_sha256": "4dc2b18af2942353b788b43bf41a2b6ef37b406bb16c942f335c94f6bc369e2e",
       "change": "Freeze observer Python source bytes with SHA256 before operate(), send verified immutable bytes via stdin to isolated -I interpreter, recheck digest in child, exec compiled captured bytes; avoid second path read and post-COMMIT failure after in-place swap",
-      "local_tests": "5_OF_5_PASS Linux 2026-10-30, includes pre-spawn fail, child --help from original real observer and post-capture path replacement negative; patch -p0 applied cleanly and reproduced SHA256 of candidate",
+      "local_tests": "5_OF_5_PASS_LINUX_AND_WINDOWS 2026-10-30; real Windows canonical candidate SHA verified after CRLF correction, physical PostgreSQL NOT RUN",
       "limitations": "No Docker Windows PostgreSQL physical replay or original RCV31 independent reviewer approval; no G5 institutional signature, migration, CAS release or protected DB access. Security check blocked automated GitHub publication of candidate. Incomplete temporary upload was reverted; only manifest updated.",
-      "next_exact_step": "Use one existing R3 disposable runner to test only A2 source snapshot behavior with R3 real observer, anti-tamper after initial pin, independent session cryptographic chain; require reviewer focal appraisal before any promotion. DO NOT REEXECUTE R3 positive/negative or V28-V30 by default."
+      "next_exact_step": "Use one existing R3 disposable runner to test only A2 source snapshot behavior with R3 real observer, anti-tamper after initial pin, independent session cryptographic chain; require reviewer focal appraisal before any promotion. DO NOT REEXECUTE R3 positive/negative or V28-V30 by default.",
+      "patch_published_commit": "8c68d180c535e88792bc25715bf15f9f29b26d45",
+      "verifier_windows_fix_commit": "35a5e294e76f30d00009c2da07a0d6abcaaab87a"
+    },
+    "A2_windows_source_snapshot_readback": {
+      "status": "RCV31_A2_V4_SOURCE_SNAPSHOT_LOCAL_5_OF_5_PASS",
+      "provenance": "Actual Windows .venv-release PowerShell output from Miguel 2026-10-30",
+      "commit_verified": "35a5e294e76f30d00009c2da07a0d6abcaaab87a",
+      "source_sha256": "1fae5b1aefe9630e077eae9c98b44c91d4f9dd99f9e4560a6dab83b74e5e7779",
+      "observer_sha256": "4dc2b18af2942353b788b43bf41a2b6ef37b406bb16c942f335c94f6bc369e2e",
+      "candidate_sha256": "2fd9c8b9fdae373ec7622971a6d5efdca0f3d18f5082769065f7cd1f0e6bda11",
+      "tests": 5,
+      "tests_pass": 5,
+      "initial_issue": "Original Windows git apply CRLF caused STOP_CANDIDATE_HASH_DIVERGENCE 4d626842e6e1b5af2f46033e18115487b5875ce20c7837fb2d82ec7e1534a38e",
+      "resolved_by": "35a5e294 canonicalize CRLF to LF and reverify exact pinned candidate hash, not bypass checksum",
+      "protected_writes": 0,
+      "physical_postgresql_test": "NOT_RUN",
+      "institutional_review": "NOT_INFERRED",
+      "next_step": "Focal disposable PostgreSQL17 observer source snapshot integration only; do not repeat older RCV31-R3 positives or V13-V30 without delta",
+      "no_repetition": [
+        "REUSE_HISTORIC_RCV31_R3_PG_RESULT",
+        "REUSE_V7_DELTA4_TRIAL",
+        "REUSE_R4_BACKUP_RESTORE"
+      ]
     }
   }
 }
