@@ -655,7 +655,7 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "d42291b1b08a1b9c0b9e9543b0267ea8d7da97c5",
+    "last_reconciled_git_commit": "ed10d66b84756c3045bf198ae957bc094b22fb1d",
     "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN. 2026-10-30 follow-up: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, 7/7 canonical tables owner solveris_test, writer SELECT all, INSERT only 4 activation tables, UPDATE/DELETE none, grants=0, writes=0; revision 0063.",
     "historical_R4_R5_disambiguation": {
       "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
@@ -913,6 +913,17 @@
       "windows_checkout_head": "d42291b1b08a1b9c0b9e9543b0267ea8d7da97c5",
       "windows_execution_kind": "LOCAL_UNIT_TESTS_NO_REAL_DB",
       "preexisting_evidence_preserved": true
+    },
+    "R5_four_hashes_physical_readback": {
+      "status": "NOT_RUN_STOPPED_CONTAINER",
+      "evidence": "Actual Windows PowerShell output from operator: docker exec -i solveris-pg17-migration-test returned 'container 35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948 is not running'. LASTEXITCODE nonzero and STOP_R5_LEITURA_FISICA; $out empty, $dados null, follow-up STOP_R5_RELATORIO_AUSENTE and STOP_R5_HASH_OU_IDENTIDADE_DIVERGENTE.",
+      "false_positive_warning": "Trailing PowerShell Write-Output R5_FOUR_HASHES_PHYSICAL_READ_ONLY_PASS ran independently despite previous terminating statements; it is NOT a genuine verification success. Never accept that text without actual parsed 4 true hashes and successful Docker exit.",
+      "primary_db_query_executed": false,
+      "four_hashes_verified": false,
+      "local_unit_tests": "12/12 PASS; unchanged",
+      "protected_sql_writes_executed": false,
+      "docker_container_id_observed": "35f719684bfa63a3d92f40974112162d51041a6a72033b180d18eb0a9f560948",
+      "next_step": "Inspect Docker container state, exit code, exact image and volume mounts via docker inspect/read-only before deciding any start. No docker start/stop/rm/prune, no volume mutation, no repeated tests. Only execute one read-only hash check after confirming container is running and matches original guarded identity."
     }
   }
 }
