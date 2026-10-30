@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"tools"))
@@ -78,6 +79,47 @@ class NativePrebuildContract(unittest.TestCase):
         self.assertNotIn("docker exec",src)
         self.assertNotIn("CREATE FUNCTION",src)
         self.assertNotIn("B02_G5_TEST_PROFILE",src)
+
+    def test_native_build_uses_frozen_verified_bytes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            header=Path(temp)/"b02_g5_approved_roots.h"
+            sha=header_fixture(header)
+            hashes,images=build.capture_verified_inputs(header,sha,V3_HASH)
+            self.assertEqual(set(images),{
+                "b02_precommit_guard.c","b02_g5_native_signature.c",
+                "b02_g5_approved_roots.h"})
+            self.assertEqual(hashlib.sha256(images[header.name]).hexdigest(),sha)
+            for p in build.SOURCES:
+                self.assertEqual(hashlib.sha256(images[p.name]).hexdigest(),
+                                 hashes[str(p.relative_to(ROOT))])
+            source=(ROOT/"tools/b02_g5_native_pg1710_isolated_build.py").read_text()
+            self.assertIn("source_hashes,snapshot=capture_verified_inputs",source)
+            self.assertIn("(tmp/name).write_bytes(data)",source)
+            self.assertNotIn("shutil.copyfile",source)
+
+    def test_root_changed_between_verification_and_snapshot_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            header=Path(temp)/"b02_g5_approved_roots.h"
+            sha=header_fixture(header)
+            hashes=build.check_input(header,sha,V3_HASH)
+            header.write_bytes(b"replaced after original verification")
+            with patch.object(build,"check_input",return_value=hashes):
+                with self.assertRaisesRegex(RuntimeError,"HEADER_CHANGED_AFTER_VERIFICATION"):
+                    build.capture_verified_inputs(header,sha,V3_HASH)
+
+    def test_c_source_changed_between_verification_and_snapshot_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            header=Path(temp)/"b02_g5_approved_roots.h"
+            sha=header_fixture(header)
+            hashes=build.check_input(header,sha,V3_HASH)
+            original=Path.read_bytes
+            first_source=build.SOURCES[0]
+            def tampered_read(path):
+                return b"tampered C source" if path == first_source else original(path)
+            with patch.object(build,"check_input",return_value=hashes), \\
+                 patch.object(Path,"read_bytes",tampered_read):
+                with self.assertRaisesRegex(RuntimeError,"C_SOURCE_CHANGED_AFTER_VERIFICATION"):
+                    build.capture_verified_inputs(header,sha,V3_HASH)
 
     def test_existing_artifact_preserved(self):
         with tempfile.TemporaryDirectory() as temp:
