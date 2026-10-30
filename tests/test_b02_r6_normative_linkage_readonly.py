@@ -44,7 +44,7 @@ class R6EvidenceContract(unittest.TestCase):
         read.assert_called_once()
 
     def test_even_candidates_do_not_prove_fiscal_authority(self):
-        data={"artifacts":[{"record_hash_valid":True,"normative_artifact_id":"some"}],
+        data={"artifacts":[{"record_hash_shape_valid":True,"normative_artifact_id":"some"}],
               "rule_candidates":[{"rule_version_record_id":"some"}],
               "normative_relations_total":4,"rule_versions_total":3,
               "mva_pr_12119090":[{"id":12}]}
@@ -59,12 +59,12 @@ class R6EvidenceContract(unittest.TestCase):
         self.assertEqual(result["writes"],0)
 
     def test_corrupt_artifact_row_hash_stops(self):
-        data={"artifacts":[{"record_hash_valid":False}],
+        data={"artifacts":[{"record_hash_shape_valid":False}],
               "rule_candidates":[],"normative_relations_total":0,
               "rule_versions_total":0,"mva_pr_12119090":[]}
         with patch.object(r6.bridge,"managed_container",return_value=contextlib.nullcontext()),\
              patch.object(r6,"read",side_effect=[privileges(),data]):
-            with self.assertRaisesRegex(RuntimeError,"EXACT_ARTIFACT_RECORD_HASH_INVALID"):
+            with self.assertRaisesRegex(RuntimeError,"ARTIFACT_RECORD_HASH_FORMAT_INVALID"):
                 r6.inspect()
 
     def test_bridge_uses_existing_document_writer(self):
