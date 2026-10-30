@@ -572,7 +572,7 @@
       "archive_compression": "pg_dump_custom_level_6",
       "preflight_disk_space": "max_2GiB_or_twice_source_database_size",
       "incomplete_archive_deleted_on_pg_dump_failure": true,
-      "acl_evidence_status": "NTFS_ICACLS_APPLIED_TO_PRIVATE_BACKUP_NOT_INDEPENDENTLY_RECONCILED; ORIGINAL_OWNER_ACL_UNRESTORED",
+      "acl_evidence_status": "SOURCE_7_TABLE_OWNER_ACL_READ_ONLY_VERIFIED_20261030; PRIVATE_NTFS_ACL_NOT_INDEPENDENTLY_READBACK; DISPOSABLE_OWNER_GRANTS_NOT_RESTORED_BY_DESIGN",
       "protected_target_restore": false,
       "isolated_restore_no_owner_no_acl": true,
       "code_lexical_scan": "BRACKETS_QUOTED_LITERALS_BALANCED_NOT_PYTHON_COMPILE",
@@ -602,7 +602,8 @@
       "protected_database_writes": 0,
       "protected_volume_mutations": 0,
       "backup_candidates_retained": 3,
-      "archive_reused": true
+      "archive_reused": true,
+      "acl_source_inventory_status": "PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS"
     }
   },
   "r1_r7_continuity_matrix": {
@@ -630,9 +631,9 @@
       },
       "R4": {
         "existing": "tools/b02_r4_private_backup_disposable_restore.py; tests/test_b02_r4_private_backup_disposable_restore.py; tools/b02_g5_v5_local_bridge.py; original V13 synthetic pg_dump/pg_restore catalog/content/sequences/ACL evidence; tools/b02_g5_v5_physical_readonly_preflight.py::_acl_inventory (existing read-only physical ACL/owner enumerator)",
-        "accepted_proof": "Windows 2026-10-30: 12/12 focused tests PASS and real private archive reuse / one networkless disposable PostgreSQL 17.10 structural restore succeeded: R4_DISPOSABLE_STRUCTURAL_RESTORE_MATCHED. Protected source and disposable counts equal across 9 whitelisted tables (policy_versions=9, policy_decisions=34, policy_activations=10, executions/generations/outbox=10 each, bootstrap_authority_records=4, normative_artifacts=1, extraction_results=0). Archive 741807 bytes; SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e; TOC SHA256 7709152f89650a169b4dbbeaa5422cdc2bd878753637f7100f57b837c1d3de66. Archive reused, 3 candidates retained; protected writes=0, protected volume mutations=0, disposable network=none and host ports=[]. User provided runner result; evidence.json file and Windows ACL not independently inspected. Previously completed V13 simulated restore covered catalog/content/sequences/ACL on disposable fixture; it was not a protected-source backup. These accepted synthetic results and 12/12 focused R4 tests MUST NOT be rerun by routine.",
-        "remaining_gap": "Backup of protected PG17.10 source and separate structural restoration of its nine whitelisted tables: VERIFIED, DO NOT REPEAT. V13 synthetic catalog/sequences/ACL recovery: accepted in that original isolated scope, DO NOT REPEAT. Original real-source OWNER/ACL/security/roles verification and private NTFS ACL independent readback: not established by --no-owner/--no-acl, requires only focused read-only reconciliation with existing ACL inventory tools, not another dump. Original R4 CAS/trust/current validity remains coupled to R3/R5 authority; no assumed PASS.",
-        "next_action": "Reuse existing tools/b02_g5_v5_physical_readonly_preflight.py --acl-inventory through tools/b02_g5_v5_local_bridge.py only if physical OWNER/ACL source verification remains missing; reconcile against prior ACL inventory before any new query. No new ACL script, no GRANT/ALTER ROLE, no backup/restoration rerun. Validate private NTFS ACL separately by read-only inspection if required; do not claim recoverable actual owner rights from NO_OWNER_NO_ACL dump."
+        "accepted_proof": "Windows 2026-10-30: 12/12 focused tests PASS and real private archive reuse / one networkless disposable PostgreSQL 17.10 structural restore succeeded: R4_DISPOSABLE_STRUCTURAL_RESTORE_MATCHED. Protected source and disposable counts equal across 9 whitelisted tables (policy_versions=9, policy_decisions=34, policy_activations=10, executions/generations/outbox=10 each, bootstrap_authority_records=4, normative_artifacts=1, extraction_results=0). Archive 741807 bytes; SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e; TOC SHA256 7709152f89650a169b4dbbeaa5422cdc2bd878753637f7100f57b837c1d3de66. Archive reused, 3 candidates retained; protected writes=0, protected volume mutations=0, disposable network=none and host ports=[]. User provided runner result; evidence.json file and Windows ACL not independently inspected. Previously completed V13 simulated restore covered catalog/content/sequences/ACL on disposable fixture; it was not a protected-source backup. These accepted synthetic results and 12/12 focused R4 tests MUST NOT be rerun by routine. Physical OWNER/ACL inventory 2026-10-30 on the protected source PG17.10 `solveris_b02_r4g_test`: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, revision 0063_adr020_policy_activation_atomicity, 7/7 canonical tables owned by solveris_test. `solveris_b02_policy_writer` has SELECT=true on all 7; INSERT=false on policy_versions, policy_decisions, bootstrap_authority_records; INSERT=true only on policy_activations, policy_activation_executions, policy_activation_generations, policy_activation_outbox_events; UPDATE/DELETE=false on all 7. grants=0, writes=0. This is physical source-object privilege evidence, not restored ACL.",
+        "remaining_gap": "Source OWNER/ACL on the 7 original canonical activation/policy/bootstrap tables: PHYSICALLY VERIFIED READ-ONLY, no privilege escalation, no need to rerun. Structural private pg_dump, TOC and disposable restore: VERIFIED, DO NOT REPEAT. The destination restore used --no-owner --no-acl, therefore source->destination owner/grant equivalence was not tested; original V13 synthetic owner/ACL restore evidence remains accepted only in its isolated scope. NTFS private directory ACL was applied but no independent `icacls` readback was furnished. CAS/sanitization, current G4/G5 material validity, signatures/native successor and operational SQL 0064/0065 remain outside this R4 recovery subgate.",
+        "next_action": "Do not repeat 12 R4 tests, backup, restore or source OWNER/ACL inventory. Preserve R4 structural and role/privilege subgates as completed. If original R4 definition requires verified private NTFS ACL, perform one read-only `icacls` on the already selected private directory and check against intended SID/SYSTEM; do not alter permissions. Progress through existing R2/R3/R5/R6 institutional and operational gates rather than regenerating backups."
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain; original isolated V21 PRE_COMMIT C and invalid signature tests; V23 successful synthetic two-unit commit/readback; V28 receipt/tampering/rollback; V30 one-shot concurrency/orphan/unknown-ACK synthetic exercises, accepted with original scope (handoff V31 20261024)",
@@ -654,8 +655,8 @@
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
-    "last_reconciled_git_commit": "4e180507a877db6294835d1112a446f2b3374b74",
-    "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN.",
+    "last_reconciled_git_commit": "ee12bdc763cdaea8265d12b15c795d6e88232132",
+    "recent_focused_windows_evidence": "2026-10-30 R4: Windows focused tests 12/12 PASS; existing PG17.10 PGDMP 741807 bytes SHA256 3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e reused; 3 candidates retained, verified TOC; real disposable networkless restore matched 9 table counts with protected source. no protected DB writes/volume mutations, no owner/ACL restoration. R4 structural subgate accepted, full R4 OPEN. 2026-10-30 follow-up: PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS, 7/7 canonical tables owner solveris_test, writer SELECT all, INSERT only 4 activation tables, UPDATE/DELETE none, grants=0, writes=0; revision 0063.",
     "historical_R4_R5_disambiguation": {
       "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md; independent PostgreSQL read-only G5 V1/V2 inventory 2026-10-30T16:51:33Z; Windows physical R4 restore 2026-10-30",
       "historical_G5_V1_activation": {
@@ -694,6 +695,31 @@
         "NO_DUPLICATE_SQL_COMMIT",
         "NO_NEW_ACL_TOOL_UNLESS_EXISTING_PROVEN_DEFECT"
       ]
+    },
+    "R4_source_owner_acl_readback": {
+      "status": "PHYSICAL_READ_ONLY_ACL_INVENTORY_PASS",
+      "database": "solveris_b02_r4g_test",
+      "revision": "0063_adr020_policy_activation_atomicity",
+      "source_owner": "solveris_test",
+      "role": "solveris_b02_policy_writer",
+      "grants": 0,
+      "writes": 0,
+      "select_all_7": true,
+      "update_all_7": false,
+      "delete_all_7": false,
+      "insert_allowed_tables": [
+        "policy_activation_executions",
+        "policy_activation_generations",
+        "policy_activation_outbox_events",
+        "policy_activations"
+      ],
+      "insert_denied_tables": [
+        "bootstrap_authority_records",
+        "policy_decisions",
+        "policy_versions"
+      ],
+      "evidence_provenance": "Windows output supplied by Miguel in conversation, existing tools/b02_g5_v5_local_bridge.py + tools/b02_g5_v5_physical_readonly_preflight.py --acl-inventory",
+      "scope_limit": "SOURCE_TABLE_OWNER_AND_POLICY_WRITER_PRIVILEGES_ONLY_NOT_BACKUP_RESTORED_ACL_OR_ALL_OTHER_ROLE_OBJECTS"
     }
   }
 }
