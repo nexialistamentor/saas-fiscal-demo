@@ -94,14 +94,14 @@ Trabalho executado: rastreio de chamadas Python/SQL, separação do domínio G4/
 
 ## 8. Inventário físico de versões e matriz original de fecho B02
 
-**Ferramenta única publicada:** `tools/b02_g5_v5_current_inventory_readonly.py` usa `b02_g5_v5_local_bridge.py` com sessão SQL `READ ONLY`, verifica leitor restrito e consulta versões 1/2, decisões, bootstrap, ativações, execução, geração, outbox, intervalo, hashes, identificadores, TXID quando presente, rotinas nativas e existência de reserva one-shot. O repositório e o serviço físico são distintos: **a ferramenta ainda requer execução no Windows do operador**. Se a tabela one-shot não conceder SELECT ao leitor restrito, o resultado marca **não legível**, sem elevar privilégios.
+**Ferramenta única publicada e EXECUTADA no Windows:** `tools/b02_g5_v5_current_inventory_readonly.py` usa `b02_g5_v5_local_bridge.py` com sessão SQL `READ ONLY`, verifica leitor restrito e consulta versões 1/2, decisões, bootstrap, ativações, execução, geração, outbox, intervalo, hashes, identificadores, TXID quando presente, rotinas nativas e existência de reserva one-shot. Prova física 2026-10-30T16:51:33.765376Z, `solveris_b02_r4g_test`, leitor `solveris_b02_policy_writer`, PostgreSQL 17.10; zero escritas. Se futura tabela one-shot negar SELECT ao leitor restrito, o resultado marca **não legível**, sem elevar privilégios.
 
 | Objeto | Âmbito/evidência já disponível | Conclusão atual |
 |---|---|---|
 | G4 | `B02_G4_RESULTADO_RECONCILIADO_OUTUBRO_20261029.json`: txid `926`, ativação `B02-05ede-activation-v3`, hash `504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4` | **Reconciliado no âmbito G4**, sem delegação automática G5 |
-| G5 V1 | Hash `57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa`; header histórico `native/g5/historical_20261022/b02_g5_approved_roots.h` fixa `B02-57982-activation-v1`, raízes válidas somente até 23/10 | Política histórica conhecida; **ativação física atual não determinada**, sem declarar desaparecimento |
-| G5 V2 | Hash `007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf`, política `B02-G5-V5-policy-v2`, `record_hash=fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9`; duas decisões SQL reconciliadas por operador | **Apenas política e eventos `submetida`/`auditoria_iniciada` COMMITTED**. `activation_id`/hash/txid não demonstrados por leitura atual |
-| Instalação G5 | `migrations/candidates/0064_...` e `0065_...` não pertencem à árvore `migrations/versions`; 0063 aplicada na última prova | Candidatas; sem confirmação de instalação física sucessora |
+| G5 V1 | Hash `57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa`; ativação física `B02-57982-activation-v1` com record_hash `0ccc9f90b9f338d14548189d48612e220b3b7b673e9e99c5aa55a9b4cdfb0ac2`, TXID `920`; intervalo até 23/10 às 07:56:30 UTC | **ATIVADA HISTORICAMENTE, REGISTO PRESENTE, INTERVALO EXPIRADO**; `state=activa` não dá autoridade temporal atual |
+| G5 V2 | Hash `007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf`, política `B02-G5-V5-policy-v2`, `record_hash=fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9`; duas decisões SQL de hash válido | **ZERO ativações, bootstrap, execução, geração ou outbox** na consulta física atual; resultado de auditoria e ratificação SQL ainda ausentes |
+| Instalação G5 | `alembic_version=0063_adr020_policy_activation_atomicity`, `native_symbols=[]`, `one_shot_table=false` na leitura física 30/10 16:51Z | **0064/0065 não instaladas no alvo observado**; sem funções nativas G5 nem tabela one-shot |
 | Binário G5 | C e header históricos em `native/g5/historical_20261022/`; root original V1 expirada, não há ELF sucessor aprovado | **Não homologado** para V2 ou futuro V3 |
 | One-shot real | V30 sintético comprovou concorrência e ACK simulado nos seus limites; nenhum comprovativo de duas unidades reais atual | **Operação protegida não demonstrada** |
 
@@ -121,3 +121,31 @@ Trabalho executado: rastreio de chamadas Python/SQL, separação do domínio G4/
 **Verificação de capacidade nativa deste executor:** o ambiente de trabalho aqui disponível anuncia PostgreSQL **17.11** e não contém `postgres.h` do servidor. Não serve para homologar o ELF de **17.10** no Docker Windows alvo. A compilação e o ensaio de backup/restauro do protegido exigem o runtime físico; não foram fingidos.
 
 **Regra de fecho:** uma alegação de `G5 ativado` é `NAO_DEMONSTRADA` sem `activation_id`, hash válido, decisão `ratificada`, intervalo e transação coerente na **base correta**. Não afirmar que um registo físico desapareceu sem esse inventário; não confundir rollbacks, perfis sintéticos e provas protegidas.
+
+## 9. Prova física reconciliada 30/10 — ativação histórica V1 distinta de V2
+
+**Fonte primária apresentada pelo operador (ficheiro de saída local nesta conversa):** `Texto colado(20261030-165201).txt`, SHA-256 integral `477d4ac1c724908bf8aa1f2d9786394b34ccfe20edc0725fea7b1774c58895e1`. Consulta `2026-10-30T16:51:33.765376Z` ao PostgreSQL **17.10**, `solveris_b02_r4g_test`, `session_user=current_user=solveris_b02_policy_writer`, revisão `0063_adr020_policy_activation_atomicity`, `database_writes=0`. Testes focais no Windows: **7/7 R2-G5, 5/5 auditor-result, 6/6 physical-inventory**; não provaram operação real ou assinatura.
+
+| Elemento físico | G5 V1 histórica | G5 V2 atual |
+|---|---|---|
+| `policy_hash` | `57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa` | `007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf` |
+| `policy_record_hash` | `705c7e2879abb37069f65eb39b544aa3028fc4b0dea282e60d3dd1628046171d` | `fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9` |
+| Decisões | `submetida → auditoria_iniciada → auditada_favoravelmente → ratificada` | `submetida → auditoria_iniciada` |
+| Ativação | `B02-57982-activation-v1` | **nenhuma** |
+| Hash ativação | `0ccc9f90b9f338d14548189d48612e220b3b7b673e9e99c5aa55a9b4cdfb0ac2` válido | n/a |
+| ID/hash execução | `B02-57982-execution-v1` / `1434149d1b3dc9593bbe51e6f1fbd170c32deaa29e2437eb0ff1b6e40b36ddf1` | n/a |
+| ID/hash geração | `B02-57982-generation-v1` / `1ae64d751814014ce598858a572d0cfaf12e108b2f025985e6eb7ef118a5116f` | n/a |
+| ID/hash outbox | `B02-57982-outbox-v1` / `9694b41258dbc43339d4b77a1b85457d0e20cff425f5b349f97c537a29bf140f` | n/a |
+| TXID execução/ativação/geração/outbox | **`920` comum** | nenhum |
+| `state` atual na tabela | `activa` (registo histórico) | ausência |
+| Validade material | até `2026-10-23T07:56:30.910737Z` | até `2026-10-30T13:00:00Z` |
+
+A G5 V1 ficou **historicamente ativada e reconciliada na mesma transação**, mas essa transação não constitui liberação documental protegida one-shot e o intervalo da ativação expirou; a coluna `state=activa` não prolonga vigência temporal. Não houve desaparecimento de ativação. A G5 V2 tem `activation_count=0` efetivamente verificado; isso difere de "não encontrei documento de ativação".
+
+**G4 txid 926:** `B02-05ede-activation-v3`, hash `504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4`, intervalo `2026-10-29T13:00:00Z → 2026-10-30T13:00:00Z`. Preservada como evidência, mas também expirada à hora da consulta. Não delega nova autoridade G5.
+
+**Estado de instalação no mesmo alvo:** `alembic_version=0063`; nenhuma função G5 nas `native_symbols` pesquisadas; `one_shot_table=false`; `one_shot_reservations=null` porque a tabela não existe. Logo, a operação G5 de duas unidades reais não foi demonstrada e **não poderia ser inferida dos quatro registos da V1**.
+
+**Sucessor temporal:** V3 é a próxima versão livre **fisicamente observada**, não uma janela aprovada. A proposta condicionada mantém os nove campos afetados e a dependência de G4 prospectivamente válido. Não alterar hashes, linhas ou limites V1/V2; não alegar homologação de binário ou backup privado.
+
+**R1–R7:** sem fecho de R1 nativo real, R3 temporal, R4 preparação protegida/backup, R5 one-shot real, R6 norma→RuleVersion→item e R7 ratificação final. B02 **OPEN**, B03 **BLOCKED**.
