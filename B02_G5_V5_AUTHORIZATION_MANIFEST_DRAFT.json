@@ -444,7 +444,7 @@
     "R3": "V3_NEXT_FREE_CONFIRMED; NEW_G4_G5_WINDOW_UNDECIDED",
     "R4": "G4_TX_926_RECONCILED_BUT_TIME_EXPIRED; PRIVATE_BACKUP_RESTORE_ACL_CUSTODY_PENDING",
     "R5": "G5_V1_HISTORICAL_FOUR_RECORDS_TX_920; V2_0_ACTIVATIONS; 0064_0065_NOT_INSTALLED; REAL_ONESHOT_PENDING",
-    "R6": "R6_SYNTAX_CORRECTED_6_FOCUSED_TESTS_AND_READ_ONLY_PHYSICAL_QUERY_PENDING",
+    "R6": "R6_ROLE_ACL_PHYSICALLY_KNOWN_SOURCE_2_OF_5_TABLES_READABLE; PARTIAL_EVIDENCE_RUNNER_READY_UNEXECUTED_RULE_LINKAGE_PENDING",
     "R7": "FINAL_INSTITUTIONAL_CLOSURE_NOT_ISSUED",
     "B02": "OPEN",
     "B03": "BLOCKED"
@@ -472,8 +472,8 @@
     "normative_R6": {
       "runner": "tools/b02_r6_normative_linkage_readonly.py",
       "focused_tests": "tests/test_b02_r6_normative_linkage_readonly.py",
-      "focused_test_count": 6,
-      "status": "FIRST_WINDOWS_ATTEMPT_ABORTED_PYTHON_SYNTAX_BEFORE_SQL; REPAIRED_NOT_YET_RETESTED",
+      "focused_test_count": 8,
+      "status": "PARTIAL_ACL_INVENTORY_8_TEST_SOURCE_PENDING_EXECUTION_ON_WINDOWS",
       "role": "solveris_b02_writer",
       "scope": "Read-only two SEFA/PR PDF SHA to artifact, extraction, RuleVersion, relation and L2 candidate; mark inaccessible without grants",
       "approval_inference": false,
@@ -484,16 +484,40 @@
         "ecc63cfea51f6e8e712a167e270ec378b1728c22",
         "d69ac4b24fc32b164a370b0e972a6f4b578a649d"
       ],
-      "db_reads_completed": false,
-      "db_writes": 0
+      "db_reads_completed": true,
+      "db_writes": 0,
+      "verified_prior_test_result": "6/6 PASS on Windows 2026-10-30, previous source revision before ACL partial branch",
+      "verified_prior_physical_result": {
+        "status": "R6_SOURCE_TABLES_INACCESSIBLE_WITH_EXISTING_ROLE",
+        "database": "solveris_b02_r4g_test",
+        "role": "solveris_b02_writer",
+        "revision": "0063_adr020_policy_activation_atomicity",
+        "allowed_tables": [
+          "normative_artifacts",
+          "extraction_results"
+        ],
+        "denied_tables": [
+          "rule_versions",
+          "normative_relation_versions",
+          "tabela_mva"
+        ],
+        "writes": 0,
+        "grants": 0,
+        "fiscal_authority": false
+      },
+      "read_only_partial_runner_commit": "27aa1e1ed17b51b6cd6fa80a795ad480b04df0f9",
+      "read_only_partial_tests_commit": "a12847724ef20b7080b8af478d8ecea0ea2f2fca",
+      "partial_access_policy": "USE_EXACT_TWO_READABLE_TABLES_NO_OWNER_SWITCH_NO_ACL_EDITS",
+      "only_acl_read_executed": true,
+      "partial_inventory_executed": false
     },
     "prior_focal_18_tests": "18/18 PASS user Windows PG17.10 2026-10-30, previously reconciled",
     "new_focus_tests_executed": false,
     "policy_insert_repeated": false,
     "audit_result_issued_by_this_executor": false,
     "protected_DDL_DML": false,
-    "new_focused_tests_pending_total": 6,
+    "new_focused_tests_pending_total": 8,
     "operational_safety": "NO_NEW_DB_ACCESS_OR_WRITES; R1/R6 CODE_ONLY; NOT CLOSED",
-    "new_focus_tests_status": "NATIVE_7_PASS_R6_6_PENDING_RERUN"
+    "new_focus_tests_status": "NATIVE_7_PASS_R6_6_PREVIOUS_PASS_NEW_8_TESTS_PENDING"
   }
 }
