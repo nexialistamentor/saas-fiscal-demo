@@ -109,9 +109,9 @@ def inspect_private_archive(path:Path):
     if b"TOC Entries:" not in toc.stdout:
         stop("ARCHIVE_TOC_LIST_MISSING")
     listing=toc.stdout.decode("utf8",errors="replace")
-    source_db=re.search(r"(?mi)^;\\s*dbname:\\s*(\\S+)\\s*$",listing)
+    source_db=re.search(r"(?mi)^;\s*dbname:\s*(\S+)\s*$",listing)
     source_ver=re.search(
-        r"(?mi)^;\\s*Dumped from database version:\\s*(17\\.10)(?:\\s|$)",listing)
+        r"(?mi)^;\s*Dumped from database version:\s*(17\.10)(?:\s|$)",listing)
     if not source_db or source_db.group(1)!=bridge.DATABASE:
         stop("ARCHIVE_SOURCE_DATABASE_MISMATCH")
     if not source_ver:
@@ -145,7 +145,7 @@ def find_unique_incomplete_private_backup(*,latest_validated=False):
         for candidate in candidates:
             try:
                 inspected=inspect_private_archive(candidate/"protected_pg1710.dump")
-                valid.append((candidate.stat().st_mtime_ns,candidate,inspected))
+                valid.append(((candidate/"protected_pg1710.dump").stat().st_mtime_ns,candidate,inspected))
             except (OSError,RuntimeError,subprocess.TimeoutExpired):
                 # Preserve and skip invalid candidates. Nothing is unlinked.
                 continue
