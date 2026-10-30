@@ -59,6 +59,53 @@ class R6EvidenceContract(unittest.TestCase):
         self.assertEqual(result["new_grants"],0)
         read.assert_called_once()
 
+    def test_partial_acl_reads_only_allowed_sources(self):
+        acl=privileges()
+        for name in ("rule_versions","normative_relation_versions","tabela_mva"):
+            acl["select_privileges"][name]=False
+        data={
+            "artifacts_total":1,
+            "artifacts":[{"normative_artifact_id":"a","record_hash_shape_valid":True}],
+            "extraction_results_total":1,
+            "extraction_results":[{"extraction_result_id":"e","outcome":"inconclusivo"}],
+        }
+        with patch.object(r6.bridge,"managed_container",
+                          return_value=contextlib.nullcontext()),\
+             patch.object(r6,"read",side_effect=[acl,data]) as reads:
+            result=r6.inspect()
+        self.assertEqual(result["status"],
+                         "R6_PARTIAL_SOURCE_READ_ONLY_RULE_TABLES_DENIED")
+        self.assertEqual(result["unreadable_tables"],
+                         ["rule_versions","normative_relation_versions","tabela_mva"])
+        self.assertEqual(result["available_source_catalogue"],data)
+        self.assertFalse(result["rule_or_item_binding_proven"])
+        self.assertFalse(result["fiscal_authority"])
+        self.assertEqual(result["writes"],0)
+        self.assertEqual(result["new_grants"],0)
+        self.assertEqual(reads.call_args_list[1].args[0],r6.SOURCE_ONLY_CATALOGUE)
+        self.assertNotIn("public.rule_versions",r6.SOURCE_ONLY_CATALOGUE)
+        self.assertNotIn("public.normative_relation_versions",r6.SOURCE_ONLY_CATALOGUE)
+        self.assertNotIn("public.tabela_mva",r6.SOURCE_ONLY_CATALOGUE)
+
+    def test_partial_query_rejects_wrong_artifact_or_unbounded_payload(self):
+        acl=privileges()
+        for name in ("rule_versions","normative_relation_versions","tabela_mva"):
+            acl["select_privileges"][name]=False
+        invalid={
+            "artifacts_total":1,
+            "artifacts":[{"record_hash_shape_valid":False}],
+            "extraction_results_total":0,
+            "extraction_results":[],
+        }
+        with patch.object(r6.bridge,"managed_container",
+                          return_value=contextlib.nullcontext()),\
+             patch.object(r6,"read",side_effect=[acl,invalid]):
+            with self.assertRaisesRegex(RuntimeError,
+                                        "ARTIFACT_RECORD_HASH_FORMAT_INVALID"):
+                r6.inspect()
+        self.assertIn("BEGIN READ ONLY;",r6.SOURCE_ONLY_CATALOGUE)
+        self.assertIn("ROLLBACK;",r6.SOURCE_ONLY_CATALOGUE)
+
     def test_even_candidates_do_not_prove_fiscal_authority(self):
         data={"artifacts":[{"record_hash_shape_valid":True,"normative_artifact_id":"some"}],
               "rule_candidates":[{"rule_version_record_id":"some"}],
