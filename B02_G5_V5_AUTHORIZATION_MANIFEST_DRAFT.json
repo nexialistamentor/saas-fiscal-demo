@@ -57,7 +57,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V5_TWO_DECISIONS_COMMITTED_AUDIT_RESULT_AND_PHYSICAL_ACTIVATION_INVENTORY_PENDING",
+  "technical_readiness": "G5_V1_ACTIVATED_HISTORICALLY_TX_920_EXPIRED_V2_TWO_DECISIONS_NO_ACTIVATION_NO_G5_NATIVE_OR_ONESHOT_B02_OPEN",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -125,7 +125,7 @@
     "decision_count": 2,
     "bootstrap_count": 0,
     "activation_count": 0,
-    "next_required_event": "auditada_favoravelmente_OR_auditada_desfavoravelmente_OWN_REVIEWER",
+    "next_required_event": "auditada_favoravelmente_OR_auditada_desfavoravelmente_BY_ORIGINAL_G5_V2_REVIEWER",
     "role": "auditor_independente (own reviewer only)",
     "requires": "own genuine G5 v2 proponent event with actor identity, accepted mandate, V5 policy identity, dated provenance and idempotency; no synthetic delegation or inherited V4 actor signature",
     "subsequent_events": [
@@ -186,7 +186,9 @@
       "continuity_status": "ORIGINAL_DISTINCT_REVIEWER_CONVERSATION_IDENTIFIED_REVIEW_RESULT_PENDING",
       "no_substitute_actor_assumed": true,
       "window_status": "MATERIAL_WINDOW_EXPIRED_MANAGEMENT_MANDATE_DISTINCT"
-    }
+    },
+    "latest_physical_read_utc": "2026-10-30T16:51:33.765376Z",
+    "latest_physical_read_source_sha256": "477d4ac1c724908bf8aa1f2d9786394b34ccfe20edc0725fea7b1774c58895e1"
   },
   "mandate_v5_review": {
     "status": "GPT6_EXPLICIT_DESIGNATION_EMITTED_AND_SELF_ACCEPTED",
@@ -297,12 +299,12 @@
     "actor": "GPT-6/revisor-documental-chat-b02-g5-v5-20261030",
     "documentary_mandate_acceptance": "declared by reviewer, functional and limited",
     "independence": "declared no proven material/cryptographic independence; actual authorship segregation requires own review and contractual verification",
-    "sql_auditoria_iniciada": "COMMITTED_RECONCILED_PER_OPERATOR_LOG",
+    "sql_auditoria_iniciada": "COMMITTED_RECONCILED_PHYSICAL_READ_20261030_165133Z",
     "sql_auditada_favoravelmente": "NOT_ISSUED",
     "user_ratification_documentary": "PRESERVED",
     "sql_ratificada": "NOT_ISSUED",
     "warning": "No automatic reviewer action; do not treat opinion as institutional favorable/negative SQL event.",
-    "next_event_reserved_for_reviewer": "auditoria_iniciada",
+    "next_event_reserved_for_reviewer": "auditada_favoravelmente_OR_auditada_desfavoravelmente",
     "no_new_actor_authorizations_requested": true,
     "sql_auditoria_iniciada_record_hash": "da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
     "actor_provenance_resolution": "IDENTIFIED_ORIGINAL_DISTINCT_REVIEWER_CONVERSATION",
@@ -314,24 +316,125 @@
   },
   "g5_live_inventory": {
     "script": "tools/b02_g5_v5_current_inventory_readonly.py",
-    "physical_result": "PENDING_LOCAL_READ",
-    "historical_version_1": "POLICY_COMMITTED_ACTIVATION_CURRENT_UNVERIFIED",
-    "current_version_2": "POLICY_SUBMISSION_AUDIT_START_COMMITTED_ACTIVATION_CURRENT_UNVERIFIED",
-    "migration_0064_0065": "CANDIDATE_NOT_ALEMBIC_APPLIED_EVIDENCE",
-    "native_successor": "NOT_COMPILED_OR_APPROVED",
-    "one_shot_real": "NOT_PROVEN",
-    "historical_g4": "TX_926_PRESERVED"
+    "physical_result": "PHYSICAL_READ_ONLY_RECONCILED_2026_10_30_16_51_33Z",
+    "historical_version_1": "ACTIVATION_PRESENT_TX_920_EXPIRED",
+    "current_version_2": "TWO_DECISIONS_ZERO_ACTIVATIONS_MATERIAL_EXPIRED",
+    "migration_0064_0065": "NOT_INSTALLED_OBSERVED_ALEMBIC_0063_NATIVE_SYMBOLS_ABSENT",
+    "native_successor": "NO_G5_NATIVE_SYMBOLS_DETECTED",
+    "one_shot_real": "TABLE_ABSENT_2_REAL_UNITS_NOT_PROVEN",
+    "historical_g4": "TX_926_RECONCILED_INTERVAL_EXPIRED",
+    "physical_readback": {
+      "evidence": "Windows operator supplied full output of tools/b02_g5_v5_current_inventory_readonly.py",
+      "evidence_file": "Texto colado(20261030-165201).txt",
+      "evidence_sha256": "477d4ac1c724908bf8aa1f2d9786394b34ccfe20edc0725fea7b1774c58895e1",
+      "observed_at_utc": "2026-10-30T16:51:33.765376Z",
+      "database": "solveris_b02_r4g_test",
+      "postgres_version": "17.10 (Debian 17.10-1.pgdg13+1)",
+      "session_user": "solveris_b02_policy_writer",
+      "current_user": "solveris_b02_policy_writer",
+      "alembic_revision": "0063_adr020_policy_activation_atomicity",
+      "executed_focal_tests": {
+        "r2_g5": 7,
+        "audit_result": 5,
+        "current_inventory": 6,
+        "total": 18,
+        "result": "PASS"
+      },
+      "g5_v1": {
+        "policy_version": 1,
+        "policy_record_id": "B02-57982-policy-v1",
+        "policy_hash": "57982f46ca62ff5d0be2e2e27a152483a544ee12d0782876621b5860b6bed7fa",
+        "policy_record_hash": "705c7e2879abb37069f65eb39b544aa3028fc4b0dea282e60d3dd1628046171d",
+        "policy_hash_integrity": true,
+        "activation_count": 1,
+        "activation_id": "B02-57982-activation-v1",
+        "activation_record_hash": "0ccc9f90b9f338d14548189d48612e220b3b7b673e9e99c5aa55a9b4cdfb0ac2",
+        "activation_decision_id": "B02-57982-ratificada-v1",
+        "activation_decision_hash": "458150c4a74db845a2619f4717ffe16eb756e7988c819f4a864e62d68d541342",
+        "activation_execution_id": "B02-57982-execution-v1",
+        "activation_execution_hash": "1434149d1b3dc9593bbe51e6f1fbd170c32deaa29e2437eb0ff1b6e40b36ddf1",
+        "generation_id": "B02-57982-generation-v1",
+        "generation_hash": "1ae64d751814014ce598858a572d0cfaf12e108b2f025985e6eb7ef118a5116f",
+        "outbox_id": "B02-57982-outbox-v1",
+        "outbox_hash": "9694b41258dbc43339d4b77a1b85457d0e20cff425f5b349f97c537a29bf140f",
+        "bootstrap_id": "B02-57982-bootstrap-v1",
+        "bootstrap_record_hash": "20c765257b1fb507c03dd882fce6fbf9b60a220eea122d923ec8ea02d69ad804",
+        "decision_events": [
+          "submetida",
+          "auditoria_iniciada",
+          "auditada_favoravelmente",
+          "ratificada"
+        ],
+        "transaction_id": "920",
+        "state_in_database": "activa",
+        "activated_at_utc": "2026-10-22T13:25:46.83071Z",
+        "operational_interval_utc": {
+          "from": "2026-10-22T13:25:46.83071Z",
+          "until": "2026-10-23T07:56:30.910737Z"
+        },
+        "interpretation": "HISTORICAL_ACTIVATION_PHYSICALLY_PRESENT_AND_RECORD_HASH_VALID_BUT_OPERATIONAL_INTERVAL_EXPIRED; state 'activa' cannot imply current authority"
+      },
+      "g5_v2": {
+        "policy_version": 2,
+        "policy_hash": "007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf",
+        "policy_record_id": "B02-G5-V5-policy-v2",
+        "policy_record_hash": "fa3e4684b32b1bba38f975493f19f182aa77fe2f80a13563198ace7357b992e9",
+        "policy_hash_integrity": true,
+        "decision_events": [
+          "submetida",
+          "auditoria_iniciada"
+        ],
+        "decision_count": 2,
+        "submitted_record_hash": "dfa49ca6a05fae13e649a04ba795f6bf9f0576151a0b3751a582b903d4599f2a",
+        "audit_start_record_hash": "da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
+        "audit_start_timestamp_utc": "2026-10-30T15:49:05.696485Z",
+        "ratified_decision_count": 0,
+        "bootstrap_count": 0,
+        "activation_count": 0,
+        "activation_id": null,
+        "activation_record_hash": null,
+        "activation_transaction_id": null,
+        "execution_count": 0,
+        "generation_count": 0,
+        "outbox_count": 0,
+        "material_interval_utc": {
+          "from": "2026-10-29T13:00:00Z",
+          "until": "2026-10-30T13:00:00Z"
+        },
+        "interpretation": "POLICY_AND_FIRST_TWO_DECISIONS_COMMITTED; NO_ACTIVATION; MATERIAL_WINDOW_EXPIRED; audit-start COMMIT was after material end but procedural mandate distinct"
+      },
+      "g4": {
+        "activation_id": "B02-05ede-activation-v3",
+        "activation_hash": "504b7f03b299068786aa73257c809de7f78d6aa5a67ed66c04b38a0230b9c4f4",
+        "transaction_id": "926",
+        "operational_interval_utc": {
+          "from": "2026-10-29T13:00:00Z",
+          "until": "2026-10-30T13:00:00Z"
+        },
+        "interpretation": "HISTORICAL_FOUR_RECORDS_G4_RECONCILED; NOT_AUTOMATIC_G5_DELEGATION_AND_INTERVAL_EXPIRED_AT_READ"
+      },
+      "installed_g5_native_symbols": [],
+      "one_shot_table_present": false,
+      "one_shot_reservations": null,
+      "alembic_0064_0065_installed": false,
+      "next_free_version_candidate": 3,
+      "db_writes_from_inventory": 0
+    }
   },
   "g5_temporal_plan": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
   "original_b02_closure": {
     "source": "SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md section 11",
-    "R1": "PARTIAL_NATIVE_TESTS_NO_PG17_10_APPROVED_ELF",
-    "R3": "TEMPORAL_DECISION_PENDING_WITH_PREPARED_DELTA",
-    "R4": "PRIVATE_BACKUP_RESTORE_AND_REAL_AUTHORITY_PENDING",
-    "R5": "REAL_G5_TWO_UNIT_ONE_SHOT_NOT_PROVEN",
+    "R1": "NO_G5_NATIVE_SYMBOLS_LIVE_20261030; HISTORICAL_NATIVE_V30_SYNTHETIC_LIMITED; REAL_ELF_PENDING",
+    "R3": "V3_NEXT_FREE_CONFIRMED; NEW_G4_G5_WINDOW_UNDECIDED",
+    "R4": "G4_TX_926_RECONCILED_BUT_TIME_EXPIRED; PRIVATE_BACKUP_RESTORE_ACL_CUSTODY_PENDING",
+    "R5": "G5_V1_HISTORICAL_FOUR_RECORDS_TX_920; V2_0_ACTIVATIONS; 0064_0065_NOT_INSTALLED; REAL_ONESHOT_PENDING",
     "R6": "NORMATIVE_LINKAGE_RULE_VERSION_ITEM_NOT_PROVEN",
     "R7": "FINAL_INSTITUTIONAL_CLOSURE_NOT_ISSUED",
     "B02": "OPEN",
     "B03": "BLOCKED"
+  },
+  "temporal_successor_prepared": {
+    "next_free_policy_version_confirmed": 3,
+    "proof_timestamp_utc": "2026-10-30T16:51:33.765376Z"
   }
 }
