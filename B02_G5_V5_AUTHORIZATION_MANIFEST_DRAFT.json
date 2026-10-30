@@ -54,7 +54,7 @@
     "source": "user instruction in conversation",
     "ratification_documentary": "preserved as received in conversation; independent institutional review not inferred"
   },
-  "technical_readiness": "G5_V5_POLICY_COMMITTED_SUCCESSOR_MANDATE_LOCATED_BUT_CURRENT_ACTOR_NOT_DESIGNATED",
+  "technical_readiness": "G5_V5_POLICY_COMMITTED_GPT6_OWN_SUBMISSION_ISSUED_DB_DECISION_COMMIT_PENDING",
   "evidence_requirements": [
     {
       "field": "authority_actor",
@@ -139,7 +139,7 @@
     "no_retries_or_rollback_repeated": true
   },
   "mandate_v5_review": {
-    "status": "ISSUED_SUCCESSOR_MANDATE_FOUND_ACTOR_MISMATCH_WITH_THIS_EXECUTION",
+    "status": "GPT6_EXPLICIT_DESIGNATION_EMITTED_AND_SELF_ACCEPTED",
     "source_file": "MANDATO_G5_SUCESSOR_EMITIDO.json",
     "source_schema": "B02_G5_MANDATE_CONTINUITY_ISSUED_V1",
     "source_status": "MANDATO_EMITIDO_PROPONENTE_ACEITE_REVISOR_PENDENTE",
@@ -165,8 +165,36 @@
     "no_automatic_root_identity": true,
     "no_automatic_reviewer_acceptance": true,
     "no_automatic_instala_e_ativa_renewal": true,
-    "institutional_submission_issued_by_this_execution": false,
+    "institutional_submission_issued_by_this_execution": true,
     "policy_decisions_inserted_by_this_execution": 0,
-    "evidence_status": "READ_FULL_ORIGINAL_FROM_USER_LIBRARY; SELF_DESCRIBED_ISSUED_MANDATE_NOT_INDEPENDENT_CRYPTOGRAPHIC_ATTESTATION"
+    "evidence_status": "READ_FULL_ORIGINAL_FROM_USER_LIBRARY; SELF_DESCRIBED_ISSUED_MANDATE_NOT_INDEPENDENT_CRYPTOGRAPHIC_ATTESTATION",
+    "issued_successor_gpt6_addendum": "B02_G5_V5_ADITAMENTO_DESIGNACAO_GPT6_EMITIDO_20261029.json",
+    "issued_successor_gpt6_addendum_commit": "d65558f9c12db974903ce87fcc53b24fbcb87813",
+    "self_acceptance": "B02_G5_V5_ACEITACAO_PROPONENTE_GPT6_20261029.json",
+    "self_acceptance_commit": "a18d7297de929a4c0023dabeef96273ddf0f6981",
+    "current_proponent_actor": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029",
+    "review_actor_acceptance_pending": true
+  },
+  "own_submission": {
+    "status": "DOCUMENTARY_SUBMISSION_ISSUED_SQL_COMMIT_NOT_YET_RUN",
+    "decision_id": "B02-G5-V5-GPT6-submetida-v1",
+    "decision_event": "submetida",
+    "actor": "GPT-6/executor-tecnico-chat-b02-g5-v5-20261029",
+    "institutional_role": "proponente_institucional",
+    "document": "B02_G5_V5_SUBMISSAO_PROPONENTE_GPT6_20261029.json",
+    "published_commit": "402c2dac282289651ce882a67291e0a544787ae2",
+    "source_approvals": [
+      "B02_G5_V5_ADITAMENTO_DESIGNACAO_GPT6_EMITIDO_20261029.json",
+      "B02_G5_V5_ACEITACAO_PROPONENTE_GPT6_20261029.json"
+    ],
+    "technical_owner_decision_insert_only": "solveris_test",
+    "restricted_independent_reader": "solveris_b02_policy_writer",
+    "sql_runner": "tools/b02_g5_v5_submission_runner.py",
+    "sql_committed": false,
+    "db_record_hash": null,
+    "reviewer_action": "PENDING_OWN_ACCEPTANCE_AND_SEGREGATED_REVIEW",
+    "ratification": "USER_PRIOR_RATIFICATION_RECORDED_NOT_SQL_EVENT",
+    "actuation": "PENDING_VALID_DECISION_CHAIN",
+    "policy_version_insert_not_repeated": true
   }
 }
