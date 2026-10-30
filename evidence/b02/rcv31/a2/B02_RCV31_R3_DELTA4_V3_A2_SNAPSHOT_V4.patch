@@ -1,0 +1,89 @@
+--- B02_RCV31_R3_CONCRETE_PATH_DELTA4_V3_SOBRE_REAL.py
++++ B02_RCV31_R3_CONCRETE_PATH_DELTA4_V3_SOBRE_REAL.py
+@@ -20,10 +20,39 @@
+  def __getitem__(self,key):return self._data()[key]
+ 
+ def sha(b):return hashlib.sha256(b).hexdigest()
+ def require(condition,reason):
+  if not condition:raise RuntimeError('STOP:'+reason)
++
++# Exact ORIGINAL synthetic R3 observer. No protected role or production key.
++OBSERVER_PIN='4dc2b18af2942353b788b43bf41a2b6ef37b406bb16c942f335c94f6bc369e2e'
++
++def run_pinned_observer_source(observer_script, verified_source, child_args, env, cwd):
++ """Run the exact source bytes checked before operate(), never reopen source.
++
++ The child rechecks SHA-256 over its stdin bytes, then executes them using
++ __file__ only to locate the pre-pinned synthetic trust profile beside the
++ original observer. This eliminates Python's path re-open TOCTOU for that file.
++ It does not claim protection against an OS administrator, native loader swaps,
++ or independence of institutional key custody.
++ """
++ require(type(verified_source) is bytes and sha(verified_source)==OBSERVER_PIN,
++         'OBSERVER_PRECOMMIT_SOURCE_BYTES_DIVERGENT')
++ bootstrap=(
++  'import hashlib,sys\n'
++  'source=sys.stdin.buffer.read()\n'
++  'if hashlib.sha256(source).hexdigest()!="'+OBSERVER_PIN+'":\n'
++  ' raise SystemExit("STOP:OBSERVER_CHILD_SOURCE_PIN_DIVERGENT")\n'
++  'label=sys.argv[1]\n'
++  'sys.argv=sys.argv[1:]\n'
++  'scope={"__name__":"__main__","__file__":label,"__package__":None}\n'
++  'exec(compile(source,label,"exec"),scope)\n'
++ )
++ return subprocess.run([sys.executable,'-I','-c',bootstrap,str(observer_script),*child_args],
++         input=verified_source,env=env,cwd=cwd,stdout=subprocess.PIPE,
++         stderr=subprocess.PIPE,timeout=45)
++
+ def load(path,name):
+  spec=importlib.util.spec_from_file_location(name,path)
+  module=importlib.util.module_from_spec(spec);sys.modules[name]=module;spec.loader.exec_module(module)
+  return module
+ 
+@@ -211,35 +240,28 @@
+  trust_profile['signer_sha256']=sha(signer_public)
+  trust_file=source_root/('R3_OBSERVER_TRUST_'+scenario+'.json')
+  trust_file.write_bytes(adapt.canonical(trust_profile))
+  observer_script=Path(__file__).with_name('B02_RCV31_R3_OBSERVADOR_PROCESSO_SEPARADO.py')
+  require(observer_script.is_file(),'OBSERVER_PROCESS_SOURCE_MISSING')
+- # DELTA 4 (V3) -- reserva residual do parecer segregado A2 (25/10/2026):
+- # a identidade do executavel observador nunca era verificada (so is_file()).
+- # Pin SHA-256 do observador REAL (o de RunnerDir, sem instrumentacao),
+- # definido UMA vez e verificado aqui, ANTES de operate() -- se divergir,
+- # nada e escrito -- e outra vez dentro do closure, antes de cada spawn.
+- OBSERVER_PIN='4dc2b18af2942353b788b43bf41a2b6ef37b406bb16c942f335c94f6bc369e2e'
+- require(sha(observer_script.read_bytes())==OBSERVER_PIN,
++ # DELTA 4 V4 (technical A2 candidate): freeze exact pre-verified bytes
++ # BEFORE operate() and any possible COMMIT. A later file swap cannot change
++ # what the separate observer process executes; do not reject post-COMMIT
++ # because of a path mutation that did not affect the executed bytes.
++ observer_source=observer_script.read_bytes()
++ require(sha(observer_source)==OBSERVER_PIN,
+          'OBSERVER_PROCESS_SOURCE_HASH_DIVERGENT')
+  observer_dsn=(f'host=127.0.0.1 port={driver.port} dbname=solveris_b02_r4g_test '
+       f'user={role} password={driver.pwd} connect_timeout=8')
+  observer_out=[]
+  def child_only_selectors(approval,release,txid):
+-  # DELTA 4 (V3) -- 2.o ponto: re-verificacao imediatamente antes de cada
+-  # spawn (o 1.o ponto, antes de operate(), define OBSERVER_PIN). Limite
+-  # conhecido, DECLARADO AO REVISOR: entre esta leitura e o carregamento do
+-  # ficheiro pelo interpretador subsiste uma janela estreita (TOCTOU) que
+-  # este delta NAO elimina.
+-  require(sha(observer_script.read_bytes())==OBSERVER_PIN,
+-          'OBSERVER_PROCESS_SOURCE_HASH_DIVERGENT')
+-  args=[sys.executable,str(observer_script),'--approval-id',approval,
+-        '--release-id',release,'--txid',txid,'--trust-profile',str(trust_file),
++  # DELTA 4 V4: execute the frozen, SHA-verified source via child stdin.
++  # Neither a post-COMMIT path recheck nor path-based interpreter loading.
++  args=['--approval-id',approval,'--release-id',release,'--txid',txid,
++        '--trust-profile',str(trust_file),
+         '--trust-profile-sha256',sha(trust_file.read_bytes())]
+   env=os.environ.copy();env['B02_OBSERVER_DSN']=observer_dsn
+-  p=subprocess.run(args,env=env,cwd=source_root,stdout=subprocess.PIPE,
+-          stderr=subprocess.PIPE,timeout=45)
++  p=run_pinned_observer_source(observer_script,observer_source,args,env,source_root)
+   if p.returncode!=0:
+    raise RuntimeError('STOP:INDEPENDENT_CHILD_REJECTED_'+sha(p.stdout)+
+                       '_'+p.stdout.decode('utf8','replace')[:125])
+   result=json.loads(p.stdout)
+   require(result.get('status')=='PASS_INDEPENDENT_READ_ONLY_DISPOSABLE' and
