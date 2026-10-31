@@ -639,8 +639,8 @@
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain; original isolated V21 PRE_COMMIT C and invalid signature tests; V23 successful synthetic two-unit commit/readback; V28 receipt/tampering/rollback; V30 one-shot concurrency/orphan/unknown-ACK synthetic exercises, accepted with original scope (handoff V31 20261024)",
         "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task. Focused R5 independent hash-check enhancement: 12/12 Windows unit tests PASS; on the original PostgreSQL 17.10 container the historical G5 V1 four records were physically recalculated and all four canonical record hashes matched in one READ ONLY query; guarded PowerShell success emitted after parsed JSON. Does NOT prove V2/V3 real one-shot or install 0064/0065. Current pre-install candidate 0064→0065 static source diff (READ ONLY) confirms both replaced PL/pgSQL function bodies preserved exactly after subtraction of only declared one-shot reservations and assertions. Original SQL untouched. Candidate blobs 35b9f7fe and 7b6d2709. Not PostgreSQL compilation, installation or production approval. Read-only structural cross-check of 0065 pinned blob 7b6d2709 + existing stage_completion 723448cb7: two completed distinct C3 units MUST precede one-shot reservation in this source sequence, since each stage_completion executes SET CONSTRAINTS ALL IMMEDIATE and 0065 reservation has a deferred two-unit constraint trigger. Static abstract model confirms reservation earlier fails; not PostgreSQL runtime proof. Scoped R5 authenticity preflush source delta tested on real operator Windows checkout: RED from test-only commit reproduced, 5 new tests PASS, original R4G regression PASS and frozen source blob unchanged. Exact runner output R5_FOCUSED_RED_GREEN_SOURCE_ONLY_PASS_NO_POSTGRESQL; this is source-only, not PostgreSQL 0064/0065 or production release. 2026-10-30 operator Windows confirmed second focal R5 hardening: exact G4/source origin RED reproduced from commit 3315be5, 4 negative tests PASS, previous 5 tests PASS and original R4G contract PASS, all prior blobs unchanged; runner concluded R5_G4_EXACT_RED_GREEN_CONTRACTS_UNCHANGED_NO_POSTGRESQL. Synthetic-only fixture and source behavior, NOT physical PostgreSQL profile 0064/0065 or origin attestation.",
-        "remaining_gap": "Only real currently authorized G5 successor and original R5 gate: original reviewer own audit result followed by valid ratification and successor temporal authority, live G4 validity for each PDF, exact approved native root/ELF and 0064/0065 installation, real documented/custodied two-unit CAS operation, original R5 one-shot PRE_COMMIT/COMMIT and independent readback. No evidence these are completed by historic V1 activation, previous synthetic tests, or R4 protected backup. NEW cross-component source-level integration blocker: original stage_completion forces deferred completion constraints IMMEDIATE immediately after artifact insertion but does not persist the ONE exact favorable signed ArtifactVerificationRecord newly required by 0064/0065 real G5 profile. Existing founder verifier returns nonpersisted proposal; do not treat G4 transport TLS or generic PRESERVED_ORIGIN as FOUNDER_ORIGIN authority. The prior two-unit-before-one-shot ordering is necessary but not a runnable release procedure without this reviewed delta.",
-        "next_action": "DO NOT repeat completed two R5 RED/GREEN cycles, C3/TLS original acquisition, R4G suite, R4 backup or RCV31-R3 causal tests. Source hardening accepted on Windows; obtain distinct focal security code review of opt-in stage_authenticity transaction and exact G4 policy readback; read-only ACL/status inspection for actual restricted writer before any separately approved disposable PG17.10 test. G4 origin NOT_GRANTED and independent G5 reviewer result absent, 0064/0065 not installed; preserve temporal/role/root gates."
+        "remaining_gap": "Only real currently authorized G5 successor and original R5 gate: original reviewer own audit result followed by valid ratification and successor temporal authority, live G4 validity for each PDF, exact approved native root/ELF and 0064/0065 installation, real documented/custodied two-unit CAS operation, original R5 one-shot PRE_COMMIT/COMMIT and independent readback. No evidence these are completed by historic V1 activation, previous synthetic tests, or R4 protected backup. NEW cross-component source-level integration blocker: original stage_completion forces deferred completion constraints IMMEDIATE immediately after artifact insertion but does not persist the ONE exact favorable signed ArtifactVerificationRecord newly required by 0064/0065 real G5 profile. Existing founder verifier returns nonpersisted proposal; do not treat G4 transport TLS or generic PRESERVED_ORIGIN as FOUNDER_ORIGIN authority. The prior two-unit-before-one-shot ordering is necessary but not a runnable release procedure without this reviewed delta. NEW source-level second-unit constraint mode issue: after original stage_completion flushes ALL IMMEDIATE for first unit, the five 0062 z_b02_complete_unit deferred triggers remain immediate in that transaction. Without scoped re-deferral between units, second unit cannot be staged incrementally. Do not treat previously noted 2-unit then reserve procedure as executable until physical reviewer validates named per-unit SET CONSTRAINTS public.z_b02_complete_unit DEFERRED transition.",
+        "next_action": "R5 local source RED/GREEN cycles completed; next ONLY independent focal review + authorized disposable PG17.10 of exact two-unit G5 transaction mode transitions (z_b02_complete_unit reset to DEFERRED before each staged unit), independently authenticated FOUNDER_ORIGIN row before each ALL IMMEDIATE, and one-shot reservation AFTER both units; preserve 0062, 0064, 0065, accepted stage_completion, role separation and old completed gates. No protected SQL/DDL/DML before prospective authority and reviewer."
       },
       "R6": {
         "existing": "app/services/enterprise_b02_noncredential_acquisition.py::stage_completion; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; tools/b02_r6_normative_linkage_readonly.py; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; app/services/enterprise_b02_normative_binding.py (read-only cautious adapter); prior original B02_V29_MATRIZ_NORMATIVA_COM_EVIDENCIA.md dated 2026-10-23 (Library)",
@@ -1333,6 +1333,45 @@
       "postgresql_0064_0065_test_executed": false,
       "institutional_origin_granted": false,
       "pg_protected_writes": 0
+    },
+    "R5_two_real_units_constraint_mode_transition": {
+      "status": "CAUSAL_SQL_MODE_GAP_CONFIRMED_SOURCE_AND_PG17_DOCUMENTATION_NO_RUNTIME",
+      "sources": [
+        {
+          "path": "migrations/versions/0062_adr020_noncredential_acquisition.py",
+          "git_blob": "7a508c8c57d9abd0a79620d2601fca1505433aa2"
+        },
+        {
+          "path": "app/services/enterprise_b02_noncredential_acquisition.py",
+          "git_blob": "849e95c61e14859ffd24d7c0dcdc228c81b83866"
+        },
+        {
+          "path": "migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py",
+          "git_blob": "7b6d270901fa0ba18bb8f48599908f737e9d4eb3"
+        }
+      ],
+      "pg17_reference": "https://www.postgresql.org/docs/17/sql-set-constraints.html",
+      "verified_structural_facts": [
+        "0062 declares five constraint triggers named z_b02_complete_unit, AFTER INSERT, DEFERRABLE INITIALLY DEFERRED, calling b02_require_complete_unit for full predecessor/receipt/verification/terminal/artifact chain",
+        "stage_completion forces SET CONSTRAINTS ALL IMMEDIATE after each fully staged unit, changing constraint mode for the remainder of the transaction, not just a one-time check",
+        "Without returning z_b02_complete_unit to DEFERRED, the first INSERT of the second unit in the SAME transaction is immediately subject to complete-unit assertion before later receipt/verification/terminal/artifact rows exist",
+        "0065 operational reservation requires TWO complete distinct real units and must occur after second unit"
+      ],
+      "proposed_minimum_ordering_for_independent_review": [
+        "Full prospective real G4/G5 authority and trusted origin/sanitization records must be validated before any operation",
+        "Keep one caller-owned transaction READ COMMITTED, restricted writer, reviewed native profile and required authority locks",
+        "SET CONSTRAINTS public.z_b02_complete_unit DEFERRED (only the 0062 named constraint triggers, not ALL constraints)",
+        "Stage unit 1: full exact document and one approved G4 FOUNDER_ORIGIN proof row before stage_completion's SET CONSTRAINTS ALL IMMEDIATE",
+        "SET CONSTRAINTS public.z_b02_complete_unit DEFERRED again before first INSERT of unit 2; must be in the SAME transaction",
+        "Stage unit 2: full exact other document and independently approved G4 FOUNDER_ORIGIN proof row before its SET CONSTRAINTS ALL IMMEDIATE",
+        "Reserve 0065 one-shot exactly once AFTER both units, then server manifest/native signature/PRE_COMMIT/COMMIT, independent readback"
+      ],
+      "not_installed_0064_0065": true,
+      "changed_r5_sources": false,
+      "physical_pg17_verified": false,
+      "authoritative_release_approved": false,
+      "decision": "Technical reviewer must verify exact named constraint state transition and ACL in a disposable PG17.10 execution before any source or protected DB changes; do not weaken real completion constraints, disable triggers or automatically alter original accepted stage_completion.",
+      "no_retest_of_R4_C3_prior_R5": true
     }
   }
 }
