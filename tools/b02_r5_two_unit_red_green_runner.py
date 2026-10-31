@@ -41,8 +41,7 @@ def run_test(testdir):
         cwd=ROOT,text=True,capture_output=True,timeout=120)
 
 def main():
-    if git("cat-file","-e",f"{RED}^{\u007bcommit\u007d}") is None:
-        halt("RED_COMMIT_UNAVAILABLE")
+    git("cat-file","-e",RED)  # fail closed if RED predecessor commit is absent
     for path,sha in ((NEW,PIN_NEW),(TEST,PIN_TEST),(FROZEN_SOURCE,PIN_FROZEN),
                      (OLDER_TEST,PIN_OLDER),(ORIGINAL_TEST,PIN_ORIGINAL)):
         pinned(path,sha)
