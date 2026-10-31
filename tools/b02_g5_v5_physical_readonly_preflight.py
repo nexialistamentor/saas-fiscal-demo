@@ -257,6 +257,76 @@ def _g5_artifact_acl_inventory(engine):
     }
 
 
+
+def _r5_json_evidence_readonly(engine):
+    """Real PG17 JSON storage type and explicit JSONB predicates; read-only.
+
+    All comparison values are distinct synthetic probes. The live artifact
+    records are NEVER queried or changed; this proves type semantics only.
+    """
+    import json as _json
+    origin={"id":"synthetic-readonly-type-probe","sha256":"0"*64}
+    probe={
+        "synthetic_only":False,
+        "g4_origin_report_binding":origin,
+        "authorized_verifier_hash":"1"*64,
+    }
+    with engine.connect() as c:
+        c.execute(text("SET TRANSACTION READ ONLY"))
+        identity=c.execute(text(
+            "SELECT current_database(),session_user,current_user,"
+            "(SELECT version_num FROM public.alembic_version)"
+        )).one()
+        if tuple(identity)!=(DB,"solveris_b02_policy_writer",
+                            "solveris_b02_policy_writer",REV):
+            raise RuntimeError("STOP_R5_JSON_IDENTITY_REVISION")
+        storage=c.execute(text("""
+            SELECT pg_catalog.format_type(att.atttypid,att.atttypmod)
+            FROM pg_catalog.pg_attribute att
+            JOIN pg_catalog.pg_class cls ON cls.oid=att.attrelid
+            JOIN pg_catalog.pg_namespace ns ON ns.oid=cls.relnamespace
+            WHERE ns.nspname='public'
+              AND cls.relname='artifact_verification_records'
+              AND att.attname='evidence'
+              AND att.attnum>0 AND NOT att.attisdropped
+        """)).scalar_one()
+        if storage not in ("json","jsonb"):
+            raise RuntimeError("STOP_R5_JSON_UNRECOGNIZED_STORAGE_TYPE")
+        result=c.execute(text("""
+            SELECT
+              ((CAST(:evidence AS json)::jsonb->'synthetic_only')
+                  = 'false'::jsonb) AS synthetic_false,
+              ((CAST(:evidence AS json)::jsonb->'g4_origin_report_binding')
+                  = CAST(:origin AS jsonb)) AS exact_g4_binding,
+              ((CAST(:evidence AS json)::jsonb->>'authorized_verifier_hash')
+                  = :verifier_hash) AS exact_verifier_hash
+        """),{
+            "evidence":_json.dumps(probe,sort_keys=True),
+            "origin":_json.dumps(origin,sort_keys=True),
+            "verifier_hash":probe["authorized_verifier_hash"],
+        }).mappings().one()
+        if set(result)!={
+            "synthetic_false","exact_g4_binding","exact_verifier_hash"
+        } or not all(result.values()):
+            raise RuntimeError("STOP_R5_JSON_EXPLICIT_CAST_PREDICATE")
+        c.rollback()
+    return {
+        "status":"R5_JSON_EVIDENCE_PG17_READ_ONLY_PREDICATES_PASS",
+        "database":identity[0],
+        "revision":identity[3],
+        "authenticated_inspector":identity[2],
+        "artifact_verification_evidence_storage":storage,
+        "type_safe_boolean_match":True,
+        "type_safe_origin_binding_match":True,
+        "type_safe_verifier_hash_match":True,
+        "examples":"SYNTHETIC_ONLY_NO_USER_RECORDS",
+        "origin_authenticity":"NOT_INFERRED",
+        "g5_release_permission":False,
+        "protected_reads_of_artifact_rows":0,
+        "grants":0,"ddl":0,"writes":0,
+    }
+
+
 def _database_preflight():
     dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
     if not dsn:
@@ -328,7 +398,7 @@ def _docker(*args, timeout=15):
 def main():
     import sys
     if len(sys.argv)>1:
-        if sys.argv[1:] not in (["--acl-inventory"],["--g5-v2-chain"],["--r5-artifact-acl"]):
+        if sys.argv[1:] not in (["--acl-inventory"],["--g5-v2-chain"],["--r5-artifact-acl"],["--r5-json-evidence"]):
             raise RuntimeError("STOP_UNKNOWN_PREFLIGHT_OPTION")
         dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
         if not dsn:raise RuntimeError("STOP_PREFLIGHT_REQUIRES_BRIDGE")
@@ -336,6 +406,7 @@ def main():
         try:
             result=(_g5_v2_chain_inventory(engine) if sys.argv[1:]==["--g5-v2-chain"]
                     else _g5_artifact_acl_inventory(engine) if sys.argv[1:]==["--r5-artifact-acl"]
+                    else _r5_json_evidence_readonly(engine) if sys.argv[1:]==["--r5-json-evidence"]
                     else _acl_inventory(engine))
             print(json.dumps(result,sort_keys=True))
         finally:engine.dispose()
