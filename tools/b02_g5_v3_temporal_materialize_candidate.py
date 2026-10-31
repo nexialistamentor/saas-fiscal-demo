@@ -45,6 +45,8 @@ def check():
         or q.get("approved") is not True or q.get("approved_by")!="Miguel"
         or not q.get("approved_at_utc") or not q.get("ratification_source")):
         stop("TEMPORAL_APPROVAL_NOT_RATIFIED")
+    if q["g5"].get("materializer_git_blob")!=git("rev-parse","HEAD:tools/b02_g5_v3_temporal_materialize_candidate.py"):
+        stop("MATERIALIZER_SOURCE_NOT_PINNED")
     at=datetime.fromisoformat(q["approved_at_utc"])
     end=datetime.fromisoformat(q["window_utc"]["until"])
     if at.tzinfo is None or at>=end or at>datetime.now(timezone.utc):

@@ -52,6 +52,8 @@ def verify_plan(operational):
         or q["g4"]["fresh_four_record_ids"]!=expected
         or q["g4"]["one_shot_idempotency_key"]!=IDS["idempotency_key"]):
         stop("PROPOSAL_PIN_DIVERGENCE")
+    if q["g4"].get("successor_runner_git_blob")!=git("rev-parse","HEAD:tools/b02_g4_g5_temporal_successor_runner.py").decode():
+        stop("APPROVED_RUNNER_BLOB_DIVERGENCE")
     if operational:
         if (q["status"]!="RATIFICADA_PROSPECTIVAMENTE"
             or q["approved"] is not True or q["approved_by"]!="Miguel"
