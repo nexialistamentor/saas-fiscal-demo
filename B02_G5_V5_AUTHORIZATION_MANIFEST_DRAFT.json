@@ -638,9 +638,9 @@
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain; original isolated V21 PRE_COMMIT C and invalid signature tests; V23 successful synthetic two-unit commit/readback; V28 receipt/tampering/rollback; V30 one-shot concurrency/orphan/unknown-ACK synthetic exercises, accepted with original scope (handoff V31 20261024)",
-        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task. Focused R5 independent hash-check enhancement: 12/12 Windows unit tests PASS; on the original PostgreSQL 17.10 container the historical G5 V1 four records were physically recalculated and all four canonical record hashes matched in one READ ONLY query; guarded PowerShell success emitted after parsed JSON. Does NOT prove V2/V3 real one-shot or install 0064/0065. Current pre-install candidate 0064→0065 static source diff (READ ONLY) confirms both replaced PL/pgSQL function bodies preserved exactly after subtraction of only declared one-shot reservations and assertions. Original SQL untouched. Candidate blobs 35b9f7fe and 7b6d2709. Not PostgreSQL compilation, installation or production approval.",
+        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task. Focused R5 independent hash-check enhancement: 12/12 Windows unit tests PASS; on the original PostgreSQL 17.10 container the historical G5 V1 four records were physically recalculated and all four canonical record hashes matched in one READ ONLY query; guarded PowerShell success emitted after parsed JSON. Does NOT prove V2/V3 real one-shot or install 0064/0065. Current pre-install candidate 0064→0065 static source diff (READ ONLY) confirms both replaced PL/pgSQL function bodies preserved exactly after subtraction of only declared one-shot reservations and assertions. Original SQL untouched. Candidate blobs 35b9f7fe and 7b6d2709. Not PostgreSQL compilation, installation or production approval. Read-only structural cross-check of 0065 pinned blob 7b6d2709 + existing stage_completion 723448cb7: two completed distinct C3 units MUST precede one-shot reservation in this source sequence, since each stage_completion executes SET CONSTRAINTS ALL IMMEDIATE and 0065 reservation has a deferred two-unit constraint trigger. Static abstract model confirms reservation earlier fails; not PostgreSQL runtime proof.",
         "remaining_gap": "Only real currently authorized G5 successor and original R5 gate: original reviewer own audit result followed by valid ratification and successor temporal authority, live G4 validity for each PDF, exact approved native root/ELF and 0064/0065 installation, real documented/custodied two-unit CAS operation, original R5 one-shot PRE_COMMIT/COMMIT and independent readback. No evidence these are completed by historic V1 activation, previous synthetic tests, or R4 protected backup.",
-        "next_action": "Use original existing institutional audit_result runner only upon actually issued reviewer act; no reissue submission/audit start. Once authority, dates, hashes, signing and approvals valid, reuse existing 0064/0065 and original one-shot consumers, reconcile before write, never duplicate successful SQL. Do not repeat V21/V23/V28/V30 or G4 V1/V3."
+        "next_action": "Preserve all historical R5/V30 tests and original candidate migrations. For future separately approved PG17 physical operation, order: stage BOTH authorized distinct real units -> one-shot reservation once -> capability manifest/signature -> COMMIT and independent readback. Do not reserve before/between units; no real DML/DDL until original reviewer act, prospective temporal G4/G5 mandate, approved native root and real verifier exist."
       },
       "R6": {
         "existing": "app/services/enterprise_b02_noncredential_acquisition.py::stage_completion; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; tools/b02_r6_normative_linkage_readonly.py; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; app/services/enterprise_b02_normative_binding.py (read-only cautious adapter); prior original B02_V29_MATRIZ_NORMATIVA_COM_EVIDENCIA.md dated 2026-10-23 (Library)",
@@ -1069,15 +1069,38 @@
       "g110_tests_git_blob": "411080ae51cb64b5143060f518f9c543e9c71a47"
     },
     "R5_0065_one_shot_ordering_conditional_caveat": {
-      "status": "STATIC_ORDERING_DEPENDENCY_NOT_EXECUTED",
+      "status": "SOURCE_ORDERING_INVARIANT_CONFIRMED_STATICALLY_NEEDS_DISPOSABLE_PG17_INTEGRATION",
       "candidate_0065_blob": "7b6d270901fa0ba18bb8f48599908f737e9d4eb3",
       "service_blob": "723448cb7f23b659f5131c5535d5238c2fcf0fd4",
       "static_cause": "0065 has DEFERRABLE INITIALLY DEFERRED constraint trigger on operational approval reservation; its trigger checks exactly two distinct real acquisitions. Existing stage_completion issues SET CONSTRAINTS ALL IMMEDIATE after each completed unit. If reservation precedes completion of only one document, that SET may cause the deferred two-unit constraint to fire prematurely.",
-      "bounded_next_check": "In a separately approved disposable PG17.10 precommit test, demonstrate a transaction that stages BOTH distinct real-document units in the accepted sequence, reserves the one-shot approval at a valid point, verifies signature/capability and rolls back all experimental operations. Preserve all original V30 tests and 0064/0065 candidate sources. Use synthetic test roots solely in a disposable profile, not protected authorization.",
+      "bounded_next_check": "Do not alter ratified 0064/0065 or original stage_completion. After external independent reviewer, approved native root and prospective R3/R5 authority, execute ONE separately approved disposable PG17.10 full physical precommit/rollback proving the exact ordering with two real C3 units and approved verifier evidence before any protected production transaction. Do not inject synthetic status or root into protected operation.",
       "not_a_verified_runtime_bug": true,
       "not_an_approval_to_install": true,
       "no_new_pg_tests_run": true,
-      "no_sql_or_g4_change": true
+      "no_sql_or_g4_change": true,
+      "grounding": "0065 reservation AFTER INSERT constraint trigger DEFERRABLE INITIALLY DEFERRED enforces count(DISTINCT acquisition_execution_id)=2; stage_completion issues SET CONSTRAINTS ALL IMMEDIATE at end of EACH unit. All six textual guards confirmed in exact pinned blobs, static abstract trigger sequence evaluated; no PostgreSQL SQL executed.",
+      "required_order_for_original_real_CAS_workflow": [
+        "Open the original authorized READ COMMITTED single transaction under restricted writer with actual prospective G4/G5 authority and locks",
+        "stage_completion document 101201900571 to completion; call flushes original deferred constraints",
+        "stage_completion document 101202501245 to completion; call flushes original deferred constraints",
+        "Only after BOTH distinct complete units, invoke b02_g5_reserve_operational_decision once inside SAME transaction",
+        "Build server capability manifest including one-shot reservation and perform separately authorized native COMMIT signature with approved root",
+        "Commit once; on unknown acknowledgement reconcile independently by exact persisted IDs/hashes before any retry"
+      ],
+      "static_counterexamples": [
+        {
+          "events": "reserve>stage_1>stage_2",
+          "outcome": "TWO_UNIT_CONSTRAINT_FAILS_AT_STAGE_1_IMMEDIATE_FLUSH"
+        },
+        {
+          "events": "stage_1>reserve>stage_2",
+          "outcome": "TWO_UNIT_CONSTRAINT_FAILS_AT_RESERVATION_IN_IMMEDIATE_MODE"
+        },
+        {
+          "events": "stage_1>stage_2>reserve",
+          "outcome": "TWO_UNIT_CONSTRAINT_PASSES_ORDERING_ONLY"
+        }
+      ]
     },
     "R6_original_C3_local_source_location_20261030": {
       "status": "R6_C3_TWO_ORIGINALS_BYTES_READ_ONLY_PASS_WINDOWS_REAL_FILES",
