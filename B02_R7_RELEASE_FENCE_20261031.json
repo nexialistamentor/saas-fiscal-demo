@@ -1,0 +1,109 @@
+{
+  "schema": "SOLVERIS_B02_R7_CLOSEOUT_RELEASE_FENCE_V1",
+  "status": "B02_NOT_CLOSED_B03_NOT_RELEASED",
+  "as_of_utc_date": "2026-10-31",
+  "read_only_origin": {
+    "repository": "nexialistamentor/saas-fiscal-demo",
+    "branch": "candidate/g5-v5-publicacao-local",
+    "source_commit": "2f40751501289c2449f3fad14947e5be3b9fac1a",
+    "authority_manifest": "B02_G5_V5_AUTHORIZATION_MANIFEST_DRAFT.json",
+    "manifest_git_blob": "0aa74e76f08cb89dace1e768b2bd2a578cef0928",
+    "temporal_plan": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
+    "temporal_plan_git_blob": "1b7b6ce658dfb4e1abbd08efcffaaf984b54efbd",
+    "reviewer_git_pr": "#26",
+    "github_pr_review_submissions_observed": 0,
+    "reviewer_result_source": "Original own G5 review not present in pinned repository; distinct from prior documentary opinion"
+  },
+  "technically_completed_not_to_repeat": [
+    {
+      "gate": "R4",
+      "scope": "Protected PG17 private backup, disposable restore, original ACL inventory, Windows NTFS ACL proof",
+      "status": "SCOPED_PASS",
+      "archive_sha256": "3dbf68ccc3a9ee0b09c0ad3c0df513c62706017c230db51c1cdfedbddf75290e"
+    },
+    {
+      "gate": "R6_C3",
+      "scope": "Original two PDF byte digests and 24-entry bundle inventory, transport TLS/receipt chain",
+      "status": "SCOPED_PASS_NOT_AUTHENTICITY",
+      "document_sha256": [
+        "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d",
+        "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832"
+      ]
+    },
+    {
+      "gate": "R5_PREPARATION",
+      "scope": "Two prior Windows nine-case source RED/GREEN cycles, final five two-unit cases, original frozen contracts and PG17.10 disposable causal test",
+      "status": "SCOPED_PASS_NOT_REAL_0064_0065",
+      "last_source_test": "B02_R5_TWO_UNIT_SOURCE_ONLY_RED_GREEN_PASS_NO_POSTGRESQL",
+      "pg17_test": "B02_R5_PG17_DISPOSABLE_SQL_CAUSAL_PASS_NOT_B02_0064_0065"
+    },
+    {
+      "gate": "R1_NATIVE_PREPARATION",
+      "scope": "Isolated builder source/header and distro alignment",
+      "status": "SOURCE_AND_FOCAL_TEST_PASS_NO_SUCCESSOR_ELF"
+    }
+  ],
+  "exact_missing_predecessors": [
+    {
+      "id": "G5_AUDITOR_OWN_FINAL",
+      "owner": "Original distinct G5 V5 reviewer execution",
+      "needed": "Own, reasoned exact auditada_favoravelmente or auditada_desfavoravelmente act linked to B02-G5-V5-GPT6-auditoria-iniciada-v1 and da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
+      "observed": "NOT_ISSUED"
+    },
+    {
+      "id": "RCV31_A2_V4_OWN_REVIEW",
+      "owner": "Original segregated RCV31 A2 reviewer execution",
+      "needed": "Independent own review of fixed A2 V4 report SHA256 99d544143e1155c1cc50f9d71d11ccfa333fe06dcc8bb7e98e1f5d68a4651f16",
+      "observed": "NOT_DEMONSTRATED"
+    },
+    {
+      "id": "CURRENT_G4_V3_SUCCESSOR",
+      "owner": "Competent G4 authorizing authority",
+      "needed": "Prospective real G4 activation and institutional FOUNDER_ORIGIN verifiable signed report for BOTH exact PDFs, each exact binding; no TLS-only promotion",
+      "observed": "PREVIOUS_G4_EXPIRED_2026_10_30T13_00Z"
+    },
+    {
+      "id": "G5_NEW_TEMPORAL_POLICY",
+      "owner": "Miguel as product authority; independent policy reviewer/authorized executor",
+      "needed": "One approved prospective date interval, canonical fresh V3 policy with current G4/actor/root binding and own review/ratification; old V1/V2 immutable",
+      "observed": "V3_NOT_ISSUED_NO_INTERVAL_SELECTED"
+    },
+    {
+      "id": "R1_NATIVE_ROOT_SUCCESSOR",
+      "owner": "Legitimate native signing/root custodian and distinct approver",
+      "needed": "Fresh approved exact V3 root/header hash, valid signing provenance, PG17.10 Trixie ELF hash/ABI signature and independent approval",
+      "observed": "NOT_SHOWN"
+    },
+    {
+      "id": "R5_FULL_0064_0065_PHYSICAL",
+      "owner": "Authorized technical executor under distinct protected/isolated roles",
+      "needed": "Separately approved real migrations 0064/0065 on disposable PG17.10, row permissions, exact two signed C3 acquisition units with per-unit FOUNDER_ORIGIN before ALL IMMEDIATE, scoped trigger re-defer, one-shot reservation only after both, native PRE_COMMIT signature and exact independent reconciliation",
+      "observed": "NOT_INSTALLED_NOT_EXECUTED"
+    },
+    {
+      "id": "R6_NORMATIVE_TO_FISCAL",
+      "owner": "Authorized B02 fiscal evidence executor",
+      "needed": "Document-to-exact-extraction-to-RuleVersion-to-fiscal item trace, source byte and institutional origin verified; no inference from transport package",
+      "observed": "NOT_PROVEN"
+    },
+    {
+      "id": "R7_COMPETENT_B02_FINAL",
+      "owner": "Competent final constitutional/product authority after exact R1-R6 evidence",
+      "needed": "Final B02 R7 signed/competent closure decision and reconciled exact predecessor IDs/hashes",
+      "observed": "NOT_ISSUED"
+    }
+  ],
+  "strict_release_rules": {
+    "no_backdated_authority": true,
+    "no_reuse_expired_g4_g5_or_native_roots": true,
+    "no_synthetic_to_real_promotion": true,
+    "no_production_ddl_dml_without_explicit_new_prospective_authority": true,
+    "no_auto_retry_after_uncertain_commit_ack": true,
+    "no_mei_or_historical_b02_mutation": true,
+    "no_unnecessary_repetition_of_accepted_r4_c3_r5_tests": true,
+    "technical_signoff_not_institutional_signoff": true,
+    "final_b02_closed_allowed": false,
+    "b03_release_allowed": false
+  },
+  "decision": "TECHNICAL_PROGRESS_CAN_BE_COMMITTED; B02_R7_CLOSED_AND_B03_RELEASED_MUST_NOT_BE_ASSERTED"
+}
