@@ -16,6 +16,10 @@ from datetime import datetime, timezone
 ROOT=Path(__file__).resolve().parents[1]
 OLD="POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json"
 OLD_BLOB="87dd0560d842f8b9f20d808363496fa60786710c"
+CURRENT_0064="migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py"
+CURRENT_0064_BLOB="968c092e70e91b6be3d55bfab7a2dd4fc5256669"
+CURRENT_0064_SHA256="7a42f583a4ca604a697a2e9a11cda7ffdb88d92c40bfbd181e408da736293074"
+HISTORICAL_0064_SHA256="de96cc7af1f5fd41b47caf03ced7bd4774f6910ed462b36ac79f4bd9e07c8608"
 PLAN="B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json"
 KEY="decisao_unica_temporal_antecipada_g4_g5_20261031"
 NEW="POLICY_G5_CANDIDATO_SUCESSOR_V3_PARA_REVISAO.json"
@@ -37,6 +41,12 @@ def check():
         stop("WRONG_BRANCH")
     if git("rev-parse","HEAD:"+OLD)!=OLD_BLOB:
         stop("IMMUTABLE_V2_SOURCE_CHANGED")
+    if git("rev-parse","HEAD:"+CURRENT_0064)!=CURRENT_0064_BLOB:
+        stop("CURRENT_0064_GIT_BLOB_DRIFT")
+    if hashlib.sha256((ROOT/CURRENT_0064).read_bytes()).hexdigest()!=CURRENT_0064_SHA256:
+        stop("CURRENT_0064_SHA256_DRIFT")
+    if git("hash-object",CURRENT_0064)!=CURRENT_0064_BLOB:
+        stop("CURRENT_0064_WORKTREE_DRIFT")
     for path in (OLD,PLAN):
         if git("hash-object",path)!=git("rev-parse","HEAD:"+path):
             stop("TRACKED_INPUT_DIRTY")
@@ -85,6 +95,9 @@ def new_policy(q,physical):
     b["origin_evidence"]["institutional_evidence_bindings"]={}
     # Historical G5 V2 adoption and reviewer are not new V3 decisions.
     b["exact_references"]["adoption_act_sha256"]=None
+    if b["exact_references"].get("candidate_0064_sha256")!=HISTORICAL_0064_SHA256:
+        stop("HISTORICAL_0064_REFERENCE_CHANGED")
+    b["exact_references"]["candidate_0064_sha256"]=CURRENT_0064_SHA256
     b["roles"]["functional_reviewer"]=None
     b["roles"]["proponent_and_integrator"]=None
     limits=b["origin_evidence"]["known_limitations"]
@@ -146,6 +159,9 @@ def new_policy(q,physical):
     base["__V3_DRAFT_PROVENANCE__"]={
         "temporal_decision_reference":q["reference"],
         "source_v2_blob":OLD_BLOB,
+        "current_0064_git_blob":CURRENT_0064_BLOB,
+        "current_0064_sha256":CURRENT_0064_SHA256,
+        "0064_not_installed_or_operationally_authorized":True,
         "g4_reconciled_activation_hash":ah,
         "g4_reconciled_four_record_ids":q["g4"]["fresh_four_record_ids"],
         "not_signed_or_authorized":True,

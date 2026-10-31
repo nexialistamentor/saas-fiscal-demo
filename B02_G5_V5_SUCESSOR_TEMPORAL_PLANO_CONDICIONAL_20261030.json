@@ -354,7 +354,7 @@
       "old_G5_root_prohibited": true,
       "own_review_and_ratification_required": true,
       "draft_materializer": "tools/b02_g5_v3_temporal_materialize_candidate.py",
-      "materializer_git_blob": "8ef957cd7cde127dc481944df32d28445c3be725",
+      "materializer_git_blob": "e658a51bd9f4876cd2ffa2ec2b233b092f86f60b",
       "v3_draft_fail_closed_fields": [
         "G5 capability_root_id=null pending actual approved root",
         "G5 release actor=null pending actual actor",
@@ -365,8 +365,11 @@
         "both sanitization outcomes pending real independent inspection; old mandates/reviewer-acceptances cleared",
         "Six future operational IDs for each PDF use fresh V3 suffixes; V1 IDs stay historical.",
         "Inherited V1 execution and inspection proof IDs reset to NULL; both component manifests no longer claim completeness.",
-        "G4 verifier, G5 proponent and reviewer identity and past sanitization method grants reset pending own V3 institutional proofs."
-      ]
+        "G4 verifier, G5 proponent and reviewer identity and past sanitization method grants reset pending own V3 institutional proofs.",
+        "The current 0064 candidate SHA256 is pinned and recomputed over exact local bytes. Original V2 0064 hash remains historical. No installation or migration approval implied."
+      ],
+      "candidate_0064_current_sha256": "7a42f583a4ca604a697a2e9a11cda7ffdb88d92c40bfbd181e408da736293074",
+      "candidate_0064_current_git_blob": "968c092e70e91b6be3d55bfab7a2dd4fc5256669"
     },
     "executable_order": [
       "1 Ratify exactly this ONE temporal decision with timestamp/source and pin existing plan in Git. Existing G4 Nov authorization no longer an alternative executable path.",
