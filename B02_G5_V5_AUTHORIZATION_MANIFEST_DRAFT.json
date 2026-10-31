@@ -2054,6 +2054,34 @@
       "owner_reviewers_and_project_ratifier_not_impersonated": true,
       "b02_closed": false
     }
+  },
+  "g4_november_exact_id_readback_20261031": {
+    "status": "EXACT_FOUR_IDS_ABSENT_IN_RESTRICTED_READ_ONLY_SNAPSHOT",
+    "scope": "B02-G4-AUTH-MIGUEL-20261029-01 only; November operation, not October tx 926",
+    "observed_date": "2026-10-31",
+    "utc_timestamp": "NOT_IN_USER_TERMINAL_OUTPUT",
+    "physical_source": "User pasted direct Windows PowerShell + psql output; not a direct connector PostgreSQL connection",
+    "database": "solveris_b02_r4g_test",
+    "role": "solveris_b02_policy_writer",
+    "sql_transaction": "BEGIN READ ONLY; SELECT jsonb_build_object using four exact primary-id filters; ROLLBACK;",
+    "ids": {
+      "B02-05ede-execution-v2": null,
+      "B02-05ede-activation-v2": null,
+      "B02-05ede-generation-v2": null,
+      "B02-05ede-outbox-v2": null
+    },
+    "interpretation": "No matching row for any of the four exact ids in this queried snapshot. Does not establish absence of any other unit, global policy state, or future existence.",
+    "container": "solveris-pg17-migration-test",
+    "container_final_state": "RESTORED_STOPPED",
+    "protected_writes": 0,
+    "grants": 0,
+    "authorized_g4_window_start_utc": "2026-11-03T12:00:00Z",
+    "authorized_g4_window_end_utc": "2026-11-04T07:56:30.910737Z",
+    "existing_approved_script_blob": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+    "action": "DO_NOT_EXECUTE_BEFORE_WINDOW; when in window, existing pinned G4 runner reconciles before one-shot; no retry on unknown COMMIT; G5 V3 still requires distinct window decision and own audit",
+    "historical_g4_926": "PRESERVED_UNTOUCHED",
+    "g5_v3_interval_authorized": false,
+    "status_r7": "B02_OPEN_NO_G4_NOVEMBER_COMMIT_PROOF",
+    "no_repeat_r4_v30": true
   }
 }
-
