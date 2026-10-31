@@ -41,9 +41,9 @@ class Connection:
         if "SELECT current_database(),session_user,current_user" in query:
             return Result((self.db,"solveris_b02_policy_writer",
                            "solveris_b02_policy_writer",self.revision))
-        if "FROM pg_catalog.pg_roles" in query:return Result(self.role)
         if "FROM pg_catalog.pg_auth_members" in query:
             return Result(self.member_count)
+        if "FROM pg_catalog.pg_roles" in query:return Result(self.role)
         if "FROM pg_catalog.pg_class" in query:
             names=TABLES[:-1] if self.missing else TABLES
             return Result([
