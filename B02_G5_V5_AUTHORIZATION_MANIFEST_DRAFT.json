@@ -620,13 +620,13 @@
       },
       "R2": {
         "existing": "B02_G5_V5_RASTREIO_CONSUMIDORES_R2_G5_20261030.md; B02_G5_V5_ADITAMENTO_PROPRIO_G5_REAPRECIACAO_20261030.json; tools/b02_g5_v5_institutional_audit_result_runner.py; SOLVERIS_B02_RCV31_R3_PARECER_SEGREGADO_20261025.md (historical RCV31 code-review, distinct from G5 V5 institutional reviewer)",
-        "accepted_proof": "G4-specific R2 fields not a direct proven G5 activation block; functional reviewer provenance recovered; audit start COMMITTED hash da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3 Historical RCV31-R3 reviewer concluded FAVORABLE for concrete A1 disposable correction, PARTIAL for A2 independent root verification; A3/A4 only no static regression. Delta4 V3 subsequent observer tamper negative tested, but no final segregated approval of TOCTOU mitigation shown. Preserve this code review separately from the original G5 V5 institutional audit chain.",
+        "accepted_proof": "G4-specific R2 fields not a direct proven G5 activation block; functional reviewer provenance recovered; audit start COMMITTED hash da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3 Historical RCV31-R3 reviewer concluded FAVORABLE for concrete A1 disposable correction, PARTIAL for A2 independent root verification; A3/A4 only no static regression. Delta4 V3 subsequent observer tamper negative tested, but no final segregated approval of TOCTOU mitigation shown. Preserve this code review separately from the original G5 V5 institutional audit chain. Original A2 V4 report 313542 bytes SHA256 99d544143e1155c1cc50f9d71d11ccfa333fe06dcc8bb7e98e1f5d68a4651f16 independently read as stored in user's Library; 1057 SQL statements instrumented, 19 INSERT category, 2 DEFERRED+2 ALL IMMEDIATE, correspondence_checkpoints=[], observer_field_diagnostics=null. Scoped detail appended to existing reviewer request de870295; distinct reviewer result still pending.",
         "remaining_gap": "RCV31 code-review A2: physical disposable positive now passed; inspect primary JSON and obtain original segregated review of the precise source snapshot delta, including externally rooted cryptographic chain (not inferred from CORRESPONDENCE_CHECKPOINTS=0). Distinct G5 V5 institutional audit reviewer result if not yet issued remains separate. Technical preparation can continue without treating final R7 audit as predecessor. Exact A2 V4 review submission is published at evidence/b02/rcv31/a2/B02_RCV31_A2_V4_REVISAO_FOCAL_PEDIDO_20261030.md but no own segregated review outcome was received or inferred.",
         "next_action": "Request only original RCV31 segregated technical reviewer appraisal of A2 V4 fixed-byte execution using actual report SHA256 99d544..., explicitly noting correspondence_checkpoints empty and --final-operator provenance note. Do NOT fabricate review outcome. G5 V5 policy's institutional review chain remains separately owned by original G5 V5 reviewer."
       },
       "R3": {
         "existing": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
-        "accepted_proof": "next free policy version 3 confirmed by physical inventory; V2 G5 and G4 926 material expired 2026-10-30T13:00:00Z",
+        "accepted_proof": "next free policy version 3 confirmed by physical inventory; V2 G5 and G4 926 material expired 2026-10-30T13:00:00Z Current candidate policy V2 source JSON cross-checked against existing conditional successor plan: all eight time paths physically present and still 2026-10-29T13:00:00Z to 2026-10-30T13:00:00Z; both PDF bindings reference B02-05ede-activation-v3 and are expired. No V3 policy or date invented.",
         "remaining_gap": "future prospective interval selected by Miguel, current G4 authority for both PDFs and coherent new V3 time/root/operator/decisions/activation IDs and hashes, focused temporal delta review",
         "next_action": "Complete predecision technical and source preparations only. Preserve V1/V2; no dates selected or synthetic G4 authority."
       },
@@ -985,6 +985,50 @@
         "execution_status": "FOCUSED_WINDOWS_10_OF_10_PASS_TWICE_NO_ELF_COMPILED",
         "security_scope": "No root, key, HSM, signature, G5 authority or protected binary invented."
       }
+    },
+    "A2_primary_original_binary_readback": {
+      "status": "PRIMARY_A2_JSON_BYTES_READBACK_SHA_VERIFIED_20261030",
+      "source": "User-owned Library original file B02_RCV31_R3_DIAGNOSTICO_CAUSAL_20261030T222721Z.json; content inspected in isolated runtime",
+      "bytes": 313542,
+      "sha256": "99d544143e1155c1cc50f9d71d11ccfa333fe06dcc8bb7e98e1f5d68a4651f16",
+      "postgres_report": "PASS_DIAGNOSTIC_POSITIVE",
+      "result_status": "PASS_CONCRETE_STAGE_AND_SEPARATE_READ_ONLY_PROCESS",
+      "cleanup": "REMOVED",
+      "sql_instrumented": 1057,
+      "insert_head_count": 19,
+      "classified_insert_head_count": 18,
+      "constraint_sequence": [
+        "DEFERRED",
+        "ALL_IMMEDIATE",
+        "DEFERRED",
+        "ALL_IMMEDIATE"
+      ],
+      "correspondence_checkpoints": 0,
+      "observer_field_diagnostics": null,
+      "primary_exception": null,
+      "reviewer_result": "NOT_EMITTED_OR_INFERRED",
+      "evidence_dossier": "evidence/b02/rcv31/a2/B02_RCV31_A2_V4_REVISAO_FOCAL_PEDIDO_20261030.md",
+      "dossier_commit": "de87029521d8732b54792c94fdb2d518580b77a7",
+      "scope": "Read-only independent parsing of existing report. No new PostgreSQL, Docker, signature, root or institutional authority."
+    },
+    "R3_policy_time_bindings_structural_readback": {
+      "status": "EIGHT_SOURCE_TIME_FIELDS_PRESENT_EXPIRED_NO_NEW_AUTHORITY",
+      "policy_file": "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json",
+      "policy_version_current": 2,
+      "planned_successor_version": 3,
+      "all_eight_paths_present": true,
+      "original_interval_from": "2026-10-29T13:00:00+00:00",
+      "original_interval_until": "2026-10-30T13:00:00+00:00",
+      "document_ids": [
+        "101202501245",
+        "101201900571"
+      ],
+      "document_g4_binding": "B02-05ede-activation-v3",
+      "current_g4_binding_expired": true,
+      "future_window_selected": false,
+      "future_policy_hash_created": false,
+      "independent_review_or_g4_renewal_performed": false,
+      "source": "Read-only GitHub source JSON and existing conditional temporal plan, no temporal authority decision."
     }
   }
 }
