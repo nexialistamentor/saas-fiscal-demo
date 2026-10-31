@@ -41,6 +41,8 @@ def run_test(testdir):
         cwd=ROOT,text=True,capture_output=True,timeout=120)
 
 def main():
+    if git("branch","--show-current").decode("ascii")!="candidate/g5-v5-publicacao-local":
+        halt("WRONG_CHECKOUT_BRANCH")
     git("cat-file","-e",RED)  # fail closed if RED predecessor commit is absent
     for path,sha in ((NEW,PIN_NEW),(TEST,PIN_TEST),(FROZEN_SOURCE,PIN_FROZEN),
                      (OLDER_TEST,PIN_OLDER),(ORIGINAL_TEST,PIN_ORIGINAL)):
