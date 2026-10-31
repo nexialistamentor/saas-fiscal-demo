@@ -60,7 +60,7 @@
       "id": "CURRENT_G4_V3_SUCCESSOR",
       "owner": "Competent G4 authorizing authority",
       "needed": "Reconcile whether existing separately authorized G4 four-record operation B02-G4-AUTH-MIGUEL-20261029-01 has already committed, READ ONLY first. If ABSENT, the exact previously approved runner is window-gated for 2026-11-03T12:00Z through 2026-11-04T07:56:30.910737Z, on its pinned historical branch; no fresh authorization or new G4 candidate is required for that exact scoped operation, but execution still requires correct runtime, valid authority and one-shot ACK handling. The G4 future activation alone does NOT establish signed independently inspected FOUNDER_ORIGIN for both C3 PDFs or release G5.",
-      "observed": "EXISTING_G4_NOV3_4_AUTHORIZATION_VERIFIED_NOT_CURRENT_NOT_EXECUTED; OCTOBER_926_EXPIRED"
+      "observed": "2026-10-31 exact four ID read-only SQL: all null in protected database under restricted role; no November execution shown, October tx 926 unchanged. Existing Nov 3–4 approval and runner remain."
     },
     {
       "id": "G5_NEW_TEMPORAL_POLICY",
@@ -166,7 +166,7 @@
     "database": "solveris_b02_r4g_test",
     "writer": "solveris_b02_policy_writer",
     "old_Oct_G4_v3_txid": "926",
-    "proof_of_nov_G4_v2_commit": "NOT_SEEN; NO_LIVE_POSTGRESQL_QUERY_IN_THIS_EXECUTION",
+    "proof_of_nov_G4_v2_commit": "FOUR_EXACT_IDS_NOT_FOUND_IN_20261031_READONLY_SNAPSHOT",
     "runner_before_window": "HARD_STOP",
     "prior_execution_requires_read_only_disambiguation": true,
     "original_approval_not_revoked_by_Oct_branch": "NO_REVOCATION_EVIDENCE_FOUND_NOT_A_NEW_INSTITUTIONAL_ATTESTATION",
@@ -176,6 +176,19 @@
     "no_repeat_G4_October": true,
     "no_mutation_of_original_G4_preapproval": true,
     "no_DDL_DML": true,
-    "no_claim_release": true
+    "no_claim_release": true,
+    "latest_readonly_exact_id_result_20261031": {
+      "source": "operator Windows 2026-10-31, BEGIN READ ONLY, ROLLBACK, role solveris_b02_policy_writer",
+      "database": "solveris_b02_r4g_test",
+      "execution": null,
+      "activation": null,
+      "generation": null,
+      "outbox": null,
+      "scope": "Only the 4 approved November IDs; no wider absence inference",
+      "container_final_state": "RESTORED_STOPPED",
+      "writes": 0,
+      "grants": 0,
+      "next": "Honor existing authorization only inside 2026-11-03T12:00:00Z through 2026-11-04T07:56:30.910737Z; no early invocation of runner"
+    }
   }
 }

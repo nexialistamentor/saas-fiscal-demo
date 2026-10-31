@@ -2020,10 +2020,10 @@
           "tools/b02_g5_native_pg1710_isolated_build.py"
         ],
         "missing": [
-          "G4 four exact IDs read-only physical reconciliation and November valid activation",
-          "prospective approved G5 window; actual G4 hash; authorized existing key and new bound header/ELF/signature/approval"
+          "G4 November activation only within authorized 03/11–04/11 UTC window, exact four IDs absent in 31/10 restricted read",
+          "G5 V3 separate approved material window; current physical G4 activation record hash and approved root/header/ELF"
         ],
-        "result": "G4_AUTHORIZED_WINDOW_FUTURE_G5_WINDOW_NOT_APPROVED"
+        "result": "READ_ONLY_EXACT_IDS_4_ABSENT_G4_NOVEMBER_EXECUTION_NOT_YET_ALLOWED"
       },
       {
         "dependencia": "EXECUCAO_R6_R7",
