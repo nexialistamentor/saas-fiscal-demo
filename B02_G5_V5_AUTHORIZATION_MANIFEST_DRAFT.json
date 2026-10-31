@@ -1385,7 +1385,7 @@
       "test_blob": "756f78582369925e66898d5becdc8b5fc7927ce9",
       "test_count": 5,
       "runner_path": "tools/b02_r5_two_unit_red_green_runner.py",
-      "runner_blob": "ca9d85264584de75554fa54c37eb0a09731090b4",
+      "runner_blob": "f88860ea1ccf7c85554110fd30f6529cda7b31e4",
       "disposable_physical_path": "tools/b02_r5_pg17_deferred_sequence_disposable.py",
       "disposable_physical_blob": "5d128357998894aac77295f85b1c146df9e5a704",
       "postgres_image": "postgres:17.10-trixie",
@@ -1432,12 +1432,15 @@
         "observed": "SyntaxError unexpected character after line continuation character, line 44 in b02_r5_two_unit_red_green_runner.py at escaped '{commit}' expression",
         "original_runner_blob": "ca9d85264584de75554fa54c37eb0a09731090b4",
         "correction_commit": "1be692e7d720b1cabaf073b6642654ffe1ac88f0",
-        "corrected_runner_blob": "b93c8149853bfcafffd25735a052434bf92e000a",
+        "corrected_runner_blob": "f88860ea1ccf7c85554110fd30f6529cda7b31e4",
         "what_changed": "Single invalid guard replaced by git('cat-file','-e',RED); fail closed using existing git helper",
         "status_after_fix": "PENDING_ONE_EXECUTION_OF_CORRECTED_RED_GREEN_RUNNER",
         "test_cases_evaluated_from_failed_run": 0,
-        "do_not_repeat_pg17_disposable": true
-      }
+        "do_not_repeat_pg17_disposable": true,
+        "checkout_branch_guard_commit": "4894bd785972668bfbbdf1403750145fd63f5224",
+        "checkout_branch_guard": "Runner now refuses any branch except candidate/g5-v5-publicacao-local before executing; avoids accidental local checkout crossover."
+      },
+      "next_exact_action": "In C:\\dev\\solveris-b02-g5-v5-publicacao only, ensure active branch candidate/g5-v5-publicacao-local, do a fast-forward only pull, run python -B tools/b02_r5_two_unit_red_green_runner.py one time. No repeat of disposable PostgreSQL model PASS."
     }
   }
 }
