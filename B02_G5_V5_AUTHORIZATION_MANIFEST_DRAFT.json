@@ -1991,5 +1991,69 @@
       ],
       "no_protected_SQL_or_older_R4_R5_retreat": true
     }
+  },
+  "b02_tres_dependencias_corte_20261031": {
+    "source_ref": "37b0cab8572ffa68d5629e2990780e34b20ab142",
+    "state": "EVIDENCE_RECONCILED_PREPARATION_OPEN_NO_NEW_INSTITUTIONAL_DECISION",
+    "preserve": "R4_C3_R5_V30_ACL_JSONB_WINDOWS_G4_OCTOBER_G5_V1_V2_MEI",
+    "r7_ratified_predecessor": "G5_V3_OWN_INDEPENDENT_AUDIT",
+    "historical_g5_v2_audit_final_required_for_r7": false,
+    "matrix": [
+      {
+        "dependencia": "REVISOES_V3",
+        "existing": [
+          "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
+          "A2 V4 patch + original diagnostic 99d54414...",
+          "G5 V1/V2 decision history preserved"
+        ],
+        "missing": [
+          "temporal G5 V3 approval and canonical real G4 bindings",
+          "own A2 segregated final opinion, new independent V3 submission/audit/ratification with legitimate actors"
+        ],
+        "result": "STATIC_PREASSESSMENT_ONLY_NO_V3_AUDIT_ACT"
+      },
+      {
+        "dependencia": "VIGENCIA_RAIZ",
+        "existing": [
+          "B02-G4-AUTH-MIGUEL-20261029-01",
+          "tools/b02_g4_authorized_runner.py",
+          "tools/b02_g5_native_pg1710_isolated_build.py"
+        ],
+        "missing": [
+          "G4 four exact IDs read-only physical reconciliation and November valid activation",
+          "prospective approved G5 window; actual G4 hash; authorized existing key and new bound header/ELF/signature/approval"
+        ],
+        "result": "G4_AUTHORIZED_WINDOW_FUTURE_G5_WINDOW_NOT_APPROVED"
+      },
+      {
+        "dependencia": "EXECUCAO_R6_R7",
+        "existing": [
+          "0064 and 0065 candidate migrations",
+          "3 accepted Windows tests 0065",
+          "G1.13-C3 textual MVA evidence and R6 consumers",
+          "R7 release fence"
+        ],
+        "missing": [
+          "0065 SECURITY DEFINER isolated physical delta; legitimate Alembic install with real ELF",
+          "two authentic real C3 units; one-shot reconciliation; normative exact RuleVersion-to-item link and competent R7 final"
+        ],
+        "result": "NO_PROTECTED_DDL_DML_NO_OPERATION_B02_OPEN"
+      }
+    ],
+    "constraints": {
+      "g4_exact_auth_window_from_utc": "2026-11-03T12:00:00Z",
+      "g4_exact_auth_window_until_utc": "2026-11-04T07:56:30.910737Z",
+      "v3_g5_proposed_same_window_only": true,
+      "v3_g5_window_approved": false,
+      "g4_ids_first_read_only": "B02-05ede-execution-v2 / B02-05ede-activation-v2 / B02-05ede-generation-v2 / B02-05ede-outbox-v2",
+      "source_policy_named_v3_completo_has_policy_version": 1,
+      "preserve_legacy_signature_and_actor_provenance": true,
+      "existing_key_eligible": "UNDETERMINED_CHECK_CUSTODY_NO_DEFAULT_ROTATION",
+      "no_sql_execution_claim": true,
+      "no_windows_connection_in_this_execution": true,
+      "owner_reviewers_and_project_ratifier_not_impersonated": true,
+      "b02_closed": false
+    }
   }
 }
+

@@ -202,5 +202,94 @@
     "R7_commit": "ad043b91b4ea2b82d58ad0160f4982b898e3df1a",
     "no_V3_window_selected": true,
     "no_new_authorization_or_PG_write": true
+  },
+  "pre_decisao_v3_verificacao_focal_20261031": {
+    "source_commit": "37b0cab8572ffa68d5629e2990780e34b20ab142",
+    "state": "PREPARACAO_DOCUMENTAL_SEM_APROVACAO_TEMPORAL_SEM_ATO_V3_SEM_OPERACAO",
+    "approved_g4_reference": "B02-G4-AUTH-MIGUEL-20261029-01",
+    "g4_existing_approved_window_utc": {
+      "from": "2026-11-03T12:00:00+00:00",
+      "until": "2026-11-04T07:56:30.910737+00:00"
+    },
+    "proposed_for_separate_g5_v3_decision_utc": {
+      "from": "2026-11-03T12:00:00+00:00",
+      "until": "2026-11-04T07:56:30.910737+00:00"
+    },
+    "proposed_g5_window_approved": false,
+    "exact_proposed_decision": "APROVO exclusivamente para a politica G5 versao 3 a janela material de 2026-11-03T12:00:00+00:00 ate 2026-11-04T07:56:30.910737+00:00, condicionada a reconciliacao fisica previa da ativacao G4 autorizada, vinculacao real dos dois PDFs, auditoria propria V3, ratificacao exata, raiz/binario assinados e demais gates R7. Esta aprovacao temporal nao altera a autorizacao G4 nem autoriza por si COMMIT, instalacao ou assinatura.",
+    "exact_policy_v2_to_v3_diff_pending_legitimate_bindings": {
+      "policy_version": {
+        "from": 2,
+        "to": 3
+      },
+      "material_applicability": [
+        "declared_material_applicability.from",
+        "declared_material_applicability.until"
+      ],
+      "g5_release_window": [
+        "rules.b02_noncredential.security.g5_release.from",
+        "rules.b02_noncredential.security.g5_release.until"
+      ],
+      "g4_doc_windows": [
+        "rules.b02_noncredential.security.g5_release.documents[0].g4.valid_from",
+        "rules.b02_noncredential.security.g5_release.documents[0].g4.valid_until",
+        "rules.b02_noncredential.security.g5_release.documents[1].g4.valid_from",
+        "rules.b02_noncredential.security.g5_release.documents[1].g4.valid_until"
+      ],
+      "g4_doc_bindings": [
+        "documents[0].g4.policy_binding.policy_activation_id",
+        "documents[0].g4.policy_binding.policy_activation_record_hash",
+        "documents[1].g4.policy_binding.policy_activation_id",
+        "documents[1].g4.policy_binding.policy_activation_record_hash"
+      ],
+      "expected_g4_ids_without_claiming_commit": [
+        "B02-05ede-execution-v2",
+        "B02-05ede-activation-v2",
+        "B02-05ede-generation-v2",
+        "B02-05ede-outbox-v2"
+      ],
+      "physical_g4_activation_record_hash": "PENDING_EXACT_READBACK_NO_FABRICATION",
+      "root_and_actor": "CHECK_EXISTING_KEY_CUSTODY_AND_APPROVED_ACTOR; NO_DEFAULT_KEY_ROTATION; NEW_POLICY_BOUND_HEADER_REQUIRED",
+      "unaffected_content": "PRESERVE_G5_V2_PDF_HASHES_MVA_EVIDENCE_AND_UNCHANGED_CONTRACTS; NO_V2_DECISION_REBINDING",
+      "actual_v3_policy_sha256": null,
+      "actual_v3_policy_record_hash": null,
+      "reason_no_final_sha": "Window not approved; successor G4 record hash/real activation and legitimate institutional bindings not yet available"
+    },
+    "a2_focal_review_preassessment": {
+      "source": "evidence/b02/rcv31/a2/B02_RCV31_R3_DELTA4_V3_A2_SNAPSHOT_V4.patch",
+      "mechanism": "Verified observer bytes frozen before operate(), passed through stdin to python -I -c, hash revalidated in child, no path reopening for executed script",
+      "evidence": "313542-byte original diagnostic SHA256 99d544143e1155c1cc50f9d71d11ccfa333fe06dcc8bb7e98e1f5d68a4651f16; prior positive and 5/5 local tests preserved",
+      "limitation": "correspondence_checkpoints empty and observer_field_diagnostics null; synthetic trust roots and operator provenance do not prove institutional key custody or independent field-level signatures",
+      "own_segregated_A2_reviewer_final_act": "NOT_ISSUED_BY_THIS_EXECUTION"
+    },
+    "security_0065_specific_delta": {
+      "source": "migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py",
+      "source_git_blob": "7f3fbf53217aecfe045280f343982ece5a72d60c",
+      "source_change_commit": "3db54429",
+      "reviewed_static_controls": [
+        "REVOKE ALL on reservation table from PUBLIC and solveris_b02_writer",
+        "GRANT SELECT only to restricted writer",
+        "SECURITY DEFINER with pg_catalog/pg_temp search_path and required current_user solveris_test",
+        "restricted writer only function EXECUTE, no direct INSERT grant"
+      ],
+      "windows_focused_security_tests": "3_PASS_ALREADY_ACCEPTED_NO_RERUN",
+      "physical_specific_gate": "PENDING_DISPOSABLE_ONLY_CHECK_DIRECT_INSERT_DENIED_FUNCTION_OWNER_SOLVERIS_TEST_AND_RESTRICTED_WRITER_RESERVE_ALLOWED",
+      "installation": "NOT_AUTHORIZED_BY_THIS_PREPARATION"
+    },
+    "r6_existing_extraction_to_real_item": {
+      "first_document": "101202501245: PDF SHA256 e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832, p1, henna CEST 20.001.00 NCM 1211.90.90, MVA 46.78%, observed 2026-04-01 only",
+      "second_document": "101201900571: PDF SHA256 af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d, p86 41.42% observed 2026-03-31 only; p55 46.78% textual precedent",
+      "existing_sources": [
+        "docs/ENTERPRISE_G113_C3_TEMPORAL_MVA_EVIDENCE_20261020.md",
+        "app/services/enterprise_b02_normative_binding.py",
+        "tools/b02_r6_normative_linkage_readonly.py"
+      ],
+      "last_physical_source_lookup": "0 exact matching artifacts and extractions in two readable source tables; RuleVersion, normative_relation_versions, tabela_mva SELECT inaccessible to restricted role",
+      "missing": "REAL_AUTHENTICATED_DOC_TO_STORED_EXTRACTION_TO_RULE_VERSION_TO_NORMATIVE_RELATION_TO_REAL_FISCAL_ITEM",
+      "no_acl_elevation": true,
+      "no_new_ingestion": true,
+      "no_invented_rule": true
+    }
   }
 }
+
