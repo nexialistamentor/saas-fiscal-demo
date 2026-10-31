@@ -97,7 +97,15 @@ class R6EvidenceContract(unittest.TestCase):
 
     def test_even_candidates_do_not_prove_fiscal_authority(self):
         data={"artifacts":[{"record_hash_shape_valid":True,"normative_artifact_id":"some"}],
-              "rule_candidates":[{"rule_version_record_id":"some"}],
+              "rule_candidates":[{
+                "rule_version_record_id":"rv-example",
+                "pdf_artifact_hash":r6.SOURCE_HASHES["101202501245"],
+                "normative_artifact_id":"artifact-example",
+                "normative_artifact_record_hash":"a"*64,
+                "result_id":"extraction-example",
+                "result_record_hash":"b"*64,
+                "rule_record_hash":"c"*64,"rule_hash":"d"*64,
+                "extraction_outcome":"conclusivo"}],
               "normative_relations_total":4,"rule_versions_total":3,
               "mva_pr_12119090":[{"id":12}]}
         with patch.object(r6.bridge,"managed_container",return_value=contextlib.nullcontext()),\
@@ -109,6 +117,22 @@ class R6EvidenceContract(unittest.TestCase):
         self.assertFalse(result["fiscal_authority"])
         self.assertFalse(result["checkout"])
         self.assertEqual(result["writes"],0)
+
+    def test_r6_exact_pdf_artifact_extraction_rule_fails_on_inconclusive_result(self):
+        data={"artifacts":[],"rule_candidates":[{
+            "rule_version_record_id":"rv-example",
+            "pdf_artifact_hash":r6.SOURCE_HASHES["101202501245"],
+            "normative_artifact_id":"artifact-example",
+            "normative_artifact_record_hash":"a"*64,
+            "result_id":"extraction-example",
+            "result_record_hash":"b"*64,
+            "rule_record_hash":"c"*64,"rule_hash":"d"*64,
+            "extraction_outcome":"inconclusivo"}]}
+        with patch.object(r6.bridge,"managed_container",
+                          return_value=contextlib.nullcontext()),\
+             patch.object(r6,"read",side_effect=[privileges(),data]):
+            with self.assertRaisesRegex(RuntimeError,"EXTRACTED_PREDECESSOR_NOT_CONCLUSIVE"):
+                r6.inspect()
 
     def test_corrupt_artifact_row_hash_stops(self):
         data={"artifacts":[{"record_hash_shape_valid":False}],
