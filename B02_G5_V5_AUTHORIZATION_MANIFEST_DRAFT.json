@@ -1768,6 +1768,40 @@
       "new_ddl": 0,
       "own_audit_result_issued": false,
       "policy_V1_V2_G4_MEI_preserved": true
+    },
+    "G5_audit_pinned_blob_windows_20261031": {
+      "status": "TWO_NEW_FOCUSED_WINDOWS_UNITTESTS_PASS_NOT_INSTITUTIONAL_AUDIT",
+      "operator_evidence_date": "2026-10-31",
+      "source": "user_supplied_windows_powershell_output_this_conversation",
+      "checkout": "C:\\dev\\solveris-b02-g5-v5-publicacao",
+      "branch": "candidate/g5-v5-publicacao-local",
+      "head_synced_before_tests": "608a5067ce00739ebec5c945e36de069d6d2f915",
+      "git_pull": "FAST_FORWARD_4600cfc5_TO_608a5067",
+      "source_patch": {
+        "path": "tools/b02_g5_v5_institutional_audit_result_runner.py",
+        "git_blob": "9c66b9bdb64d44b4d1d9f923105123931916e60d",
+        "commit": "ff039abc0c3cb8d0003b2fc938ec037e9cbc067b"
+      },
+      "test_file": {
+        "path": "tests/test_b02_g5_v5_audit_result_contract.py",
+        "git_blob": "fac5c68aa09840a229f2907f47e1868c75eaab66",
+        "commit": "608a5067ce00739ebec5c945e36de069d6d2f915"
+      },
+      "new_tests": [
+        "ResultGate.test_reviewer_act_reads_pinned_git_blob_not_mutable_local_file",
+        "ResultGate.test_reviewer_act_abstains_when_pinned_blob_unreadable"
+      ],
+      "command": "python -B -m unittest -q test_b02_g5_v5_audit_result_contract.ResultGate.test_reviewer_act_reads_pinned_git_blob_not_mutable_local_file test_b02_g5_v5_audit_result_contract.ResultGate.test_reviewer_act_abstains_when_pinned_blob_unreadable",
+      "operator_stdout": "Ran 2 tests in 0.002s; OK",
+      "passed": 2,
+      "failed": 0,
+      "previous_5_tests_rerun": false,
+      "protected_database_writes": 0,
+      "institutional_audit_result_issued": false,
+      "G5_V2_approval_or_G4_successor": false,
+      "B02_closed": false,
+      "B03_released": false,
+      "next_scope": "Only genuine new independent reviewer acts and physically authorized R5/R6/R7 successor gates; do not rerun these tests or frozen prior tests."
     }
   }
 }
