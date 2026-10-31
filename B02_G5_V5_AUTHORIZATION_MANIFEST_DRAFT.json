@@ -1064,6 +1064,17 @@
       "new_cas_read_or_storage_changed": false,
       "root_or_original_source_bytes_located_in_this_runtime": false,
       "pending": "Original two PDF C3 bytes/custody location and authorized independent verifier callback; then conditional real transaction under approved R3/R5 authority. No automatic TabelaMVA→RuleVersion association."
+    },
+    "R5_0065_one_shot_ordering_conditional_caveat": {
+      "status": "STATIC_ORDERING_DEPENDENCY_NOT_EXECUTED",
+      "candidate_0065_blob": "7b6d270901fa0ba18bb8f48599908f737e9d4eb3",
+      "service_blob": "723448cb7f23b659f5131c5535d5238c2fcf0fd4",
+      "static_cause": "0065 has DEFERRABLE INITIALLY DEFERRED constraint trigger on operational approval reservation; its trigger checks exactly two distinct real acquisitions. Existing stage_completion issues SET CONSTRAINTS ALL IMMEDIATE after each completed unit. If reservation precedes completion of only one document, that SET may cause the deferred two-unit constraint to fire prematurely.",
+      "bounded_next_check": "In a separately approved disposable PG17.10 precommit test, demonstrate a transaction that stages BOTH distinct real-document units in the accepted sequence, reserves the one-shot approval at a valid point, verifies signature/capability and rolls back all experimental operations. Preserve all original V30 tests and 0064/0065 candidate sources. Use synthetic test roots solely in a disposable profile, not protected authorization.",
+      "not_a_verified_runtime_bug": true,
+      "not_an_approval_to_install": true,
+      "no_new_pg_tests_run": true,
+      "no_sql_or_g4_change": true
     }
   }
 }
