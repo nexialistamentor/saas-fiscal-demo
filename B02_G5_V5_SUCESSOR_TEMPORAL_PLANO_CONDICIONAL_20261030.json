@@ -290,6 +290,103 @@
       "no_new_ingestion": true,
       "no_invented_rule": true
     }
+  },
+  "decisao_unica_temporal_antecipada_g4_g5_20261031": {
+    "status": "PROPOSTA_UNICA_PENDENTE_RATIFICACAO_EXPRESSA",
+    "reference": "B02-G4-G5-TEMP-SUCCESSOR-20261031-01",
+    "decision_exact_text": "APROVO, em substituicao prospectiva e mutuamente exclusiva da execucao G4 de novembro B02-G4-AUTH-MIGUEL-20261029-01, uma unica nova ativacao G4 v4 e a mesma janela material para uma nova politica G5 versao 3, das 2026-11-01T00:00:00+00:00 ate as 2026-11-15T00:00:00+00:00 (fim exclusivo). Nao executar a autorizacao G4 substituida; preservar integralmente os atos historicos, inclusive G4 outubro e G5 v1/v2. A aprovacao temporal nao e autorizacao de assinatura, migracao, operacao G5 ou fecho B02, que requerem os atos proprios segregados, as duas provas originais e reconciliacao fisica. Nenhuma execucao antes da ratificacao nem repeticao de COMMIT incerto.",
+    "approved": false,
+    "approved_by": null,
+    "approved_at_utc": null,
+    "ratification_source": null,
+    "window_utc": {
+      "from": "2026-11-01T00:00:00+00:00",
+      "until": "2026-11-15T00:00:00+00:00",
+      "end_exclusive": true
+    },
+    "prior_approval": "B02-G4-AUTH-MIGUEL-20261029-01_PRESERVED_NOT_EXECUTABLE_IF_SUCCESSOR_RATIFIED",
+    "g4": {
+      "policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY",
+      "policy_version": 1,
+      "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+      "ratified_decision_id": "B02-05ede-ratificada-v1",
+      "bootstrap": "B02-05ede-bootstrap-v1",
+      "historical_october_v3": "UNCHANGED_EXPIRED",
+      "historical_november_v2": "APPROVED_PREVIOUSLY_BUT_UNEXECUTED_20261031_READONLY",
+      "fresh_four_record_ids": {
+        "execution": "B02-05ede-execution-v4",
+        "activation": "B02-05ede-activation-v4",
+        "generation": "B02-05ede-generation-v4",
+        "outbox": "B02-05ede-outbox-v4"
+      },
+      "one_shot_idempotency_key": "B02-05ede-execution-v4-20261101T000000Z",
+      "attempt_number": 4,
+      "fencing_token": 4,
+      "lease": "B02-05ede-manual-lease-v4",
+      "original_pinned_script": "executar_ativacao_g4_real.py",
+      "original_blob": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+      "successor_runner": "tools/b02_g4_g5_temporal_successor_runner.py"
+    },
+    "g5": {
+      "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",
+      "version": 3,
+      "historical_v1_v2": "IMMUTABLE",
+      "prior_v2_source": "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json",
+      "eight_temporal_fields": [
+        "declared_material_applicability.from",
+        "declared_material_applicability.until",
+        "rules.b02_noncredential.security.g5_release.from",
+        "rules.b02_noncredential.security.g5_release.until",
+        "documents[0].g4.valid_from",
+        "documents[0].g4.valid_until",
+        "documents[1].g4.valid_from",
+        "documents[1].g4.valid_until"
+      ],
+      "two_exact_g4_bindings": "NEW v4 ACTIVATION ID + ACTUAL READBACK RECORD_HASH FOR EACH DOCUMENT",
+      "new_actual_g4_record_hash": null,
+      "new_canonical_policy_hash": null,
+      "old_G5_root_prohibited": true,
+      "own_review_and_ratification_required": true
+    },
+    "executable_order": [
+      "1 Ratify exactly this ONE temporal decision with timestamp/source and pin existing plan in Git. Existing G4 Nov authorization no longer an alternative executable path.",
+      "2 Reconcile read-only November v2 and new v4 IDs and check for interval overlaps or unknown COMMIT before any writer execution.",
+      "3 After start and approval, use existing isolated loopback and new G4 v4 runner once, reconcile four record hashes; no automatic retry.",
+      "4 Form new G5 V3 exact canonical body by copying V2 immutable source and changing only version, 8 time fields, 2 real G4 bindings and legitimately issued root/actor/evidence.",
+      "5 Obtain own A2 V4 technical review and distinct V3 own institutional 4-decision chain and ratification for exact V3 hash.",
+      "6 Verify authorized key/native Trixie 17.10 real ELF; full disposable 0064/0065 then separately approved protected real two-PDF one-shot and independently verified FOUNDER_ORIGIN.",
+      "7 Link real authenticated PDFs to extraction, RuleVersion and exact fiscal item R6 and issue competent R7. No B03 until release."
+    ],
+    "resolved_0065_disposable": {
+      "status": "B02_0065_SECURITY_DEFINER_PHYSICAL_DISPOSABLE_PASS",
+      "source": "2026-10-31 user original terminal",
+      "migration_blob": "7f3fbf53217aecfe045280f343982ece5a72d60c",
+      "direct_insert_denied": true,
+      "function_owner": "solveris_test",
+      "restricted_writer_exec_function": true,
+      "session_user_spoof_denied": true,
+      "rows_after_rollback": 0,
+      "protected_writes": 0,
+      "stub_native_profile_not_G5_release": true,
+      "full_migration_not_installed": true
+    },
+    "unchanged": [
+      "R4",
+      "RCV31 historical",
+      "V30",
+      "G4 October",
+      "G4 Nov original approval bytes",
+      "G5 V1/V2",
+      "MEI"
+    ],
+    "restrictions": [
+      "No G4 new unit before explicit prospective ratification",
+      "No G5 native signature/SQL commit from this plan",
+      "G4 v2 and v4 mutually exclusive",
+      "No retroactive authority if approval is later than the chosen starting instant",
+      "No authorization for other documents",
+      "No synthetic-to-real promotion"
+    ],
+    "b02_closed": false
   }
 }
-
