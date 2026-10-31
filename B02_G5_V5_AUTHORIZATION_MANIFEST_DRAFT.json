@@ -1662,7 +1662,7 @@
       }
     },
     "R5_0064_multiversion_decision_scope": {
-      "status": "VERSIONED_G4_G5_DECISION_CANDIDATE_SOURCE_PATCHED_REQUIRES_INDEPENDENT_REVIEW_AND_PG17_INTEGRATION",
+      "status": "VERSIONED_DECISION_SCOPE_SOURCE_TESTS_6_PASS_REVIEW_AND_PHYSICAL_INTEGRATION_PENDING",
       "problem": "In 0064 b02g5_require_real_release, G5_CURRENT_DECISION_AMBIGUOUS selected all decision rows sharing (policy_type,policy_id), omitting policy_version; G4_ORIGINAL_G4_AUTHORITY_AMBIGUOUS used the same broad policy_id test. Existing, immutable historical V1 decisions share the policy IDs with candidate successors and could be incorrectly vetoed as extra entries. This blocked future valid version coexistence in the candidate (not yet shown by real 0064 SQL execution).",
       "confirmed_policy_predecessor": {
         "path": "tools/b02_g5_v5_current_inventory_readonly.py",
@@ -1692,13 +1692,18 @@
         "git_blob": "9c7cbe725651cd318dcf1b80b57ab450f107f82b",
         "test_only_red_commit": "016d2dbc135077aedc8c59648931996208ff415d",
         "unit_tests_authored": 6,
-        "executed_locally_in_this_turn": false,
+        "executed_locally_in_this_turn": true,
         "source_static_checks_in_connector": 12,
         "source_static_checks_pass": true,
-        "physical_pg17_0064_0065_execution": false
+        "physical_pg17_0064_0065_execution": false,
+        "windows_operator_result": "6_OF_6_PASS_2026_10_31_OPERATOR_OUTPUT",
+        "windows_operator_command": "python -B -m unittest discover -s tests -p 'test_b02_g5_0064_multiversion_decision_scope_red.py' -q",
+        "windows_operator_stdout": "Ran 6 tests in 0.041s; OK; subsequent STOP guard not triggered",
+        "checkout_ff_only": "137810cc..4600cfc5 on candidate/g5-v5-publicacao-local",
+        "test_scope": "STATIC_SOURCE_ASSERTIONS_ONLY_NOT_REAL_SQL_POSTGRESQL"
       },
       "risk_and_limit": "Proposed narrower version-specific negative decision guard preserves current-version adversarial/extra veto but requires independent validation, including whether any global cross-version revocation is governed by a distinct contract. No historic decision or authorization changed, no PostgreSQL DDL/DML.",
-      "next_action": "Original G5 V5 independent reviewer must issue own audit result, and separate technical reviewer must examine version-scoped decision semantics. Only after prospective G4/G5 approvals, authorized root/ELF and signed origin may an authorized runner test genuine 0064/0065 on disposable PG17.10.",
+      "next_action": "Six focused source-only unittest checks PASS on Windows; do not rerun. Independent security/policy revocation contract review remains pending; physical 0064/0065 integration must await valid successor G4/G5 and native signed origin as required.",
       "review_20261031_source_readonly": {
         "review_scope": "NONINSTITUTIONAL_SOURCE_INSPECTION_NOT_PYTHON_UNITTEST_OR_POSTGRESQL_RUN",
         "starting_head": "a51f1329317e271fa3adaffab2e8c949194f795f",
@@ -1712,7 +1717,7 @@
           "G4_same_policy_historical_version_coexistence": "STATIC_PASS",
           "root_segregation_ratification_G4_and_authenticity_gates": "STATIC_PASS"
         },
-        "python_unittest_6_cases": "NOT_EXECUTED_NO_LOCAL_WINDOWS_OR_COMPLETE_REPO_CHECKOUT",
+        "python_unittest_6_cases": "PASS_6_OF_6_WINDOWS_OPERATOR_2026_10_31",
         "pg1710_genuine_candidate_execution": "NOT_EXECUTED",
         "cross_version_revocation_review": {
           "observation": "Both G4/G5 policy_decisions ambiguity guards are scoped to exact selected policy_version. Separate activation overlap guards inspect other activations of same domain/modality, and selected G4/G5 activation validity is checked.",
@@ -1720,7 +1725,7 @@
           "required": "Independent security/policy reviewer must check governing cross-version revocation contract; do not restore blanket same-policy-id veto or invent authority."
         },
         "immutable_history": "V1/G4/MEI/R4/ACL/JSONB and already COMMITTED G5 V2 events untouched",
-        "next_physical_action": "Run the existing six Python unittest cases once in synced Windows checkout. Static inspection does not close real G5 R5 installation gate."
+        "next_physical_action": "CLOSED: six source-only Python tests already passed once on Windows. Do not rerun. Pending independent review and gated disposable PG17.10 integration of actual 0064/0065."
       }
     }
   }
