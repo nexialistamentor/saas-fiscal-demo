@@ -644,9 +644,9 @@
       },
       "R6": {
         "existing": "app/services/enterprise_b02_noncredential_acquisition.py::stage_completion; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; tools/b02_r6_normative_linkage_readonly.py; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; app/services/enterprise_b02_normative_binding.py (read-only cautious adapter); prior original B02_V29_MATRIZ_NORMATIVA_COM_EVIDENCIA.md dated 2026-10-23 (Library)",
-        "accepted_proof": "8/8 R6 focused PASS; protected read-only 0063 found zero exact 1245/2025 and 571/2019 hashes in accessible normative_artifacts and extraction_results; SELECT denied on rule_versions/normative_relation_versions/tabela_mva Original V29 normative evidence already checked official 571/2019 and 1245/2025 documents, material art.12 change effective 2026-04-01; three concrete documented examples: henna <=200 g CEST 20.001.00 NCM 1211.90.90 MVA 41.42%->46.78%; vaseline CEST 20.002.00 NCM 2712.10.00 113.85%->97.51%; aqueous ammonia CEST 20.003.00 NCM 2814.20.00 101.02%->118.18%. Existing docs/ENTERPRISE_B02_NORMATIVE_PROOF.md already records the 587-page 571/2019 PDF and source/evidence limits and the existing read-only normative adapter. These documentary findings are previously accepted within narrow material/time scope; DO NOT redo basic V29 source read or write duplicate adapter. G1.9 CAS verifier independently inspected: safe local byte-custody readback is explicitly NOT automatic ADR-020 ingestion or independent institutional verifier; stage_completion original bytes/callback requirements remain. No new adapter created. Existing G1.10 opt-in CAS→G1.5–G1.8 read-only bridge confirmed in actual source and tests; it is already implemented and must not be rebuilt or treated as original B02 acquisition. Two original C3 PDFs now physically located in user's Windows Downloads original SOLVERIS_B02_PROVAS_PARA_EXAME_042dff3a4108408b87b41dbf8a807ca9; SHA256 Get-FileHash matches each source pin after byte-size filter, based on operator command output. Location-only, no protected DB ingestion, authorization or legal linkage.",
+        "accepted_proof": "8/8 R6 focused PASS; protected read-only 0063 found zero exact 1245/2025 and 571/2019 hashes in accessible normative_artifacts and extraction_results; SELECT denied on rule_versions/normative_relation_versions/tabela_mva Original V29 normative evidence already checked official 571/2019 and 1245/2025 documents, material art.12 change effective 2026-04-01; three concrete documented examples: henna <=200 g CEST 20.001.00 NCM 1211.90.90 MVA 41.42%->46.78%; vaseline CEST 20.002.00 NCM 2712.10.00 113.85%->97.51%; aqueous ammonia CEST 20.003.00 NCM 2814.20.00 101.02%->118.18%. Existing docs/ENTERPRISE_B02_NORMATIVE_PROOF.md already records the 587-page 571/2019 PDF and source/evidence limits and the existing read-only normative adapter. These documentary findings are previously accepted within narrow material/time scope; DO NOT redo basic V29 source read or write duplicate adapter. G1.9 CAS verifier independently inspected: safe local byte-custody readback is explicitly NOT automatic ADR-020 ingestion or independent institutional verifier; stage_completion original bytes/callback requirements remain. No new adapter created. Existing G1.10 opt-in CAS→G1.5–G1.8 read-only bridge confirmed in actual source and tests; it is already implemented and must not be rebuilt or treated as original B02 acquisition. Two original C3 PDFs now physically located in user's Windows Downloads original SOLVERIS_B02_PROVAS_PARA_EXAME_042dff3a4108408b87b41dbf8a807ca9; SHA256 Get-FileHash matches each source pin after byte-size filter, based on operator command output. Location-only, no protected DB ingestion, authorization or legal linkage. Original Windows read-only C3 preflight verified both PDF SHA256 and sizes and exact historic policy V2 pins: B02_R6_C3_TWO_ORIGINALS_BYTES_READ_ONLY_PASS. Focused tests: 8 total, 7 passed, 1 skipped due to optional symlink support, 0 failed. No PDF/SQL write, release authority false. Original package also contains FALTANTES.json/MANIFESTO_COPIA.json/TRANSPORT_RESULTS.json, per-document receipt/HTTP/TLS/RESULT JSON and 4 PEM certificates per document. Evidence content not yet inspected.",
         "remaining_gap": "Documentary V29 case examples and existing cautious read-only normative adapter preserved. Physically absent exact hashes of both PDFs in readable normative_artifacts/extraction_results as of 2026-10-30, inaccessible RuleVersion/relation/MVA tables under restricted writer: unknown rather than empty. Original-C3 verified PDF bytes now located on Windows and must be used via existing authorized CAS consumer, not duplicate download/import; source→extraction→RuleVersion→real item canonically linked, scope/revocation completeness and actual operation conditions independently tested. TabelaMVA has no ratified canonical normative version/hash/CEST link; no ad hoc NormativeRelationVersion invented.",
-        "next_action": "Do not locate or download C3 PDFs again; recorded exact package subpaths. Reuse already implemented stage_completion and G1.10 read-only path only when original independent verifier and valid prospective G4/G5 R3/R5 release authority are confirmed. Then read back real two-document source normative linkage; keep RuleVersion, MVA and fiscal semantics fail-closed."
+        "next_action": "C3 original file and SHA256 verification closed. Read the archived original acquisition/TLS/receipt JSON and FALTANTES.json only once, bounded read-only, to determine whether independent verifier and exact evidence bindings actually exist; retain existing G1.10 CAS link and V29 normative matrix. No SQL write until prospective R3/R5 gates approved."
       },
       "R7": {
         "existing": "original SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md R1-R7 closure criteria and preserved historical gates",
@@ -1080,7 +1080,7 @@
       "no_sql_or_g4_change": true
     },
     "R6_original_C3_local_source_location_20261030": {
-      "status": "TWO_ORIGINAL_C3_PDF_PATHS_IDENTIFIED_AND_SHA256_MATCHED_ON_USER_WINDOWS_NO_DB_WRITE",
+      "status": "R6_C3_TWO_ORIGINALS_BYTES_READ_ONLY_PASS_WINDOWS_REAL_FILES",
       "provenance": "Windows operator PowerShell result shared directly in conversation; discovery script selected .pdf files by exact recorded byte sizes and compared Get-FileHash SHA256 against C3 hashes. The GitHub connector does not read the user's Windows filesystem.",
       "base_relative_to_windows_downloads": "SOLVERIS_B02_PROVAS_PARA_EXAME_042dff3a4108408b87b41dbf8a807ca9",
       "documents": [
@@ -1103,7 +1103,40 @@
       "new_normative_artifact_insert": false,
       "new_verifier_or_trust_root_inferred": false,
       "protected_database_writes": 0,
-      "next_action": "Original C3 bytes located: do not rediscover/download. Reuse exact files only within an explicitly authorized, G4/G5 currently valid two-document controlled CAS transaction with original independently approved verifier callback. No RuleVersion, normative relation or fiscal applicability inferred."
+      "next_action": "C3 byte and historic policy pins COMPLETE. Inspect already archived FALTANTES/MANIFESTO_COPIA/TRANSPORT_RESULTS and per-document receipts/TLS/RESULT for existing independent verifier documents and explicit missing evidence, read-only; no repeat C3 hashes or download. Do not issue favorable audit or authorizations from transport/TLS metadata alone.",
+      "windows_execution": {
+        "repository_head": "fa2b178a50e854ebe9017718e2b4a184af83444a",
+        "command_script": "tools/b02_r6_c3_originals_preflight.py",
+        "command_test": "tests/test_b02_r6_c3_originals_preflight.py",
+        "test_cases_total": 8,
+        "test_passed": 7,
+        "test_skipped": 1,
+        "test_failed": 0,
+        "source_files": 2,
+        "sha256_and_size": "MATCHED_BOTH_REAL_LOCAL_PDFS",
+        "policy_v2_document_bindings": "MATCHED_HISTORIC_ONLY",
+        "policy_v2_window": "EXPIRED_2026_10_30_13_00_UTC",
+        "normative_link_persisted": false,
+        "authority_for_release": false,
+        "pdf_writes": 0,
+        "protected_database_writes": 0,
+        "source": "operator posted full real Windows command output; not a connector execution",
+        "scope": "Two PDF byte identity and historical V2 source-document pins, no institutional origin attestation or production G5 authorization"
+      },
+      "bundle_metadata_paths_identified": [
+        "FALTANTES.json",
+        "MANIFESTO_COPIA.json",
+        "TRANSPORT_RESULTS.json",
+        "101201900571/ACQUISITION_RECEIPT.json",
+        "101201900571/HTTP_RESPONSE_METADATA.json",
+        "101201900571/RESULT.json",
+        "101201900571/TLS_EVIDENCE.json",
+        "101202501245/ACQUISITION_RECEIPT.json",
+        "101202501245/HTTP_RESPONSE_METADATA.json",
+        "101202501245/RESULT.json",
+        "101202501245/TLS_EVIDENCE.json"
+      ],
+      "certificate_files_observed": "Four .pem files per document folder; no private-key content asserted or examined."
     }
   }
 }
