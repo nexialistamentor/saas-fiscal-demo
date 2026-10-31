@@ -20,9 +20,13 @@ TIMEOUT=35
 SQL=r"""
 \set ON_ERROR_STOP on
 BEGIN;
-SELECT CASE WHEN current_setting('server_version') LIKE '17.10%'
-  THEN 'B02_PG_17_10_VERSION_MATCHED'
-  ELSE (1/0)::text END AS server_pin;
+DO $do$
+BEGIN
+  IF current_setting('server_version') NOT LIKE '17.10%' THEN
+    RAISE EXCEPTION 'STOP_DISPOSABLE_POSTGRES_17_10_REQUIRED';
+  END IF;
+END
+$do$;
 
 CREATE TABLE public.acquisition_mode_bindings(unit text PRIMARY KEY);
 CREATE TABLE public.noncredential_acquisition_receipts(unit text PRIMARY KEY);
