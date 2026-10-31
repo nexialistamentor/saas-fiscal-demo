@@ -1874,6 +1874,50 @@
       "B02_closed": false,
       "B03_released": false,
       "next_scope": "Only genuine new independent reviewer acts and physically authorized R5/R6/R7 successor gates; do not rerun these tests or frozen prior tests."
+    },
+    "R5_0065_writer_direct_insert_bypass_patch": {
+      "status": "CANDIDATE_SQL_ACL_CLOSED_BY_SOURCE_NO_PHYSICAL_DB_INSTALL_OR_TEST",
+      "date": "2026-10-31",
+      "finding": "0065 originally granted INSERT,SELECT on operational approval reservations to solveris_b02_writer. This permits bypass of the reserve_operational_decision function-specific identity/native profile guard by INSERT directly into the table. Unique keys and later capability gates remain, so not proof of an unauthorized COMMIT.",
+      "before_migration_blob": "7b6d270901fa0ba18bb8f48599908f737e9d4eb3",
+      "after_migration_blob": "7f3fbf53217aecfe045280f343982ece5a72d60c",
+      "candidate_migration_path": "migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py",
+      "candidate_fix_commit": "3db54429d84ac03968bfc414755911ae53ed89ab",
+      "changes": [
+        "Explicit REVOKE ALL from PUBLIC and solveris_b02_writer on new one-shot table, re-GRANT SELECT only; deny direct INSERT including any default grants to named role.",
+        "Reserve one-shot only via SECURITY DEFINER function whose session_user is restricted writer and whose current_user is expected database installer/owner solveris_test.",
+        "Fixed search_path pg_catalog,pg_temp; exact qualified table/function access; one-shot uniqueness and signed capability precommit unchanged."
+      ],
+      "regression_test_path": "tests/test_b02_g5_0065_one_shot_security_contract.py",
+      "regression_test_blob": "e4a3c936cee490fa68823a864095607a855893c4",
+      "test_commits": [
+        "504616a29acf78a246ba73dbc83ad463be75435f",
+        "13f390198ffe11eada00a83c5c3d6e737b34fda9"
+      ],
+      "python_unit_tests_authored": 3,
+      "python_unit_tests_executed": false,
+      "static_source_integration_checks": {
+        "tested": 8,
+        "passed": 8,
+        "scope": "Repository blob inspection with exact expected SQL guards; not Python unittest or PostgreSQL execution."
+      },
+      "required_physical_release_gates": [
+        "Run only three new source-only unit tests in Windows checkout once; do not rerun old cases.",
+        "Independent security review and installer owner function ACL attestation (function owner exactly solveris_test, table writer effective INSERT denied).",
+        "Test direct writer INSERT denied and owner-guarded function path in isolated disposable PostgreSQL 17.10 with independently approved future root, no protected installation.",
+        "Current independent G4, segregated G5 reviewer own acts, successor V3 approval, signed origin, one-shot signer, valid prospective time window, R6/R7 gates remain required."
+      ],
+      "no_reopen": [
+        "G4 historical",
+        "R4",
+        "R5 JSONB",
+        "R5 0064 multiversion six tests",
+        "MEI"
+      ],
+      "protected_db_writes": 0,
+      "new_grants_physically_executed": 0,
+      "historical_policy_decisions_mutated": false,
+      "status_B02": "B02_OPEN_B03_BLOCKED"
     }
   }
 }
