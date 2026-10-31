@@ -184,6 +184,79 @@ def _acl_inventory(engine):
             "writes":0,"grants":0}
 
 
+
+def _g5_artifact_acl_inventory(engine):
+    """R5 preflight: discover actual restricted-writer artifact INSERT capability.
+
+    No role switch, GRANT, insert, DDL, signature, policy mutation or test write.
+    Uses the already allowlisted policy-writer bridge inside READ ONLY.
+    The results are inventory only, never a release or delegation decision.
+    """
+    watched=(
+        "artifact_verification_records", "normative_artifacts",
+        "acquisition_mode_bindings", "noncredential_acquisition_receipts",
+        "noncredential_sanitization_verifications", "acquisition_executions",
+    )
+    with engine.connect() as c:
+        c.execute(text("SET TRANSACTION READ ONLY"))
+        identity=c.execute(text(
+            "SELECT current_database(),session_user,current_user,"
+            "(SELECT version_num FROM public.alembic_version)"
+        )).one()
+        if tuple(identity)!=(DB,"solveris_b02_policy_writer",
+                            "solveris_b02_policy_writer",REV):
+            raise RuntimeError("STOP_R5_ARTIFACT_ACL_IDENTITY_REVISION")
+        role=c.execute(text("""
+            SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,
+                   rolbypassrls,rolinherit
+            FROM pg_catalog.pg_roles WHERE rolname='solveris_b02_writer'
+        """)).one_or_none()
+        if role is None or any(role):
+            raise RuntimeError("STOP_R5_WRITER_ROLE_MISSING_OR_ELEVATED")
+        membership=c.execute(text("""
+            SELECT count(*) FROM pg_catalog.pg_auth_members
+            WHERE member=(SELECT oid FROM pg_catalog.pg_roles
+                          WHERE rolname='solveris_b02_writer')
+        """)).scalar_one()
+        if membership!=0:
+            raise RuntimeError("STOP_R5_WRITER_ROLE_MEMBERSHIP")
+        inventory=c.execute(text("""
+            SELECT cls.relname AS table_name,
+                   pg_catalog.pg_get_userbyid(cls.relowner) AS owner,
+                   has_table_privilege('solveris_b02_writer',cls.oid,'SELECT') AS can_select,
+                   has_table_privilege('solveris_b02_writer',cls.oid,'INSERT') AS can_insert,
+                   has_any_column_privilege('solveris_b02_writer',cls.oid,'INSERT')
+                       AS can_insert_any_column,
+                   has_table_privilege('solveris_b02_writer',cls.oid,'UPDATE') AS can_update,
+                   has_table_privilege('solveris_b02_writer',cls.oid,'DELETE') AS can_delete
+            FROM pg_catalog.pg_class cls
+            JOIN pg_catalog.pg_namespace ns ON ns.oid=cls.relnamespace
+            WHERE ns.nspname='public' AND cls.relkind IN ('r','p')
+                  AND cls.relname IN :names
+            ORDER BY cls.relname
+        """).bindparams(bindparam("names",expanding=True)),
+        {"names":list(watched)}).mappings().all()
+        if {row["table_name"] for row in inventory}!=set(watched):
+            raise RuntimeError("STOP_R5_ARTIFACT_TABLES_MISSING")
+        items=[dict(row) for row in inventory]
+        evidence=next(row for row in items
+                      if row["table_name"]=="artifact_verification_records")
+        c.rollback()
+    return {
+        "status":"R5_ARTIFACT_ACL_PHYSICAL_READ_ONLY_INVENTORY_PASS",
+        "database":identity[0],"revision":identity[3],
+        "authenticated_inspector":identity[2],
+        "target_writer":"solveris_b02_writer",
+        "tables":items,
+        "artifact_verification_record_direct_insert_observed":bool(evidence["can_insert"]),
+        "artifact_verification_any_column_insert_observed":bool(
+            evidence["can_insert_any_column"]),
+        "authority_to_create_favorable_report":"NOT_INFERRED",
+        "release_0064_0065_authorized":False,
+        "grants":0,"ddl":0,"writes":0,
+    }
+
+
 def _database_preflight():
     dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
     if not dsn:
@@ -255,13 +328,14 @@ def _docker(*args, timeout=15):
 def main():
     import sys
     if len(sys.argv)>1:
-        if sys.argv[1:] not in (["--acl-inventory"],["--g5-v2-chain"]):
+        if sys.argv[1:] not in (["--acl-inventory"],["--g5-v2-chain"],["--r5-artifact-acl"]):
             raise RuntimeError("STOP_UNKNOWN_PREFLIGHT_OPTION")
         dsn=os.environ.get("SOLVERIS_B02_POLICY_WRITER_DSN")
         if not dsn:raise RuntimeError("STOP_PREFLIGHT_REQUIRES_BRIDGE")
         engine=create_engine(dsn,poolclass=NullPool)
         try:
             result=(_g5_v2_chain_inventory(engine) if sys.argv[1:]==["--g5-v2-chain"]
+                    else _g5_artifact_acl_inventory(engine) if sys.argv[1:]==["--r5-artifact-acl"]
                     else _acl_inventory(engine))
             print(json.dumps(result,sort_keys=True))
         finally:engine.dispose()
