@@ -167,8 +167,8 @@ def stage_completion(connection, *, binding, start, read_cas, build_evidence, re
               AND v.verifier_version='1'
               AND v.verifier=doc->'g4'->'verifier'->>'id'
               AND v.verifier_version=doc->'g4'->'verifier'->>'version'
-              AND v.evidence->'synthetic_only'='false'::jsonb
-              AND v.evidence->'g4_origin_report_binding'=doc->'g4'->'origin_report_binding'
+              AND v.evidence::jsonb->'synthetic_only'='false'::jsonb
+              AND v.evidence::jsonb->'g4_origin_report_binding'=doc->'g4'->'origin_report_binding'
               AND v.evidence->>'authorized_verifier_hash'=doc->'g4'->'verifier'->>'hash'
         '''), {
             'binding_id':result['mode_binding_id'],
