@@ -1726,6 +1726,25 @@
         },
         "immutable_history": "V1/G4/MEI/R4/ACL/JSONB and already COMMITTED G5 V2 events untouched",
         "next_physical_action": "CLOSED: six source-only Python tests already passed once on Windows. Do not rerun. Pending independent review and gated disposable PG17.10 integration of actual 0064/0065."
+      },
+      "source_review_cross_version_controls_20261031": {
+        "evidence_kind": "READ_ONLY_BOUNDED_TECHNICAL_INSPECTION_NOT_SEPARATE_REVIEWER_ACT",
+        "source_files": [
+          "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py@968c092e70e91b6be3d55bfab7a2dd4fc5256669",
+          "migrations/versions/0063_adr020_policy_activation_atomicity.py@86bad97d926561d571907d7f0a5ce7c720cec61c",
+          "POLICY_G5_CANDIDATO_SUCESSOR_OUTUBRO_V5_VERSION_2_PARA_REVISAO.json@87dd0560d842f8b9f20d808363496fa60786710c"
+        ],
+        "observed_controls": [
+          "0064 G5 decisions restrict ambiguity and adverse events to selected policy_type/id/version; retain hash mismatch and extra decision veto.",
+          "0064 G4 decisions restrict ambiguity to the selected G4 version; historical different versions do not automatically veto.",
+          "0064 G4/G5 activation ambiguity checks inspect same domain/modality and incompatible overlapping active intervals across versions; selected activation must be current and active.",
+          "0063 consumed binding requires exact policy_id/version/hash, activation record hash, and state activa.",
+          "Canonical V2 gates include exact two units, signed root/PRE_COMMIT, G4 current for each document, explicit ratification and segregated review; no explicit automatic cross-version blanket revocation is declared in inspected policy gate keys."
+        ],
+        "no_repeated_tests": true,
+        "conclusion": "No basis in the inspected sources for a blanket older-version decision veto. No proof is asserted that the complete architecture has no separate cross-version revocation mechanism. Independent reviewer still owns the legal/security policy decision.",
+        "constraints": "No change to SQL, no new test, no migration, no interpretation of historical audit decisions as current authority.",
+        "next_owner": "Original segregated security/policy reviewer must assess whether a separately governed cross-version revocation rule applies; V3 successor temporal/root/own audit remain distinct."
       }
     }
   }
