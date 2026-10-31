@@ -770,6 +770,44 @@
         "normative_rule_and_fiscal_applicability": "NOT_PROVEN",
         "protected_database_writes": 0,
         "no_new_documents_or_extractors": true
+      },
+      "current_external_normative_precedence_advisory_20261031": {
+        "status": "READ_ONLY_PUBLIC_NORMATIVE_PRECEDENCE_RECONCILED_NO_NEW_C3_OR_FISCAL_RULE",
+        "as_of_date": "2026-10-31",
+        "provenance": "Official Secretaria da Fazenda Paraná public NPF PDFs and Pauta de bebidas legislation index; independent public search, no protected or Windows DB access",
+        "sector": "ICMS-ST PR CERVEJAS REFRIGERANTES ENERGÉTICOS ISOTÔNICOS ONLY",
+        "relevant_public_sources": [
+          {
+            "kind": "NPF_009_2026",
+            "url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/103202600009.pdf",
+            "source_effects_from": "2026-04-01",
+            "source_effects_until": "2026-11-30",
+            "finding": "Item 2 governs specific beverage PMPF tables; item 7 enumerates circumstances reverting to MVA of Art. 3 Resolução SEFA 571/2019; page itself identifies NPF 010/2026 changes"
+          },
+          {
+            "kind": "NPF_029_2026",
+            "url": "https://www.fazenda.pr.gov.br/sites/default/arquivos_restritos/files/documento/2026-09/npf_29_2026_pmpf_bebidas_frias_setembro_2026.pdf",
+            "effective_from": "2026-10-01",
+            "finding": "Official current amendment to NPF 009/2026 governing additions/alterations of beverage base values"
+          },
+          {
+            "kind": "NPF_033_2026",
+            "url": "https://www.fazenda.pr.gov.br/sites/default/arquivos_restritos/files/documento/2026-10/2%20-%20NPF%2033_2026%20-%20PMPF%20Bebidas%20Frias%20-%20Outubro%20de%202026.pdf",
+            "effective_from": "2026-11-01",
+            "finding": "Dated 2026-10-23, Article 2 expressly future effects from 2026-11-01; not effective at 2026-10-31"
+          }
+        ],
+        "listing": "https://www.fazenda.pr.gov.br/Pagina/Pauta-de-bebidas",
+        "additional_amendments_exist_in_official_listing": true,
+        "full_exhaustive_legal_validity_reconstruction": false,
+        "mandatory_future_rule_boundary": "Only for a separately approved applicable beverage fiscal item, resolve NPF/PMPF exceptions, effective date and exact product/packaging before claiming MVA of 571/2019. No applicability assumed for historical article 12 Henna examples.",
+        "original_571_2019_and_1245_2025_c3_pdfs": "UNCHANGED_PREVIOUSLY_CUSTODIED",
+        "r5_authenticated_origin_or_g4_successor": "NOT_PROVEN_BY_PUBLIC_NPF",
+        "newly_persisted_rule_versions": 0,
+        "new_normative_artifact_ingestion": 0,
+        "protected_database_writes": 0,
+        "new_migrations_or_tests": 0,
+        "b02_release": "NOT_AUTHORIZED_B03_BLOCKED"
       }
     },
     "preexisting_RCV31_R3_and_Delta4_verification": {
