@@ -174,5 +174,33 @@
     "no_authority_or_sql_creation": true,
     "no_other_predecessor_waived": true,
     "legacy_records_unchanged": true
+  },
+  "existing_preapproved_G4_november": {
+    "status": "ALREADY_AUTHORIZED_BOUNDED_G4_NOV3_4_PENDING_PHYSICAL_RESULT",
+    "source": "AUTORIZACAO_G4_MIGUEL_20261029.json",
+    "reference": "B02-G4-AUTH-MIGUEL-20261029-01",
+    "source_blob": "8d9f8f0d48478557c801b524a8fa24fa8136eb2f",
+    "authorized_script": "executar_ativacao_g4_real.py",
+    "script_blob": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+    "existing_runner": "tools/b02_g4_authorized_runner.py",
+    "runner_blob": "f96878cb7b5024bdf7b595f5c3b8a1f04c7439e8",
+    "pinned_execution_branch": "candidate/g5-successor-window-prep",
+    "window_from_utc": "2026-11-03T12:00:00+00:00",
+    "window_until_utc": "2026-11-04T07:56:30.910737+00:00",
+    "ids": {
+      "execution": "B02-05ede-execution-v2",
+      "activation": "B02-05ede-activation-v2",
+      "generation": "B02-05ede-generation-v2",
+      "outbox": "B02-05ede-outbox-v2"
+    },
+    "distinction": "Existing October G4 v3 activation txid 926 is historical and expired; the distinct earlier-approved November operation has ids suffixed v2. The suffix does not imply a new policy version.",
+    "can_execute_today": "NO: pinned runner refuses before November 3 12:00 UTC",
+    "physical_november_result": "NOT_SHOWN_DO_NOT_ASSUME_ABSENT_OR_RETRY",
+    "mandatory_order": "Read-only reconcile existing four IDs FIRST, then use only exact approved procedure in authorized interval if absent and allowed. Never retry unknown COMMIT.",
+    "implication_for_G5_V3": "A G5 V3 material window may fit within verified activated G4 November interval only after that exact G4 is physically reconciled and new G5 V3 independent authorization, signed root and review exist; G4 alone is not G5 or FOUNDER_ORIGIN.",
+    "status_R7": "CURRENT_G4_V3_SUCCESSOR_REMAINS_OPEN_UNTIL_PHYSICAL_RESULT_AND_C3_ORIGIN",
+    "R7_commit": "ad043b91b4ea2b82d58ad0160f4982b898e3df1a",
+    "no_V3_window_selected": true,
+    "no_new_authorization_or_PG_write": true
   }
 }
