@@ -59,8 +59,8 @@
     {
       "id": "CURRENT_G4_V3_SUCCESSOR",
       "owner": "Competent G4 authorizing authority",
-      "needed": "Prospective real G4 activation and institutional FOUNDER_ORIGIN verifiable signed report for BOTH exact PDFs, each exact binding; no TLS-only promotion",
-      "observed": "PREVIOUS_G4_EXPIRED_2026_10_30T13_00Z"
+      "needed": "Reconcile whether existing separately authorized G4 four-record operation B02-G4-AUTH-MIGUEL-20261029-01 has already committed, READ ONLY first. If ABSENT, the exact previously approved runner is window-gated for 2026-11-03T12:00Z through 2026-11-04T07:56:30.910737Z, on its pinned historical branch; no fresh authorization or new G4 candidate is required for that exact scoped operation, but execution still requires correct runtime, valid authority and one-shot ACK handling. The G4 future activation alone does NOT establish signed independently inspected FOUNDER_ORIGIN for both C3 PDFs or release G5.",
+      "observed": "EXISTING_G4_NOV3_4_AUTHORIZATION_VERIFIED_NOT_CURRENT_NOT_EXECUTED; OCTOBER_926_EXPIRED"
     },
     {
       "id": "G5_NEW_TEMPORAL_POLICY",
@@ -140,5 +140,42 @@
     "no_backdate_or_approval_of_V3_window": true,
     "no_PG_DDL_DML_or_install": true,
     "release_status": "B02_NOT_CLOSED_B03_NOT_RELEASED"
+  },
+  "existing_preauthorized_G4_november_20261031": {
+    "scope": "RECONCILIATION_OF_EXISTING_R7_G4_PREDECESSOR_NOT_NEW_AUTHORIZATION",
+    "reference": "B02-G4-AUTH-MIGUEL-20261029-01",
+    "authorization_status": "AUTORIZADO_AGUARDA_EXECUCAO_IN_PINNED_SOURCE_NOT_VERIFIED_IN_POSTGRESQL",
+    "original_authorization_path": "AUTORIZACAO_G4_MIGUEL_20261029.json",
+    "original_authorization_blob": "8d9f8f0d48478557c801b524a8fa24fa8136eb2f",
+    "authorized_procedure": "executar_ativacao_g4_real.py",
+    "authorized_procedure_blob": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+    "verified_runner": "tools/b02_g4_authorized_runner.py",
+    "verified_runner_blob": "f96878cb7b5024bdf7b595f5c3b8a1f04c7439e8",
+    "pinned_branch": "candidate/g5-successor-window-prep",
+    "pinned_branch_HEAD": "b0af3a06db4a2e4cd92ad053e96563ce3fc95866",
+    "approved_window_utc": {
+      "from": "2026-11-03T12:00:00+00:00",
+      "until": "2026-11-04T07:56:30.910737+00:00"
+    },
+    "approved_ids": {
+      "execution": "B02-05ede-execution-v2",
+      "activation": "B02-05ede-activation-v2",
+      "generation": "B02-05ede-generation-v2",
+      "outbox": "B02-05ede-outbox-v2"
+    },
+    "database": "solveris_b02_r4g_test",
+    "writer": "solveris_b02_policy_writer",
+    "old_Oct_G4_v3_txid": "926",
+    "proof_of_nov_G4_v2_commit": "NOT_SEEN; NO_LIVE_POSTGRESQL_QUERY_IN_THIS_EXECUTION",
+    "runner_before_window": "HARD_STOP",
+    "prior_execution_requires_read_only_disambiguation": true,
+    "original_approval_not_revoked_by_Oct_branch": "NO_REVOCATION_EVIDENCE_FOUND_NOT_A_NEW_INSTITUTIONAL_ATTESTATION",
+    "remaining_signed_original_origin": "G4_FOUNDER_ORIGIN_OWN_SIGNED_REPORT_PER_C3_STILL_REQUIRED",
+    "not_G5_authorization": true,
+    "G5_v3_prospective_window": "NOT_SELECTED_OR_APPROVED",
+    "no_repeat_G4_October": true,
+    "no_mutation_of_original_G4_preapproval": true,
+    "no_DDL_DML": true,
+    "no_claim_release": true
   }
 }
