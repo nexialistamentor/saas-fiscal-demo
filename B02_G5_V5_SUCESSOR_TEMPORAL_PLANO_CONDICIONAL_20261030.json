@@ -205,7 +205,7 @@
   },
   "pre_decisao_v3_verificacao_focal_20261031": {
     "source_commit": "37b0cab8572ffa68d5629e2990780e34b20ab142",
-    "state": "PREPARACAO_DOCUMENTAL_SEM_APROVACAO_TEMPORAL_SEM_ATO_V3_SEM_OPERACAO",
+    "state": "HISTORICAL_UNAPPROVED_PROPOSAL_SUPERSEDED_BY_SINGLE_FOCAL_DECISION",
     "approved_g4_reference": "B02-G4-AUTH-MIGUEL-20261029-01",
     "g4_existing_approved_window_utc": {
       "from": "2026-11-03T12:00:00+00:00",
@@ -289,7 +289,10 @@
       "no_acl_elevation": true,
       "no_new_ingestion": true,
       "no_invented_rule": true
-    }
+    },
+    "previous_proposal_outcome": "NOT_APPROVED: user 2026-10-31 rejects delaying B02 to convenience of Nov 3-4 G4 window; preserved as historical draft only.",
+    "superseded_by_active_proposal": "B02-G4-G5-TEMP-SUCCESSOR-20261031-01",
+    "exact_proposed_decision_historical_only": true
   },
   "decisao_unica_temporal_antecipada_g4_g5_20261031": {
     "status": "PROPOSTA_UNICA_PENDENTE_RATIFICACAO_EXPRESSA",
