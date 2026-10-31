@@ -25,7 +25,7 @@ class OneShotDirectInsertBoundary(unittest.TestCase):
         self.assertIn(f"REVOKE ALL ON {table} FROM PUBLIC;", sql)
         self.assertIn(f"REVOKE ALL ON {table} FROM solveris_b02_writer;", sql)
         self.assertIn(f"GRANT SELECT ON {table} TO solveris_b02_writer;", sql)
-        self.assertNotRegex(sql, r"GRANT\\s+(?:INSERT|ALL)\\b[^;]*\\bTO\\s+solveris_b02_writer;")
+        self.assertNotRegex(sql, r"GRANT\s+(?:INSERT|ALL)\b[^;]*\bTO\s+solveris_b02_writer;")
 
     def test_reservation_only_via_owner_guarded_definer(self):
         sql = candidate_sql()
