@@ -54,5 +54,52 @@ class C3ProvenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'ABSOLUTE_UNTRAVERSABLE_PATH_REQUIRED'):
             mod.check_components(Path('relative'))
 
+    def test_modified_pdf_hash_stops(self):
+        with tempfile.TemporaryDirectory() as root:
+            base,policy,pins=fixture(Path(root))
+            (base/'101201900571'/'DOCUMENT.pdf').write_bytes(b'%PDF-'+b'X'*1024)
+            with self.assertRaisesRegex(RuntimeError,'SOURCE_HASH_OR_FILE_IDENTITY_CHANGED'):
+                mod.verify(base,policy_path=policy,expected=pins)
+
+    def test_modified_pdf_size_stops(self):
+        with tempfile.TemporaryDirectory() as root:
+            base,policy,pins=fixture(Path(root))
+            target=base/'101202501245'/'DOCUMENT.pdf'
+            target.write_bytes(target.read_bytes()+b'X')
+            with self.assertRaisesRegex(RuntimeError,'SOURCE_TYPE_SIZE_OR_HARDLINK_DIVERGENCE'):
+                mod.verify(base,policy_path=policy,expected=pins)
+
+    def test_historical_window_cannot_be_extended_silently(self):
+        with tempfile.TemporaryDirectory() as root:
+            base,policy,pins=fixture(Path(root))
+            data=json.loads(policy.read_text())
+            data['policy_candidate_body']['declared_material_applicability']['until']='2099-01-01T00:00:00+00:00'
+            policy.write_text(json.dumps(data))
+            with self.assertRaisesRegex(RuntimeError,'HISTORICAL_POLICY_INTERVAL_DIVERGENCE'):
+                mod.verify(base,policy_path=policy,expected=pins)
+
+    def test_symlink_cannot_replace_original(self):
+        with tempfile.TemporaryDirectory() as root:
+            base,policy,pins=fixture(Path(root))
+            target=base/'101201900571'/'DOCUMENT.pdf'
+            link=base/'101201900571'/'alternate.pdf'
+            try:
+                link.symlink_to(target)
+            except OSError:
+                self.skipTest('Windows symlink permission unavailable')
+            target.unlink()
+            link.rename(target)
+            with self.assertRaisesRegex(RuntimeError,'SOURCE_REPARSE_OR_SYMLINK_DENIED'):
+                mod.verify(base,policy_path=policy,expected=pins)
+
+    def test_preflight_module_has_no_write_or_sql_client(self):
+        code=SOURCE.read_text(encoding='utf-8')
+        for forbidden in ('subprocess.run', 'psycopg2', 'sqlalchemy', 'docker exec',
+                          'write_bytes(', 'mkdir(', 'unlink(', 'shutil.copy'):
+            self.assertNotIn(forbidden,code)
+        self.assertIn('os.O_RDONLY',code)
+        self.assertIn('st_file_attributes',code)
+
+
 if __name__=='__main__':
     unittest.main()
