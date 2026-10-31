@@ -53,8 +53,19 @@ def load_issued_act(filename, commit, blob):
     if git("rev-parse", commit + ":" + filename) != blob:
         stop("REVIEWER_ACT_NOT_AT_DECLARED_COMMIT")
     git("merge-base", "--is-ancestor", commit, "HEAD")
-    raw = (ROOT / filename).read_text(encoding="utf-8")
-    doc = json.loads(raw)
+    # Consume the immutable Git object already pinned above, not a mutable
+    # working-tree copy. A local edit must never impersonate this Git blob.
+    # Fetch once and parse precisely those bytes (no path reopening / TOCTOU).
+    source = subprocess.run(
+        ["git", "cat-file", "blob", blob], cwd=ROOT, capture_output=True,
+        timeout=15,
+    )
+    if source.returncode or not source.stdout:
+        stop("REVIEWER_ACT_PINNED_BLOB_UNREADABLE")
+    try:
+        doc = json.loads(source.stdout.decode("utf-8"))
+    except (UnicodeError, ValueError):
+        stop("REVIEWER_ACT_PINNED_BLOB_NOT_JSON")
     if not isinstance(doc, dict):
         stop("ACT_NOT_OBJECT")
     actor = doc.get("actor") or doc.get("functional_actor")
