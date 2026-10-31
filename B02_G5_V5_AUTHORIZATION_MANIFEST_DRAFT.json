@@ -1535,7 +1535,7 @@
     "R7_release_fence_20261031": {
       "status": "EXACT_TECHNICAL_SCOPE_RECONCILED_B02_CLOSURE_GATED",
       "file": "B02_R7_RELEASE_FENCE_20261031.json",
-      "git_blob": "6460a08fb403993e1747fdfb66bebc65aa12c19d",
+      "git_blob": "3573bc5454d28f5c56cf87ec5ba3da5291d981b8",
       "commit": "7cd74f9a8058710177e8b1aa241b568f5ef93e6b",
       "technical_closed_proof_domains": [
         "R4 bounded recovery/ACL",
