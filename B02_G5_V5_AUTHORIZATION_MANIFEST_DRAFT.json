@@ -650,9 +650,9 @@
       },
       "R7": {
         "existing": "original SOLVERIS_B02_HANDOFF_EXECUTOR_V31_20261024.md R1-R7 closure criteria and preserved historical gates",
-        "accepted_proof": "prior physical snapshots, authorizations, tests and historical G4/G5 events remain scoped accepted evidence 2026-10-31 machine-readable final release fence B02_R7_RELEASE_FENCE_20261031.json, commit 7cd74f9, consolidates immutable evidence scopes and 8 exact absent predecessor gates; no technical assertion falsely converted to institutional approval.",
+        "accepted_proof": "prior physical snapshots, authorizations, tests and historical G4/G5 events remain scoped accepted evidence 2026-10-31 machine-readable final release fence B02_R7_RELEASE_FENCE_20261031.json, commit 7cd74f9, consolidates immutable evidence scopes and 8 exact absent predecessor gates; no technical assertion falsely converted to institutional approval. Source-only R7 release-readiness assertion added and 7 synthetic cases executed PASS in isolated Python, exact published source/test Git blobs matched local tested bytes, 8 static real-Git manifest/fence checks PASS. This confirms current BLOCKED honesty only, does NOT allow B02 release or replace separate signatory acts.",
         "remaining_gap": "R1-R6 original criteria not all satisfied, no competent final B02 closure decision",
-        "next_action": "R7 release fence now pinned. Stop generating equivalent handoffs/tests. Act only on 8 individually owned missing predecessor proofs in B02_R7_RELEASE_FENCE_20261031.json; once genuine original reviewer, future G4/G5, approved native/SQL, real B02 CAS and R6 normativity are reconciled, only competent final authority may sign B02 CLOSED and release B03."
+        "next_action": "R7 source-readiness check committed and tested; no need to rerun 7 tests unless guard changes. Seek exactly owned G5 auditor original result, RCV31 reviewer, prospective G4/G5 and certified native root; then 0064/0065 real physical scope and R6 fiscal lineage. A competent separate final authority must subsequently sign R7 closure. No more redundant status reports or routine R4/R5 reruns."
       }
     },
     "execution_boundary": "GitHub documentary matrix update only; no access to C:\\dev\\solveris-b02-g5-v5-publicacao or its Docker/NTFS/PG protected volume from current execution; no new R4 tests, DB writes, grants, migration, signature or commit are claimed.",
@@ -1487,6 +1487,25 @@
       "protected_database_writes_in_this_reconciliation": 0,
       "b02_closed": false,
       "b03_released": false
+    },
+    "R7_readonly_release_probe_20261031": {
+      "status": "SOURCE_READONLY_RELEASE_GUARD_SYNTHETIC_SEVEN_TESTS_PASS_B02_STILL_OPEN",
+      "source": "tools/b02_r7_release_readiness.py",
+      "source_blob": "f1ba7579ece287811618c09e277dec00d93466e8",
+      "test_source": "tests/test_b02_r7_release_readiness.py",
+      "test_blob": "87966067c424366788345e33557661cba9b57401",
+      "tests_run_locally": 7,
+      "tests_passed_locally": 7,
+      "tool_and_test_git_blobs_match_local_tested_bytes": true,
+      "real_current_fence_and_manifest_static_consistency_predicates_passed": 8,
+      "actual_windows_checkout_main_runner_executed": false,
+      "runner_scope": "Only checks currently BLOCKED status, eight missing predecessor IDs, source pin, genuine Git manifest linkage and non-promotion of scoped tests. Does not authorize a transition to CLOSED.",
+      "allowed_cli_verdict": "B02_R7_GATED_NO_RELEASE_SOURCE_ONLY_PASS",
+      "missing_independent_institutional_acts": 8,
+      "db_reads": 0,
+      "db_writes": 0,
+      "source_pdf_reads": 0,
+      "operator_new_commands_required_now": false
     }
   }
 }
