@@ -103,7 +103,12 @@ def stage_completion(connection, *, binding, start, read_cas, build_evidence, re
                             NonCredentialSanitizationVerification, AcquisitionExecution,
                             NormativeArtifact)
     if binding.get('mode') != 'LOCAL_CAS_INCORPORATION': _fail('CAS_ONLY_EXECUTOR')
-    real = binding.get('provenance', {}).get('synthetic_only') is False
+    # No caller-supplied omission or string can become an implicit synthetic
+    # class. The existing SQL trigger rejects ambiguous provenance as well.
+    provenance = binding.get('provenance')
+    if type(provenance) is not dict or type(provenance.get('synthetic_only')) is not bool:
+        _fail('EXPLICIT_SYNTHETIC_CLASS_REQUIRED')
+    real = provenance['synthetic_only'] is False
     if real and stage_authenticity is None: _fail('REAL_AUTHENTICITY_STAGER_REQUIRED')
     if stage_authenticity is not None:
         if not real: _fail('REAL_AUTHENTICITY_ONLY')
@@ -137,16 +142,40 @@ def stage_completion(connection, *, binding, start, read_cas, build_evidence, re
         # A trusted caller must independently validate the current G4 origin,
         # and persist the exact favourable row; no callback response is trusted.
         stage_authenticity(connection, artifact_id, receipt['artifact_hash'], raw)
+        # Cross-check the CURRENT G5 policy grant, not caller-declared or
+        # transport-only evidence. This must match the exact signed G4 origin
+        # tuple used by candidate 0064 b02g5_require_authenticity_in_unit().
+        # The authoritative 0064 deferred constraint still validates it again.
         actual = connection.execute(text('''
-            SELECT COUNT(*) FROM public.artifact_verification_records v
-            WHERE v.normative_artifact_id=:artifact_id
-              AND v.verified_artifact_hash=:digest
+            SELECT COUNT(*)
+            FROM public.acquisition_mode_bindings b
+            CROSS JOIN LATERAL jsonb_array_elements(
+                (public.b02_policy_grant(
+                    b.security_policy_binding, 'security', b.source_scope, b.mode
+                ))->'g5_release'->'documents'
+            ) doc
+            JOIN public.artifact_verification_records v
+              ON v.normative_artifact_id=:artifact_id
+             AND v.verified_artifact_hash=:digest
+            WHERE b.mode_binding_id=:binding_id
+              AND b.record_hash=:binding_hash
+              AND b.assigned_txid=pg_current_xact_id()::text
+              AND doc->>'acquisition_execution_id'=b.acquisition_execution_id
               AND v.verification_type='authenticity'
               AND v.outcome='conclusivo_favoravel'
               AND v.verifier='SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN'
               AND v.verifier_version='1'
+              AND v.verifier=doc->'g4'->'verifier'->>'id'
+              AND v.verifier_version=doc->'g4'->'verifier'->>'version'
               AND v.evidence->'synthetic_only'='false'::jsonb
-        '''), {'artifact_id':artifact_id, 'digest':receipt['artifact_hash']}).scalar_one()
+              AND v.evidence->'g4_origin_report_binding'=doc->'g4'->'origin_report_binding'
+              AND v.evidence->>'authorized_verifier_hash'=doc->'g4'->'verifier'->>'hash'
+        '''), {
+            'binding_id':result['mode_binding_id'],
+            'binding_hash':result['record_hash'],
+            'artifact_id':artifact_id,
+            'digest':receipt['artifact_hash']
+        }).scalar_one()
         if actual != 1: _fail('EXACT_FOUNDER_AUTHENTICITY_ROW_REQUIRED')
     connection.execute(text('SET CONSTRAINTS ALL IMMEDIATE'))
     return {'receipt_id':r['receipt_id'], 'receipt_hash':r['receipt_hash'],
