@@ -736,7 +736,41 @@
         "DO_NOT_DUPLICATE_NORMATIVE_BINDING_ADAPTER",
         "DO_NOT_ASSUME_RULE_TABLES_EMPTY_ON_SELECT_DENIED",
         "DO_NOT_REDOWNLOAD_SAME_TWO_PDFS_WITHOUT_C3_RECONCILIATION"
-      ]
+      ],
+      "official_live_public_endpoints_20261031": {
+        "status": "TWO_OFFICIAL_PUBLIC_DOCUMENT_PAGES_ACCESSIBLE_AND_VISUALLY_INSPECTED_NOT_C3_BYTE_AUTHENTICATION",
+        "observed_at_date_utc": "2026-10-31",
+        "source": "Current public SEFA/PR official domain and first-page screenshot; current independent web retrieval, no local PDF download",
+        "documents": [
+          {
+            "document_id": "101202501245",
+            "official_url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf",
+            "reported_public_pdf_pages": 29,
+            "observed_title": "RESOLUÇÃO SEFA Nº 1245/2025",
+            "official_publication": "DOE 12051, 2025-12-17",
+            "republication": "DOE 12053, 2025-12-19",
+            "amends": "Resolução SEFA 571/2019",
+            "custodial_sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832"
+          },
+          {
+            "document_id": "101201900571",
+            "official_url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf",
+            "reported_public_pdf_pages": 587,
+            "observed_title": "RESOLUÇÃO SEFA Nº 571/2019",
+            "official_publication": "DOE 10470, 2019-07-04",
+            "custodial_sha256": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d"
+          }
+        ],
+        "original_policy_urls_preexisting": true,
+        "original_c3_hashes_previously_verified_and_not_retested": true,
+        "official_http_pdf_raw_bytes_downloaded_in_this_reconciliation": false,
+        "public_pdf_bytes_equal_c3_digest": "NOT_VERIFIED_NO_BYTE_LEVEL_COMPARISON",
+        "independent_G4_FOUNDER_ORIGIN_signature_or_custody": "NOT_PROVEN",
+        "official_publication_is_not_approval_of_operational_G5": true,
+        "normative_rule_and_fiscal_applicability": "NOT_PROVEN",
+        "protected_database_writes": 0,
+        "no_new_documents_or_extractors": true
+      }
     },
     "preexisting_RCV31_R3_and_Delta4_verification": {
       "verification_date": "2026-10-30",
