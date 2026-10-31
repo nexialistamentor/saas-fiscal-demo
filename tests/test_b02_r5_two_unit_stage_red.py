@@ -29,7 +29,7 @@ class FakeConnection:
 
 def unit(document_id, raw, *, real=True):
     return dict(document_id=document_id,
-                binding={"provenance":{"synthetic_only":not real},
+                binding={"mode":"LOCAL_CAS_INCORPORATION","provenance":{"synthetic_only":not real},
                          "acquisition_execution_id":"e-"+document_id},
                 start={},read_cas=lambda:raw,build_evidence=lambda *_:None,
                 stage_authenticity=lambda *_:None)
