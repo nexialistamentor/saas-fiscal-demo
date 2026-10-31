@@ -1698,7 +1698,30 @@
         "physical_pg17_0064_0065_execution": false
       },
       "risk_and_limit": "Proposed narrower version-specific negative decision guard preserves current-version adversarial/extra veto but requires independent validation, including whether any global cross-version revocation is governed by a distinct contract. No historic decision or authorization changed, no PostgreSQL DDL/DML.",
-      "next_action": "Original G5 V5 independent reviewer must issue own audit result, and separate technical reviewer must examine version-scoped decision semantics. Only after prospective G4/G5 approvals, authorized root/ELF and signed origin may an authorized runner test genuine 0064/0065 on disposable PG17.10."
+      "next_action": "Original G5 V5 independent reviewer must issue own audit result, and separate technical reviewer must examine version-scoped decision semantics. Only after prospective G4/G5 approvals, authorized root/ELF and signed origin may an authorized runner test genuine 0064/0065 on disposable PG17.10.",
+      "review_20261031_source_readonly": {
+        "review_scope": "NONINSTITUTIONAL_SOURCE_INSPECTION_NOT_PYTHON_UNITTEST_OR_POSTGRESQL_RUN",
+        "starting_head": "a51f1329317e271fa3adaffab2e8c949194f795f",
+        "candidate_0064_blob": "968c092e70e91b6be3d55bfab7a2dd4fc5256669",
+        "candidate_0065_blob_unchanged": "7b6d270901fa0ba18bb8f48599908f737e9d4eb3",
+        "six_focal_contracts_source_inspected": {
+          "historical_V1_V2_same_id_evidence": "STATIC_PASS",
+          "G5_extra_decision_same_version_scope": "STATIC_PASS",
+          "G5_same_version_wrong_hash_and_extra_veto": "STATIC_PASS",
+          "G5_adverse_extra_decision_veto": "STATIC_PASS",
+          "G4_same_policy_historical_version_coexistence": "STATIC_PASS",
+          "root_segregation_ratification_G4_and_authenticity_gates": "STATIC_PASS"
+        },
+        "python_unittest_6_cases": "NOT_EXECUTED_NO_LOCAL_WINDOWS_OR_COMPLETE_REPO_CHECKOUT",
+        "pg1710_genuine_candidate_execution": "NOT_EXECUTED",
+        "cross_version_revocation_review": {
+          "observation": "Both G4/G5 policy_decisions ambiguity guards are scoped to exact selected policy_version. Separate activation overlap guards inspect other activations of same domain/modality, and selected G4/G5 activation validity is checked.",
+          "limit": "These clauses do not establish a global revocation rule spanning policy versions; a historical adverse decision is not automatically a veto on a new properly authorized version.",
+          "required": "Independent security/policy reviewer must check governing cross-version revocation contract; do not restore blanket same-policy-id veto or invent authority."
+        },
+        "immutable_history": "V1/G4/MEI/R4/ACL/JSONB and already COMMITTED G5 V2 events untouched",
+        "next_physical_action": "Run the existing six Python unittest cases once in synced Windows checkout. Static inspection does not close real G5 R5 installation gate."
+      }
     }
   }
 }
