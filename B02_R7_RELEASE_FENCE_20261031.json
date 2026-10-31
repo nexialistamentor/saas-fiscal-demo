@@ -45,10 +45,10 @@
   ],
   "exact_missing_predecessors": [
     {
-      "id": "G5_AUDITOR_OWN_FINAL",
-      "owner": "Original distinct G5 V5 reviewer execution",
-      "needed": "Own, reasoned exact auditada_favoravelmente or auditada_desfavoravelmente act linked to B02-G5-V5-GPT6-auditoria-iniciada-v1 and da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
-      "observed": "NOT_ISSUED"
+      "id": "G5_V3_OWN_INDEPENDENT_AUDIT",
+      "owner": "Original, independently designated and conflicts-declared reviewer for NEW G5 V3 policy and separate competent ratifier",
+      "needed": "After approval and exact canonical persistence of the prospective G5 version 3 policy, own audit chain for that SAME V3 policy/hash: submetida -> auditoria_iniciada -> auditada_favoravelmente -> ratificada with exact signed predecessor hashes, segregated actors, real reviewer acceptance and competence. An unfavourable audit cannot release. Never rebind or transplant historical V2 decisions into V3.",
+      "observed": "V3_NOT_ISSUED; V3_INDEPENDENT_AUDIT_NOT_STARTED_OR_ISSUED"
     },
     {
       "id": "RCV31_A2_V4_OWN_REVIEW",
@@ -105,5 +105,40 @@
     "final_b02_closed_allowed": false,
     "b03_release_allowed": false
   },
-  "decision": "TECHNICAL_PROGRESS_CAN_BE_COMMITTED; B02_R7_CLOSED_AND_B03_RELEASED_MUST_NOT_BE_ASSERTED"
+  "decision": "TECHNICAL_PROGRESS_CAN_BE_COMMITTED; B02_R7_CLOSED_AND_B03_RELEASED_MUST_NOT_BE_ASSERTED",
+  "governance_ratification_20261031": {
+    "status": "R7_DEPENDENCY_REPLACEMENT_RATIFIED_BY_PRODUCT_AUTHORITY",
+    "scope": "ONLY_REPLACE_HISTORICAL_G5_V2_OWN_FINAL_AS_R7_CLOSURE_PRECONDITION_WITH_COMPLETE_INDEPENDENT_G5_V3_CHAIN",
+    "source": "Direct explicit user instruction RATIFICO in this chat on 2026-10-31, immediately following exact question to replace G5 V2 historical reviewer-result requirement with complete independent G5 V3 audit while preserving V1/V2",
+    "decision_literal": "RATIFICO",
+    "prior_r7_predecessor": {
+      "id": "G5_AUDITOR_OWN_FINAL",
+      "owner": "Original distinct G5 V5 reviewer execution",
+      "needed": "Own, reasoned exact auditada_favoravelmente or auditada_desfavoravelmente act linked to B02-G5-V5-GPT6-auditoria-iniciada-v1 and da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
+      "observed": "NOT_ISSUED"
+    },
+    "replacement_predecessor": {
+      "id": "G5_V3_OWN_INDEPENDENT_AUDIT",
+      "owner": "Original, independently designated and conflicts-declared reviewer for NEW G5 V3 policy and separate competent ratifier",
+      "needed": "After approval and exact canonical persistence of the prospective G5 version 3 policy, own audit chain for that SAME V3 policy/hash: submetida -> auditoria_iniciada -> auditada_favoravelmente -> ratificada with exact signed predecessor hashes, segregated actors, real reviewer acceptance and competence. An unfavourable audit cannot release. Never rebind or transplant historical V2 decisions into V3.",
+      "observed": "V3_NOT_ISSUED; V3_INDEPENDENT_AUDIT_NOT_STARTED_OR_ISSUED"
+    },
+    "historical_g5_v2_record_status": "AUDITORIA_INICIADA_COMMITTED_RECONCILED; AUDITADA_FINAL_NOT_ISSUED; HISTORICAL_ONLY_NOT_R7_CLOSURE_PRECONDITION",
+    "preserved_v2_audit_start_id": "B02-G5-V5-GPT6-auditoria-iniciada-v1",
+    "preserved_v2_audit_start_record_hash": "da26dccf706582ef71868a6523d286e1bfe3aeae7b0272e3b8bd6a89ff8608d3",
+    "policy_v1_v2_and_prior_decisions": "IMMUTABLE_UNMODIFIED",
+    "no_new_decision_event_or_signature": true,
+    "does_not_waive": [
+      "RCV31_A2_V4_OWN_REVIEW",
+      "CURRENT_G4_V3_SUCCESSOR",
+      "G5_NEW_TEMPORAL_POLICY",
+      "R1_NATIVE_ROOT_SUCCESSOR",
+      "R5_FULL_0064_0065_PHYSICAL",
+      "R6_NORMATIVE_TO_FISCAL",
+      "R7_COMPETENT_B02_FINAL"
+    ],
+    "no_backdate_or_approval_of_V3_window": true,
+    "no_PG_DDL_DML_or_install": true,
+    "release_status": "B02_NOT_CLOSED_B03_NOT_RELEASED"
+  }
 }
