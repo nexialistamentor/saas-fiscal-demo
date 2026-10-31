@@ -79,6 +79,54 @@ class ResultGate(unittest.TestCase):
         with patch.object(result.owner, "psql", return_value=got):
             self.assertEqual(result.independent_readback(p), ("CONFLICT", None))
 
+    def test_reviewer_act_reads_pinned_git_blob_not_mutable_local_file(self):
+        from types import SimpleNamespace
+        filename = "B02_G5_V5_AUDITOR_RESULTADO.json"
+        commit, blob = "a" * 40, "b" * 40
+        immutable = own_act()
+        source = json.dumps(immutable, ensure_ascii=False).encode("utf-8")
+
+        def pinned_git(*args):
+            if args[0] == "rev-parse":
+                return blob
+            if args[0] == "merge-base":
+                return ""
+            raise AssertionError("unexpected Git inspection")
+
+        with patch.object(result, "git", side_effect=pinned_git), \
+             patch.object(result.subprocess, "run",
+                          return_value=SimpleNamespace(returncode=0, stdout=source)) as run, \
+             patch.object(Path, "read_text",
+                          side_effect=AssertionError("mutable checkout read forbidden")):
+            actual, event = result.load_issued_act(filename, commit, blob)
+
+        self.assertEqual(actual, immutable)
+        self.assertEqual(event, immutable["event"])
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0], ["git", "cat-file", "blob", blob])
+
+    def test_reviewer_act_abstains_when_pinned_blob_unreadable(self):
+        from types import SimpleNamespace
+        filename = "B02_G5_V5_AUDITOR_RESULTADO.json"
+        commit, blob = "a" * 40, "b" * 40
+
+        def pinned_git(*args):
+            if args[0] == "rev-parse":
+                return blob
+            if args[0] == "merge-base":
+                return ""
+            raise AssertionError("unexpected Git inspection")
+
+        with patch.object(result, "git", side_effect=pinned_git), \
+             patch.object(result.subprocess, "run",
+                          return_value=SimpleNamespace(returncode=1, stdout=b"")), \
+             patch.object(Path, "read_text",
+                          side_effect=AssertionError("mutable checkout read forbidden")):
+            with self.assertRaisesRegex(
+                RuntimeError, "STOP_G5_V5_AUDIT_RESULT_REVIEWER_ACT_PINNED_BLOB_UNREADABLE"
+            ):
+                result.load_issued_act(filename, commit, blob)
+
     def test_bridge_is_connected(self):
         self.assertIn(result.PATH, result.bridge.ALLOWED)
         self.assertEqual(result.owner.OWNER, "solveris_test")
