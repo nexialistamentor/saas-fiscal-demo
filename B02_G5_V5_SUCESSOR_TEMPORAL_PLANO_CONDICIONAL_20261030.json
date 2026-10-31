@@ -295,13 +295,13 @@
     "exact_proposed_decision_historical_only": true
   },
   "decisao_unica_temporal_antecipada_g4_g5_20261031": {
-    "status": "PROPOSTA_UNICA_PENDENTE_RATIFICACAO_EXPRESSA",
+    "status": "RATIFICADA_PROSPECTIVAMENTE",
     "reference": "B02-G4-G5-TEMP-SUCCESSOR-20261031-01",
     "decision_exact_text": "APROVO, em substituicao prospectiva e mutuamente exclusiva da execucao G4 de novembro B02-G4-AUTH-MIGUEL-20261029-01, uma unica nova ativacao G4 v4 e a mesma janela material para uma nova politica G5 versao 3, das 2026-11-01T00:00:00+00:00 ate as 2026-11-15T00:00:00+00:00 (fim exclusivo). Nao executar a autorizacao G4 substituida; preservar integralmente os atos historicos, inclusive G4 outubro e G5 v1/v2. A aprovacao temporal nao e autorizacao de assinatura, migracao, operacao G5 ou fecho B02, que requerem os atos proprios segregados, as duas provas originais e reconciliacao fisica. Nenhuma execucao antes da ratificacao nem repeticao de COMMIT incerto. O alvo e solveris_b02_r4g_test, writer solveris_b02_policy_writer, procedimento tools/b02_g4_g5_temporal_successor_runner.py, blob Git 604fce993b755c7d9d9427ef9b874fa9858fec6f, e os quatro IDs v4 definidos no plano existente. A eficacia e apenas desde a data real desta ratificacao (ou inicio nominal, se posterior), sem retroatividade.",
-    "approved": false,
-    "approved_by": null,
-    "approved_at_utc": null,
-    "ratification_source": null,
+    "approved": true,
+    "approved_by": "Miguel",
+    "approved_at_utc": "2026-10-31T20:47:09+00:00",
+    "ratification_source": "User explicit own chat ratification, 2026-10-31, exact reference B02-G4-G5-TEMP-SUCCESSOR-20261031-01 and prospective interval; user does not authorize signatures, migrations or G5 operational execution",
     "window_utc": {
       "from": "2026-11-01T00:00:00+00:00",
       "until": "2026-11-15T00:00:00+00:00",
@@ -416,6 +416,15 @@
     "execution_bridge_git_blob": "4a95545b11038626ed7796f2800dedbdc539b056",
     "database": "solveris_b02_r4g_test",
     "writer": "solveris_b02_policy_writer",
-    "proposal_contract": "PINNED_G4_NEW_V4_RUNNER_GIT_BLOB_AND_BOUNDED_PROSPECTIVE_14_DAYS"
+    "proposal_contract": "PINNED_G4_NEW_V4_RUNNER_GIT_BLOB_AND_BOUNDED_PROSPECTIVE_14_DAYS",
+    "ratification_literal": "Ratifico expressamente a decisão temporal B02-G4-G5-TEMP-SUCCESSOR-20261031-01: autorizo a substituição prospectiva e mutuamente exclusiva da execução G4 de novembro por uma nova unidade G4 v4 e a janela material comum G5 V3 de 2026-11-01T00:00:00Z até 2026-11-15T00:00:00Z, com fim exclusivo. Revogo somente a autorização operacional alternativa G4 de 3–4 de novembro, preservando os atos históricos. Esta ratificação não autoriza por si só assinaturas, migrations ou operações G5, que permanecem sujeitas aos respetivos gates.",
+    "ratification_timestamp_meaning": "Observed current local timestamp 2026-10-31T17:47:09-03:00; record UTC as earliest observed registration marker, not a cryptographic timestamp or a third-party attestation.",
+    "effective_operational_start_utc": "2026-11-01T00:00:00+00:00",
+    "supersedes_prior_operational_permission": {
+      "reference": "B02-G4-AUTH-MIGUEL-20261029-01",
+      "status": "REVOGADA_APENAS_AUTORIZACAO_DE_EXECUCAO_ALTERNATIVA",
+      "original_documents_immutable": true,
+      "never_execute_alternative": true
+    }
   }
 }

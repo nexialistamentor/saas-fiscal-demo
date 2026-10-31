@@ -1535,8 +1535,8 @@
     "R7_release_fence_20261031": {
       "status": "EXACT_TECHNICAL_SCOPE_RECONCILED_B02_CLOSURE_GATED",
       "file": "B02_R7_RELEASE_FENCE_20261031.json",
-      "git_blob": "3573bc5454d28f5c56cf87ec5ba3da5291d981b8",
-      "commit": "7cd74f9a8058710177e8b1aa241b568f5ef93e6b",
+      "git_blob": "d4635858cc73cb7f24958677a1ae2a8de2ec3a73",
+      "commit": null,
       "technical_closed_proof_domains": [
         "R4 bounded recovery/ACL",
         "R6 C3 original PDFs transport bundle (NOT origin authenticity)",
@@ -1554,7 +1554,7 @@
         "R7_COMPETENT_B02_FINAL"
       ],
       "institutional_reviewer_outcome": "NOT_ISSUED",
-      "temporal_successor_G5_v3": "NOT_ISSUED",
+      "temporal_successor_G5_v3": "INTERVAL_APPROVED_G5_V3_POLICY_NOT_ISSUED",
       "real_G5_0064_0065": "NOT_INSTALLED",
       "protected_database_writes_in_this_reconciliation": 0,
       "b02_closed": false,
@@ -1575,11 +1575,25 @@
           "2026-11-03T12:00:00+00:00",
           "2026-11-04T07:56:30.910737+00:00"
         ],
-        "current_status": "ALREADY_APPROVED_NOT_EXECUTED_OR_PHYSICALLY_RECONCILED",
+        "current_status": "HISTORICAL_PERMISSION_REVOKED_20261031_NO_V2_OPERATION",
         "old_october_tx926": "PRESERVED_NO_REPLAY",
         "independent_C3_origin": "STILL_UNPROVEN",
-        "existing_runner_only": "tools/b02_g4_authorized_runner.py",
-        "safety": "READ_ONLY_RECONCILE_BEFORE_ANY_AUTHORIZED_ONCE_ONLY_EXECUTION"
+        "existing_runner_only": "HISTORICAL_NEVER_EXECUTE_AFTER_CURRENT_RATIFICATION",
+        "safety": "READ_ONLY_RECONCILE_BEFORE_ANY_AUTHORIZED_ONCE_ONLY_EXECUTION",
+        "historical_old_status": "ALREADY_APPROVED_NOT_EXECUTED_OR_PHYSICALLY_RECONCILED"
+      },
+      "previous_snapshot_commit": "7cd74f9a8058710177e8b1aa241b568f5ef93e6b",
+      "current_temporal_authorization": {
+        "reference": "B02-G4-G5-TEMP-SUCCESSOR-20261031-01",
+        "status": "EXPRESSLY_RATIFIED_TIME_WINDOW_ONLY",
+        "effective_start": "2026-11-01T00:00:00+00:00",
+        "exclusive_end": "2026-11-15T00:00:00+00:00",
+        "oldG4NovPermission": "REVOKED_EXECUTION_ONLY",
+        "g4v4Rows": "NOT_RECONCILED",
+        "g5v3Policy": "NOT_ISSUED",
+        "signatures": "NOT_AUTHORIZED",
+        "ddl": "NOT_AUTHORIZED",
+        "source_plan_blob": "6b5baf1e1df025470b87aedd117ae3a915866cf8"
       }
     },
     "R7_readonly_release_probe_20261031": {

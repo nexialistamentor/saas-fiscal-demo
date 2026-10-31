@@ -59,14 +59,14 @@
     {
       "id": "CURRENT_G4_V3_SUCCESSOR",
       "owner": "Competent G4 authorizing authority",
-      "needed": "Reconcile whether existing separately authorized G4 four-record operation B02-G4-AUTH-MIGUEL-20261029-01 has already committed, READ ONLY first. If ABSENT, the exact previously approved runner is window-gated for 2026-11-03T12:00Z through 2026-11-04T07:56:30.910737Z, on its pinned historical branch; no fresh authorization or new G4 candidate is required for that exact scoped operation, but execution still requires correct runtime, valid authority and one-shot ACK handling. The G4 future activation alone does NOT establish signed independently inspected FOUNDER_ORIGIN for both C3 PDFs or release G5.",
-      "observed": "2026-10-31 exact four ID read-only SQL: all null in protected database under restricted role; no November execution shown, October tx 926 unchanged. Existing Nov 3–4 approval and runner remain."
+      "needed": "G4 V4 under approved prospective one-window successor B02-G4-G5-TEMP-SUCCESSOR-20261031-01; first READ-ONLY reconciliation of older November G4 V2 and fresh G4 V4 exact IDs and overlapping windows, then only one authorized technical execution at/after 2026-11-01T00:00:00+00:00 and before 2026-11-15T00:00:00+00:00, preserving old G4 documents and without equating activation with FOUNDER_ORIGIN proof.",
+      "observed": "2026-10-31 temporal successor express user ratification RECOGNIZED; G4 V4 four physical records NOT YET RECONCILED, older November G4 V2 operational permission REVOKED, previous read-only snapshot remains historical."
     },
     {
       "id": "G5_NEW_TEMPORAL_POLICY",
       "owner": "Miguel as product authority; independent policy reviewer/authorized executor",
-      "needed": "One approved prospective date interval, canonical fresh V3 policy with current G4/actor/root binding and own review/ratification; old V1/V2 immutable",
-      "observed": "V3_NOT_ISSUED_NO_INTERVAL_SELECTED"
+      "needed": "Temporal interval APPROVED only by user B02-G4-G5-TEMP-SUCCESSOR-20261031-01; generate exact G5 V3 from reconciled G4 V4 real activation with fresh root/actor/favorable own independent review and ratification, preserve G5 V1/V2 historical; no 0064/0065 installation or SQL from temporal decision alone.",
+      "observed": "TEMPORAL_INTERVAL_V3_RATIFIED_20261031; CANONICAL_G5_V3_NOT_ISSUED; V3_SEPARATE_AUDIT_NOT_ISSUED"
     },
     {
       "id": "R1_NATIVE_ROOT_SUCCESSOR",
@@ -144,7 +144,7 @@
   "existing_preauthorized_G4_november_20261031": {
     "scope": "RECONCILIATION_OF_EXISTING_R7_G4_PREDECESSOR_NOT_NEW_AUTHORIZATION",
     "reference": "B02-G4-AUTH-MIGUEL-20261029-01",
-    "authorization_status": "AUTORIZADO_AGUARDA_EXECUCAO_IN_PINNED_SOURCE_NOT_VERIFIED_IN_POSTGRESQL",
+    "authorization_status": "HISTORICAL_DOCUMENT_PRESERVED_EXECUTION_PERMISSION_REVOKED_20261031",
     "original_authorization_path": "AUTORIZACAO_G4_MIGUEL_20261029.json",
     "original_authorization_blob": "8d9f8f0d48478557c801b524a8fa24fa8136eb2f",
     "authorized_procedure": "executar_ativacao_g4_real.py",
@@ -169,10 +169,10 @@
     "proof_of_nov_G4_v2_commit": "FOUR_EXACT_IDS_NOT_FOUND_IN_20261031_READONLY_SNAPSHOT",
     "runner_before_window": "HARD_STOP",
     "prior_execution_requires_read_only_disambiguation": true,
-    "original_approval_not_revoked_by_Oct_branch": "NO_REVOCATION_EVIDENCE_FOUND_NOT_A_NEW_INSTITUTIONAL_ATTESTATION",
+    "original_approval_not_revoked_by_Oct_branch": "HISTORICAL_AS_OF_PRIOR_SNAPSHOT_ONLY_NOW_SUPERSEDED_BY_USER_RATIFICATION_20261031",
     "remaining_signed_original_origin": "G4_FOUNDER_ORIGIN_OWN_SIGNED_REPORT_PER_C3_STILL_REQUIRED",
     "not_G5_authorization": true,
-    "G5_v3_prospective_window": "NOT_SELECTED_OR_APPROVED",
+    "G5_v3_prospective_window": "APPROVED_2026-11-01T00:00:00Z_TO_2026-11-15T00:00:00Z",
     "no_repeat_G4_October": true,
     "no_mutation_of_original_G4_preapproval": true,
     "no_DDL_DML": true,
@@ -188,7 +188,24 @@
       "container_final_state": "RESTORED_STOPPED",
       "writes": 0,
       "grants": 0,
-      "next": "Honor existing authorization only inside 2026-11-03T12:00:00Z through 2026-11-04T07:56:30.910737Z; no early invocation of runner"
-    }
+      "next": "Historical old G4-Nov V2 execution now revoked; READ-ONLY disambiguate before future G4 V4 one-shot.",
+      "historical_original_next": "Honor existing authorization only inside 2026-11-03T12:00:00Z through 2026-11-04T07:56:30.910737Z; no early invocation of runner"
+    },
+    "historical_original_authorization_status_before_new_ratification": "AUTORIZADO_AGUARDA_EXECUCAO_IN_PINNED_SOURCE_NOT_VERIFIED_IN_POSTGRESQL"
+  },
+  "current_singular_temporal_ratification_20261031": {
+    "reference": "B02-G4-G5-TEMP-SUCCESSOR-20261031-01",
+    "source": "Explicit owner text in current ChatGPT conversation, 2026-10-31",
+    "observed_at_utc": "2026-10-31T20:47:09+00:00",
+    "prospective_from": "2026-11-01T00:00:00+00:00",
+    "exclusive_until": "2026-11-15T00:00:00+00:00",
+    "old_nov_g4_v2_execution_permission": "REVOKED_OPERATIONALLY_ONLY",
+    "new_g4_v4": "APPROVED_TEMPORAL_SCOPE_NOT_EXECUTED",
+    "new_g5_v3": "APPROVED_INTERVAL_NOT_POLICY_OR_AUDIT",
+    "single_window_exclusive": true,
+    "protected_writes": 0,
+    "rls_or_migrations_approval": false,
+    "source_plan": "B02_G5_V5_SUCESSOR_TEMPORAL_PLANO_CONDICIONAL_20261030.json",
+    "other_predecessors_remain_mandatory": true
   }
 }
