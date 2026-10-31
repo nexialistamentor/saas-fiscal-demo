@@ -640,7 +640,7 @@
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain; original isolated V21 PRE_COMMIT C and invalid signature tests; V23 successful synthetic two-unit commit/readback; V28 receipt/tampering/rollback; V30 one-shot concurrency/orphan/unknown-ACK synthetic exercises, accepted with original scope (handoff V31 20261024)",
         "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task. Focused R5 independent hash-check enhancement: 12/12 Windows unit tests PASS; on the original PostgreSQL 17.10 container the historical G5 V1 four records were physically recalculated and all four canonical record hashes matched in one READ ONLY query; guarded PowerShell success emitted after parsed JSON. Does NOT prove V2/V3 real one-shot or install 0064/0065. Current pre-install candidate 0064→0065 static source diff (READ ONLY) confirms both replaced PL/pgSQL function bodies preserved exactly after subtraction of only declared one-shot reservations and assertions. Original SQL untouched. Candidate blobs 35b9f7fe and 7b6d2709. Not PostgreSQL compilation, installation or production approval. Read-only structural cross-check of 0065 pinned blob 7b6d2709 + existing stage_completion 723448cb7: two completed distinct C3 units MUST precede one-shot reservation in this source sequence, since each stage_completion executes SET CONSTRAINTS ALL IMMEDIATE and 0065 reservation has a deferred two-unit constraint trigger. Static abstract model confirms reservation earlier fails; not PostgreSQL runtime proof.",
         "remaining_gap": "Only real currently authorized G5 successor and original R5 gate: original reviewer own audit result followed by valid ratification and successor temporal authority, live G4 validity for each PDF, exact approved native root/ELF and 0064/0065 installation, real documented/custodied two-unit CAS operation, original R5 one-shot PRE_COMMIT/COMMIT and independent readback. No evidence these are completed by historic V1 activation, previous synthetic tests, or R4 protected backup. NEW cross-component source-level integration blocker: original stage_completion forces deferred completion constraints IMMEDIATE immediately after artifact insertion but does not persist the ONE exact favorable signed ArtifactVerificationRecord newly required by 0064/0065 real G5 profile. Existing founder verifier returns nonpersisted proposal; do not treat G4 transport TLS or generic PRESERVED_ORIGIN as FOUNDER_ORIGIN authority. The prior two-unit-before-one-shot ordering is necessary but not a runnable release procedure without this reviewed delta.",
-        "next_action": "First resolve separate G5-only, externally authorized exact FOUNDER_ORIGIN authenticity ArtifactVerificationRecord persistence after each artifact insert and BEFORE each stage_completion constraint flush. Preserve accepted stage_completion and tests until a bounded mission approves an additive solution, exact signed evidence and disposable PG17 integration. Then complete two C3 units and reserve one-shot after BOTH, never before. Original independent reviewer, prospective G4/G5 authority, native root and real verifier still necessary; no current protected writes."
+        "next_action": "Candidate hook stage_authenticity published (commit e2f2bb47) and 5 new focused tests authored separately (commit 92806515). Test GREEN not yet proven. Real ORIGIN remains NOT_GRANTED. Verify Windows test and frozen original R4G suite before independent code review; then resolve original G5 reviewer and valid authority, real signed origin and native root. Only then disposable PG17 two-unit test: each artifact -> approved authenticity row -> IMMEDIATE constraint -> second unit -> one-shot -> signed COMMIT. No protected SQL yet."
       },
       "R6": {
         "existing": "app/services/enterprise_b02_noncredential_acquisition.py::stage_completion; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; tools/b02_r6_normative_linkage_readonly.py; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; app/services/enterprise_b02_normative_binding.py (read-only cautious adapter); prior original B02_V29_MATRIZ_NORMATIVA_COM_EVIDENCIA.md dated 2026-10-23 (Library)",
@@ -1228,7 +1228,7 @@
       }
     },
     "R5_real_authenticated_unit_deferred_flush_gap": {
-      "status": "STATIC_CROSS_COMPONENT_INTEGRATION_BLOCKER_NO_RUNTIME_EXECUTION",
+      "status": "G5_OPTIN_HOOK_CANDIDATE_PUBLISHED_PENDING_FOCUSED_TEST_AND_INDEPENDENT_REVIEW",
       "basis": {
         "migration_0062_blob": "7a508c8c57d9abd0a79620d2601fca1505433aa2",
         "migration_0064_blob": "35b9f7fe99f34545e8f312342f776bfcd1aed7f6",
@@ -1259,7 +1259,32 @@
       "accepted_service_changed": false,
       "database_tests_or_writes": 0,
       "independent_origin_authority_present": false,
-      "required_next_action": "Separate explicitly authorized G5-only source-level integration design and reviewer acceptance for staging an independently verified authenticity row before original SET CONSTRAINTS ALL IMMEDIATE. Preserve original service and ratified tests; use focused RED immutable test in a new authorized mission, then disposable PG17.10 physical precommit proving BOTH unit flushes, one-shot reservation and signed capability with original current G4/G5 authority. No real protected operations before signatures, valid prospective window and independently originated evidence."
+      "required_next_action": "Run new 5-case RED-then-GREEN contract against exact published source, preserve frozen original R4G test hash 09f8778d..., and independently review callback authority/transaction boundaries. No G5 release with NOT_GRANTED origins. Once originally authorized founder proofs and prospective G4/G5/root present, run one disposable PG17 complete real-unit PRE_COMMIT integration before protected installation.",
+      "integration_candidate": {
+        "state": "SOURCE_FIX_PUBLISHED_TESTS_AUTHORED_NOT_YET_PHYSICALLY_EXECUTED",
+        "test_only_commit": "92806515b652b3a757020ac594e670527e73d24d",
+        "implementation_commit": "e2f2bb4787155acf1fce184bba5d07d9341b1706",
+        "test_path": "tests/test_b02_r5_authenticity_before_flush_red.py",
+        "test_blob": "ebfd19184f05017314ed22ed03209fbcf4c3efd7",
+        "test_count": 5,
+        "service_path": "app/services/enterprise_b02_noncredential_acquisition.py",
+        "service_blob_before": "723448cb7f23b659f5131c5535d5238c2fcf0fd4",
+        "service_blob_after": "1555fe2be00c6f7e0249bfe83e504a86942a83a9",
+        "frozen_original_contract": "tests/test_enterprise_b02_r4g_contract.py",
+        "frozen_original_contract_blob": "09f8778d53eaeda3d2daf6c1e174597c122feac9",
+        "frozen_original_contract_unchanged": true,
+        "hook": "stage_completion(..., stage_authenticity=None)",
+        "hook_contract": "Authorized external callback inserts one exact FOUNDER_ORIGIN/v1 favorable real ArtifactVerificationRecord AFTER new normative_artifacts row, BEFORE original SET CONSTRAINTS ALL IMMEDIATE. Source checks database row count 1 and authentic source identity. No autogenerated evidence, policy, signatures or COMMIT; no synthetics callback; no real work with absent callback.",
+        "legitimate_default": "synthetic stage_completion without callback unchanged; real without callback stops before DML; idempotent retry preserved",
+        "review_eligibility": "CANDIDATE_NOT_APPROVED_NO_REAL_ORIGIN_EVIDENCE",
+        "test_state": "STATIC_SOURCE_GUARDS_PASS_RUNTIME_WINDOWS_TEST_NOT_RUN",
+        "static_guards_checked": 9,
+        "test_run_in_windows": false,
+        "db_test_run": false,
+        "protected_db_writes": 0,
+        "pending_physical_preflight": "After local git fast-forward, run the 5 new unittest cases and existing frozen R4G pytest without changing tests; only then ask for separate segregated review and disposable PG17.10 authenticated two-unit integration with approved signed evidence, native root and prospective G4/G5 authority",
+        "no_claimed_institutional_approval": true
+      }
     }
   }
 }
