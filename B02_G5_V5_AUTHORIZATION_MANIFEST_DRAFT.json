@@ -638,9 +638,9 @@
       },
       "R5": {
         "existing": "migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py; migrations/candidates/0065_b02_g5_one_shot_real_CANDIDATE.py; tools/b02_g5_v5_local_bridge.py; stage_policy_activation chain; original isolated V21 PRE_COMMIT C and invalid signature tests; V23 successful synthetic two-unit commit/readback; V28 receipt/tampering/rollback; V30 one-shot concurrency/orphan/unknown-ACK synthetic exercises, accepted with original scope (handoff V31 20261024)",
-        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task. Focused R5 independent hash-check enhancement: 12/12 Windows unit tests PASS; on the original PostgreSQL 17.10 container the historical G5 V1 four records were physically recalculated and all four canonical record hashes matched in one READ ONLY query; guarded PowerShell success emitted after parsed JSON. Does NOT prove V2/V3 real one-shot or install 0064/0065. Current pre-install candidate 0064→0065 static source diff (READ ONLY) confirms both replaced PL/pgSQL function bodies preserved exactly after subtraction of only declared one-shot reservations and assertions. Original SQL untouched. Candidate blobs 35b9f7fe and 7b6d2709. Not PostgreSQL compilation, installation or production approval. Read-only structural cross-check of 0065 pinned blob 7b6d2709 + existing stage_completion 723448cb7: two completed distinct C3 units MUST precede one-shot reservation in this source sequence, since each stage_completion executes SET CONSTRAINTS ALL IMMEDIATE and 0065 reservation has a deferred two-unit constraint trigger. Static abstract model confirms reservation earlier fails; not PostgreSQL runtime proof. Scoped R5 authenticity preflush source delta tested on real operator Windows checkout: RED from test-only commit reproduced, 5 new tests PASS, original R4G regression PASS and frozen source blob unchanged. Exact runner output R5_FOCUSED_RED_GREEN_SOURCE_ONLY_PASS_NO_POSTGRESQL; this is source-only, not PostgreSQL 0064/0065 or production release. 2026-10-30 operator Windows confirmed second focal R5 hardening: exact G4/source origin RED reproduced from commit 3315be5, 4 negative tests PASS, previous 5 tests PASS and original R4G contract PASS, all prior blobs unchanged; runner concluded R5_G4_EXACT_RED_GREEN_CONTRACTS_UNCHANGED_NO_POSTGRESQL. Synthetic-only fixture and source behavior, NOT physical PostgreSQL profile 0064/0065 or origin attestation. Separate source-only candidate two-C3 orchestration and isolated PostgreSQL 17.10 trigger-model proof published. They are NOT yet locally executed: do not claim tests PASS. Existing accepted Windows nine R5 tests and R4G contract remain fixed and unchanged; no new live G5 authority inferred.",
+        "accepted_proof": "Historical operational G5 V1 activation B02-57982-activation-v1 COMMITTED exact physical, txid 920 (valid interval 2026-10-22T13:25:46.83071Z to 2026-10-23T07:56:30.910737Z), not currently effective. Separate existing synthetic R5/V21/V23/V28/V30 PRE_COMMIT, two-unit persistence, post-staging receipt, idempotency/concurrency/unknown-ACK controls remain accepted without rerun. G5 V2 canonical 007f6e919816365dc78d1c1df53e38a3b802549cdac83f717155d5796cf5ffcf: policy and two decisions committed, zero activation; independent physical inventory 2026-10-30T16:51:33Z read-only found Alembic 0063, native_symbols=[], one_shot_table=false; no actual real-CAS two-document COMMIT recorded. Avoid conflating historical G5 activation with original R5 operational gate. RCV31-R3 physical two-unit positive and bounded negative evidence exists ONLY for disposable synthetic profile; RCV31-R3 reviewer limits institutional applicability; Delta4 V3 pre-operation tampering rejection also only disposable. This is already tested and not another unfinished general R5 synthetic task. Focused R5 independent hash-check enhancement: 12/12 Windows unit tests PASS; on the original PostgreSQL 17.10 container the historical G5 V1 four records were physically recalculated and all four canonical record hashes matched in one READ ONLY query; guarded PowerShell success emitted after parsed JSON. Does NOT prove V2/V3 real one-shot or install 0064/0065. Current pre-install candidate 0064→0065 static source diff (READ ONLY) confirms both replaced PL/pgSQL function bodies preserved exactly after subtraction of only declared one-shot reservations and assertions. Original SQL untouched. Candidate blobs 35b9f7fe and 7b6d2709. Not PostgreSQL compilation, installation or production approval. Read-only structural cross-check of 0065 pinned blob 7b6d2709 + existing stage_completion 723448cb7: two completed distinct C3 units MUST precede one-shot reservation in this source sequence, since each stage_completion executes SET CONSTRAINTS ALL IMMEDIATE and 0065 reservation has a deferred two-unit constraint trigger. Static abstract model confirms reservation earlier fails; not PostgreSQL runtime proof. Scoped R5 authenticity preflush source delta tested on real operator Windows checkout: RED from test-only commit reproduced, 5 new tests PASS, original R4G regression PASS and frozen source blob unchanged. Exact runner output R5_FOCUSED_RED_GREEN_SOURCE_ONLY_PASS_NO_POSTGRESQL; this is source-only, not PostgreSQL 0064/0065 or production release. 2026-10-30 operator Windows confirmed second focal R5 hardening: exact G4/source origin RED reproduced from commit 3315be5, 4 negative tests PASS, previous 5 tests PASS and original R4G contract PASS, all prior blobs unchanged; runner concluded R5_G4_EXACT_RED_GREEN_CONTRACTS_UNCHANGED_NO_POSTGRESQL. Synthetic-only fixture and source behavior, NOT physical PostgreSQL profile 0064/0065 or origin attestation. Separate source-only candidate two-C3 orchestration and isolated PostgreSQL 17.10 trigger-model proof published. They are NOT yet locally executed: do not claim tests PASS. Existing accepted Windows nine R5 tests and R4G contract remain fixed and unchanged; no new live G5 authority inferred. Operator ran new PostgreSQL 17.10 disposable SQL causal test: early second-unit negative PASS; scoped named z_b02_complete_unit re-defer + reservation order PASS; rollback PASS; verdict B02_R5_PG17_DISPOSABLE_SQL_CAUSAL_PASS_NOT_B02_0064_0065. The source-only two-unit runner first failed before tests on SyntaxError; repaired in commit 1be692e7 without changing source/test files. No protected DB writes.",
         "remaining_gap": "Only real currently authorized G5 successor and original R5 gate: original reviewer own audit result followed by valid ratification and successor temporal authority, live G4 validity for each PDF, exact approved native root/ELF and 0064/0065 installation, real documented/custodied two-unit CAS operation, original R5 one-shot PRE_COMMIT/COMMIT and independent readback. No evidence these are completed by historic V1 activation, previous synthetic tests, or R4 protected backup. NEW cross-component source-level integration blocker: original stage_completion forces deferred completion constraints IMMEDIATE immediately after artifact insertion but does not persist the ONE exact favorable signed ArtifactVerificationRecord newly required by 0064/0065 real G5 profile. Existing founder verifier returns nonpersisted proposal; do not treat G4 transport TLS or generic PRESERVED_ORIGIN as FOUNDER_ORIGIN authority. The prior two-unit-before-one-shot ordering is necessary but not a runnable release procedure without this reviewed delta. NEW source-level second-unit constraint mode issue: after original stage_completion flushes ALL IMMEDIATE for first unit, the five 0062 z_b02_complete_unit deferred triggers remain immediate in that transaction. Without scoped re-deferral between units, second unit cannot be staged incrementally. Do not treat previously noted 2-unit then reserve procedure as executable until physical reviewer validates named per-unit SET CONSTRAINTS public.z_b02_complete_unit DEFERRED transition.",
-        "next_action": "Run the two NEW commands once on Windows (tools/b02_r5_two_unit_red_green_runner.py and tools/b02_r5_pg17_deferred_sequence_disposable.py), output only verdicts. Then reconcile and seek independently competent original G5/R2 reviewer, prospective G4/G5/approved root before any protected physical SQL or B02 closure. Do NOT repeat prior R4, C3 or nine R5 tests."
+        "next_action": "Only run corrected tools/b02_r5_two_unit_red_green_runner.py ONCE on the DEDICATED candidate/g5-v5-publicacao-local checkout; PG17 disposable causal test is already PASS, do NOT repeat. Then independent technical review and actual original institutional G5 reviewer act/prospective G4/G5/root, disposable real migration integration and protected release remain separate. Do not touch R4 or C3."
       },
       "R6": {
         "existing": "app/services/enterprise_b02_noncredential_acquisition.py::stage_completion; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; tools/b02_r6_normative_linkage_readonly.py; docs/ENTERPRISE_B02_NORMATIVE_PROOF.md; app/services/enterprise_b02_normative_binding.py (read-only cautious adapter); prior original B02_V29_MATRIZ_NORMATIVA_COM_EVIDENCIA.md dated 2026-10-23 (Library)",
@@ -1335,7 +1335,7 @@
       "pg_protected_writes": 0
     },
     "R5_two_real_units_constraint_mode_transition": {
-      "status": "CAUSAL_SQL_MODE_GAP_CONFIRMED_SOURCE_AND_PG17_DOCUMENTATION_NO_RUNTIME",
+      "status": "PG17_DISPOSABLE_SQL_CAUSAL_PASS_REQUIRES_REAL_0064_0065_PROOF",
       "sources": [
         {
           "path": "migrations/versions/0062_adr020_noncredential_acquisition.py",
@@ -1368,13 +1368,14 @@
       ],
       "not_installed_0064_0065": true,
       "changed_r5_sources": false,
-      "physical_pg17_verified": false,
+      "physical_pg17_verified": true,
       "authoritative_release_approved": false,
       "decision": "Technical reviewer must verify exact named constraint state transition and ACL in a disposable PG17.10 execution before any source or protected DB changes; do not weaken real completion constraints, disable triggers or automatically alter original accepted stage_completion.",
-      "no_retest_of_R4_C3_prior_R5": true
+      "no_retest_of_R4_C3_prior_R5": true,
+      "physical_scope": "2026-10-31 Windows postgres:17.10-trixie disposable synthetic causal SQL model proves immediate failure on second unit and scoped named re-defer under SQL rollback; NOT real 0064/0065 or root/authority"
     },
     "R5_disposable_two_unit_candidate": {
-      "status": "SOURCE_ONLY_ISOLATED_CANDIDATES_PUBLISHED_NEED_REAL_WINDOWS_EXECUTION_AND_REVIEW",
+      "status": "PG17_DISPOSABLE_CAUSAL_PASS_TWO_UNIT_SOURCE_RUNNER_FIXED_PENDING_RUN_AND_REVIEW",
       "provenance": "Candidate branch only, no PostgreSQL protected DDL/DML, no signatory or G5 policy change",
       "code_path": "app/services/enterprise_b02_g5_two_unit_stage.py",
       "code_blob": "f538cb5665f86e455d1ff57e24174947384602e7",
@@ -1392,7 +1393,7 @@
       "uses_real_c3_user_files": false,
       "uses_real_g4_g5_authority": false,
       "tests_executed_on_windows": false,
-      "tests_executed_in_disposable_pg": false,
+      "tests_executed_in_disposable_pg": true,
       "signed_origin_or_CAS_committed": false,
       "frozen_prior_service_blob": "849e95c61e14859ffd24d7c0dcdc228c81b83866",
       "expected_sources": [
@@ -1402,7 +1403,41 @@
         "exact independently verified per-unit G4 FOUNDER_ORIGIN callback is mandatory",
         "no one-shot reservation, no native signing or COMMIT within helper"
       ],
-      "limits": "Disposable PostgreSQL causal trigger-model test verifies PG17 timing only, not original 0064/0065 installation, real G5 policy, independent origin, native ELF or 2x genuine C3 SQL staging."
+      "limits": "Disposable PostgreSQL causal trigger-model test verifies PG17 timing only, not original 0064/0065 installation, real G5 policy, independent origin, native ELF or 2x genuine C3 SQL staging.",
+      "postgresql_17_10_disposable_execution": {
+        "status": "PG17_DISPOSABLE_CAUSAL_SQL_TEST_PASS_NOT_REAL_0064_0065",
+        "source": "Operator original Windows PowerShell 2026-10-31 06:36 America/Belem",
+        "checkout": "C:\\dev\\saas-fiscal-demo-a1",
+        "checkout_note": "Different from preferred dedicated C:\\dev\\solveris-b02-g5-v5-publicacao; do not assume checkout branch identity from git pull alone",
+        "test_head": "9300048e30554b9467f68378ac8cc4fcadcdcb35",
+        "script": "tools/b02_r5_pg17_deferred_sequence_disposable.py",
+        "script_blob": "5d128357998894aac77295f85b1c146df9e5a704",
+        "observations": [
+          "B02_PG17_REAL_ENGINE_EARLY_SECOND_UNIT_NEGATIVE_PASS",
+          "B02_PG17_REAL_ENGINE_SCOPED_REDEFER_AND_ONE_SHOT_ORDER_PASS",
+          "B02_PG17_DISPOSABLE_TRANSACTION_ROLLBACK_PASS",
+          "B02_R5_PG17_DISPOSABLE_SQL_CAUSAL_PASS_NOT_B02_0064_0065"
+        ],
+        "engine": "postgres:17.10-trixie disposable ephemeral container",
+        "scope": "Simulated five 0062 constraint triggers with immediate/deferred modes and one reservation trigger, all SQL BEGIN..ROLLBACK and teardown, no attached volume, no host mount, no PostgreSQL protected DB",
+        "not_original_migrations": true,
+        "real_origin_authenticated": false,
+        "real_c3_cas_staged": false,
+        "approved_native_root": false,
+        "protected_ddl_dml": 0
+      },
+      "two_unit_source_red_green_windows_execution": {
+        "status": "STOP_EXECUTOR_SYNTAX_ERROR_NOT_CONTRACT_FAILURE",
+        "head": "9300048e30554b9467f68378ac8cc4fcadcdcb35",
+        "observed": "SyntaxError unexpected character after line continuation character, line 44 in b02_r5_two_unit_red_green_runner.py at escaped '{commit}' expression",
+        "original_runner_blob": "ca9d85264584de75554fa54c37eb0a09731090b4",
+        "correction_commit": "1be692e7d720b1cabaf073b6642654ffe1ac88f0",
+        "corrected_runner_blob": "b93c8149853bfcafffd25735a052434bf92e000a",
+        "what_changed": "Single invalid guard replaced by git('cat-file','-e',RED); fail closed using existing git helper",
+        "status_after_fix": "PENDING_ONE_EXECUTION_OF_CORRECTED_RED_GREEN_RUNNER",
+        "test_cases_evaluated_from_failed_run": 0,
+        "do_not_repeat_pg17_disposable": true
+      }
     }
   }
 }
