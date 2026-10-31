@@ -1535,7 +1535,7 @@
     "R7_release_fence_20261031": {
       "status": "EXACT_TECHNICAL_SCOPE_RECONCILED_B02_CLOSURE_GATED",
       "file": "B02_R7_RELEASE_FENCE_20261031.json",
-      "git_blob": "32ed055d30a069f2aa3aaba9cf1e990aebca7ea9",
+      "git_blob": "82f48de0e0db71596092b1c13bcfba4f7e3436fc",
       "commit": "7cd74f9a8058710177e8b1aa241b568f5ef93e6b",
       "technical_closed_proof_domains": [
         "R4 bounded recovery/ACL",
@@ -1544,7 +1544,7 @@
         "R1 native builder preliminary source tests (NOT released native)"
       ],
       "missing_predecessors": [
-        "G5_AUDITOR_OWN_FINAL",
+        "G5_V3_OWN_INDEPENDENT_AUDIT",
         "RCV31_A2_V4_OWN_REVIEW",
         "CURRENT_G4_V3_SUCCESSOR",
         "G5_NEW_TEMPORAL_POLICY",
@@ -1558,7 +1558,15 @@
       "real_G5_0064_0065": "NOT_INSTALLED",
       "protected_database_writes_in_this_reconciliation": 0,
       "b02_closed": false,
-      "b03_released": false
+      "b03_released": false,
+      "previous_snapshot_git_blob": "32ed055d30a069f2aa3aaba9cf1e990aebca7ea9",
+      "governance_ratification_commit": "31bd0034724d534f9dd7afcb92d06e9365deae89",
+      "temporal_plan_ratification_commit": "06d3fd9484db077b740f64573521caf5b0aa51dd",
+      "previous_missing_predecessor": "G5_AUDITOR_OWN_FINAL",
+      "ratified_replacement": "G5_V3_OWN_INDEPENDENT_AUDIT",
+      "historical_v2_own_final": "NOT_ISSUED_PRESERVED_HISTORICAL_NOT_R7_DEPENDENCY",
+      "own_reviewer_v3": "PENDING",
+      "user_ratification_source": "RATIFICO, direct chat reply, 2026-10-31"
     },
     "R7_readonly_release_probe_20261031": {
       "status": "SOURCE_READONLY_RELEASE_GUARD_SYNTHETIC_SEVEN_TESTS_PASS_B02_STILL_OPEN",
@@ -1931,6 +1939,21 @@
         "tests_rerun_required": false,
         "scope": "STATIC_SOURCE_TESTS_WINDOWS_ONLY_NOT_ACTUAL_SQL_OR_PHYISCAL_ACL"
       }
+    },
+    "R7_v3_audit_ratification_20261031": {
+      "kind": "SCOPE_LIMITED_PROJECT_AUTHORITY_RATIFICATION",
+      "status": "R7_V3_AUDIT_SUBSTITUTION_RATIFIED_NOT_OPERATIONAL_APPROVAL",
+      "evidence_literal": "RATIFICO",
+      "from": "G5_AUDITOR_OWN_FINAL historical V2 final own result",
+      "to": "G5_V3_OWN_INDEPENDENT_AUDIT complete separate V3 audited-and-ratified exact chain",
+      "R7_sha": "82f48de0e0db71596092b1c13bcfba4f7e3436fc",
+      "temporal_plan_sha": "82184007309788d444b29266e8c80ba778da8fb3",
+      "V1_V2_unmodified": true,
+      "V3_policy_material_not_issued": true,
+      "G4_successor_not_issued": true,
+      "no_SQL_or_PG_mutations": true,
+      "no_new_signatures": true,
+      "B02_OPEN_B03_BLOCKED": true
     }
   }
 }
