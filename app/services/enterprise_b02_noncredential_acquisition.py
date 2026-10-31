@@ -76,13 +76,21 @@ def resume_exact_completion(connection, *, execution_id, attempt_number, receipt
     connection.execute(text('SELECT b02_require_complete_unit(:e,:a,NULL,false)'), {'e':execution_id,'a':attempt_number})
     return dict(row)
 
-def stage_completion(connection, *, binding, start, read_cas, build_evidence, retry_receipt=None):
+def stage_completion(connection, *, binding, start, read_cas, build_evidence, retry_receipt=None, stage_authenticity=None):
     """Caller owns one transaction; callback supplies independent governed proof.
 
     Insertion order is fixed: binding, start, actual local read, receipt,
     verification, terminal, artifact. No commit/rollback here. A failure must
     propagate; the caller must roll back the encompassing transaction.
     No public-network acquisition is implemented by this mission.
+
+    stage_authenticity is an explicitly opt-in, independently governed R5 real
+    source callback. It must stage ONE already independently verified G4
+    FOUNDER_ORIGIN authenticity row after artifact insertion, in the SAME
+    caller-owned SQL transaction, before this function forces deferred
+    completeness constraints. It cannot create an origin report, source grant,
+    signer, policy or COMMIT. A database readback checks that the row exists.
+    The existing synthetic path and idempotent retry remain unchanged.
     """
     from sqlalchemy import text
     if not connection.in_transaction(): _fail('OUTER_TRANSACTION_REQUIRED')
@@ -95,6 +103,11 @@ def stage_completion(connection, *, binding, start, read_cas, build_evidence, re
                             NonCredentialSanitizationVerification, AcquisitionExecution,
                             NormativeArtifact)
     if binding.get('mode') != 'LOCAL_CAS_INCORPORATION': _fail('CAS_ONLY_EXECUTOR')
+    real = binding.get('provenance', {}).get('synthetic_only') is False
+    if real and stage_authenticity is None: _fail('REAL_AUTHENTICITY_STAGER_REQUIRED')
+    if stage_authenticity is not None:
+        if not real: _fail('REAL_AUTHENTICITY_ONLY')
+        if not callable(stage_authenticity): _fail('AUTHENTICITY_STAGER_NOT_CALLABLE')
     result = connection.execute(AcquisitionModeBinding.__table__.insert().values(**binding).returning(AcquisitionModeBinding.__table__)).mappings().one()
     connection.execute(AcquisitionExecution.__table__.insert().values(**start))
     raw = read_cas()
@@ -118,6 +131,23 @@ def stage_completion(connection, *, binding, start, read_cas, build_evidence, re
     if artifact.get('immutable_bytes') != raw: _fail('CONTENT_DIVERGENCE')
     artifact.pop('record_hash', None)
     connection.execute(NormativeArtifact.__table__.insert().values(**artifact))
+    if stage_authenticity is not None:
+        artifact_id = artifact.get('normative_artifact_id')
+        if not isinstance(artifact_id, str) or not artifact_id: _fail('REAL_ARTIFACT_ID_REQUIRED')
+        # A trusted caller must independently validate the current G4 origin,
+        # and persist the exact favourable row; no callback response is trusted.
+        stage_authenticity(connection, artifact_id, receipt['artifact_hash'], raw)
+        actual = connection.execute(text('''
+            SELECT COUNT(*) FROM public.artifact_verification_records v
+            WHERE v.normative_artifact_id=:artifact_id
+              AND v.verified_artifact_hash=:digest
+              AND v.verification_type='authenticity'
+              AND v.outcome='conclusivo_favoravel'
+              AND v.verifier='SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN'
+              AND v.verifier_version='1'
+              AND v.evidence->'synthetic_only'='false'::jsonb
+        '''), {'artifact_id':artifact_id, 'digest':receipt['artifact_hash']}).scalar_one()
+        if actual != 1: _fail('EXACT_FOUNDER_AUTHENTICITY_ROW_REQUIRED')
     connection.execute(text('SET CONSTRAINTS ALL IMMEDIATE'))
     return {'receipt_id':r['receipt_id'], 'receipt_hash':r['receipt_hash'],
             'verification_id':v['verification_id'], 'artifact_hash':receipt['artifact_hash']}
