@@ -354,7 +354,7 @@
       "old_G5_root_prohibited": true,
       "own_review_and_ratification_required": true,
       "draft_materializer": "tools/b02_g5_v3_temporal_materialize_candidate.py",
-      "materializer_git_blob": "0617de4e89a2e1d5cbb150954b0858dfdcb1c93e",
+      "materializer_git_blob": "8ef957cd7cde127dc481944df32d28445c3be725",
       "v3_draft_fail_closed_fields": [
         "G5 capability_root_id=null pending actual approved root",
         "G5 release actor=null pending actual actor",
@@ -362,7 +362,10 @@
         "V3 own institutional_evidence_bindings={}",
         "V3 adoption_act_sha256=null",
         "both G4 origin_report_binding=null and outcome awaiting current independent FOUNDER_ORIGIN",
-        "both sanitization outcomes pending real independent inspection; old mandates/reviewer-acceptances cleared"
+        "both sanitization outcomes pending real independent inspection; old mandates/reviewer-acceptances cleared",
+        "Six future operational IDs for each PDF use fresh V3 suffixes; V1 IDs stay historical.",
+        "Inherited V1 execution and inspection proof IDs reset to NULL; both component manifests no longer claim completeness.",
+        "G4 verifier, G5 proponent and reviewer identity and past sanitization method grants reset pending own V3 institutional proofs."
       ]
     },
     "executable_order": [

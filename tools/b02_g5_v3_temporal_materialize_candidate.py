@@ -86,6 +86,7 @@ def new_policy(q,physical):
     # Historical G5 V2 adoption and reviewer are not new V3 decisions.
     b["exact_references"]["adoption_act_sha256"]=None
     b["roles"]["functional_reviewer"]=None
+    b["roles"]["proponent_and_integrator"]=None
     limits=b["origin_evidence"]["known_limitations"]
     for notice in ("NEW_V3_INDEPENDENT_REVIEW_AND_RATIFICATION_PENDING",
                    "CURRENT_G4_FOUNDER_ORIGIN_FOR_EACH_DOCUMENT_NOT_ISSUED",
@@ -93,6 +94,23 @@ def new_policy(q,physical):
                    "THIS_DRAFT_MUST_NOT_BE_PERSISTED_AS_ACTIVE_POLICY"):
         if notice not in limits:limits.append(notice)
     for doc in old["documents"]:
+        # A V3 release must never reuse V1 operational row identities.
+        docid=doc["document_id"]
+        names={
+          "acquisition_execution_id":"execution",
+          "artifact_reference_id":"reference",
+          "mode_binding_id":"binding",
+          "normative_artifact_id":"artifact",
+          "receipt_id":"receipt",
+          "verification_id":"sanitization",
+        }
+        if docid not in ("101202501245","101201900571"):
+            stop("UNRECOGNIZED_NEW_V3_DOCUMENT")
+        for field,suffix in names.items():
+            expected="B02-G5-"+docid+"-V1-"+suffix
+            if doc.get(field)!=expected:
+                stop("HISTORICAL_V1_ID_SOURCE_CHANGED_"+field)
+            doc[field]="B02-G5-"+docid+"-V3-"+suffix
         g4=doc["g4"]
         binding=g4["policy_binding"]
         if binding["policy_activation_id"]!="B02-05ede-activation-v3":
@@ -103,11 +121,23 @@ def new_policy(q,physical):
         g4["valid_until"]=end
         # Do not transplant October's own G4 origin proof to the new activation.
         g4["origin_report_binding"]=None
+        g4["verifier"]=None
         g4["outcome"]="AWAITING_OWN_CURRENT_FOUNDER_ORIGIN"
         sanity=doc["sanitization"]
         sanity["outcome"]="AWAITING_CURRENT_REAL_INDEPENDENT_INSPECTION"
+        for key in ("component_manifest","inspected_component_manifest"):
+            if sanity.get(key,{}).get("complete") is not True:
+                stop("HISTORICAL_COMPONENT_MANIFEST_CHANGED")
+            sanity[key]["complete"]=False
+        for key,suffix in (("execution_proof_id","current-execution-proof"),
+                           ("independence_evidence_id","segregated-inspection")):
+            expected="B02-G5-"+docid+"-V1-"+suffix
+            if sanity.get(key)!=expected:
+                stop("HISTORICAL_SANITIZATION_PROOF_CHANGED")
+            sanity[key]=None
         for field in ("mandate_binding","institutional_method_review_binding",
-                      "verifier_acceptance_binding","independence_evidence_id"):
+                      "verifier_acceptance_binding","verifier",
+                      "verification_method_binding","proof_binding_mode"):
             if field in sanity:sanity[field]=None
     base["status"]="V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY"
     base["predecessor_policy_hash"]=json.loads((ROOT/PLAN).read_text(encoding="utf-8-sig"))["base"]["policy_hash"]
