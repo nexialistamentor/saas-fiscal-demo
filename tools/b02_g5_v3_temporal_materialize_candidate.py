@@ -83,6 +83,9 @@ def new_policy(q,physical):
     old["capability_root_id"]=None
     old["actor"]=None
     b["origin_evidence"]["institutional_evidence_bindings"]={}
+    # Historical G5 V2 adoption and reviewer are not new V3 decisions.
+    b["exact_references"]["adoption_act_sha256"]=None
+    b["roles"]["functional_reviewer"]=None
     limits=b["origin_evidence"]["known_limitations"]
     for notice in ("NEW_V3_INDEPENDENT_REVIEW_AND_RATIFICATION_PENDING",
                    "CURRENT_G4_FOUNDER_ORIGIN_FOR_EACH_DOCUMENT_NOT_ISSUED",
@@ -101,6 +104,11 @@ def new_policy(q,physical):
         # Do not transplant October's own G4 origin proof to the new activation.
         g4["origin_report_binding"]=None
         g4["outcome"]="AWAITING_OWN_CURRENT_FOUNDER_ORIGIN"
+        sanity=doc["sanitization"]
+        sanity["outcome"]="AWAITING_CURRENT_REAL_INDEPENDENT_INSPECTION"
+        for field in ("mandate_binding","institutional_method_review_binding",
+                      "verifier_acceptance_binding","independence_evidence_id"):
+            if field in sanity:sanity[field]=None
     base["status"]="V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY"
     base["predecessor_policy_hash"]=json.loads((ROOT/PLAN).read_text(encoding="utf-8-sig"))["base"]["policy_hash"]
     base["__AVISO_G4_PREENCHIDO__"]="New G4 activation ID and hash physically read, but own G4 origin reports NOT established."

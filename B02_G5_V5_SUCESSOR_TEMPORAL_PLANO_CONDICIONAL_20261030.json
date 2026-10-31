@@ -352,7 +352,16 @@
       "old_G5_root_prohibited": true,
       "own_review_and_ratification_required": true,
       "draft_materializer": "tools/b02_g5_v3_temporal_materialize_candidate.py",
-      "materializer_git_blob": "1d3eb1c561ccb579b25cb528063609abf68b3769"
+      "materializer_git_blob": "0617de4e89a2e1d5cbb150954b0858dfdcb1c93e",
+      "v3_draft_fail_closed_fields": [
+        "G5 capability_root_id=null pending actual approved root",
+        "G5 release actor=null pending actual actor",
+        "V3 reviewer=null until own acceptance",
+        "V3 own institutional_evidence_bindings={}",
+        "V3 adoption_act_sha256=null",
+        "both G4 origin_report_binding=null and outcome awaiting current independent FOUNDER_ORIGIN",
+        "both sanitization outcomes pending real independent inspection; old mandates/reviewer-acceptances cleared"
+      ]
     },
     "executable_order": [
       "1 Ratify exactly this ONE temporal decision with timestamp/source and pin existing plan in Git. Existing G4 Nov authorization no longer an alternative executable path.",
