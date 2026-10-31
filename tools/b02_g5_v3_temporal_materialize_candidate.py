@@ -47,7 +47,7 @@ def check():
         stop("TEMPORAL_APPROVAL_NOT_RATIFIED")
     at=datetime.fromisoformat(q["approved_at_utc"])
     end=datetime.fromisoformat(q["window_utc"]["until"])
-    if at.tzinfo is None or at>end or at>datetime.now(timezone.utc):
+    if at.tzinfo is None or at>=end or at>datetime.now(timezone.utc):
         stop("APPROVAL_TIME_INVALID")
     return q
 
@@ -100,7 +100,7 @@ def new_policy(q,physical):
         g4["origin_report_binding"]=None
         g4["outcome"]="AWAITING_OWN_CURRENT_FOUNDER_ORIGIN"
     base["status"]="V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY"
-    base["predecessor_policy_hash"]=q["g5"]["prior_v2_source"]
+    base["predecessor_policy_hash"]=json.loads((ROOT/PLAN).read_text(encoding="utf-8-sig"))["base"]["policy_hash"]
     base["__AVISO_G4_PREENCHIDO__"]="New G4 activation ID and hash physically read, but own G4 origin reports NOT established."
     base["__AVISO_CAMPOS_INSTITUCIONAIS__"]="V3 has no new own audit, ratification, root, signature or release. Old V2 acts are historical only."
     base["__V3_DRAFT_PROVENANCE__"]={
