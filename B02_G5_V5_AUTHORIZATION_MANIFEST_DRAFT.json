@@ -1535,7 +1535,7 @@
     "R7_release_fence_20261031": {
       "status": "EXACT_TECHNICAL_SCOPE_RECONCILED_B02_CLOSURE_GATED",
       "file": "B02_R7_RELEASE_FENCE_20261031.json",
-      "git_blob": "82f48de0e0db71596092b1c13bcfba4f7e3436fc",
+      "git_blob": "6460a08fb403993e1747fdfb66bebc65aa12c19d",
       "commit": "7cd74f9a8058710177e8b1aa241b568f5ef93e6b",
       "technical_closed_proof_domains": [
         "R4 bounded recovery/ACL",
@@ -1559,14 +1559,28 @@
       "protected_database_writes_in_this_reconciliation": 0,
       "b02_closed": false,
       "b03_released": false,
-      "previous_snapshot_git_blob": "32ed055d30a069f2aa3aaba9cf1e990aebca7ea9",
+      "previous_snapshot_git_blob": "82f48de0e0db71596092b1c13bcfba4f7e3436fc",
       "governance_ratification_commit": "31bd0034724d534f9dd7afcb92d06e9365deae89",
       "temporal_plan_ratification_commit": "06d3fd9484db077b740f64573521caf5b0aa51dd",
       "previous_missing_predecessor": "G5_AUDITOR_OWN_FINAL",
       "ratified_replacement": "G5_V3_OWN_INDEPENDENT_AUDIT",
       "historical_v2_own_final": "NOT_ISSUED_PRESERVED_HISTORICAL_NOT_R7_DEPENDENCY",
       "own_reviewer_v3": "PENDING",
-      "user_ratification_source": "RATIFICO, direct chat reply, 2026-10-31"
+      "user_ratification_source": "RATIFICO, direct chat reply, 2026-10-31",
+      "g4_preauthorized_nov3_4": {
+        "authorization": "B02-G4-AUTH-MIGUEL-20261029-01",
+        "head": "candidate/g5-successor-window-prep@b0af3a06",
+        "procedure_blob": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+        "window": [
+          "2026-11-03T12:00:00+00:00",
+          "2026-11-04T07:56:30.910737+00:00"
+        ],
+        "current_status": "ALREADY_APPROVED_NOT_EXECUTED_OR_PHYSICALLY_RECONCILED",
+        "old_october_tx926": "PRESERVED_NO_REPLAY",
+        "independent_C3_origin": "STILL_UNPROVEN",
+        "existing_runner_only": "tools/b02_g4_authorized_runner.py",
+        "safety": "READ_ONLY_RECONCILE_BEFORE_ANY_AUTHORIZED_ONCE_ONLY_EXECUTION"
+      }
     },
     "R7_readonly_release_probe_20261031": {
       "status": "SOURCE_READONLY_RELEASE_GUARD_SYNTHETIC_SEVEN_TESTS_PASS_B02_STILL_OPEN",
@@ -1954,6 +1968,28 @@
       "no_SQL_or_PG_mutations": true,
       "no_new_signatures": true,
       "B02_OPEN_B03_BLOCKED": true
+    },
+    "G4_november_preauthorization_recovered_20261031": {
+      "status": "PREEXISTING_SPECIFIC_G4_AUTHORIZATION_VERIFIED_NOT_NEW_OR_OPERATIONAL_EXECUTION",
+      "verified_branch": "candidate/g5-successor-window-prep",
+      "verified_head": "b0af3a06db4a2e4cd92ad053e96563ce3fc95866",
+      "reviewed_original_authorization": "AUTORIZACAO_G4_MIGUEL_20261029.json@8d9f8f0d48478557c801b524a8fa24fa8136eb2f",
+      "approved_script": "executar_ativacao_g4_real.py@1729e6d62c77510ef4dd7db0af56a6cbe985c168",
+      "available_runner": "tools/b02_g4_authorized_runner.py@f96878cb7b5024bdf7b595f5c3b8a1f04c7439e8",
+      "from_utc": "2026-11-03T12:00:00+00:00",
+      "until_utc": "2026-11-04T07:56:30.910737+00:00",
+      "actual_new_G4_commit": "NOT_OBSERVED",
+      "do_not_execute_before_authorized_from": true,
+      "no_new_G4_authorization_required_for_exact_preexisting_scope": true,
+      "no_fresh_G5_V3_interval_authorized": true,
+      "no_G4_own_signed_origin_inferred": true,
+      "R7_blob": "6460a08fb403993e1747fdfb66bebc65aa12c19d",
+      "plan_blob": "a110b9f10a6377f2285771447b9a752a24dc5755",
+      "changed_commits": [
+        "ad043b91b4ea2b82d58ad0160f4982b898e3df1a",
+        "636bafb4e847c365ae90766d1c57e1bfc249c5f3"
+      ],
+      "no_protected_SQL_or_older_R4_R5_retreat": true
     }
   }
 }
