@@ -58,8 +58,8 @@ def verify_plan(operational):
             or not q.get("approved_at_utc") or not q.get("ratification_source")):
             stop("MISSING_OWN_TEMPORAL_RATIFICATION")
         approved=datetime.fromisoformat(q["approved_at_utc"])
-        if approved.tzinfo is None or approved>=START:
-            stop("NON_PROSPECTIVE_APPROVAL")
+        if approved.tzinfo is None or approved>=END or approved>datetime.now(timezone.utc):
+            stop("NON_PROSPECTIVE_OR_FUTURE_APPROVAL")
     return q
 
 

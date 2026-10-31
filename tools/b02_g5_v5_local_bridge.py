@@ -34,6 +34,7 @@ ALLOWED = {
     'tools/b02_g5_v5_current_inventory_readonly.py',
     'tools/b02_r6_normative_linkage_readonly.py',
     'tools/b02_g4_g5_temporal_successor_runner.py',
+    'tools/b02_g5_v3_temporal_materialize_candidate.py',
     'tools/b02_r4_private_backup_disposable_restore.py',
 }
 

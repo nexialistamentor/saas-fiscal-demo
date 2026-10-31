@@ -346,13 +346,15 @@
       "new_actual_g4_record_hash": null,
       "new_canonical_policy_hash": null,
       "old_G5_root_prohibited": true,
-      "own_review_and_ratification_required": true
+      "own_review_and_ratification_required": true,
+      "draft_materializer": "tools/b02_g5_v3_temporal_materialize_candidate.py"
     },
     "executable_order": [
       "1 Ratify exactly this ONE temporal decision with timestamp/source and pin existing plan in Git. Existing G4 Nov authorization no longer an alternative executable path.",
       "2 Reconcile read-only November v2 and new v4 IDs and check for interval overlaps or unknown COMMIT before any writer execution.",
       "3 After start and approval, use existing isolated loopback and new G4 v4 runner once, reconcile four record hashes; no automatic retry.",
       "4 Form new G5 V3 exact canonical body by copying V2 immutable source and changing only version, 8 time fields, 2 real G4 bindings and legitimately issued root/actor/evidence.",
+      "4b Generate G5 V3 only as FAIL-CLOSED DRAFT with real G4 v4 verified activation hash, null issuer root, null G4 own report and empty fresh institutional bindings. Fill/ratify legitimately before any signing or SQL.",
       "5 Obtain own A2 V4 technical review and distinct V3 own institutional 4-decision chain and ratification for exact V3 hash.",
       "6 Verify authorized key/native Trixie 17.10 real ELF; full disposable 0064/0065 then separately approved protected real two-PDF one-shot and independently verified FOUNDER_ORIGIN.",
       "7 Link real authenticated PDFs to extraction, RuleVersion and exact fiscal item R6 and issue competent R7. No B03 until release."
@@ -383,10 +385,11 @@
       "No G4 new unit before explicit prospective ratification",
       "No G5 native signature/SQL commit from this plan",
       "G4 v2 and v4 mutually exclusive",
-      "No retroactive authority if approval is later than the chosen starting instant",
+      "Effective executable authority starts no earlier than the actual approved_at_utc; earlier portion of a fixed window cannot be used to validate a backdated operation. Never authorize after window end.",
       "No authorization for other documents",
       "No synthetic-to-real promotion"
     ],
-    "b02_closed": false
+    "b02_closed": false,
+    "approval_effective_rule": "max(2026-11-01T00:00:00+00:00, actual ratification UTC). Database activation must be observed at/after ratification. No retrospective operations, even if approval occurs after nominal start."
   }
 }
