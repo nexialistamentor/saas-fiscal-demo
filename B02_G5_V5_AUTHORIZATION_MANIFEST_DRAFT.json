@@ -1876,7 +1876,7 @@
       "next_scope": "Only genuine new independent reviewer acts and physically authorized R5/R6/R7 successor gates; do not rerun these tests or frozen prior tests."
     },
     "R5_0065_writer_direct_insert_bypass_patch": {
-      "status": "CANDIDATE_SQL_ACL_CLOSED_BY_SOURCE_NO_PHYSICAL_DB_INSTALL_OR_TEST",
+      "status": "CANDIDATE_SQL_ACL_SOURCE_AND_WINDOWS_3_UNITTESTS_PASS_PHYSICAL_PG17_PENDING",
       "date": "2026-10-31",
       "finding": "0065 originally granted INSERT,SELECT on operational approval reservations to solveris_b02_writer. This permits bypass of the reserve_operational_decision function-specific identity/native profile guard by INSERT directly into the table. Unique keys and later capability gates remain, so not proof of an unauthorized COMMIT.",
       "before_migration_blob": "7b6d270901fa0ba18bb8f48599908f737e9d4eb3",
@@ -1895,14 +1895,14 @@
         "13f390198ffe11eada00a83c5c3d6e737b34fda9"
       ],
       "python_unit_tests_authored": 3,
-      "python_unit_tests_executed": false,
+      "python_unit_tests_executed": true,
       "static_source_integration_checks": {
         "tested": 8,
         "passed": 8,
         "scope": "Repository blob inspection with exact expected SQL guards; not Python unittest or PostgreSQL execution."
       },
       "required_physical_release_gates": [
-        "Run only three new source-only unit tests in Windows checkout once; do not rerun old cases.",
+        "CLOSED: three new source-only unittest checks PASS once on Windows at HEAD 4e7e605c; do not rerun.",
         "Independent security review and installer owner function ACL attestation (function owner exactly solveris_test, table writer effective INSERT denied).",
         "Test direct writer INSERT denied and owner-guarded function path in isolated disposable PostgreSQL 17.10 with independently approved future root, no protected installation.",
         "Current independent G4, segregated G5 reviewer own acts, successor V3 approval, signed origin, one-shot signer, valid prospective time window, R6/R7 gates remain required."
@@ -1917,7 +1917,20 @@
       "protected_db_writes": 0,
       "new_grants_physically_executed": 0,
       "historical_policy_decisions_mutated": false,
-      "status_B02": "B02_OPEN_B03_BLOCKED"
+      "status_B02": "B02_OPEN_B03_BLOCKED",
+      "windows_operator_execution": {
+        "source": "User-provided original PowerShell output in this conversation",
+        "checkout": "C:\\dev\\solveris-b02-g5-v5-publicacao",
+        "git_pull": "FAST_FORWARD_608a5067_TO_4e7e605c",
+        "synced_HEAD_before_tests": "4e7e605cebfa1dfb71f5c776c468ddd2747b0b21",
+        "command": "python -B -m unittest discover -s tests -p \"test_b02_g5_0065_one_shot_security_contract.py\" -q",
+        "stdout": "Ran 3 tests in 0.014s; OK",
+        "exit_guard": "if ($LASTEXITCODE -ne 0) { throw 'STOP_G5_0065_SECURITY' } returned prompt with no throw",
+        "tests_passed": 3,
+        "tests_failed": 0,
+        "tests_rerun_required": false,
+        "scope": "STATIC_SOURCE_TESTS_WINDOWS_ONLY_NOT_ACTUAL_SQL_OR_PHYISCAL_ACL"
+      }
     }
   }
 }
