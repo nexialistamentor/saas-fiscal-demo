@@ -297,7 +297,7 @@
   "decisao_unica_temporal_antecipada_g4_g5_20261031": {
     "status": "PROPOSTA_UNICA_PENDENTE_RATIFICACAO_EXPRESSA",
     "reference": "B02-G4-G5-TEMP-SUCCESSOR-20261031-01",
-    "decision_exact_text": "APROVO, em substituicao prospectiva e mutuamente exclusiva da execucao G4 de novembro B02-G4-AUTH-MIGUEL-20261029-01, uma unica nova ativacao G4 v4 e a mesma janela material para uma nova politica G5 versao 3, das 2026-11-01T00:00:00+00:00 ate as 2026-11-15T00:00:00+00:00 (fim exclusivo). Nao executar a autorizacao G4 substituida; preservar integralmente os atos historicos, inclusive G4 outubro e G5 v1/v2. A aprovacao temporal nao e autorizacao de assinatura, migracao, operacao G5 ou fecho B02, que requerem os atos proprios segregados, as duas provas originais e reconciliacao fisica. Nenhuma execucao antes da ratificacao nem repeticao de COMMIT incerto. O alvo e solveris_b02_r4g_test, writer solveris_b02_policy_writer, procedimento tools/b02_g4_g5_temporal_successor_runner.py, blob Git 73339aec9dd483052301595f55fd90580c28365e, e os quatro IDs v4 definidos no plano existente. A eficacia e apenas desde a data real desta ratificacao (ou inicio nominal, se posterior), sem retroatividade.",
+    "decision_exact_text": "APROVO, em substituicao prospectiva e mutuamente exclusiva da execucao G4 de novembro B02-G4-AUTH-MIGUEL-20261029-01, uma unica nova ativacao G4 v4 e a mesma janela material para uma nova politica G5 versao 3, das 2026-11-01T00:00:00+00:00 ate as 2026-11-15T00:00:00+00:00 (fim exclusivo). Nao executar a autorizacao G4 substituida; preservar integralmente os atos historicos, inclusive G4 outubro e G5 v1/v2. A aprovacao temporal nao e autorizacao de assinatura, migracao, operacao G5 ou fecho B02, que requerem os atos proprios segregados, as duas provas originais e reconciliacao fisica. Nenhuma execucao antes da ratificacao nem repeticao de COMMIT incerto. O alvo e solveris_b02_r4g_test, writer solveris_b02_policy_writer, procedimento tools/b02_g4_g5_temporal_successor_runner.py, blob Git 604fce993b755c7d9d9427ef9b874fa9858fec6f, e os quatro IDs v4 definidos no plano existente. A eficacia e apenas desde a data real desta ratificacao (ou inicio nominal, se posterior), sem retroatividade.",
     "approved": false,
     "approved_by": null,
     "approved_at_utc": null,
@@ -329,7 +329,9 @@
       "original_pinned_script": "executar_ativacao_g4_real.py",
       "original_blob": "1729e6d62c77510ef4dd7db0af56a6cbe985c168",
       "successor_runner": "tools/b02_g4_g5_temporal_successor_runner.py",
-      "successor_runner_git_blob": "73339aec9dd483052301595f55fd90580c28365e"
+      "successor_runner_git_blob": "604fce993b755c7d9d9427ef9b874fa9858fec6f",
+      "additional_precommit_guard": "Pinned execution source injects server-side stamp >= actual approved_at_utc into the original single transaction; original frozen source remains unchanged; no retroactive DB COMMIT.",
+      "python_import_root": "Explicitly prepend pinned repository root for original app.services imports in tools/ execution."
     },
     "g5": {
       "policy_id": "SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE",

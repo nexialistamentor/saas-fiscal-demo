@@ -65,13 +65,17 @@ def verify_plan(operational):
     return q
 
 
-def pinned_code():
+def pinned_code(approved_at=None):
+    # The pinned root script originally imports app.* from the repository root.
+    if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
     source=git("show","HEAD:"+SOURCE).decode("utf-8")
     exact=(
       ('e["attempt_number"]==2\n           and e["fencing_token"]==2',
        'e["attempt_number"]==4\n           and e["fencing_token"]==4'),
       ('"attempt_number":2,"lease_id":LEASE_ID,"fencing_token":2,',
        '"attempt_number":4,"lease_id":LEASE_ID,"fencing_token":4,'),
+      ('ensure(stamp>=decision["timestamp"],"DECISION_TIME_NOT_REACHED")',
+       'ensure(stamp>=NEW_PROSPECTIVE_APPROVAL_UTC,"PROSPECTIVE_CONSENT_CLOCK_NOT_REACHED")\n                ensure(stamp>=decision["timestamp"],"DECISION_TIME_NOT_REACHED")'),
     )
     for old,new in exact:
         if source.count(old)!=1:stop("PINNED_G4_ATTEMPT_ANCHOR_DRIFT")
@@ -80,6 +84,7 @@ def pinned_code():
     exec(compile(source,SOURCE,"exec"),ns)
     ns["NEW_WINDOW_FROM"]=START
     ns["NEW_WINDOW_UNTIL"]=END
+    ns["NEW_PROSPECTIVE_APPROVAL_UTC"]=approved_at if approved_at is not None else datetime.min.replace(tzinfo=timezone.utc)
     ns["NEW_IDS"]=IDS
     ns["LEASE_ID"]="B02-05ede-manual-lease-v4"
     ns["PROVENANCE"]={"source":"SOLVERIS_B02_G4_WINDOW_PREPARATION",
@@ -121,8 +126,10 @@ def main():
     p.add_argument("--execute",action="store_true")
     p.add_argument("--approval-reference")
     a=p.parse_args()
-    verify_plan(a.execute)
-    ns=pinned_code()
+    proposal=verify_plan(a.execute)
+    approval_instant=(datetime.fromisoformat(proposal["approved_at_utc"])
+                     if a.execute else None)
+    ns=pinned_code(approval_instant)
     print(json.dumps({"status":"PROPOSAL_PREPARED_NOT_AUTHORIZED",
         "reference":REFERENCE,"window":[START.isoformat(),END.isoformat()],
         "ids":IDS,"source_blob":SOURCE_BLOB},sort_keys=True))
