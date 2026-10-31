@@ -52,7 +52,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="solveris-b02-r5-2units-red-") as temp:
         target=Path(temp)/TEST
         target.parent.mkdir(parents=True,exist_ok=True)
-        target.write_bytes(git("show",f"{RED}:{TEST}"))
+        target.write_bytes(git("show",f"HEAD:{TEST}"))  # corrected fixture, absent RED implementation
         before=run_test(target.parent)
     if before.returncode==0 or "Ran 5 tests" not in before.stdout+before.stderr or "FAILED" not in before.stdout+before.stderr:
         print((before.stdout+before.stderr)[-900:]);halt("RED_NOT_REPRODUCED")
