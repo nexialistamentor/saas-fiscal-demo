@@ -52,7 +52,7 @@
     "physical normative_artifact_id plus record_hash and exact PDF SHA256",
     "conclusive extraction_result_id plus record_hash for the same PDF",
     "immutable rule_version_record_id plus record_hash referencing exact extraction_result_record_hash",
-    "specific real NF-e item with XML hash, NCM, CEST, CFOP, CST, UF, regime, date and formula used",
+    "specific evidenced real fiscal item with classification, tax regime, UF, transaction date and applied formula; require NF-e XML and SHA-256 only where the selected workflow depends on an actual NF-e",
     "exhaustive relevant amendments and exclusions up to transaction date"
   ],
   "unresolved_slots": {
