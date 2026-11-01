@@ -1,0 +1,70 @@
+{
+  "status": "R6_CANDIDATE_DOCUMENTARY_REUSE_ONLY_NOT_FISCAL_AUTHORITY",
+  "source": "B02_V29_MATRIZ_NORMATIVA_COM_EVIDENCIA.md (23/10/2026)",
+  "source_pdfs": {
+    "101201900571": {
+      "name": "Resolucao SEFA/PR 571/2019",
+      "sha256": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d",
+      "bytes": 1944929,
+      "pages": 587,
+      "official_pdf_url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf"
+    },
+    "101202501245": {
+      "name": "Resolucao SEFA/PR 1245/2025",
+      "sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+      "bytes": 258302,
+      "pages": 29,
+      "official_pdf_url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf"
+    }
+  },
+  "jurisdiction": "PR",
+  "material_effect_declared": "2026-04-01",
+  "source_pages": {
+    "571_2019_consolidated_current_printed": 55,
+    "571_2019_historical_printed": 86,
+    "1245_2025": "art. 1 I and art. 2"
+  },
+  "candidate_item_extracts": [
+    {
+      "item": "Art.12 item 1: Henna, embalagem ate 200 g",
+      "cest": "20.001.00",
+      "ncm": "1211.90.90",
+      "mva_before_2026_04_01_percent": "41.42",
+      "mva_from_2026_04_01_percent": "46.78"
+    },
+    {
+      "item": "Art.12 item 2: Vaselina",
+      "cest": "20.002.00",
+      "ncm": "2712.10.00",
+      "mva_before_2026_04_01_percent": "113.85",
+      "mva_from_2026_04_01_percent": "97.51"
+    },
+    {
+      "item": "Art.12 item 3: Amoniaco em solucao aquosa",
+      "cest": "20.003.00",
+      "ncm": "2814.20.00",
+      "mva_before_2026_04_01_percent": "101.02",
+      "mva_from_2026_04_01_percent": "118.18"
+    }
+  ],
+  "physical_read_only_observation": "2026-10-30: for these two exact PDFs, 0 matching normative_artifacts and 0 extraction_results; RuleVersion/relation/MVA tables not inspected due to SELECT denied",
+  "binding_chain_required": [
+    "physical normative_artifact_id plus record_hash and exact PDF SHA256",
+    "conclusive extraction_result_id plus record_hash for the same PDF",
+    "immutable rule_version_record_id plus record_hash referencing exact extraction_result_record_hash",
+    "specific real NF-e item with XML hash, NCM, CEST, CFOP, CST, UF, regime, date and formula used",
+    "exhaustive relevant amendments and exclusions up to transaction date"
+  ],
+  "unresolved_slots": {
+    "normative_artifact_id": null,
+    "extraction_result_id": null,
+    "extraction_result_record_hash": null,
+    "rule_version_record_id": null,
+    "rule_version_record_hash": null,
+    "real_nfe_item_id": null,
+    "real_xml_sha256": null,
+    "fiscal_authority_verified": false
+  },
+  "do_not_restart_c3_acquisition": true,
+  "do_not_infer_legal_tax_liability": true
+}
