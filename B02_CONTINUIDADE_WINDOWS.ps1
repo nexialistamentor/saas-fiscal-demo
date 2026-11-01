@@ -130,22 +130,18 @@ except Exception:
         }
         'bundle-assinado' {
             if(-not $PastaBundle){Parar 'PASTA_BUNDLE_ASSINADO_EXIGIDA'}
-            # Utiliza SOMENTE o verificador existente. PINS e _base do sucessor
-            # precisam ser adotados em deployment autorizado; nao alterar aqui.
-            $code=@'
-import sys
-from pathlib import Path
-from app.services.enterprise_b02_authorized_trust import check_payload
-r=check_payload(Path(sys.argv[1]))
-s={'policy_type':'activation_authority','policy_id':'SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY','policy_version':1,'policy_hash':'05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a'}
-if r['policy_subject']!=s or r.get('synthetic_only') is not False: raise RuntimeError('STOP_G4_TRUST_SUBJECT_INVALID')
-if r.get('runtime_profile')!='FOUNDER_SIGNED_REVIEW_BUNDLE_B02_RUNTIME_V1' or not r.get('snapshot_binding') or not r.get('recognition_binding') or not r.get('bootstrap_binding'):
-    raise RuntimeError('STOP_RUNTIME_ORIGIN_BINDINGS_MISSING')
-print('B02_BUNDLE_ASSINADO_PINNED_SIGNATURE_VALID_CURRENT_G4_SUBJECT_PASS')
-print('SOMENTE_ESTE_PROCESSO_LEU_EVIDENCIA; NAO_HOUVE_ATIVACAO_NOUTRO_PROCESSO')
-'@
-            $code | & python - $PastaBundle
-            if($LASTEXITCODE -ne 0){Parar 'BUNDLE_ASSINADO_INVALIDO_OU_PINS_NAO_ADOTADOS'}
+            # Novo bundle != bundle historico. PINS antigos e _base() so aceitam
+            # os bytes ja expirados; nao ativar nem alterar esse mecanismo.
+            # Este comando so valida o pacote e a assinatura Ed25519 offline.
+            if(-not $ChavePublicaDer) {
+                $ChavePublicaDer=Join-Path $env:LOCALAPPDATA 'SOLVERIS\B02Trust\fc7fe0f239e468b46c3597688f095e758e573fb8deb78dcbc2b6279707df4274\ROOT.json'
+            }
+            if(-not (Test-Path -LiteralPath $ChavePublicaDer -PathType Leaf)){
+                Parar 'ROOT_PUBLICO_HISTORICO_AUSENTE'
+            }
+            & python B02_PREPARAR_BUNDLE_SUCESSOR.py --verificar-assinado $PastaBundle --der-publico $ChavePublicaDer
+            if($LASTEXITCODE -ne 0){Parar 'BUNDLE_SUCESSOR_ASSINATURA_OU_HASH_DIVERGENTE'}
+            Write-Output 'B02_SUCESSOR_OFFLINE_VERIFICADO; SEM_PROVA_DE_MANDATO_REVOGACAO_DEPLOYMENT_OU_ATIVACAO'
         }
         'compilar-nativo' {
             if(-not $PoliticaV3Final -or -not $HeaderNativo -or -not $ElfSaida){Parar 'POLITICA_FINAL_HEADER_SAIDA_EXIGIDOS'}
