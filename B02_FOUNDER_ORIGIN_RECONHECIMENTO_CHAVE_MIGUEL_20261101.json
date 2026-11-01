@@ -1,0 +1,73 @@
+{
+  "schema": "SOLVERIS_B02_FOUNDER_ORIGIN_KEY_RECOGNITION_V3_V1",
+  "id": "B02-FOUNDER-ORIGIN-KEY-RECOGNITION-20261101-01",
+  "status": "RATIFIED_KEY_ELIGIBILITY_RECOGNITION_ONLY_NO_SIGNATURE",
+  "issued_date": "2026-11-01",
+  "ratifier": "Miguel",
+  "source": "Express direct user ratification in B02 continuation chat on 2026-11-01, not a cryptographically signed or independently attested instrument",
+  "ratification_literal": "RATIFICO O RECONHECIMENTO DA CHAVE",
+  "policy_subject": {
+    "policy_type": "activation_authority",
+    "policy_id": "SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY",
+    "policy_version": 1,
+    "policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bd2191a115f0d736c4fe2a"
+  },
+  "g4_reconciled_activation": {
+    "policy_activation_id": "B02-05ede-activation-v4",
+    "policy_activation_record_hash": "cf617e146b3451555898d8253fba8bb13dfa6ff99776b50978e0ba68df4cb482",
+    "scope": "REFERENCE_ONLY_PHYSICAL_RECONCILIATION_ALREADY_DONE_NOT_REEXECUTED"
+  },
+  "public_key": {
+    "algorithm": "Ed25519",
+    "public_der_sha256_fingerprint": "6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c",
+    "control_of_corresponding_private_key": "DECLARED_BY_RATIFIER_PERSONALLY",
+    "custody": "LOCAL_RATIFIER_ONLY_NO_PRIVATE_KEY_TRANSMISSION",
+    "not_revoked": "DECLARED_BY_RATIFIER_AFTER_CONSULTING_CUSTODY_RECORDS_NO_KNOWN_COMPETENT_REVOCATION",
+    "independent_revocation_registry_check": "NOT_ASSERTED",
+    "proof_of_control_by_new_signature": "NOT_YET_PERFORMED"
+  },
+  "exact_document_scope": [
+    {
+      "document_id": "101202501245",
+      "source": "Resolução SEFA/PR 1245/2025",
+      "sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832"
+    },
+    {
+      "document_id": "101201900571",
+      "source": "Resolução SEFA/PR 571/2019",
+      "sha256": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d"
+    }
+  ],
+  "approval": {
+    "prepare_new_successor_documentary_decision": true,
+    "require_own_segregated_origin_review": true,
+    "require_valid_own_mandates_and_attestations": true,
+    "authorize_local_signing_now": false,
+    "authorize_signature_by_assistant": false,
+    "authorize_pg_protected_migration_or_activation": false,
+    "authorize_g5_v3_final_audit_or_ratification": false,
+    "issue_fiscal_authority": false,
+    "accept_residual_risk_by_this_recognition_alone": false
+  },
+  "validity": {
+    "no_backdating": true,
+    "effective_start": "ACTUAL_SUBSEQUENT_SIGNING_INSTANT_SUBJECT_TO_EXISTING_SIGNER_RULES",
+    "maximum_valid_until_utc_exclusive": "2026-11-15T00:00:00+00:00",
+    "signer_existing_limits": "MUST_NOT_BE_RELAXED_OR_EXTENDED",
+    "require_intersection_with_current_root_mandates_execution_and_signed_decision": true,
+    "expiry_is_not_wait_date_or_b02_delivery_deadline": true,
+    "historical_bundle_valid_until": "2026-10-28T06:00:00+00:00",
+    "may_reuse_historical_signature": false
+  },
+  "conditions": "No new ROOT.json, seven real canonical proof documents, Ed25519 decision.json signature, independent origin reports or current signed revocation proof is issued by this documentary recognition. Recognition alone does not provision or activate FOUNDER_ORIGIN. Mandates, reviewer acts and technical/physical release remain separately gated.",
+  "explicit_limits_preserved": [
+    "NO_PRIVATE_KEY_MATERIAL_REQUESTED",
+    "NO_SYNTHETIC_ORIGINS",
+    "NO_HISTORIC_SIGNATURE_REUSE_OR_REPIN",
+    "NO_G4_V4_REPEAT",
+    "NO_R4_C3_ACL_JSONB_OR_ACCEPTED_TESTS_REPEAT",
+    "NO_G5_V1_V2_REWRITE",
+    "NO_INSTALLATION_0064_0065_ONE_SHOT_WITHOUT_NEW_OPERATIVE_AUTHORITY",
+    "NO_B02_CLOSED_UNTIL_R7_FINAL"
+  ]
+}
