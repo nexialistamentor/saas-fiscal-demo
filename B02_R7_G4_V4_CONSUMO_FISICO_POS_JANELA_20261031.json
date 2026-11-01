@@ -1,0 +1,47 @@
+{
+  "schema": "SOLVERIS_B02_R7_G4_V4_POSTWINDOW_CONSUMPTION_V1",
+  "scope": "APPEND_ONLY_STATUS_ADVANCE_NOT_FINAL_RELEASE",
+  "source_fence": {
+    "path": "B02_R7_RELEASE_FENCE_20261031.json",
+    "git_blob": "d4635858cc73cb7f24958677a1ae2a8de2ec3a73",
+    "immutable": true
+  },
+  "original_missing_predecessor_id": "CURRENT_G4_V3_SUCCESSOR",
+  "resolution": {
+    "status": "RECONCILED_AS_REPORTED_BY_AUTHORIZED_WINDOWS_EXECUTOR",
+    "g4_activation_id": "B02-05ede-activation-v4",
+    "g4_activation_record_hash": "cf617e146b3451555898d8253fba8bb13dfa6ff99776b50978e0ba68df4cb482",
+    "observed_result": "G4_V4_PHYSICAL_RECONCILED_G5_V3_DRAFT_ONLY",
+    "no_automatic_retries": true,
+    "independent_postgres_query_by_this_chat": false
+  },
+  "g5_v3_consumer": {
+    "path": "POLICY_G5_CANDIDATO_SUCESSOR_V3_PARA_REVISAO.json",
+    "git_blob": "895b277634c50fd17c0f20514fe69ccc40d40a88",
+    "sha256_exact": "32068cadf7297fb5958af25650899abffc667c17f3508f9261a165b8dfbd5fc7",
+    "body_sha256_draft": "87ea43c09e6315da44c2b8bd36dc35345da0a05452b11a35f757ab741f80b868",
+    "policy_active": false
+  },
+  "open_predecessors_after_g4": [
+    "G5_V3_OWN_INDEPENDENT_AUDIT",
+    "RCV31_A2_V4_OWN_REVIEW",
+    "G5_NEW_TEMPORAL_POLICY",
+    "R1_NATIVE_ROOT_SUCCESSOR",
+    "R5_FULL_0064_0065_PHYSICAL",
+    "R6_NORMATIVE_TO_FISCAL",
+    "R7_COMPETENT_B02_FINAL"
+  ],
+  "not_dischargeable_by_g4_alone": [
+    "G5_V3_OWN_INDEPENDENT_AUDIT",
+    "RCV31_A2_V4_OWN_REVIEW",
+    "G5_NEW_TEMPORAL_POLICY",
+    "R1_NATIVE_ROOT_SUCCESSOR",
+    "R5_FULL_0064_0065_PHYSICAL",
+    "R6_NORMATIVE_TO_FISCAL",
+    "R7_COMPETENT_B02_FINAL"
+  ],
+  "no_other_gates_promoted": true,
+  "old_fence_preserved": true,
+  "b02_closed": false,
+  "b03_released": false
+}
