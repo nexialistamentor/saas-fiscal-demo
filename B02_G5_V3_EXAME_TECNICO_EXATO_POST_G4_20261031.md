@@ -25,3 +25,17 @@
 Ao custódio nativo: fornecer raiz/assinatura V3 com proveniência real, header e SHA256 exatos para o builder PG17.10 Trixie já existente. Ao executor fiscal: reutilizar os PDF C3 e excertos já custodiados, vinculando depois `NormativeArtifact → ExtractionResult → RuleVersion → item fiscal real` mediante execução competente, sem novo download e sem suposições de regras fiscais.
 
 **Conclusão:** `V3_EXACT_DRAFT_STATIC_CONSISTENT_BUT_NOT_AUTHORIZABLE`. G4 temporal resolvida no âmbito do resultado do executor; G5 institucional, raiz, 0064/0065 físicas, duas unidades reais, R6 por item e R7 final não são inferidos. Preservar R4/R5/ACL/JSONB/0065 sintético e os atos V1/V2 históricos.
+
+## Impedimento técnico confirmado — raíz de autenticação de origem NÃO provisionada
+
+A inspeção da fonte do verificador atual encontrou três registos fechados por definição, sem nenhum valor proveniente de utilizador, ambiente ou bundle admitido como raiz:
+
+- `app/services/enterprise_b02_founder_runtime.py` (blob Git `700ab498717f3e3809aea9342bde0e119ea8d4ca`): `_RUNTIME_AUTHORIZATIONS=MappingProxyType({})`; rejeição explícita `RUNTIME_AUTHORIZATION_MISSING_OR_AMBIGUOUS`.
+- `app/services/enterprise_b02_founder_review_profile.py` (blob Git `274a194c68686340e243ede408cc0ba58450bf15`): `_AUTHORIZED_CONTEXTS = MappingProxyType({})`.
+- `app/services/enterprise_b02_institutional_verifier.py` (blob Git `6990e1afe918c7c9ebd2f5745c75b04506ece89d`): `_TRUST_ROOTS = MappingProxyType({})`; rejeição explícita `REAL_INSTITUTIONAL_TRUST_ANCHOR_MISSING`.
+
+O verificador `verify_document_authenticity_with_founder_runtime` executa `_root(subject,now)` antes de aceitar a origem dos bytes; com o mapa vazio, a resposta real não pode ser `conclusivo_favoravel`. Isto **não invalida** G4 v4 reconciliada, os PDFs C3, o exame estático A2 nem os ensaios sintéticos. Explica precisamente por que as duas comprovações reais `FOUNDER_ORIGIN` ainda não podem ser produzidas mediante simples chamada ao código.
+
+**Ato externo exato e único para a autoridade/custódio:** vincular uma execução reconhecida ao sujeito G4 documental e à ativação física `B02-05ede-activation-v4` hash `cf617e146b3451555898d8253fba8bb13dfa6ff99776b50978e0ba68df4cb482`; emitir/assinar a raiz e os vínculos de aceitação, mandato e relatório de origem próprios para os dois PDFs C3, com vigência e papéis segregados. Só depois um deployment **expressamente autorizado**, com revisão de identidade/provenance, pode provisionar os registos pertinentes e permitir a inspeção real. Não aceitar `synthetic_only=true`, não usar chaves legadas V1/V2, não ler raízes de payloads, não alterar as tabelas protegidas por atalho.
+
+**Conclusão técnica do gate:** `G4_V4_PHYSICAL_PASS_BUT_G4_ORIGIN_ROOT_UNPROVISIONED`; nenhuma instalação, assinatura ou auditoria final inferida. A ordem operacional correta permanece: custódia/autoridade real → inspeções FOUNDER_ORIGIN verificadas → política G5 V3 própria → raiz/ELF nativos → 0064/0065 e duas unidades reais → R6/R7.
