@@ -26,7 +26,7 @@ def _recognized_key_scope():
     if source.is_symlink() or not source.is_file():
         stop('RATIFICATION_SOURCE_NOT_PRESENT')
     raw=source.read_bytes()
-    git_blob=hashlib.sha1(b'blob '+str(len(raw)).encode('ascii')+b'\\x00'+raw).hexdigest()
+    git_blob=hashlib.sha1(b'blob '+str(len(raw)).encode('ascii')+bytes([0])+raw).hexdigest()
     if git_blob!=RECOGNITION_GIT_BLOB:
         stop('RATIFICATION_DOCUMENT_CHANGED')
     item=json.loads(raw)
