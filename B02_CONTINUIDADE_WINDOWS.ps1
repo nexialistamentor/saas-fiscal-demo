@@ -141,7 +141,7 @@ except Exception:
             }
             & python B02_PREPARAR_BUNDLE_SUCESSOR.py --verificar-assinado $PastaBundle --der-publico $ChavePublicaDer
             if($LASTEXITCODE -ne 0){Parar 'BUNDLE_SUCESSOR_ASSINATURA_OU_HASH_DIVERGENTE'}
-            Write-Output 'B02_SUCESSOR_OFFLINE_VERIFICADO; SEM_PROVA_DE_MANDATO_REVOGACAO_DEPLOYMENT_OU_ATIVACAO'
+            Write-Output 'B02_SUCESSOR_SO_ASSINATURA_E_HASH; SEM_VALIDACAO_CANONICA_COMPLETA_MANDATO_REVOGACAO_DEPLOYMENT_OU_ATIVACAO'
         }
         'compilar-nativo' {
             if(-not $PoliticaV3Final -or -not $HeaderNativo -or -not $ElfSaida){Parar 'POLITICA_FINAL_HEADER_SAIDA_EXIGIDOS'}
