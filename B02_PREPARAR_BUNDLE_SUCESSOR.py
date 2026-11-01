@@ -105,11 +105,19 @@ def _verify_signed_bundle(folder, public_path):
         _public_key(public_path).verify(sig, decision_raw)
     except Exception:
         stop('SIGNED_ED25519_SIGNATURE_INVALID')
-    print(json.dumps({'status':'B02_SUCCESSOR_BUNDLE_OFFLINE_SIGNATURE_AND_PINNED_BYTES_PASS',
+    # Este verificador NAO executa _verify_bundle() com contexto institucional
+    # independente; assinatura valida nao basta para admissibilidade FOUNDER_ORIGIN.
+    print(json.dumps({'status':'B02_SUCCESSOR_SIGNATURE_AND_BYTES_PREFLIGHT_ONLY',
         'decision_sha256':sha(decision_raw),'manifest_sha256':sha(manifest_raw),
         'public_fingerprint':FP,'signature_sha256':sha(sig),
+        'signature_and_bundle_bytes_checked':True,
+        'canonical_full_profile_verified':False,
+        'independent_history_verified':False,
+        'mandate_and_execution_proofs_verified':False,
+        'institutional_chain_verified':False,
         'institutional_authority_verified':False,'revocation_verified':False,
-        'runtime_root_activated':False,'writes':0},sort_keys=True))
+        'runtime_root_activated':False,'protected_installation_allowed':False,
+        'writes':0},sort_keys=True))
 
 def main():
     p=argparse.ArgumentParser()
@@ -144,6 +152,30 @@ def main():
     review=obj['review.json']
     if review.get('outcome')!='favoravel' or review.get('accepted') is not True or review.get('participation')!='review_only' or review.get('conflicts')!=[]:stop('NEW_OWN_REVIEW_NOT_FAVOURABLE')
     if review.get('reviewer_execution') in (review.get('author_execution'),review.get('integrator_execution')):stop('REVIEW_NOT_SEGREGATED')
+    # Pareceres/mandatos sem formato minimo nao sao preimagens admissiveis.
+    fields={'id','object_sha256','outcome','reviewer_execution','author_execution','integrator_execution',
+            'inputs_sha256','findings','limitations','conflicts','participation','mandate_id',
+            'accepted','addressed_reviews','completed_at'}
+    if set(review)!=fields or review['object_sha256']!=sha(evidence['object.json']):
+        stop('OWN_REVIEW_SCHEMA_OR_OBJECT_HASH_INVALID')
+    if any(not isinstance(review[k],str) or not review[k].strip()
+           for k in ('id','reviewer_execution','author_execution','integrator_execution','mandate_id','completed_at')):
+        stop('OWN_REVIEW_ACTOR_IDENTITY_MISSING')
+    if (not isinstance(review['findings'],list) or not review['findings']
+        or not isinstance(review['limitations'],list) or not review['limitations']
+        or not isinstance(review['inputs_sha256'],list)):
+        stop('OWN_REVIEW_FINDINGS_OR_INPUTS_MISSING')
+    if set(obj['history.json']) != {'object_sha256','revision','previous_revision',
+                                   'reviews','prior_reviews','delta_sha256'}:
+        stop('INSTITUTIONAL_HISTORY_SCHEMA_INVALID')
+    if obj['history.json']['object_sha256'] != sha(evidence['object.json']) or sha(evidence['review.json']) not in obj['history.json']['reviews']:
+        stop('OWN_REVIEW_NOT_IN_HISTORY')
+    if set(obj['execution.json']) != {'executions'} or len(obj['execution.json']['executions']) != 3:
+        stop('EXECUTION_SET_NOT_EXACT')
+    if set(obj['mandates.json']) != {'mandates'} or len(obj['mandates.json']['mandates']) != 3:
+        stop('MANDATES_SET_NOT_EXACT')
+    if set(obj['institutional.json']) != {'expected','decisions'}:
+        stop('INSTITUTIONAL_CHAIN_ENVELOPE_INVALID')
     manifest={'entries':[{'path':name,'size':len(evidence[name]),'sha256':sha(evidence[name])} for name in sorted(FILES)]}
     manifest_raw=canonical(manifest)
     decision={'domain':DOMAIN,'schema_version':1,'profile':PROFILE,'algorithm':'Ed25519',
