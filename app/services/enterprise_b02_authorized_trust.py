@@ -103,6 +103,26 @@ def activate_successor_for_process():
         raise ValueError('SUCCESSOR_SIGNED_BYTES_NOT_PINNED')
     decision=profile.parse(decision_bytes)
     manifest=profile.parse(manifest_bytes)
+    expected_subject={
+        'policy_type':'activation_authority',
+        'policy_id':'SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY',
+        'policy_version':1,
+        'policy_hash':'05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a'
+    }
+    decision_fields={'domain','schema_version','profile','algorithm','key_fingerprint',
+        'adoption_sha256','manifest_sha256','policy_subject','object_sha256',
+        'review_sha256','scope','valid_from','valid_until','synthetic_only',
+        'residual_risk_accepted'}
+    if (set(decision)!=decision_fields or
+        decision['domain']!=profile.DOMAIN or
+        type(decision['schema_version']) is not int or decision['schema_version']!=1 or
+        decision['algorithm']!='Ed25519' or
+        decision['scope']!=profile.SCOPE or
+        root['policy_subject']!=expected_subject or
+        decision['policy_subject']!=expected_subject or
+        profile.parse(snapshot.read('object.json'))!={'policy_subject':expected_subject,
+            'documents':profile._DOCUMENTS,'use':'autenticar_documento_sefa_pr'}):
+        raise ValueError('SUCCESSOR_DECISION_SCOPE_OR_SCHEMA_DIVERGENCE')
     if (_sha(manifest_bytes)!=decision.get('manifest_sha256') or
         set(manifest)!={'entries'} or
         [x.get('path') for x in manifest['entries']]!=sorted(required_bundle-{'manifest.json','decision.json','signature.bin'})):
