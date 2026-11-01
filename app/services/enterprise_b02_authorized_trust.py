@@ -37,3 +37,114 @@ def activate_for_process():
   if dict(r._RUNTIME_AUTHORIZATIONS)!={root['id']:root}:raise ValueError('EXISTING_TRUST_CONFLICT')
  else:r._RUNTIME_AUTHORIZATIONS=MappingProxyType({root['id']:root})
  return {'bundle_directory':str(_base()/'BUNDLE_ASSINADO'),'evidence_directory':str(_base()/'STORE')}
+
+
+# A new founder-recognized root is a distinct deployment, never a replacement
+# for the historical signed payload/PINS above. These immutable pins must be
+# populated in a separately approved, reviewed source commit from the real
+# custodian-issued ROOT.json and decision.json; no caller/env/payload can set them.
+SUCCESSOR_ROOT_SHA256 = None
+SUCCESSOR_DECISION_SHA256 = None
+SUCCESSOR_MANIFEST_SHA256 = None
+
+def activate_successor_for_process():
+    """Activate only a separately pinned, current successor in this process.
+
+    Merely signing a new bundle does not provision its root. This entrypoint
+    cannot run until the three authentic SHA-256 pins are installed via a
+    separately approved deployment; it never edits PINS or legacy state.
+    Full database, history, provenance and origin-report validation remains
+    mandatory in enterprise_b02_founder_runtime on each real admission.
+    """
+    pins=(SUCCESSOR_ROOT_SHA256,SUCCESSOR_DECISION_SHA256,SUCCESSOR_MANIFEST_SHA256)
+    if any(type(v) is not str or len(v)!=64 or any(c not in '0123456789abcdef' for c in v) for v in pins):
+        raise ValueError('SUCCESSOR_RECOGNIZED_ROOT_AND_DECISION_PINS_REQUIRED')
+    from cryptography.hazmat.primitives.serialization import load_der_public_key,Encoding,PublicFormat
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from app.services import enterprise_b02_founder_review_profile as profile
+    from app.services import enterprise_b02_founder_runtime as runtime
+    base=Path.home()/'AppData/Local/SOLVERIS/B02Trust/SUCCESSOR_V3'
+    root_file=base/'ROOT.json'
+    bundle=base/'BUNDLE_ASSINADO'
+    evidence_store=base/'STORE'
+    for item in (base,root_file,bundle,evidence_store):
+        if any(q.is_symlink() or (hasattr(q,'is_junction') and q.is_junction()) for q in (item,*item.parents)):
+            raise ValueError('SUCCESSOR_SYMLINK_OR_JUNCTION_FORBIDDEN')
+    if not root_file.is_file() or not bundle.is_dir() or not evidence_store.is_dir():
+        raise ValueError('SUCCESSOR_CUSTODY_LAYOUT_INCOMPLETE')
+    raw_root=root_file.read_bytes()
+    if _sha(raw_root)!=SUCCESSOR_ROOT_SHA256:
+        raise ValueError('SUCCESSOR_ROOT_NOT_DEPLOYMENT_PINNED')
+    root=profile.parse(raw_root)
+    required={'id','runtime_profile','policy_subject','recognition_binding','bootstrap_binding',
+              'snapshot_binding','public_key_der_hex','key_fingerprint','adoption_sha256',
+              'valid_from','valid_until','revoked','synthetic_only'}
+    if (not required.issubset(root) or not root['id'] or
+        root['runtime_profile']!='FOUNDER_SIGNED_REVIEW_BUNDLE_B02_RUNTIME_V1' or
+        root['adoption_sha256']!=profile.ADOPTION or
+        root['revoked'] is not False or root['synthetic_only'] is not False or
+        not root['recognition_binding'] or not root['bootstrap_binding'] or
+        not root['snapshot_binding']):
+        raise ValueError('SUCCESSOR_ROOT_PROFILE_UNAUTHORIZED')
+    if (_sha(Path(runtime.__file__).read_bytes())!=RUNTIME_SHA or
+        _sha(Path(profile.__file__).read_bytes())!=PROFILE_SHA):
+        raise ValueError('SUCCESSOR_VERIFIER_BYTES_CHANGED')
+    # Byte snapshot prevents a signed-file swap between checking and activating.
+    snapshot=profile._BundleSnapshot(bundle)
+    required_bundle={'object.json','review.json','mandates.json','execution.json',
+                     'institutional.json','history.json','proofs.json',
+                     'manifest.json','decision.json','signature.bin'}
+    if set(snapshot.files)!=required_bundle:
+        raise ValueError('SUCCESSOR_BUNDLE_UNDECLARED_FILE')
+    decision_bytes=snapshot.read('decision.json')
+    manifest_bytes=snapshot.read('manifest.json')
+    if (_sha(decision_bytes)!=SUCCESSOR_DECISION_SHA256 or
+        _sha(manifest_bytes)!=SUCCESSOR_MANIFEST_SHA256):
+        raise ValueError('SUCCESSOR_SIGNED_BYTES_NOT_PINNED')
+    decision=profile.parse(decision_bytes)
+    manifest=profile.parse(manifest_bytes)
+    if (_sha(manifest_bytes)!=decision.get('manifest_sha256') or
+        set(manifest)!={'entries'} or
+        [x.get('path') for x in manifest['entries']]!=sorted(required_bundle-{'manifest.json','decision.json','signature.bin'})):
+        raise ValueError('SUCCESSOR_MANIFEST_INVALID')
+    for entry in manifest['entries']:
+        if (set(entry)!={'path','size','sha256'} or
+            entry['size']!=len(snapshot.read(entry['path'])) or
+            entry['sha256']!=_sha(snapshot.read(entry['path']))):
+            raise ValueError('SUCCESSOR_MANIFEST_HASH_DIVERGENCE')
+        profile.parse(snapshot.read(entry['path']))
+    der=bytes.fromhex(root['public_key_der_hex'])
+    key=load_der_public_key(der)
+    if (not isinstance(key,Ed25519PublicKey) or
+        key.public_bytes(Encoding.DER,PublicFormat.SubjectPublicKeyInfo)!=der or
+        _sha(der)!=root['key_fingerprint'] or
+        decision.get('key_fingerprint')!=root['key_fingerprint']):
+        raise ValueError('SUCCESSOR_ED25519_KEY_DIVERGENCE')
+    key.verify(snapshot.read('signature.bin'),decision_bytes)
+    now=datetime.now(timezone.utc)
+    def current_dates(obj):
+        start=datetime.fromisoformat(obj['valid_from'])
+        end=datetime.fromisoformat(obj['valid_until'])
+        if (start.tzinfo is None or end.tzinfo is None or
+            not start.astimezone(timezone.utc)<=now<end.astimezone(timezone.utc)):
+            raise ValueError('SUCCESSOR_EXPIRED_OR_NOT_YET_VALID')
+        return start,end
+    root_from,root_until=current_dates(root)
+    decision_from,decision_until=current_dates(decision)
+    if (decision_from<root_from or decision_until>root_until or
+        decision.get('policy_subject')!=root['policy_subject'] or
+        decision.get('synthetic_only') is not False or
+        decision.get('profile')!=profile.PROFILE or
+        decision.get('adoption_sha256')!=profile.ADOPTION or
+        decision.get('residual_risk_accepted') is not True or
+        decision.get('object_sha256')!=_sha(snapshot.read('object.json')) or
+        decision.get('review_sha256')!=_sha(snapshot.read('review.json'))):
+        raise ValueError('SUCCESSOR_DECISION_OUTSIDE_PINNED_ROOT')
+    if dict(runtime._RUNTIME_AUTHORIZATIONS):
+        if dict(runtime._RUNTIME_AUTHORIZATIONS)!={root['id']:root}:
+            raise ValueError('SUCCESSOR_CONFLICTING_RUNTIME_ROOT')
+    else:
+        runtime._RUNTIME_AUTHORIZATIONS=MappingProxyType({root['id']:root})
+    return {'status':'SUCCESSOR_PINNED_BOOTSTRAP_ONLY',
+            'bundle_directory':str(bundle),'evidence_directory':str(evidence_store),
+            'institutional_history_and_origin_still_require_runtime_validation':True}
