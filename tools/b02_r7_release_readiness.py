@@ -104,17 +104,89 @@ def evaluate(fence, manifest, *, fence_blob):
         'database_writes': 0,
     }
 
+# Only the G4 successor has been reported physically reconciled. Preserve the
+# original historical R7 fence and validate the separately pinned consumption.
+POST_G4_PATH = 'B02_R7_G4_V4_CONSUMO_FISICO_POS_JANELA_20261031.json'
+V3_PATH = 'POLICY_G5_CANDIDATO_SUCESSOR_V3_PARA_REVISAO.json'
+G4_ACTIVATION_ID = 'B02-05ede-activation-v4'
+G4_ACTIVATION_HASH = 'cf617e146b3451555898d8253fba8bb13dfa6ff99776b50978e0ba68df4cb482'
+G5_V3_FILE_SHA256 = '32068cadf7297fb5958af25650899abffc667c17f3508f9261a165b8dfbd5fc7'
+
+
+def evaluate_post_g4(result, fence, *, fence_blob, consumption, v3,
+                     v3_blob, v3_raw):
+    """Consume reported G4 v4 proof; never infer database access or R7 release."""
+    import hashlib
+    if consumption.get('schema') != 'SOLVERIS_B02_R7_G4_V4_POSTWINDOW_CONSUMPTION_V1':
+        stop('G4_CONSUMPTION_SCHEMA')
+    original = consumption.get('source_fence', {})
+    if original != {'path': FENCE_PATH, 'git_blob': fence_blob, 'immutable': True}:
+        stop('G4_CONSUMPTION_FENCE_BINDING')
+    if consumption.get('original_missing_predecessor_id') != 'CURRENT_G4_V3_SUCCESSOR':
+        stop('G4_CONSUMPTION_WRONG_PREDECESSOR')
+    proof = consumption.get('resolution', {})
+    if (proof.get('status') != 'RECONCILED_AS_REPORTED_BY_AUTHORIZED_WINDOWS_EXECUTOR'
+        or proof.get('observed_result') != 'G4_V4_PHYSICAL_RECONCILED_G5_V3_DRAFT_ONLY'
+        or proof.get('g4_activation_id') != G4_ACTIVATION_ID
+        or proof.get('g4_activation_record_hash') != G4_ACTIVATION_HASH
+        or proof.get('no_automatic_retries') is not True
+        or proof.get('independent_postgres_query_by_this_chat') is not False):
+        stop('G4_CONSUMPTION_PROOF_CONFLICT')
+    p = consumption.get('g5_v3_consumer', {})
+    if (p.get('path') != V3_PATH or p.get('git_blob') != v3_blob
+        or p.get('sha256_exact') != G5_V3_FILE_SHA256
+        or hashlib.sha256(v3_raw).hexdigest() != G5_V3_FILE_SHA256
+        or p.get('policy_active') is not False):
+        stop('G4_CONSUMPTION_V3_SOURCE_CONFLICT')
+    body = v3.get('policy_candidate_body', {})
+    release = body.get('rules', {}).get('b02_noncredential', {}).get('security', {}).get('g5_release', {})
+    docs = release.get('documents', [])
+    if (v3.get('status') != 'V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY'
+        or body.get('policy_version') != 3
+        or body.get('policy_id') != 'SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE'
+        or len(docs) != 2
+        or len({x.get('document_id') for x in docs}) != 2
+        or any(x.get('g4', {}).get('policy_binding', {}).get('policy_activation_id') != G4_ACTIVATION_ID
+               or x.get('g4', {}).get('policy_binding', {}).get('policy_activation_record_hash') != G4_ACTIVATION_HASH
+               for x in docs)
+        or release.get('capability_root_id') is not None
+        or release.get('actor') is not None):
+        stop('G4_CONSUMPTION_V3_INCOMPLETE_OR_MISMATCHED')
+    remaining = set(REQUIRED_GAPS) - {'CURRENT_G4_V3_SUCCESSOR'}
+    if (set(consumption.get('open_predecessors_after_g4', [])) != remaining
+        or set(consumption.get('not_dischargeable_by_g4_alone', [])) != remaining
+        or len(consumption['open_predecessors_after_g4']) != len(remaining)
+        or len(consumption['not_dischargeable_by_g4_alone']) != len(remaining)
+        or consumption.get('no_other_gates_promoted') is not True
+        or consumption.get('old_fence_preserved') is not True
+        or consumption.get('b02_closed') is not False
+        or consumption.get('b03_released') is not False):
+        stop('G4_CONSUMPTION_REMAINING_GATES')
+    return dict(result, result='B02_OPEN_B03_BLOCKED_POST_G4_RECONCILED_AS_REPORTED',
+                missing_independently_owned_acts=len(remaining),
+                g4_successor='RECONCILED_AS_REPORTED_BY_AUTHORIZED_WINDOWS_EXECUTOR',
+                g4_fresh_database_read_this_run=False,
+                post_g4_completed_predecessors=['CURRENT_G4_V3_SUCCESSOR'],
+                remaining_predecessors=sorted(remaining))
+
+
 def main():
     if git('branch', '--show-current') != BRANCH:
         stop('WRONG_CHECKOUT_BRANCH')
-    if git('status', '--porcelain', '--', FENCE_PATH, MANIFEST_PATH):
+    if git('status', '--porcelain', '--', FENCE_PATH, MANIFEST_PATH, POST_G4_PATH, V3_PATH):
         stop('UNCOMMITTED_GOVERNANCE_CHANGE')
-    for path in (FENCE_PATH, MANIFEST_PATH):
+    for path in (FENCE_PATH, MANIFEST_PATH, POST_G4_PATH, V3_PATH):
         if git('hash-object', path) != git('rev-parse', 'HEAD:' + path):
             stop('UNPINNED_GOVERNANCE_FILE')
     fence = json.loads((REPO / FENCE_PATH).read_text(encoding='utf-8-sig'))
     manifest = json.loads((REPO / MANIFEST_PATH).read_text(encoding='utf-8-sig'))
     result = evaluate(fence, manifest, fence_blob=git('hash-object', FENCE_PATH))
+    post = json.loads((REPO / POST_G4_PATH).read_text(encoding='utf-8-sig'))
+    v3_raw = (REPO / V3_PATH).read_bytes()
+    v3 = json.loads(v3_raw.decode('utf-8-sig'))
+    result = evaluate_post_g4(result, fence, fence_blob=git('hash-object', FENCE_PATH),
+                              consumption=post, v3=v3,
+                              v3_blob=git('hash-object', V3_PATH), v3_raw=v3_raw)
     print(json.dumps(result, sort_keys=True, separators=(',', ':')))
     print('B02_R7_GATED_NO_RELEASE_SOURCE_ONLY_PASS')
 
