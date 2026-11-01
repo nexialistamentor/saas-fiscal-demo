@@ -170,7 +170,7 @@ print(hashlib.sha256(canonical(b)).hexdigest())
             $code=@'
 import sys,json,hashlib
 from pathlib import Path
-from app.services.enterprise_g113_c4_fiscal_item_bridge import _xml_item
+from tools.enterprise_g113_c4_fiscal_item_bridge import _xml_item
 raw=Path(sys.argv[1]).read_bytes();i=int(sys.argv[2]);o=_xml_item(raw,i)
 if (o['ncm'],o['cest'],o['uf'],o['cst'])!=('12119090','2000100','PR','10'):
  raise RuntimeError('STOP_R6_ITEM_NAO_CORRESPONDE_HENNA_C3')
