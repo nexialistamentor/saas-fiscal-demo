@@ -16,6 +16,41 @@ SUBJECT={'policy_type':'activation_authority','policy_id':'SOLVERIS-B02-SEFA-PR-
 FP='6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c'
 DOCS={'101202501245':'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832','101201900571':'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d'}
 def stop(x):raise RuntimeError('STOP_B02_PREASSINATURA_'+x)
+
+RECOGNITION_FILE='B02_FOUNDER_ORIGIN_RECONHECIMENTO_CHAVE_MIGUEL_20261101_RETIFICACAO.json'
+RECOGNITION_GIT_BLOB='7ec8611d3bbce7db06b7f775b726a93c65393797'
+
+def _recognized_key_scope():
+    """Consume the exact ratified document without claiming a new signature."""
+    source=Path(__file__).resolve().with_name(RECOGNITION_FILE)
+    if source.is_symlink() or not source.is_file():
+        stop('RATIFICATION_SOURCE_NOT_PRESENT')
+    raw=source.read_bytes()
+    git_blob=hashlib.sha1(b'blob '+str(len(raw)).encode('ascii')+b'\\x00'+raw).hexdigest()
+    if git_blob!=RECOGNITION_GIT_BLOB:
+        stop('RATIFICATION_DOCUMENT_CHANGED')
+    item=json.loads(raw)
+    if (item.get('schema')!='SOLVERIS_B02_FOUNDER_ORIGIN_KEY_RECOGNITION_V3_V1'
+        or item.get('status')!='RATIFIED_KEY_ELIGIBILITY_RECOGNITION_CORRECTED_NO_SIGNATURE'
+        or item.get('ratifier')!='Miguel' or item.get('policy_subject')!=SUBJECT
+        or item.get('public_key',{}).get('public_der_sha256_fingerprint')!=FP
+        or item.get('public_key',{}).get('control_of_corresponding_private_key')!='DECLARED_BY_RATIFIER_PERSONALLY'
+        or item.get('public_key',{}).get('not_revoked')!='DECLARED_BY_RATIFIER_AFTER_CONSULTING_CUSTODY_RECORDS_NO_KNOWN_COMPETENT_REVOCATION'
+        or item.get('g4_reconciled_activation',{}).get('policy_activation_id')!='B02-05ede-activation-v4'
+        or item.get('g4_reconciled_activation',{}).get('policy_activation_record_hash')!='cf617e146b3451555898d8253fba8bb13dfa6ff99776b50978e0ba68df4cb482'
+        or {x['document_id']:x['sha256'] for x in item.get('exact_document_scope',[])}!=DOCS
+        or item.get('approval',{}).get('prepare_new_successor_documentary_decision') is not True
+        or item.get('approval',{}).get('authorize_local_signing_now') is not False
+        or item.get('approval',{}).get('authorize_pg_protected_migration_or_activation') is not False
+        or item.get('approval',{}).get('accept_residual_risk_by_this_recognition_alone') is not False
+        or item.get('validity',{}).get('maximum_valid_until_utc_exclusive')!='2026-11-15T00:00:00+00:00'
+        or item.get('validity',{}).get('signer_existing_limits')!='MUST_NOT_BE_RELAXED_OR_EXTENDED'
+        or item.get('validity',{}).get('no_backdating') is not True
+        or item.get('rectification',{}).get('corrected_policy_hash_64_characters')!=SUBJECT['policy_hash']
+        or item.get('rectification',{}).get('predecessor_git_blob')!='28dd836199957cc2e64cc96286b4b1fefd9247ff'):
+        stop('RECOGNITION_SCOPE_OR_AUTHORITY_MISMATCH')
+    return item
+
 def dt(v):
     try:r=datetime.fromisoformat(v)
     except Exception:stop('TIME_INVALID')
@@ -66,6 +101,8 @@ def _verify_signed_bundle(folder, public_path):
         decision['scope'],decision['synthetic_only'],decision['residual_risk_accepted']
     ) != (DOMAIN,1,PROFILE,'Ed25519',FP,ADOPTION,SUBJECT,SCOPE,False,True):
         stop('SIGNED_DECISION_IDENTITY_DIVERGENCE')
+    recognition=_recognized_key_scope()
+    if dt(decision['valid_until'])>dt(recognition['validity']['maximum_valid_until_utc_exclusive']):stop('SIGNED_WINDOW_EXCEEDS_RATIFIED_MAXIMUM')
     now = datetime.now(timezone.utc)
     if not dt(decision['valid_from']) <= now < dt(decision['valid_until']):
         stop('SIGNED_DECISION_WINDOW_NOT_CURRENT')
@@ -122,6 +159,7 @@ def _verify_signed_bundle(folder, public_path):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--verificar-assinado',type=Path,help='Leitura offline de bundle sucessor assinado, sem ativacao')
+    p.add_argument('--verificar-reconhecimento',action='store_true',help='Consumir ratificacao da chave; nunca assina, ativa ou escreve DB')
     p.add_argument('--evidencias',type=Path,help='Sete JSON CANONICOS de atos reais ja emitidos pela execucao competente')
     p.add_argument('--der-publico',type=Path,help='Ficheiro .der publico OU ROOT.json historico pinado; nunca chave privada')
     p.add_argument('--valid-from',help='Inicio real decidido pelo custódio, com offset')
@@ -129,6 +167,15 @@ def main():
     p.add_argument('--aceitacao-risco-explicita',action='store_true',help='Somente se existir aceite competente especifico, nao inferido pelo empacotador')
     p.add_argument('--out',type=Path,help='Nova pasta de PRE-ASSINATURA; nao deve existir')
     a=p.parse_args()
+    if a.verificar_reconhecimento:
+        recognition=_recognized_key_scope()
+        print(json.dumps({'status':'B02_RATIFIED_KEY_RECOGNITION_CONSUMED_NOT_SIGNED',
+            'ratification_id':recognition['id'],
+            'g4_policy_hash':recognition['policy_subject']['policy_hash'],
+            'public_fingerprint':FP,
+            'maximum_valid_until_utc_exclusive':recognition['validity']['maximum_valid_until_utc_exclusive'],
+            'private_key_received':False,'signature_performed':False,'protected_writes':0},sort_keys=True))
+        return
     if a.verificar_assinado:
         if a.der_publico is None:stop('PUBLIC_KEY_PATH_REQUIRED')
         _verify_signed_bundle(a.verificar_assinado,a.der_publico)
@@ -142,6 +189,8 @@ def main():
     if actual!=set(FILES) or any(x.is_symlink() for x in a.evidencias.iterdir()):stop('REQUIRED_7_FILES_EXACT')
     key=_public_key(a.der_publico)
     start,end=dt(a.valid_from),dt(a.valid_until)
+    recognition=_recognized_key_scope()
+    if end>dt(recognition['validity']['maximum_valid_until_utc_exclusive']):stop('PREIMAGE_WINDOW_EXCEEDS_RATIFIED_MAXIMUM')
     if end<=start or end<=datetime.now(timezone.utc):stop('NO_CURRENT_VALID_INTERVAL')
     evidence={name:(a.evidencias/name).read_bytes() for name in FILES}
     obj={name:parse(raw) for name,raw in evidence.items()}
