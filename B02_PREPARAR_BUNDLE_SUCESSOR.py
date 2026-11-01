@@ -17,6 +17,78 @@ FP='6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c'
 DOCS={'101202501245':'e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832','101201900571':'af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d'}
 def stop(x):raise RuntimeError('STOP_B02_PREASSINATURA_'+x)
 
+DOC_META={
+ '101202501245':('https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf',258302),
+ '101201900571':('https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf',1944929),
+}
+ORIGIN_KIND='independent_document_origin_founder_sealed'
+
+def _selected_successor_origin_reports(proofs,review,*,valid_from,valid_until):
+    """Preflight only. Decision -> signed review_sha256 -> review.inputs_sha256 -> two reports.
+    Historical reports stay in proofs; no recency, order, or kind-wide count decides authority.
+    The institutional runtime must separately verify the actual root/snapshot and transport.
+    """
+    pins=review.get('inputs_sha256') if type(review) is dict else None
+    if (type(proofs) is not dict or type(pins) is not list
+        or any(type(p) is not str for p in pins) or len(pins)!=len(set(pins))):
+        stop('ORIGIN_EXPLICIT_REVIEW_INPUTS_INVALID')
+    selected=[]
+    for pin in pins:
+        report=proofs.get(pin)
+        if type(report) is dict and report.get('kind')==ORIGIN_KIND:
+            if sha(canonical(report))!=pin:stop('ORIGIN_REPORT_PIN_DIVERGENT')
+            selected.append((pin,report))
+    if len(selected)!=2 or {r.get('document',{}).get('id') for _,r in selected if type(r.get('document')) is dict}!=set(DOCS):
+        stop('ORIGIN_EXPLICIT_SUCCESSOR_BINDINGS_NOT_TWO')
+    for pin,report in selected:
+        doc=report['document']; docid=doc['id']
+        if (set(doc)!={'id','url','sha256','byte_size'}
+            or (doc['url'],doc['sha256'],doc['byte_size'])!=(DOC_META[docid][0],DOCS[docid],DOC_META[docid][1])
+            or type(doc['byte_size']) is not int or report.get('official_identifier')!=docid
+            or report.get('policy_subject')!=SUBJECT or report.get('outcome')!='favoravel'
+            or report.get('synthetic_only') is not False
+            or report.get('technical_author_execution')!=review.get('author_execution')
+            or report.get('technical_integrator_execution')!=review.get('integrator_execution')
+            or not report.get('actor_execution')
+            or report['actor_execution'] in {review.get('reviewer_execution'),review.get('author_execution'),review.get('integrator_execution')}):
+            stop('ORIGIN_SUCCESSOR_REPORT_SCOPE_INVALID')
+        binding=report.get('mandate_binding')
+        if type(binding) is not dict or set(binding)!={'id','sha256'}:
+            stop('ORIGIN_SUCCESSOR_MANDATE_BINDING_MISSING')
+        mandate=proofs.get(binding['sha256'])
+        if (type(mandate) is not dict or sha(canonical(mandate))!=binding['sha256']
+            or mandate.get('id')!=binding['id'] or mandate.get('issuer')!='Miguel'
+            or mandate.get('execution_id')!=report['actor_execution']
+            or mandate.get('policy_subject')!=SUBJECT or mandate.get('revoked') is not False
+            or mandate.get('synthetic_only') is not False
+            or mandate.get('operations')!=['examine_document_origin','report','abstain']):
+            stop('ORIGIN_SUCCESSOR_MANDATE_INVALID')
+        acceptance_hash=report.get('mandate_acceptance_sha256')
+        acceptance=proofs.get(acceptance_hash) if type(acceptance_hash) is str else None
+        if (type(acceptance) is not dict or set(acceptance)!={'execution_id','mandate_sha256','accepted','accepted_at'}
+            or sha(canonical(acceptance))!=acceptance_hash
+            or acceptance['execution_id']!=report['actor_execution']
+            or acceptance['mandate_sha256']!=binding['sha256'] or acceptance['accepted'] is not True):
+            stop('ORIGIN_SUCCESSOR_ACCEPTANCE_INVALID')
+        exam_hash=report.get('examination_record_sha256')
+        examination=proofs.get(exam_hash) if type(exam_hash) is str else None
+        if (type(examination) is not dict or sha(canonical(examination))!=exam_hash
+            or examination.get('actor_execution')!=report['actor_execution']
+            or examination.get('document')!=doc or examination.get('mandate_binding')!=binding
+            or examination.get('examined_at')!=report.get('examined_at')
+            or not examination.get('own_findings') or not examination.get('limitations')):
+            stop('ORIGIN_SUCCESSOR_OWN_EXAMINATION_INVALID')
+        if (not report.get('receipt_binding') or not report.get('tls_evidence_binding')
+            or not report.get('receipt_projection') or not report.get('verifier')
+            or not report.get('doe_references') or not report.get('mechanism_assessment')):
+            stop('ORIGIN_SUCCESSOR_TRANSPORT_OR_VERIFIER_MISSING')
+        if (not dt(mandate['valid_from'])<=dt(acceptance['accepted_at'])<=dt(report['examined_at'])
+            or not dt(report['examined_at'])<dt(mandate['valid_until'])
+            or not dt(report['valid_from'])<=dt(valid_from)<dt(valid_until)<=dt(report['valid_until'])
+            or dt(report['examined_at'])>dt(valid_from)):
+            stop('ORIGIN_SUCCESSOR_CHRONOLOGY_INVALID')
+    return [r for _,r in selected]
+
 RECOGNITION_FILE='B02_FOUNDER_ORIGIN_RECONHECIMENTO_CHAVE_MIGUEL_20261101_RETIFICACAO.json'
 RECOGNITION_GIT_BLOB='7ec8611d3bbce7db06b7f775b726a93c65393797'
 
@@ -131,11 +203,8 @@ def _verify_signed_bundle(folder, public_path):
     proofs = objs['proofs.json']
     if not isinstance(proofs,dict) or any(sha(canonical(value)) != key for key,value in proofs.items()):
         stop('SIGNED_PROOFS_CONTENT_HASH_DIVERGENCE')
-    own = [v for v in proofs.values() if isinstance(v,dict) and v.get('kind') == 'independent_document_origin_founder_sealed']
-    if len(own) != 2 or {x.get('document',{}).get('id') for x in own} != set(DOCS):
-        stop('SIGNED_TWO_OWN_ORIGIN_REPORTS_MISSING')
-    if any(x.get('outcome') != 'favoravel' or x.get('synthetic_only') is not False for x in own):
-        stop('SIGNED_ORIGIN_REPORT_NOT_FAVOURABLE')
+    _selected_successor_origin_reports(proofs,review,
+        valid_from=decision['valid_from'],valid_until=decision['valid_until'])
     sig = content['signature.bin']
     if len(sig) != 64:stop('SIGNED_SIGNATURE_SIZE_INVALID')
     try:
@@ -195,9 +264,8 @@ def main():
     evidence={name:(a.evidencias/name).read_bytes() for name in FILES}
     obj={name:parse(raw) for name,raw in evidence.items()}
     if obj['object.json']!={'policy_subject':SUBJECT,'documents':DOCS,'use':'autenticar_documento_sefa_pr'}:stop('G4_OBJECT_SUBJECT_DIVERGENT')
-    own_reports=[v for v in obj['proofs.json'].values() if isinstance(v,dict) and v.get('kind')=='independent_document_origin_founder_sealed']
-    if len(own_reports)!=2 or {r.get('document',{}).get('id') for r in own_reports}!=set(DOCS):stop('BOTH_NEW_OWN_ORIGIN_REPORTS_MISSING')
-    if any(r.get('outcome')!='favoravel' or r.get('synthetic_only') is not False or not r.get('mandate_acceptance_sha256') or not r.get('tls_evidence_binding') or not r.get('receipt_binding') for r in own_reports):stop('OWN_ORIGIN_REPORTS_NOT_CONCLUSIVE')
+    _selected_successor_origin_reports(obj['proofs.json'],obj['review.json'],
+        valid_from=a.valid_from,valid_until=a.valid_until)
     review=obj['review.json']
     if review.get('outcome')!='favoravel' or review.get('accepted') is not True or review.get('participation')!='review_only' or review.get('conflicts')!=[]:stop('NEW_OWN_REVIEW_NOT_FAVOURABLE')
     if review.get('reviewer_execution') in (review.get('author_execution'),review.get('integrator_execution')):stop('REVIEW_NOT_SEGREGATED')
