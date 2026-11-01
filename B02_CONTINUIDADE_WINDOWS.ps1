@@ -53,27 +53,80 @@ try {
             Write-Output 'CONFERIR_IDENTIDADES_ACEITACAO_CONFLITOS_E_ASSINATURAS_NO_CANAL_EMISSOR_ANTES_DE_QUALQUER_DECISAO_SQL'
         }
         'elegibilidade-chave' {
-            if(-not $ChavePublicaDer){
-                $custodia=Join-Path $env:USERPROFILE 'Downloads\SOLVERIS_B02_ASSINATURA_AUTORIZADA_20261022'
-                if(-not (Test-Path -LiteralPath $custodia -PathType Container)){Parar 'PASTA_CUSTODIA_PUBLICA_NAO_ENCONTRADA'}
-                $found=@(Get-ChildItem -LiteralPath $custodia -Filter '*.der' -File -Recurse |
-                    Where-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() -ceq '6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c' })
-                if($found.Count -lt 1){Parar 'CHAVE_DER_PUBLICA_HISTORICA_NAO_ENCONTRADA'}
-                $ChavePublicaDer=$found[0].FullName
+            # Localizacao restrita as custodias B02 conhecidas. Ficheiro DER publico
+            # OU ROOT.json historico fixado: nao se procuram chaves privadas.
+            $pastaAssinatura=Join-Path $env:USERPROFILE 'Downloads\SOLVERIS_B02_ASSINATURA_AUTORIZADA_20261022'
+            $pastaIsolada=Join-Path $env:USERPROFILE 'Downloads\B02Trust_ISOLADO_TESTE'
+            $pastaInstalada=Join-Path $env:LOCALAPPDATA 'SOLVERIS\B02Trust'
+            $fontes=@()
+            if($ChavePublicaDer) {
+                if(-not (Test-Path -LiteralPath $ChavePublicaDer -PathType Leaf)) {Parar "CHAVE_PUBLICA_INDICADA_NAO_EXISTE:$ChavePublicaDer"}
+                $fontes=@($ChavePublicaDer)
+            } else {
+                foreach($pasta in @($pastaInstalada,$pastaIsolada,$pastaAssinatura)) {
+                    if(Test-Path -LiteralPath $pasta -PathType Container) {
+                        $fontes+=@(Get-ChildItem -LiteralPath $pasta -Recurse -File -ErrorAction SilentlyContinue |
+                            Where-Object { $_.Name -ceq 'ROOT.json' -or $_.Extension -ieq '.der' } |
+                            ForEach-Object { $_.FullName })
+                    }
+                }
+                $fontes=@($fontes | Select-Object -Unique)
             }
-            [void](Pinned $ChavePublicaDer '6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c')
+            if($fontes.Count -eq 0){Parar 'CHAVE_PUBLICA_AUSENTE_NAS_TRES_CUSTODIAS; USAR_-ChavePublicaDer_COM_DER_OU_ROOT_JSON_REAL'}
             $code=@'
-import sys,hashlib
+import sys, json, hashlib
 from pathlib import Path
-from cryptography.hazmat.primitives.serialization import load_der_public_key,Encoding,PublicFormat
+from cryptography.hazmat.primitives.serialization import load_der_public_key, Encoding, PublicFormat
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-raw=Path(sys.argv[1]).read_bytes(); k=load_der_public_key(raw)
-if not isinstance(k,Ed25519PublicKey) or k.public_bytes(Encoding.DER,PublicFormat.SubjectPublicKeyInfo)!=raw:raise RuntimeError('STOP_PUBLIC_KEY_ALGORITHM')
-print('B02_PUBLIC_KEY_ED25519_FINGERPRINT_MATCH_'+hashlib.sha256(raw).hexdigest())
-print('NAO_COMPROVA_CONTROLE_DA_PRIVADA_NEM_REVOGACAO_OU_MANDATO; CUSTODIO_DEVE_DECIDIR_E_REGISTAR')
+fingerprint='6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c'
+root_pin='398e3938b11af5694c65fad4412303681651cb906aa5acfff2ef9c1de6caa4ff'
+decision_pin='fc7fe0f239e468b46c3597688f095e758e573fb8deb78dcbc2b6279707df4274'
+signature_pin='88d9e61a2a900e5ff82ffbee139cd1906f4106b889ca00dad3400f8cdf17cb3e'
+try:
+    p=Path(sys.argv[1])
+    if p.name=='ROOT.json':
+        stored=p.read_bytes()
+        if hashlib.sha256(stored).hexdigest()!=root_pin: raise ValueError('ROOT_HISTORICA_NAO_PINADA')
+        root=json.loads(stored)
+        if root.get('key_fingerprint')!=fingerprint: raise ValueError('ROOT_FINGERPRINT')
+        raw=bytes.fromhex(root['public_key_der_hex'])
+        # Confirmar assinatura historica quando os dois ficheiros estao juntos.
+        decision=p.parent/'BUNDLE_ASSINADO'/'decision.json'
+        signature=p.parent/'BUNDLE_ASSINADO'/'signature.bin'
+        if decision.is_file() or signature.is_file():
+            if not (decision.is_file() and signature.is_file()): raise ValueError('BUNDLE_HISTORICO_INCOMPLETO')
+            d=decision.read_bytes();s=signature.read_bytes()
+            if hashlib.sha256(d).hexdigest()!=decision_pin or hashlib.sha256(s).hexdigest()!=signature_pin:
+                raise ValueError('BUNDLE_HISTORICO_NAO_PINADO')
+        else: d=s=None
+        origin='ROOT_JSON_HISTORICO_PINADO'
+    elif p.suffix.lower()=='.der':
+        raw=p.read_bytes(); d=s=None; origin='DER_PUBLICO'
+    else: raise ValueError('APENAS_DER_OU_ROOT_JSON')
+    if hashlib.sha256(raw).hexdigest()!=fingerprint: raise ValueError('PUBLIC_DER_FINGERPRINT_DIVERGENTE')
+    key=load_der_public_key(raw)
+    if not isinstance(key,Ed25519PublicKey) or key.public_bytes(Encoding.DER,PublicFormat.SubjectPublicKeyInfo)!=raw:
+        raise ValueError('PUBLIC_DER_NAO_ED25519_CANONICO')
+    if d is not None: key.verify(s,d)
+    print('B02_CHAVE_PUBLICA_HISTORICA_IDENTIFICADA='+str(p))
+    print('B02_PUBLIC_KEY_ED25519_FINGERPRINT_MATCH_'+fingerprint)
+    print('FONTE='+origin+'; ASSINATURA_HISTORICA_VERIFICADA='+str(d is not None))
+    print('NAO_COMPROVA_CONTROLE_DA_PRIVADA_REVOGACAO_MANDATO_NEM_VIGENCIA_ATUAL')
+except Exception:
+    sys.exit(3)
 '@
-            $code | & python - $ChavePublicaDer
-            if($LASTEXITCODE -ne 0){Parar 'CHAVE_ED25519_INVALIDA'}
+            $encontrada=$false
+            foreach($fonte in $fontes) {
+                $saida=@($code | & python - $fonte)
+                if($LASTEXITCODE -eq 0) {
+                    $saida | Write-Output
+                    $encontrada=$true
+                    break
+                }
+            }
+            if(-not $encontrada) {
+                Parar 'CHAVE_PUBLICA_PINADA_NAO_LOCALIZADA; USAR_-ChavePublicaDer_COM_FICHEIRO_DER_OU_ROOT_JSON_ORIGINAL'
+            }
         }
         'bundle-assinado' {
             if(-not $PastaBundle){Parar 'PASTA_BUNDLE_ASSINADO_EXIGIDA'}
