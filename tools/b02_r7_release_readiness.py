@@ -170,6 +170,37 @@ def evaluate_post_g4(result, fence, *, fence_blob, consumption, v3,
                 remaining_predecessors=sorted(remaining))
 
 
+# A later scoped technical review is a completed review of A2 V4 only.
+# Do not erase the 31/10 institutional fence or promote it to a real signed root.
+A2_FOCAL_PATH = 'evidence/b02/rcv31/a2/SOLVERIS_B02_RCV31_A2_V4_PARECER_PROPRIO_FINAL_20261101.md'
+A2_FOCAL_BLOB = '256585a1dedcd3c703f14644f0c6723c1c0742c1'
+
+
+def consume_a2_v4_focal_review(result, *, report_blob, report_text):
+    """Recognize the subsequently issued bounded A2 review, not an operational release."""
+    if report_blob != A2_FOCAL_BLOB:
+        stop('A2_FOCAL_REVIEW_BLOB_DIVERGENCE')
+    required = (
+        '**FAVORÁVEL CONDICIONADO, estritamente ao A2 V4 no ensaio descartável/sintético**',
+        '**FAVORÁVEL CONDICIONADO ao objeto A2 V4, no seu alcance técnico e sintético; encerrada a revisão focal deste delta.**',
+        '**Nenhum novo ficheiro ou ensaio é indispensável para esta conclusão delimitada.**',
+        'Não alego identidade verificável da execução revisora original de 25/10',
+        'não ratifica política',
+    )
+    if not all(x in report_text for x in required):
+        stop('A2_FOCAL_REVIEW_CONTENT_DIVERGENCE')
+    if (result.get('claim_of_b02_release') is not False
+        or result.get('claim_of_b03_release') is not False
+        or 'RCV31_A2_V4_OWN_REVIEW' not in result.get('remaining_predecessors', ())):
+        stop('A2_SCOPED_NOT_AN_INSTITUTIONAL_RELEASE')
+    return dict(result,
+        a2_v4_focal_review='CLOSED_IN_ITS_TECHNICAL_SYNTHETIC_SCOPE_NO_RETEST',
+        a2_v4_focal_review_git_blob=A2_FOCAL_BLOB,
+        a2_v4_focal_review_reexecution_required=False,
+        a2_v4_original_reviewer_identity_not_attested=True,
+        r7_original_fence_preserved=True)
+
+
 def main():
     if git('branch', '--show-current') != BRANCH:
         stop('WRONG_CHECKOUT_BRANCH')
@@ -187,6 +218,15 @@ def main():
     result = evaluate_post_g4(result, fence, fence_blob=git('hash-object', FENCE_PATH),
                               consumption=post, v3=v3,
                               v3_blob=git('hash-object', V3_PATH), v3_raw=v3_raw)
+    # Read an independently committed later A2 focal report, without re-running A2.
+    if git('status', '--porcelain', '--', A2_FOCAL_PATH):
+        stop('A2_FOCAL_REVIEW_UNCOMMITTED')
+    if git('hash-object', A2_FOCAL_PATH) != git('rev-parse', 'HEAD:' + A2_FOCAL_PATH):
+        stop('A2_FOCAL_REVIEW_WORKTREE_DRIFT')
+    report_blob = git('hash-object', A2_FOCAL_PATH)
+    report_text = (REPO / A2_FOCAL_PATH).read_text(encoding='utf-8-sig')
+    result = consume_a2_v4_focal_review(
+        result, report_blob=report_blob, report_text=report_text)
     print(json.dumps(result, sort_keys=True, separators=(',', ':')))
     print('B02_R7_GATED_NO_RELEASE_SOURCE_ONLY_PASS')
 
