@@ -66,5 +66,61 @@
     "fiscal_authority_verified": false
   },
   "do_not_restart_c3_acquisition": true,
-  "do_not_infer_legal_tax_liability": true
+  "do_not_infer_legal_tax_liability": true,
+  "previously_verified_henna_c3_excerpt_evidence": {
+    "source_document": "docs/ENTERPRISE_G113_C3_TEMPORAL_MVA_EVIDENCE_20261020.md",
+    "source_git_blob": "620a9011ea2ccdcd0b24f19721c1465ffb4887d8",
+    "scope": "ONLY HENNA NCM 12119090 CEST 2000100 AND PREVIOUSLY DOCUMENTED EXCERPTS",
+    "exact_source_excerpts": [
+      {
+        "source_id": "101202501245",
+        "page_1_based": 1,
+        "excerpt_sha256": "480c12a491af5cf40abcd8a6f72dbfb7a4ee7b682d1284ac76dc41dd2fb99959",
+        "mva_percent_documented": "46.78"
+      },
+      {
+        "source_id": "101201900571",
+        "page_1_based": 55,
+        "page_text_sha256": "49de93b123f058fb3b1062c00eb1ffdeaf2fd8e97aaf93c8fbdfcd307dc91bf0",
+        "character_offset": 152,
+        "excerpt_sha256": "bae481ebbd19b978787496d2e3739d4d042828b4a3132c1c571fa45693e4053d",
+        "mva_percent_documented": "46.78"
+      },
+      {
+        "source_id": "101201900571",
+        "page_1_based": 86,
+        "page_text_sha256": "e4d3c4df93ea178040f2c54e0434a0021d4e41ee55a91b5750b48388fc53228b",
+        "character_offset": 130,
+        "excerpt_sha256": "c7451d943547e212701021f85de2b24a2b07de387795de9f5e91a6f84182cf11",
+        "mva_percent_documented": "41.42"
+      }
+    ],
+    "documentary_selection_only_at_observed_dates": [
+      {
+        "date": "2026-03-31",
+        "documentary_mva_percent": "41.42",
+        "source_id": "101201900571",
+        "page_1_based": 86
+      },
+      {
+        "date": "2026-04-01",
+        "documentary_mva_percent": "46.78",
+        "source_id": "101201900571",
+        "page_1_based": 55
+      }
+    ],
+    "dates_from_2026_04_02": "ABSTAIN_UNTIL_NEW_REVISIONS_AND_COVERAGE_VERIFIED",
+    "no_new_pdf_download": true,
+    "not_persisted_as_ExtractionResult": true,
+    "not_a_RuleVersion": true,
+    "not_authenticated_realtime_NFe": true,
+    "semantic_applicability_to_real_item_proven": false
+  },
+  "existing_C1_compatibility_limit": {
+    "source_document": "docs/ENTERPRISE_G113_C7_INTERNAL_DIAGNOSTIC_DOSSIER_20261020.md",
+    "consolidated_571_pages": 587,
+    "g113_c1_page_limit": 500,
+    "require_same_pdf_and_new_approved_proof_before_c1_571": true,
+    "note": "Do not infer that the 587-page C3 selection is executable through the unmodified C1 path; only the preverified C3 excerpts are linked here."
+  }
 }
