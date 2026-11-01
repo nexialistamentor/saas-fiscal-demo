@@ -24,7 +24,7 @@ def dt(v):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--evidencias',type=Path,required=True,help='Sete JSON CANONICOS de atos reais ja emitidos pela execucao competente')
-    p.add_argument('--der-publico',type=Path,required=True,help='Chave DER publica existente; nunca privada')
+    p.add_argument('--der-publico',type=Path,required=True,help='Ficheiro .der publico OU ROOT.json historico pinado; nunca chave privada')
     p.add_argument('--valid-from',required=True,help='Inicio real decidido pelo custódio, com offset')
     p.add_argument('--valid-until',required=True,help='Fim real decidido pelo custódio, com offset')
     p.add_argument('--aceitacao-risco-explicita',action='store_true',help='Somente se existir aceite competente especifico, nao inferido pelo empacotador')
@@ -35,7 +35,19 @@ def main():
     if not a.evidencias.is_dir():stop('EVIDENCE_FOLDER_MISSING')
     actual={x.name for x in a.evidencias.iterdir() if x.is_file()}
     if actual!=set(FILES) or any(x.is_symlink() for x in a.evidencias.iterdir()):stop('REQUIRED_7_FILES_EXACT')
-    keybytes=a.der_publico.read_bytes()
+    # A DER publica pode ser extraida em memoria do ROOT historico pinado.
+    # A janela e a assinatura antigas NAO sao adotadas ou copiadas.
+    if a.der_publico.name=='ROOT.json':
+        raw_root=a.der_publico.read_bytes()
+        if sha(raw_root)!='398e3938b11af5694c65fad4412303681651cb906aa5acfff2ef9c1de6caa4ff':
+            stop('HISTORICAL_ROOT_NOT_PINNED')
+        root=json.loads(raw_root)
+        if root.get('key_fingerprint')!=FP:stop('HISTORICAL_ROOT_KEY_DIVERGENCE')
+        keybytes=bytes.fromhex(root['public_key_der_hex'])
+    elif a.der_publico.suffix.lower()=='.der':
+        keybytes=a.der_publico.read_bytes()
+    else:
+        stop('PUBLIC_KEY_INPUT_MUST_BE_DER_OR_HISTORIC_PINNED_ROOT_JSON')
     if sha(keybytes)!=FP:stop('HISTORICAL_PUBLIC_KEY_FINGERPRINT_DIVERGENCE')
     key=load_der_public_key(keybytes)
     if not isinstance(key,Ed25519PublicKey) or key.public_bytes(Encoding.DER,PublicFormat.SubjectPublicKeyInfo)!=keybytes:stop('ED25519_DER_INVALID')
