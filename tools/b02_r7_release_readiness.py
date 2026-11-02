@@ -214,6 +214,92 @@ def consume_a2_v4_focal_review(result, *, report_blob, report_text):
         r7_original_fence_preserved=True)
 
 
+# Only recognize exact acts already issued; these are not origin authentication,
+# a new G5 policy, a runtime trust root or permission to install anything.
+SUCCESSOR_PROOFS_PATH = 'evidence/b02/successor_v3/proofs.json'
+SUCCESSOR_PROOFS_BASE_135_BLOB = 'f07e2f609acad4675fcfa0c3698fb249ef2d493b'
+SUCCESSOR_OWN_ACT_PATH = 'evidence/b02/ATO_PROPRIO_AUTOR_INTEGRADOR_SUCESSOR_20261102.json'
+SUCCESSOR_MANDATES = {
+    'author': ('B02-G4-SUCESSAO-20261101-AUTHOR.body.json',
+               '73d77e161747a8f6725fe94cf0f148d41423c09a04b6233c7521bff6990c6849',
+               'da14259ebd91584a0c30905719379720d4da4fbf3ace2f7d3ba424fe23db09c0'),
+    'integrator': ('B02-G4-SUCESSAO-20261101-INTEGRATOR.body.json',
+                   '44698d76a4657804f4f6717cc83fac50697905717335efb8e8c9d8304c31fafe',
+                   '8efb6c1a11abbea216692b3e9af6b19cc7ca2c559b7f0a6505206d79a4fe9757'),
+    'origin_examiner': ('B02-G4-SUCESSAO-20261101-ORIGIN.body.json',
+                        '22ce147864beacc1fa51cf993672eb5a8ee817fa64be3b96e1259306e91e5ba7',
+                        None),
+}
+SUCCESSOR_MANDATE_DIR = 'evidence/b02/successor_v3/mandate_bodies/'
+SUCCESSOR_REVIEWER_ACCEPTANCE = '6792209f25f33346cf5d235f2df186e2428679364042337b0c49d2675d66273d'
+
+
+def consume_issued_successor_acts(result, *, proofs, own, bodies, proofs_blob):
+    """Reconcile accepted author/integrator roles without creating an origin act."""
+    import hashlib
+    from datetime import datetime
+    def digest(value):
+        return hashlib.sha256(json.dumps(value, sort_keys=True,
+            ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest()
+    if not isinstance(proofs, dict) or SUCCESSOR_REVIEWER_ACCEPTANCE not in proofs:
+        stop('SUCCESSOR_PRIOR_REVIEWER_PROOF_MISSING')
+    if (own.get('schema') != 'B02_G4_SUCCESSOR_AUTHOR_INTEGRATOR_OWN_ACCEPTANCES_20261102_V1'
+        or not isinstance(own.get('acceptances'), list)
+        or len(own['acceptances']) != 2):
+        stop('SUCCESSOR_OWN_ACT_INVALID')
+    issued = {x.get('role'): x for x in own['acceptances'] if isinstance(x, dict)}
+    if set(issued) != {'author', 'integrator'}:
+        stop('SUCCESSOR_OWN_ROLES_INVALID')
+    add = {}
+    for role, (name, mandate_hash, acceptance_hash) in SUCCESSOR_MANDATES.items():
+        body = bodies.get(name)
+        if not isinstance(body, dict) or digest(body) != mandate_hash:
+            stop('SUCCESSOR_MANDATE_HASH_' + role.upper())
+        add[mandate_hash] = body
+        if role == 'origin_examiner':
+            if body.get('execution_id') != 'GPT-6/examinador-origem-sefa-pr-g4-sucessor-20261101':
+                stop('SUCCESSOR_ORIGIN_DESIGNATION_DIVERGENCE')
+            continue
+        current = issued[role]
+        acceptance = current.get('own_canonical_acceptance')
+        if (not isinstance(acceptance, dict)
+            or digest(acceptance) != acceptance_hash
+            or current.get('acceptance_sha256') != acceptance_hash
+            or acceptance.get('accepted') is not True
+            or acceptance.get('mandate_sha256') != mandate_hash
+            or acceptance.get('execution_id') != body.get('execution_id')
+            or body.get('role') != role):
+            stop('SUCCESSOR_OWN_ACCEPTANCE_' + role.upper())
+        at = datetime.fromisoformat(acceptance['accepted_at'])
+        start = datetime.fromisoformat(body['valid_from'])
+        end = datetime.fromisoformat(body['valid_until'])
+        if at.tzinfo is None or not start <= at < end:
+            stop('SUCCESSOR_OWN_CHRONOLOGY_' + role.upper())
+        add[acceptance_hash] = acceptance
+    if (result.get('claim_of_b02_release') is not False
+        or result.get('claim_of_b03_release') is not False):
+        stop('SUCCESSOR_UNSUPPORTED_RELEASE_CLAIM')
+    if len(proofs) == 135 and proofs_blob == SUCCESSOR_PROOFS_BASE_135_BLOB:
+        if any(key in proofs for key in add):
+            stop('SUCCESSOR_135_BASE_ALREADY_MUTATED')
+        indexed = False
+    elif len(proofs) == 140:
+        if any(key not in proofs or proofs[key] != value for key, value in add.items()):
+            stop('SUCCESSOR_140_PROOFS_MISMATCH')
+        indexed = True
+    else:
+        stop('SUCCESSOR_PROOFS_BASE_OR_COUNT_INVALID')
+    return dict(result,
+        g4_author_integrator_current_own_acceptances='TWO_CURRENT_OWN_ACCEPTANCES_ISSUED',
+        g4_reviewer_existing_own_acceptance='PRESERVED',
+        g4_successor_mandates_issued=3,
+        g4_successor_five_issued_proofs_indexed=indexed,
+        g4_successor_proofs_count=len(proofs),
+        g4_distinct_origin_examiner_own_acceptance='NOT_PRESENT_IN_THIS_EVIDENCE',
+        g4_author_integrator_own_acceptance_reissue_required=False,
+        claim_of_b02_release=False, claim_of_b03_release=False)
+
+
 def main():
     if git('branch', '--show-current') != BRANCH:
         stop('WRONG_CHECKOUT_BRANCH')
@@ -240,6 +326,22 @@ def main():
     report_text = (REPO / A2_FOCAL_PATH).read_text(encoding='utf-8-sig')
     result = consume_a2_v4_focal_review(
         result, report_blob=report_blob, report_text=report_text)
+    # Consume the existing two own acceptances and the three exact mandate
+    # bodies, without treating a designated origin examiner as accepted.
+    paths = [SUCCESSOR_PROOFS_PATH, SUCCESSOR_OWN_ACT_PATH] + [
+        SUCCESSOR_MANDATE_DIR + v[0] for v in SUCCESSOR_MANDATES.values()]
+    if git('status', '--porcelain', '--', *paths):
+        stop('SUCCESSOR_EVIDENCE_UNCOMMITTED')
+    if any(git('hash-object', p) != git('rev-parse', 'HEAD:' + p) for p in paths):
+        stop('SUCCESSOR_EVIDENCE_WORKTREE_DRIFT')
+    proofs = json.loads((REPO / SUCCESSOR_PROOFS_PATH).read_text(encoding='utf-8-sig'))
+    own = json.loads((REPO / SUCCESSOR_OWN_ACT_PATH).read_text(encoding='utf-8-sig'))
+    bodies = {name: json.loads((REPO / SUCCESSOR_MANDATE_DIR / name)
+                .read_text(encoding='utf-8-sig'))
+              for name, _, _ in SUCCESSOR_MANDATES.values()}
+    result = consume_issued_successor_acts(
+        result, proofs=proofs, own=own, bodies=bodies,
+        proofs_blob=git('hash-object', SUCCESSOR_PROOFS_PATH))
     print(json.dumps(result, sort_keys=True, separators=(',', ':')))
     print('B02_R7_GATED_NO_RELEASE_SOURCE_ONLY_PASS')
 
