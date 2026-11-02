@@ -305,6 +305,33 @@ def consume_issued_successor_acts(result, *, proofs, prior_proofs, own, bodies, 
         claim_of_b02_release=False, claim_of_b03_release=False)
 
 
+REFUSAL_PATH = 'evidence/b02/B02_G4_ORIGIN_SUCESSOR_RECUSA_CANONICA_20261102.json'
+REFUSAL_HASH = '495fe029cfc1bda1c539035a5a016e988af77f71d43caffbde85542495592c55'
+
+
+def consume_distinct_origin_refusal(result, *, refusal):
+    """Preserve the reviewer's conflict refusal, not the origin assignee's act."""
+    import hashlib
+    if (not isinstance(refusal, dict)
+        or set(refusal) != {'accepted', 'accepted_at', 'execution_id', 'mandate_sha256'}
+        or hashlib.sha256(json.dumps(refusal, sort_keys=True,
+             ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest()
+             != REFUSAL_HASH
+        or refusal['accepted'] is not False
+        or refusal['execution_id'] != 'GPT-6/revisor-documental-g4-segregado-20261101'
+        or refusal['mandate_sha256'] != SUCCESSOR_MANDATES['origin_examiner'][1]):
+        stop('ORIGIN_ROLE_REFUSAL_NOT_AN_EXAMINER_ACCEPTANCE')
+    if result.get('g4_distinct_origin_examiner_own_acceptance') != 'NOT_PRESENT_IN_THIS_EVIDENCE':
+        stop('ORIGIN_ROLE_REFUSAL_CONFLICTS_WITH_ACTUAL_ACCEPTANCE')
+    return dict(result,
+        g4_reviewer_conflicting_origin_role='DECLINED_WITH_OWN_20261102_ACT',
+        g4_reviewer_origin_refusal_sha256=REFUSAL_HASH,
+        g4_distinct_origin_examiner_own_acceptance='NOT_YET_EVIDENCED',
+        g4_reviewer_current_mandate_preserved=True,
+        claim_of_b02_release=False,
+        claim_of_b03_release=False)
+
+
 def main():
     if git('branch', '--show-current') != BRANCH:
         stop('WRONG_CHECKOUT_BRANCH')
@@ -355,6 +382,11 @@ def main():
     result = consume_issued_successor_acts(
         result, proofs=proofs, prior_proofs=prior_proofs, own=own, bodies=bodies,
         proofs_blob=git('hash-object', SUCCESSOR_PROOFS_PATH))
+    if (git('status', '--porcelain', '--', REFUSAL_PATH)
+        or git('hash-object', REFUSAL_PATH) != git('rev-parse', 'HEAD:' + REFUSAL_PATH)):
+        stop('ORIGIN_ROLE_REFUSAL_UNCOMMITTED')
+    refusal = json.loads((REPO / REFUSAL_PATH).read_text(encoding='utf-8-sig'))
+    result = consume_distinct_origin_refusal(result, refusal=refusal)
     print(json.dumps(result, sort_keys=True, separators=(',', ':')))
     print('B02_R7_GATED_NO_RELEASE_SOURCE_ONLY_PASS')
 
