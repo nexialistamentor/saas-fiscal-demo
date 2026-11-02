@@ -234,14 +234,16 @@ SUCCESSOR_MANDATE_DIR = 'evidence/b02/successor_v3/mandate_bodies/'
 SUCCESSOR_REVIEWER_ACCEPTANCE = '6792209f25f33346cf5d235f2df186e2428679364042337b0c49d2675d66273d'
 
 
-def consume_issued_successor_acts(result, *, proofs, own, bodies, proofs_blob):
+def consume_issued_successor_acts(result, *, proofs, prior_proofs, own, bodies, proofs_blob):
     """Reconcile accepted author/integrator roles without creating an origin act."""
     import hashlib
     from datetime import datetime
     def digest(value):
         return hashlib.sha256(json.dumps(value, sort_keys=True,
             ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest()
-    if not isinstance(proofs, dict) or SUCCESSOR_REVIEWER_ACCEPTANCE not in proofs:
+    if (not isinstance(proofs, dict) or not isinstance(prior_proofs, dict)
+        or len(prior_proofs) != 135
+        or SUCCESSOR_REVIEWER_ACCEPTANCE not in prior_proofs):
         stop('SUCCESSOR_PRIOR_REVIEWER_PROOF_MISSING')
     if (own.get('schema') != 'B02_G4_SUCCESSOR_AUTHOR_INTEGRATOR_OWN_ACCEPTANCES_20261102_V1'
         or not isinstance(own.get('acceptances'), list)
@@ -280,11 +282,14 @@ def consume_issued_successor_acts(result, *, proofs, own, bodies, proofs_blob):
         or result.get('claim_of_b03_release') is not False):
         stop('SUCCESSOR_UNSUPPORTED_RELEASE_CLAIM')
     if len(proofs) == 135 and proofs_blob == SUCCESSOR_PROOFS_BASE_135_BLOB:
-        if any(key in proofs for key in add):
+        if proofs != prior_proofs or any(key in proofs for key in add):
             stop('SUCCESSOR_135_BASE_ALREADY_MUTATED')
         indexed = False
     elif len(proofs) == 140:
-        if any(key not in proofs or proofs[key] != value for key, value in add.items()):
+        if (any(key not in proofs or proofs[key] != value for key, value in add.items())
+            or any(key not in proofs or proofs[key] != value
+                   for key, value in prior_proofs.items())
+            or set(proofs) != set(prior_proofs) | set(add)):
             stop('SUCCESSOR_140_PROOFS_MISMATCH')
         indexed = True
     else:
@@ -339,8 +344,16 @@ def main():
     bodies = {name: json.loads((REPO / SUCCESSOR_MANDATE_DIR / name)
                 .read_text(encoding='utf-8-sig'))
               for name, _, _ in SUCCESSOR_MANDATES.values()}
+    # Independently compare every 135 prior record with the frozen Git blob,
+    # not just the new five keys: the merger may never rewrite earlier proof.
+    baseline = subprocess.run(
+        ['git', 'cat-file', 'blob', SUCCESSOR_PROOFS_BASE_135_BLOB],
+        cwd=REPO, capture_output=True, timeout=30)
+    if baseline.returncode:
+        stop('SUCCESSOR_135_BASE_BLOB_UNAVAILABLE')
+    prior_proofs = json.loads(baseline.stdout)
     result = consume_issued_successor_acts(
-        result, proofs=proofs, own=own, bodies=bodies,
+        result, proofs=proofs, prior_proofs=prior_proofs, own=own, bodies=bodies,
         proofs_blob=git('hash-object', SUCCESSOR_PROOFS_PATH))
     print(json.dumps(result, sort_keys=True, separators=(',', ':')))
     print('B02_R7_GATED_NO_RELEASE_SOURCE_ONLY_PASS')
