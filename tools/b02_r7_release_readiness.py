@@ -193,11 +193,24 @@ def consume_a2_v4_focal_review(result, *, report_blob, report_text):
         or result.get('claim_of_b03_release') is not False
         or 'RCV31_A2_V4_OWN_REVIEW' not in result.get('remaining_predecessors', ())):
         stop('A2_SCOPED_NOT_AN_INSTITUTIONAL_RELEASE')
+    # The 31/10 fence and post-G4 snapshot remain immutable history. Only
+    # the effective present-day projection stops listing an accepted focal
+    # review as pending. This is NOT institutional origin or real SQL approval.
+    current = list(result['remaining_predecessors'])
+    completed = list(result.get('post_g4_completed_predecessors', ()))
+    if (current.count('RCV31_A2_V4_OWN_REVIEW') != 1
+        or 'RCV31_A2_V4_OWN_REVIEW' in completed):
+        stop('A2_HISTORICAL_CONSUMPTION_CONFLICT')
+    remaining = [p for p in current if p != 'RCV31_A2_V4_OWN_REVIEW']
     return dict(result,
         a2_v4_focal_review='CLOSED_IN_ITS_TECHNICAL_SYNTHETIC_SCOPE_NO_RETEST',
         a2_v4_focal_review_git_blob=A2_FOCAL_BLOB,
         a2_v4_focal_review_reexecution_required=False,
         a2_v4_original_reviewer_identity_not_attested=True,
+        post_g4_completed_predecessors=completed + ['RCV31_A2_V4_OWN_REVIEW'],
+        remaining_predecessors=remaining,
+        missing_independently_owned_acts=len(remaining),
+        historic_r7_fence_had_a2_as_pending=True,
         r7_original_fence_preserved=True)
 
 
