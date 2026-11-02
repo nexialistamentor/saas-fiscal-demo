@@ -1,0 +1,13 @@
+{
+  "session_id": "50d50dc9-d139-4f15-84ba-b4871c6896bc",
+  "response_started_at": "2026-10-21T09:48:23.707889+00:00",
+  "http_status": 200,
+  "headers": {
+    "Content-Type": "application/pdf",
+    "Content-Length": "258302",
+    "Date": "Wed, 21 Oct 2026 09:48:23 GMT",
+    "ETag": "\"5cdf339f871dc1:e670\"",
+    "Last-Modified": "Sat, 20 Dec 2025 21:33:03 GMT",
+    "Location": null
+  }
+}

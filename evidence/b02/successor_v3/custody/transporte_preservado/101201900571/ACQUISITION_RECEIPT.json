@@ -1,0 +1,32 @@
+{
+  "id": "c1e2926a-c8e2-42f7-bd7d-98ef72d71adf",
+  "session_id": "f936b139-3653-44c9-87d4-16f6132af652",
+  "requested_url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf",
+  "resolved_url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101201900571.pdf",
+  "http_status": 200,
+  "received_at": "2026-10-21T09:48:24.893151+00:00",
+  "artifact_hash": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d",
+  "byte_size": 1944929,
+  "started_at": "2026-10-21T09:48:23.336776+00:00",
+  "session_started_at": "2026-10-21T09:48:23.336776+00:00",
+  "tls_validated_at": "2026-10-21T09:48:23.634666+00:00",
+  "request_dispatched_at": "2026-10-21T09:48:23.655091+00:00",
+  "response_started_at": "2026-10-21T09:48:23.707889+00:00",
+  "request_headers": {
+    "User-Agent": "SOLVERIS-B02-Directed-Public-Acquisition/1",
+    "Accept": "application/pdf",
+    "Accept-Encoding": "identity",
+    "Connection": "close"
+  },
+  "response_headers": {
+    "Content-Type": "application/pdf",
+    "Content-Length": "1944929",
+    "Date": "Wed, 21 Oct 2026 09:48:23 GMT",
+    "ETag": "\"44eab9b8ff71dc1:e670\"",
+    "Last-Modified": "Sat, 20 Dec 2025 22:26:44 GMT",
+    "Location": null
+  },
+  "redirects_followed": [],
+  "synthetic_only": false,
+  "observation_only_not_institutional_attestation": true
+}

@@ -1,0 +1,90 @@
+{
+  "payload": {
+    "id": "0e5600b9-f877-4321-b286-be75912f7548",
+    "session_id": "50d50dc9-d139-4f15-84ba-b4871c6896bc",
+    "hostname": "www.sefanet.pr.gov.br",
+    "url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf",
+    "session_started_at": "2026-10-21T09:48:23.336776+00:00",
+    "validated_at": "2026-10-21T09:48:23.635666+00:00",
+    "chain_validation": "verified",
+    "hostname_validation": "verified",
+    "certificate_chain_sha256": [
+      "aa81df9ed0dfb75d65e222c92563bc8d03d6049e577c28ab2b6a24099319ab62",
+      "8c54c334b66ba4e426772af4a3f9136c19a1aec729fdb28c535c07a5a4ef22e0",
+      "92f351bf3d54164dfa8dd8f9e1139d3150349786485d2b9eecd00e2971c1e6c5",
+      "e793c9b02fd8aa13e21c31228accb08119643b749c898964b1746d46c3d4cbd2"
+    ],
+    "validation_transcript": {
+      "mechanism": "OpenSSL TLS handshake via SSLContext CERT_REQUIRED and check_hostname=True",
+      "handshake_completed": true,
+      "verify_mode": 2,
+      "verify_flags": 32768,
+      "online_revocation_check_claimed": false,
+      "check_hostname": true,
+      "openssl_version": "OpenSSL 3.0.16 11 Feb 2025",
+      "tls_version": "TLSv1.3",
+      "cipher": [
+        "TLS_AES_256_GCM_SHA384",
+        "TLSv1.3",
+        256
+      ],
+      "peer_certificate": {
+        "subject": [
+          [
+            [
+              "commonName",
+              "www.sefanet.pr.gov.br"
+            ]
+          ]
+        ],
+        "issuer": [
+          [
+            [
+              "countryName",
+              "GB"
+            ]
+          ],
+          [
+            [
+              "organizationName",
+              "Sectigo Limited"
+            ]
+          ],
+          [
+            [
+              "commonName",
+              "Sectigo Public Server Authentication CA DV R36"
+            ]
+          ]
+        ],
+        "version": 3,
+        "serialNumber": "A04DBB1156E72EF7E1D1BB3D9699A1BE",
+        "notBefore": "Oct 15 00:00:00 2025 GMT",
+        "notAfter": "Oct 26 23:59:59 2026 GMT",
+        "subjectAltName": [
+          [
+            "DNS",
+            "www.sefanet.pr.gov.br"
+          ],
+          [
+            "DNS",
+            "sefanet.pr.gov.br"
+          ]
+        ],
+        "OCSP": [
+          "http://ocsp.sectigo.com"
+        ],
+        "caIssuers": [
+          "http://crt.sectigo.com/SectigoPublicServerAuthenticationCADVR36.crt"
+        ]
+      },
+      "trust_store_ca_count": 53,
+      "trust_store_ca_fingerprints_hash": "e34e3f63259a3b259de34746e6fe0e538c3a05e8e6830f1f0e0f35c42e8ddc9e",
+      "chain_capture": "_sslobj.get_verified_chain",
+      "python_version": "3.12.10",
+      "direct_http_client": true,
+      "proxy_environment_not_used": true
+    },
+    "synthetic_only": false
+  }
+}

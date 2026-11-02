@@ -1,0 +1,30 @@
+{
+  "executor_sha256": "aec65f5efd1202373f82cd76824ba46445de9a49b6572ea0deec83c65a0bd3cf",
+  "document_id": "101202501245",
+  "session_id": "50d50dc9-d139-4f15-84ba-b4871c6896bc",
+  "requested_url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf",
+  "started_at": "2026-10-21T09:48:23.336776+00:00",
+  "expected_c3": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+  "institutional_authenticity": "NOT_GRANTED",
+  "cas_modified": false,
+  "handshake_completed": true,
+  "tls_verified": true,
+  "tls_validated_at": "2026-10-21T09:48:23.635666+00:00",
+  "verified_chain_certificates": 4,
+  "http_status": 200,
+  "resolved_url": "https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202501245.pdf",
+  "sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+  "byte_size": 258302,
+  "matches_c3": true,
+  "received_at": "2026-10-21T09:48:24.117313+00:00",
+  "receipt_binding": {
+    "id": "25cc3bf1-750a-4272-861d-2a01ad52eed7",
+    "sha256": "23a0ae429a378cfbeeca741831fb9896c21c4c99456988e192064e4b3b538d46"
+  },
+  "tls_binding": {
+    "id": "0e5600b9-f877-4321-b286-be75912f7548",
+    "sha256": "4a1abeab7efd7e9b2285a815f56305238427d4aad5298ec3323b1b6b5369386c"
+  },
+  "status": "ACQUIRED_VERIFIED_TLS_C3_MATCH",
+  "finished_at": "2026-10-21T09:48:24.143314+00:00"
+}
