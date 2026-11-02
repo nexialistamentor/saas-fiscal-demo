@@ -113,5 +113,35 @@ class R7CurrentIssuedActsReconciliationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'SUCCESSOR_OWN_ACCEPTANCE'):
             self.consume(dict(self.prior),R7.SUCCESSOR_PROOFS_BASE_135_BLOB,own=own)
 
+
+class R7OriginRoleRefusalTests(unittest.TestCase):
+    """No promotion of the G4 reviewer's refusal to an origin-examiner act."""
+
+    @classmethod
+    def setUpClass(cls):
+        import json
+        cls.refusal=json.loads((ROOT/R7.REFUSAL_PATH).read_text(encoding='utf-8'))
+        cls.result={'g4_distinct_origin_examiner_own_acceptance':
+                    'NOT_PRESENT_IN_THIS_EVIDENCE',
+                    'claim_of_b02_release':False,'claim_of_b03_release':False}
+
+    def test_exact_reviewer_refusal_is_preserved_not_transferred(self):
+        result=R7.consume_distinct_origin_refusal(self.result,refusal=self.refusal)
+        self.assertEqual(result['g4_reviewer_conflicting_origin_role'],
+                         'DECLINED_WITH_OWN_20261102_ACT')
+        self.assertEqual(result['g4_distinct_origin_examiner_own_acceptance'],
+                         'NOT_YET_EVIDENCED')
+        self.assertIs(result['g4_reviewer_current_mandate_preserved'],True)
+        self.assertFalse(result['claim_of_b02_release'])
+
+    def test_changed_actor_or_acceptance_cannot_pass(self):
+        import copy
+        for key,value in [('execution_id','GPT-6/examinador-origem-sefa-pr-g4-sucessor-20261101'),
+                          ('accepted',True)]:
+            altered=copy.deepcopy(self.refusal);altered[key]=value
+            with self.subTest(key=key),self.assertRaisesRegex(
+                    RuntimeError,'ORIGIN_ROLE_REFUSAL_NOT_AN_EXAMINER_ACCEPTANCE'):
+                R7.consume_distinct_origin_refusal(self.result,refusal=altered)
+
 if __name__=='__main__':
     unittest.main()
