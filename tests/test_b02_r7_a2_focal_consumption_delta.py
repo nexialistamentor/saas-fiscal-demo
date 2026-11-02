@@ -30,7 +30,10 @@ class B02R7A2FocalConsumptionDelta(unittest.TestCase):
             'CLOSED_IN_ITS_TECHNICAL_SYNTHETIC_SCOPE_NO_RETEST')
         self.assertIs(result['a2_v4_focal_review_reexecution_required'],False)
         self.assertIs(result['a2_v4_original_reviewer_identity_not_attested'],True)
-        self.assertEqual(result['remaining_predecessors'],self.result['remaining_predecessors'])
+        self.assertEqual(result['remaining_predecessors'],['R7_COMPETENT_B02_FINAL'])
+        self.assertEqual(result['missing_independently_owned_acts'],1)
+        self.assertIn('RCV31_A2_V4_OWN_REVIEW',result['post_g4_completed_predecessors'])
+        self.assertIs(result['r7_original_fence_preserved'],True)
         self.assertIs(result['claim_of_b02_release'],False)
         self.assertIs(result['claim_of_b03_release'],False)
 
