@@ -104,6 +104,29 @@ def fixture(tmp_path,monkeypatch):
          signer_authority=str(au),signer_review=str(review_file),approved_signer_authority_sha256=s.sha(au.read_bytes()),
          reviewed_signer_git_blob=code_blob,repo=str(tmp_path),mode='preflight')
     checker=lambda **kw:{'status':'continuity_v2_conditions_met'}
+    # Existing five synthetic cases still run against the new external source:
+    # the GitHub owner responses are mocked; the real owner/acts are never assumed.
+    monkeypatch.setattr(s, 'APPROVED_DECISION_SHA256', dh)
+    monkeypatch.setattr(s, 'APPROVED_MANIFEST_SHA256', manifest_hash)
+    monkeypatch.setattr(s, 'ORIGINAL_WINDOW_START', START.replace('+00:00','Z'))
+    monkeypatch.setattr(s, 'ORIGINAL_WINDOW_END', END.replace('+00:00','Z'))
+    original_body = ('Miguel: 1.118 bytes, ' + dh + ', ' + manifest_hash + ', ' +
+                     s.ORIGINAL_SIGNER_GIT_BLOB + ', ' + s.FP + ', ' +
+                     s.ORIGINAL_WINDOW_START + ', ' + s.ORIGINAL_WINDOW_END)
+    def owner_comment(cid, body):
+        return {'id':cid,'user':{'id':s.GITHUB_OWNER_ID,'login':s.GITHUB_OWNER_LOGIN},
+                'author_association':'OWNER','issue_url':s.GITHUB_ISSUE_API,
+                'created_at':'2026-11-03T12:15:00Z',
+                'updated_at':'2026-11-03T12:15:00Z','body':body}
+    original_comment = owner_comment(s.ORIGINAL_AUTHORIZATION_COMMENT_ID,original_body)
+    adoption_comment = owner_comment(777777,canonical(authority).decode())
+    def github_source(url):
+        if url.endswith(str(s.ORIGINAL_AUTHORIZATION_COMMENT_ID)):
+            return original_comment
+        if '/comments?per_page=100&page=' in url:
+            return [adoption_comment]
+        raise ValueError('Unexpected source URL')
+    monkeypatch.setattr(s,'_github_json',github_source)
     return args,fields,authority,checker
 
 
@@ -120,6 +143,7 @@ def test_over_24h_rejected_even_with_fully_updated_authority(tmp_path,monkeypatc
     args.approved_decision_sha256=write(Path(args.bundle),'decision.json',fields)
     authority['decision_sha256']=args.approved_decision_sha256
     args.approved_signer_authority_sha256=write(tmp_path,'authority.json',authority)
+    monkeypatch.setattr(s,'APPROVED_DECISION_SHA256',args.approved_decision_sha256)
     with pytest.raises(ValueError,match='WINDOW_OVER_24H_OR_EMPTY'):
         s.validate(args,now=NOW,v2_checker=check)
 
@@ -130,6 +154,7 @@ def test_incompatible_authority_rejected_even_with_rehashed_decision(tmp_path,mo
     args.approved_decision_sha256=write(Path(args.bundle),'decision.json',fields)
     authority['decision_sha256']=args.approved_decision_sha256
     args.approved_signer_authority_sha256=write(tmp_path,'authority.json',authority)
+    monkeypatch.setattr(s,'APPROVED_DECISION_SHA256',args.approved_decision_sha256)
     with pytest.raises(ValueError,match='DECISION_AUTHORITY_INCOMPATIBLE'):
         s.validate(args,now=NOW,v2_checker=check)
 
