@@ -139,6 +139,12 @@ def _resolve_history(store,root,decisions,*,now,synthetic):
         bootstrap_binding=root['bootstrap_binding'],authorization_binding=root['recognition_binding'],
         valid_from=max(dt(root['valid_from']),dt(snapshot['valid_from'])).isoformat(),valid_until=min(dt(root['valid_until']),dt(snapshot['valid_until'])).isoformat(),
         revoked=False,enabled=True,channel_authorized=True,history_complete=True,history_branched=False,unresolved_adverse_reviews=[])
+    # A snapshot or caller cannot nominate a continuity adoption. Only the
+    # already-recognized deployment ROOT can pin a separate competent decision.
+    if root.get('continuity_adoption_binding') is None:
+        context.pop('continuity_adoption_binding',None)
+    else:
+        context['continuity_adoption_binding']=root['continuity_adoption_binding']
     return snapshot,context,nodes
 
 def _binding(context,proof_binding,activation,execution,expected,*,now):
@@ -170,11 +176,16 @@ def _institutional_core(store,bundle_directory,*,root,decisions,activation,execu
     binding=snapshot['execution_writer_binding']
     _binding(context,binding,activation,execution,expected,now=now)
     frozen=profile._BundleSnapshot(bundle_directory)
+    continuity_pin=root.get('continuity_adoption_binding')
+    # Resolve solely through the existing integrity-checked custody store.
+    # Empty/unadopted roots keep the original V1 rejection, with no fallback.
+    continuity_adoption=_resolve(store,continuity_pin) if continuity_pin is not None else None
     chain={r['decision_id']:r for r in decisions if {k:r[k] for k in ('policy_type','policy_id','policy_version','policy_hash')}==expected['policy_subject']}
     if len({r['decision_id'] for r in decisions})!=len(decisions) or set(chain)!={p['id'] for p in expected['decision_bindings']}:fail('RUNTIME_CANONICAL_CHAIN_AMBIGUOUS')
     ordered=[chain[p['id']] for p in expected['decision_bindings']]
     result=profile._verify_bundle(bundle_directory,expected=expected,decisions=ordered,
-        context=context,now=now,synthetic=synthetic,execution_binding=binding,bundle_snapshot=frozen)
+        context=context,now=now,synthetic=synthetic,execution_binding=binding,bundle_snapshot=frozen,
+        continuity_adoption=continuity_adoption,continuity_trusted_pin=continuity_pin)
     history=profile.parse(frozen.read('history.json'))
     all_reviews=history['reviews']+history['prior_reviews']
     projected=[r for n in reversed(nodes) for r in n['review_hashes']]
