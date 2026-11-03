@@ -158,3 +158,65 @@ def test_origin_mandate_window_cannot_extend(tmp_path,monkeypatch):
         s.check_window(s.utc(START),s.utc(END),NOW,adoption,{'mandates.json':{'mandates':[
             {'accepted':True,'revoked':False,'valid_from':'2026-11-03T11:00:00+00:00',
              'valid_until':'2026-11-15T00:00:00+00:00'}]},'proofs.json':proofs})
+
+
+# Focal correction only: GitHub PR #28 is an independent issuer-controlled
+# source; these fixtures mock its responses. No real key or live approval.
+def source_bound_fixture(tmp_path, monkeypatch):
+    args, fields, authority, checker = fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(s, 'APPROVED_DECISION_SHA256', args.approved_decision_sha256)
+    monkeypatch.setattr(s, 'APPROVED_MANIFEST_SHA256', fields['manifest_sha256'])
+    monkeypatch.setattr(s, 'ORIGINAL_WINDOW_START', START.replace('+00:00', 'Z'))
+    monkeypatch.setattr(s, 'ORIGINAL_WINDOW_END', END.replace('+00:00', 'Z'))
+    body = ('Miguel: 1.118 bytes, ' + s.APPROVED_DECISION_SHA256 + ', ' +
+            s.APPROVED_MANIFEST_SHA256 + ', ' + s.ORIGINAL_SIGNER_GIT_BLOB +
+            ', ' + s.FP + ', ' + s.ORIGINAL_WINDOW_START + ', ' + s.ORIGINAL_WINDOW_END)
+    local_auth = tmp_path / 'original_owner_authorization.txt'
+    local_auth.write_bytes(body.encode('utf-8'))
+    args.authorization = str(local_auth)
+    args.authorization_sha256 = s.sha(local_auth.read_bytes())
+    def owner_comment(comment_id, text, created_at='2026-11-03T12:15:00Z'):
+        return {'id': comment_id, 'user': {'id':s.GITHUB_OWNER_ID,
+                   'login':s.GITHUB_OWNER_LOGIN}, 'author_association':'OWNER',
+                'issue_url':s.GITHUB_ISSUE_API, 'created_at':created_at,
+                'updated_at':created_at, 'body':text}
+    original = owner_comment(s.ORIGINAL_AUTHORIZATION_COMMENT_ID,body)
+    issuer_adoption = owner_comment(777777,canonical(authority).decode())
+    def source(url):
+        if url.endswith(str(s.ORIGINAL_AUTHORIZATION_COMMENT_ID)):
+            return original
+        if '/comments?per_page=100&page=' in url:
+            return [issuer_adoption]
+        raise ValueError('Unexpected GitHub source URL')
+    monkeypatch.setattr(s,'_github_json',source)
+    return args,fields,authority,checker,local_auth
+
+
+def test_focal_external_issuer_acts_consumed_without_changing_signer_blob(tmp_path,monkeypatch):
+    immutable_before = s.git_blob(Path(s.__file__).read_bytes())
+    args,fields,authority,checker,auth_file=source_bound_fixture(tmp_path,monkeypatch)
+    validated = s.validate(args,now=NOW,v2_checker=checker)
+    actual_authorization = s.validate_signature_authorization(
+        args,validated['decision_raw'],validated['signer_source_git_blob'])
+    assert actual_authorization == s.sha(auth_file.read_bytes())
+    assert validated['signer_source_git_blob'] == authority['signer_source_git_blob']
+    assert immutable_before == s.git_blob(Path(s.__file__).read_bytes())
+
+
+def test_focal_rehashed_replaced_adoption_rejected_against_external_issuer(tmp_path,monkeypatch):
+    args,fields,authority,checker,auth_file=source_bound_fixture(tmp_path,monkeypatch)
+    changed = dict(authority)
+    changed['revocation_confirmation'] = dict(changed['revocation_confirmation'], holder='SUBSTITUTED')
+    args.approved_signer_authority_sha256 = write(tmp_path,'authority.json',changed)
+    with pytest.raises(ValueError, match='SIGNER_AUTHORITY_NOT_INDEPENDENTLY_PINNED'):
+        s.validate(args,now=NOW,v2_checker=checker)
+
+
+def test_focal_rehashed_replaced_authorization_rejected_against_original_owner_act(tmp_path,monkeypatch):
+    args,fields,authority,checker,auth_file=source_bound_fixture(tmp_path,monkeypatch)
+    validated=s.validate(args,now=NOW,v2_checker=checker)
+    auth_file.write_bytes(auth_file.read_bytes()+b' SUBSTITUTED')
+    args.authorization_sha256 = s.sha(auth_file.read_bytes())
+    with pytest.raises(ValueError, match='EXACT_SIGNATURE_AUTHORIZATION_REQUIRED'):
+        s.validate_signature_authorization(
+            args,validated['decision_raw'],validated['signer_source_git_blob')
