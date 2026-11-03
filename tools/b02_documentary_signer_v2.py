@@ -13,6 +13,7 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+from urllib.request import Request, urlopen
 
 from cryptography.hazmat.primitives import serialization as S
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -27,6 +28,19 @@ SUBJECT = {'policy_type':'activation_authority','policy_id':'SOLVERIS-B02-SEFA-P
 PROFILE='FOUNDER_SIGNED_REVIEW_BUNDLE_B02_V2'
 DOMAIN='SOLVERIS-B02-GOVERNANCE-DECISION'
 SIGNER_ID='SOLVERIS-B02-G4-DOCUMENTARY-LOCAL-SIGNER-V2'
+# Existing PR #28 owner-issued approval is the independent authority source.
+# The signer never accepts a hash or trust-source location from the CLI.
+# The final signer blob can be adopted AFTER this source is committed, without
+# changing these bytes or inventing another repository governance circuit.
+GITHUB_ISSUE_API = 'https://api.github.com/repos/nexialistamentor/saas-fiscal-demo/issues/28'
+GITHUB_OWNER_LOGIN = 'nexialistamentor'
+GITHUB_OWNER_ID = 192223328
+ORIGINAL_AUTHORIZATION_COMMENT_ID = 6605195432
+ORIGINAL_SIGNER_GIT_BLOB = '5fd8ed57feb818e6500b74604524e090dce1b011'
+APPROVED_DECISION_SHA256 = 'd3602168c53debd10421aa83d1e980c632870b660be18a451d5b5a3d998c6520'
+APPROVED_MANIFEST_SHA256 = '99d1a424015fc03a5ece71e84341eee748fd0b2fc1bebd238f9df2ede253a6c1'
+ORIGINAL_WINDOW_START = '2026-11-03T18:00:00Z'
+ORIGINAL_WINDOW_END = '2026-11-04T18:00:00Z'
 SCOPE='SEFA_PR_B02_DOCUMENTAL_AUTHENTICATION_ONLY'
 FILES=('execution.json','history.json','institutional.json','mandates.json',
        'object.json','proofs.json','review.json')
@@ -52,6 +66,133 @@ def sha(raw):
 def git_blob(raw):
     return hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
 
+
+
+def _github_json(url):
+    """Read only the fixed GitHub PR #28 authority source over HTTPS.
+
+    Network failure is a STOP, never an offline/self-pin fallback. No GitHub
+    credentials, private key material, or bundle bytes are transmitted.
+    """
+    expect(url.startswith(GITHUB_ISSUE_API + '/comments') or
+           url == (GITHUB_ISSUE_API.rsplit('/issues/', 1)[0] +
+                   '/issues/comments/' + str(ORIGINAL_AUTHORIZATION_COMMENT_ID)),
+           'AUTHORITY_SOURCE_NOT_FIXED')
+    try:
+        request = Request(url, headers={'Accept': 'application/vnd.github+json',
+                                        'User-Agent': 'SOLVERIS-B02-signer-V2-readonly'})
+        with urlopen(request, timeout=12) as response:
+            expect(response.geturl() == url and response.status == 200,
+                   'AUTHORITY_SOURCE_REDIRECT_OR_STATUS')
+            raw = response.read(1048577)
+        expect(len(raw) <= 1048576, 'AUTHORITY_SOURCE_OVERSIZE')
+        return json.loads(raw)
+    except (OSError, ValueError) as exc:
+        stop('AUTHORITY_SOURCE_UNAVAILABLE_' + type(exc).__name__)
+
+
+def _is_owner_comment(item):
+    return (type(item) is dict and type(item.get('user')) is dict and
+            item['user'].get('id') == GITHUB_OWNER_ID and
+            item['user'].get('login') == GITHUB_OWNER_LOGIN and
+            item.get('author_association') == 'OWNER' and
+            item.get('issue_url') == GITHUB_ISSUE_API and
+            item.get('created_at') == item.get('updated_at') and
+            type(item.get('body')) is str)
+
+
+def _original_authorization(decision_raw):
+    """Consume Miguel's preserved 1,118-byte authorization in PR #28.
+
+    This original act authorizes the ORIGINAL source blob only. A separately
+    issued, owner-authenticated signer adoption must bind the *new* blob.
+    """
+    url = (GITHUB_ISSUE_API.rsplit('/issues/', 1)[0] + '/issues/comments/' +
+           str(ORIGINAL_AUTHORIZATION_COMMENT_ID))
+    item = _github_json(url)
+    expect(_is_owner_comment(item) and
+           item.get('id') == ORIGINAL_AUTHORIZATION_COMMENT_ID,
+           'ORIGINAL_AUTHORIZATION_SOURCE_INVALID')
+    body = item['body']
+    expect(sha(decision_raw) == APPROVED_DECISION_SHA256 and
+           all(token in body for token in (
+               'Miguel', '1.118 bytes', APPROVED_DECISION_SHA256,
+               APPROVED_MANIFEST_SHA256, ORIGINAL_SIGNER_GIT_BLOB, FP,
+               ORIGINAL_WINDOW_START, ORIGINAL_WINDOW_END)),
+           'ORIGINAL_AUTHORIZATION_WRONG_BYTES_OR_SCOPE')
+    decision = json.loads(decision_raw)
+    expect(sha(decision_raw) == APPROVED_DECISION_SHA256 and
+           decision.get('manifest_sha256') == APPROVED_MANIFEST_SHA256 and
+           utc(decision['valid_from']) == utc(ORIGINAL_WINDOW_START) and
+           utc(decision['valid_until']) == utc(ORIGINAL_WINDOW_END),
+           'ORIGINAL_AUTHORIZATION_DECISION_WINDOW_DIVERGENT')
+    return body.encode('utf-8')
+
+
+def _source_pinned_signer_authority(authority_raw, authority):
+    """Find the ONE owner-issued canonical adoption in the existing PR #28.
+
+    Local authority file and any CLI SHA must agree with those GitHub-served
+    bytes. New issuer acts are posted after the signer code blob is fixed.
+    """
+    matches = []
+    for page in range(1, 11):
+        url = GITHUB_ISSUE_API + f'/comments?per_page=100&page={page}'
+        items = _github_json(url)
+        expect(type(items) is list and len(items) <= 100,
+               'SIGNER_AUTHORITY_SOURCE_INVALID')
+        for item in items:
+            if not _is_owner_comment(item):
+                continue
+            body = item['body']
+            try:
+                obj = json.loads(body)
+            except (UnicodeError, ValueError):
+                continue
+            if (type(obj) is dict and
+                obj.get('schema') == 'SOLVERIS-B02-SIGNER-V2-AUTHORITY-ADOPTION-V1' and
+                obj.get('id') == SIGNER_ID):
+                # This is the SAME existing adoption body, not a new schema.
+                expect(canonical_for_hash(obj) == body.encode('utf-8'),
+                       'SIGNER_AUTHORITY_SOURCE_NOT_CANONICAL')
+                matches.append((item, body.encode('utf-8')))
+        if len(items) < 100:
+            break
+    else:
+        stop('SIGNER_AUTHORITY_SOURCE_PAGINATION_LIMIT')
+    expect(len(matches) == 1, 'COMPETENT_SIGNER_ADOPTION_NOT_UNIQUELY_ISSUED')
+    item, source_raw = matches[0]
+    expect(source_raw == authority_raw and
+           item['created_at'] is not None and
+           utc(authority['issued_at']) <= utc(item['created_at']) <= utc(authority['valid_from']),
+           'SIGNER_AUTHORITY_NOT_INDEPENDENTLY_PINNED')
+    return sha(source_raw)
+
+
+def validate_signature_authorization(args, decision_raw, signer_blob):
+    """Consume the original owner authorization + the new owner-issued adoption.
+
+    CLI files/hashes may corroborate but never choose the two trust anchors.
+    """
+    source_raw = _original_authorization(decision_raw)
+    trusted = sha(source_raw)
+    if getattr(args, 'authorization', None):
+        path = Path(args.authorization)
+        expect(path.is_file() and not path.is_symlink() and
+               path.read_bytes() == source_raw, 'EXACT_SIGNATURE_AUTHORIZATION_REQUIRED')
+    if getattr(args, 'authorization_sha256', None):
+        expect(args.authorization_sha256 == trusted,
+               'EXACT_SIGNATURE_AUTHORIZATION_REQUIRED')
+    # The issuer's NEW, independently sourced signer adoption is what extends
+    # the original decision-byte approval to the new reviewed signer blob.
+    auth_raw = Path(args.signer_authority).read_bytes()
+    expect(sha(auth_raw) == _source_pinned_signer_authority(
+        auth_raw, json.loads(auth_raw)), 'SIGNER_AUTHORITY_NOT_INDEPENDENTLY_PINNED')
+    expect(json.loads(auth_raw).get('signer_source_git_blob') == signer_blob and
+           json.loads(auth_raw).get('decision_sha256') == APPROVED_DECISION_SHA256 and
+           json.loads(auth_raw).get('signing_authorized') is True,
+           'SIGNATURE_AUTHORIZATION_UPDATED_BLOB_NOT_ISSUED')
+    return trusted
 
 def utc(value):
     if type(value) is not str: stop('DATE_FORMAT')
@@ -119,7 +260,7 @@ def validate(args, *, now=None, v2_checker=None):
     expect(root_input.is_dir() and not root_input.is_symlink(),'BUNDLE_MISSING_OR_SYMLINK')
     root=root_input.resolve()
     decision_raw,d=read(c,root/'decision.json')
-    expect(len(args.approved_decision_sha256)==64 and sha(decision_raw)==args.approved_decision_sha256,
+    expect(sha(decision_raw)==APPROVED_DECISION_SHA256==args.approved_decision_sha256,
            'DECISION_BYTES_NOT_APPROVED')
     expect(set(d)==DECISION_KEYS,'DECISION_SCHEMA')
     expect(d['domain']==DOMAIN and d['profile']==PROFILE and d['schema_version']==2 and
@@ -170,8 +311,11 @@ def validate(args, *, now=None, v2_checker=None):
     start,end=utc(d['valid_from']),utc(d['valid_until'])
     check_window(start,end,now,adoption,evidence)
     authority_raw,authority=read(c,args.signer_authority)
-    expect(sha(authority_raw)==args.approved_signer_authority_sha256 and
-           len(args.approved_signer_authority_sha256)==64, 'SIGNER_AUTHORITY_NOT_INDEPENDENTLY_PINNED')
+    trusted_authority_sha256 = _source_pinned_signer_authority(authority_raw, authority)
+    expect(sha(authority_raw)==trusted_authority_sha256 and
+           (not args.approved_signer_authority_sha256 or
+            args.approved_signer_authority_sha256==trusted_authority_sha256),
+           'SIGNER_AUTHORITY_NOT_INDEPENDENTLY_PINNED')
     expect(set(authority)==AUTHORITY_KEYS and authority['schema']=='SOLVERIS-B02-SIGNER-V2-AUTHORITY-ADOPTION-V1'
            and authority['id']==SIGNER_ID and authority['issuer']=='Miguel' and
            authority['approved'] is True and authority['signing_authorized'] is True and
@@ -208,8 +352,8 @@ def validate(args, *, now=None, v2_checker=None):
            revoc['holder']=='Miguel' and revoc['status']=='no_known_revocation' and
            timedelta(0)<=now-utc(revoc['confirmed_at'])<=timedelta(hours=24),
            'KEY_REVOCATION_CONFIRMATION_REQUIRED')
-    expect(utc(authority['issued_at'])<=utc(authority['valid_from'])<=start<=now and
-           end<=utc(authority['valid_until']),
+    expect(utc(authority['issued_at'])<=utc(authority['valid_from'])<=now and
+           start<=now<end<=utc(authority['valid_until']),
            'SIGNER_ADOPTION_WINDOW')
     return {'root':root,'decision_raw':decision_raw,'public':k,'der':der,'legacy':c,
             'signer_source_git_blob':signer_blob}
@@ -218,9 +362,7 @@ def validate(args, *, now=None, v2_checker=None):
 def sign(args):
     result=validate(args)
     c=result['legacy'];root=result['root']
-    auth=Path(args.authorization)
-    expect(auth.is_file() and not auth.is_symlink() and sha(auth.read_bytes())==args.authorization_sha256,
-           'EXACT_SIGNATURE_AUTHORIZATION_REQUIRED')
+    validate_signature_authorization(args, result['decision_raw'], result['signer_source_git_blob'])
     priv=Path(args.private)
     expect(priv.is_file() and not priv.is_symlink() and root not in priv.resolve().parents,
            'PRIVATE_KEY_NOT_IN_CUSTODY')
@@ -262,10 +404,11 @@ def main():
     for name in ('repo','legacy','bundle','public','fingerprint','approved-decision-sha256',
                  'continuity-adoption','signer-authority','signer-review','approved-signer-authority-sha256',
                  'reviewed-signer-git-blob','authorization','authorization-sha256','private'):
-        p.add_argument('--'+name,required=name not in ('authorization','authorization-sha256','private'))
+        p.add_argument('--'+name,required=name not in ('authorization','authorization-sha256',
+                                                    'approved-signer-authority-sha256','private'))
     a=p.parse_args()
     if a.mode=='sign':
-        for x in ('authorization','authorization_sha256','private'):
+        for x in ('private',):
             if not getattr(a,x): p.error('--'+x.replace('_','-')+' required for sign')
     try:
         if a.mode=='sign':sign(a)
