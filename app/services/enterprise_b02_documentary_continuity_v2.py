@@ -213,6 +213,9 @@ def verify_supplemental_continuity(*, adoption, trusted_pin, evidence,
         if (not report.get('limitations') or not report.get('mechanism_assessment')
                 or not report.get('receipt_binding') or not report.get('tls_evidence_binding')):
             _fail('ORIGIN_SCOPE_INSUFFICIENT')
+        if (_time(valid_from) < _time(mandate['valid_from'])
+                or _time(valid_until) > _time(mandate['valid_until'])):
+            _fail('ORIGIN_MANDATE_DECISION_WINDOW')
         if (not _time(report['valid_from']) <= _time(valid_from)
                 or _time(valid_until) > _time(report['valid_until'])):
             _fail('ORIGIN_DECISION_WINDOW')
