@@ -17,7 +17,7 @@ _V2_MANIFEST_SHA256 = '99d1a424015fc03a5ece71e84341eee748fd0b2fc1bebd238f9df2ede
 _V2_CONTINUITY_ADOPTION_SHA256 = 'd0cd1765ea2ef4870a530f8e5367cdde8550b5a60a3a70cb294f9d80678f7fa8'
 _V2_PROFILE_ADOPTION_SHA256 = 'd1fcd244129e669fc5a37c79dc1fc77f677b1cb0e0ceaf06d4cbe9bf9740d911'
 _V2_PUBLIC_DER_SHA256 = '6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c'
-_V2_SIGNER_GIT_BLOB = '5fd8ed57feb818e6500b74604524e090dce1b011'
+_V2_SIGNER_GIT_BLOB = '805ed5d2cdcfca047ff2ef583e91caaa108ddb37'
 _V2_PROFILE_GIT_BLOB = '4167337f53fc4f5b7d7b78dbcde344a08fa8019f'
 _V2_CONTINUITY_GIT_BLOB = '32b4ee9c8c11b5eb9564d4f258cef5a40cae3119'
 _V2_SUBJECT = {'policy_type':'activation_authority','policy_id':'SOLVERIS-B02-SEFA-PR-DOCUMENTARY-AUTHORITY',
@@ -234,8 +234,14 @@ def _v2_validate_exact(base,pins,*,now,profile,continuity_checker):
              auth.get('continuity_adoption_sha256')==_V2_CONTINUITY_ADOPTION_SHA256 and
              auth.get('scope')==_V2_SCOPE and auth.get('policy_subject')==_V2_SUBJECT,
              'SIGNER_ADOPTION_INVALID')
-    _v2_check_window(auth,start,end,now)
-    _v2_need(_v2_time(auth['issued_at'])<=start, 'SIGNER_ADOPTION_NOT_PROSPECTIVE')
+    # The signer permits a competent adoption inside the original decision
+    # window, but never before the independently recorded issuance. The same
+    # authority is checked at current readback, not backdated to window start.
+    _v2_check_window(auth,start,end,now,prospectively_issued=True)
+    _v2_need(_v2_time(auth['issued_at'])<=_v2_time(auth['valid_from'])<=now,
+             'SIGNER_ADOPTION_NOT_PROSPECTIVE')
+    _v2_need(_v2_time(root['issued_at'])>=_v2_time(auth['valid_from']),
+             'ROOT_PREDATES_SIGNER_ADOPTION')
     conf=auth.get('revocation_confirmation',{})
     _v2_need(conf.get('holder')=='Miguel' and conf.get('status')=='no_known_revocation' and
              _v2_time(conf['confirmed_at'])<=now and
