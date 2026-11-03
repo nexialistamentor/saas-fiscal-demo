@@ -129,6 +129,16 @@ def fixture(tmp_path,monkeypatch):
                            authority=signer,adoption=adoption,snapshot=snap,approval=approval,
                            store=store,verify=verify,now=current,can=can)
 
+
+def repin_signer_act(f):
+    # Rehash dependent unsigned evidence to test semantic refusal, not a stale pin.
+    f.pins['signer_authority_sha256']=put(f.base/'SIGNER_AUTHORITY.json',f.authority)
+    f.root['signer_adoption_binding']['sha256']=f.pins['signer_authority_sha256']
+    f.pins['root_sha256']=put(f.base/'ROOT.json',f.root)
+    f.approval['root_sha256']=f.pins['root_sha256']
+    f.approval['signer_adoption_sha256']=f.pins['signer_authority_sha256']
+    f.pins['root_adoption_sha256']=put(f.base/'ROOT_ADOPTION.json',f.approval)
+
 def test_v2_synthetic_graph_only_no_runtime_provision(tmp_path,monkeypatch):
     f=fixture(tmp_path,monkeypatch)
     ans=f.verify()
@@ -159,13 +169,13 @@ def test_v2_rejects_incompatible_version_even_if_rehashed(tmp_path,monkeypatch):
 
 def test_v2_rejects_revoked_signer_authority_even_if_pinned(tmp_path,monkeypatch):
     f=fixture(tmp_path,monkeypatch); f.authority['revoked']=True
-    f.pins['signer_authority_sha256']=put(f.base/'SIGNER_AUTHORITY.json',f.authority)
-    with pytest.raises(ValueError,match='SIGNER_ADOPTION_ROOT_BINDING|SIGNER_ADOPTION_INVALID'): f.verify()
+    repin_signer_act(f)
+    with pytest.raises(ValueError,match='SIGNER_ADOPTION_INVALID'): f.verify()
 
 def test_v2_rejects_unadopted_signer(tmp_path,monkeypatch):
     f=fixture(tmp_path,monkeypatch);f.authority['signing_authorized']=False
-    f.pins['signer_authority_sha256']=put(f.base/'SIGNER_AUTHORITY.json',f.authority)
-    with pytest.raises(ValueError,match='SIGNER_ADOPTION_ROOT_BINDING|SIGNER_ADOPTION_INVALID'):f.verify()
+    repin_signer_act(f)
+    with pytest.raises(ValueError,match='SIGNER_ADOPTION_INVALID'):f.verify()
 
 def test_v2_rejects_snapshot_tamper(tmp_path,monkeypatch):
     f=fixture(tmp_path,monkeypatch)
@@ -206,3 +216,19 @@ def test_v1_entrypoints_not_part_of_v2_append():
     code=SOURCE.read_text()
     assert 'def check_payload(' not in code and 'def activate_for_process(' not in code
     assert 'def activate_successor_for_process(' not in code
+
+def test_v2_rejects_revoked_root_even_if_all_hashes_are_repinned(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    f.root['revoked']=True
+    f.pins['root_sha256']=put(f.base/'ROOT.json',f.root)
+    f.approval['root_sha256']=f.pins['root_sha256']
+    f.pins['root_adoption_sha256']=put(f.base/'ROOT_ADOPTION.json',f.approval)
+    with pytest.raises(ValueError,match='AUTHORITY_WINDOW_OR_REVOCATION'):f.verify()
+
+def test_v2_rejects_wrong_scope_even_if_rehashed(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    f.decision['scope']=v._V2_SCOPE[:-1]+'Z'
+    raw=can(f.decision)
+    (f.bundle/'decision.json').write_bytes(raw)
+    monkeypatch.setattr(v,'_V2_DECISION_SHA256',sha(raw))
+    with pytest.raises(ValueError,match='V2_SCHEMA_SCOPE_OR_VERSION'):f.verify()
