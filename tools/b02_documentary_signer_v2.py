@@ -378,10 +378,23 @@ def sign(args):
            'PRIVATE_KEY_MISMATCH')
     # Window and approval checked before touching the key and immediately before writing.
     start,end=utc(c.parse(result['decision_raw'])['valid_from']),utc(c.parse(result['decision_raw'])['valid_until'])
-    expect(start<=datetime.now(timezone.utc)<end,'SIGNING_WINDOW_CLOSED')
+    # Re-fetch issuer-controlled adoption after the password prompt. Its
+    # effective interval must contain the actual signing instant. Re-validate
+    # once more immediately before persistence (no retroactive authorization).
+    before=datetime.now(timezone.utc)
+    live=validate(args,now=before)
+    expect(live['decision_raw']==result['decision_raw'] and
+           live['signer_source_git_blob']==result['signer_source_git_blob'],
+           'PRE_SIGN_PIN_OR_AUTHORITY_CHANGED')
+    expect(start<=before<end,'SIGNING_WINDOW_CLOSED')
     sig=p.sign(result['decision_raw'])
     result['public'].verify(sig,result['decision_raw'])
-    expect(start<=datetime.now(timezone.utc)<end,'SIGNING_WINDOW_CLOSED_BEFORE_PERSIST')
+    after=datetime.now(timezone.utc)
+    live_after=validate(args,now=after)
+    expect(live_after['decision_raw']==result['decision_raw'] and
+           live_after['signer_source_git_blob']==result['signer_source_git_blob'],
+           'PRE_PERSIST_PIN_OR_AUTHORITY_CHANGED')
+    expect(start<=after<end,'SIGNING_WINDOW_CLOSED_BEFORE_PERSIST')
     c.write_new(root/'signature.bin',sig)
     print('B02_V2_SIGNATURE_CREATED_LOCAL_ONLY')
     print('SIGNATURE_SHA256='+sha(sig))
