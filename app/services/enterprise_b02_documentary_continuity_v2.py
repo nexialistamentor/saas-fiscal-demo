@@ -67,7 +67,7 @@ def verify_supplemental_continuity(*, adoption, trusted_pin, evidence,
     _keys(adoption, ('schema', 'scope', 'id', 'policy_subject', 'object_sha256',
                      'historical_ratification', 'historical_audit',
                      'successor_review', 'origin_reports', 'actors',
-                     'evidence_hashes', 'decision', 'synthetic_only'), 'SCHEMA')
+                     'evidence_hashes', 'implementation', 'decision', 'synthetic_only'), 'SCHEMA')
     _pin(trusted_pin, 'TRUST_PIN_INVALID')
     if trusted_pin['id'] != adoption['id'] or trusted_pin['sha256'] != _digest(adoption):
         _fail('UNRECOGNIZED_ADOPTION')
@@ -75,6 +75,14 @@ def verify_supplemental_continuity(*, adoption, trusted_pin, evidence,
             or adoption['synthetic_only'] is not synthetic
             or adoption['policy_subject'] != expected['policy_subject']):
         _fail('SCOPE_OR_DOMAIN')
+    source = _keys(adoption['implementation'],
+                   ('source_commit', 'profile_git_blob', 'runtime_git_blob',
+                    'continuity_git_blob', 'tests_git_blob'), 'IMPLEMENTATION_PINS_INVALID')
+    if any(type(v) is not str or re.fullmatch(r'[0-9a-f]{40}', v) is None
+           for v in source.values()):
+        _fail('IMPLEMENTATION_PINS_INVALID')
+    # The competent deployment must compare the deployed code with these
+    # review-pinned Git blobs BEFORE placing this adoption pin in its ROOT.
     if not isinstance(decisions, list) or len(decisions) != 4:
         _fail('HISTORICAL_CHAIN_INVALID')
     institutional = evidence['institutional.json']
