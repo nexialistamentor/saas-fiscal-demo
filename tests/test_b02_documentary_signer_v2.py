@@ -80,15 +80,20 @@ def fixture(tmp_path,monkeypatch):
             'residual_risk_accepted':True}
     dh=write(folder,'decision.json',fields)
     code_blob=s.git_blob(Path(s.__file__).read_bytes())
+    report={'reviewer_execution':'independent-reviewer','outcome':'favoravel',
+            'signer_source_git_blob':code_blob,'conflicts':[],
+            'limitations':['signer code review only'], 'no_operational_authority':True,
+            'completed_at':'2026-11-03T11:30:00+00:00'}
+    review_file=tmp_path/'signer_review.json';review_file.write_bytes(canonical(report))
     authority={'schema':'SOLVERIS-B02-SIGNER-V2-AUTHORITY-ADOPTION-V1','id':s.SIGNER_ID,
                'issuer':'Miguel','approved':True,'signing_authorized':True,'status':'adopted',
                'revoked':False,'issued_at':'2026-11-03T12:00:00+00:00',
-               'valid_from':limits[0],'valid_until':limits[1],
+               'valid_from':'2026-11-03T13:00:00+00:00','valid_until':limits[1],
                'policy_subject':s.SUBJECT,'scope':s.SCOPE,
                'continuity_adoption_sha256':s.CONTINUITY_SHA256,
                'decision_sha256':dh,'manifest_sha256':manifest_hash,
                'signer_source_git_blob':code_blob,
-               'review':{'reviewer_execution':'independent-reviewer','review_sha256':'a'*64,
+               'review':{'reviewer_execution':'independent-reviewer','review_sha256':s.sha(review_file.read_bytes()),
                          'signer_source_git_blob':code_blob,'outcome':'favoravel'},
                'revocation_confirmation':{'holder':'Miguel','status':'no_known_revocation',
                                            'confirmed_at':'2026-11-04T15:30:00+00:00'},
@@ -96,7 +101,7 @@ def fixture(tmp_path,monkeypatch):
     au=tmp_path/'authority.json';au.write_bytes(canonical(authority))
     args=SimpleNamespace(legacy='historical-pinned-read-only',bundle=str(folder),public=str(pub),fingerprint=s.FP,
          approved_decision_sha256=dh,continuity_adoption=str(adopted),
-         signer_authority=str(au),approved_signer_authority_sha256=s.sha(au.read_bytes()),
+         signer_authority=str(au),signer_review=str(review_file),approved_signer_authority_sha256=s.sha(au.read_bytes()),
          reviewed_signer_git_blob=code_blob,repo=str(tmp_path),mode='preflight')
     checker=lambda **kw:{'status':'continuity_v2_conditions_met'}
     return args,fields,authority,checker
