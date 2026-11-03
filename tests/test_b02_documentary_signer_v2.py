@@ -12,7 +12,6 @@ from cryptography.hazmat.primitives import serialization as S
 
 spec=importlib.util.spec_from_file_location('b02signerv2',Path(__file__).with_name('b02_documentary_signer_v2.py'))
 s=importlib.util.module_from_spec(spec);spec.loader.exec_module(s)
-LEGACY=Path(__file__).with_name('crypto_local_historico.py')
 NOW=datetime(2026,11,4,16,tzinfo=timezone.utc)
 START='2026-11-04T15:00:00+00:00'
 END='2026-11-05T15:00:00+00:00'
@@ -24,6 +23,16 @@ def write(folder,name,obj):
 
 
 def fixture(tmp_path,monkeypatch):
+    # Synthetic only: the historical helper itself is not modified or shipped.
+    import json as _json
+    from cryptography.hazmat.primitives import serialization as _S
+    def parse(raw):
+        obj=_json.loads(raw); assert canonical(obj)==raw
+        return obj
+    def public(path):
+        raw=Path(path).read_bytes()
+        return _S.load_der_public_key(raw),raw
+    monkeypatch.setattr(s,'load_legacy', lambda _path: SimpleNamespace(parse=parse,public=public))
     monkeypatch.setattr(s,'FP','')
     key=Ed25519PrivateKey.generate() # synthetic test only: not a real signer or user key
     der=key.public_key().public_bytes(S.Encoding.DER,S.PublicFormat.SubjectPublicKeyInfo)
@@ -84,7 +93,7 @@ def fixture(tmp_path,monkeypatch):
                                            'confirmed_at':'2026-11-04T15:30:00+00:00'},
                'no_g4_reactivation':True,'no_operational_authority':True}
     au=tmp_path/'authority.json';au.write_bytes(canonical(authority))
-    args=SimpleNamespace(legacy=str(LEGACY),bundle=str(folder),public=str(pub),fingerprint=s.FP,
+    args=SimpleNamespace(legacy='historical-pinned-read-only',bundle=str(folder),public=str(pub),fingerprint=s.FP,
          approved_decision_sha256=dh,continuity_adoption=str(adopted),
          signer_authority=str(au),approved_signer_authority_sha256=s.sha(au.read_bytes()),
          reviewed_signer_git_blob=code_blob,repo=str(tmp_path),mode='preflight')
