@@ -93,11 +93,12 @@ def fixture(tmp_path,monkeypatch):
     signer['decision_sha256']=sha(dr);signer['continuity_adoption_sha256']=adsha
     ah=put(root/'SIGNER_AUTHORITY.json',signer)
     snap={'id':'snapshot1','schema':'SOLVERIS-B02-AUTHORIZED-READ-SNAPSHOT-V1',
+          'context':{},
           'policy_subject':v._V2_SUBJECT,'revoked':False,'synthetic_only':False,
           'origin_report_bindings':[report1,report2],'origin_mandate_binding':mandate,
           'head_binding':head,'genesis_binding':genesis,'execution_writer_binding':writer,
           'canonical_decisions_sha256':sha(can(evidence['institutional.json']['decisions'])),
-          'issued_at':issued,**post}
+          **post}
     sp=store_obj(snap)
     rr={'schema':'SOLVERIS-B02-RECOGNIZED-SUCCESSOR-ROOT-V2','profile':d['profile'],
         'policy_subject':v._V2_SUBJECT,'key_fingerprint':sha(der),
@@ -232,3 +233,28 @@ def test_v2_rejects_wrong_scope_even_if_rehashed(tmp_path,monkeypatch):
     (f.bundle/'decision.json').write_bytes(raw)
     monkeypatch.setattr(v,'_V2_DECISION_SHA256',sha(raw))
     with pytest.raises(ValueError,match='V2_SCHEMA_SCOPE_OR_VERSION'):f.verify()
+
+def test_v2_snapshot_v1_exact_contract_without_issued_at(tmp_path,monkeypatch):
+    # Matches enterprise_b02_founder_runtime._resolve_history exact V1 fields.
+    f=fixture(tmp_path,monkeypatch)
+    assert set(f.snapshot)==v._V2_SNAPSHOT_V1_FIELDS
+    assert 'issued_at' not in f.snapshot
+    assert f.verify()['runtime_provisioned'] is False
+
+
+def test_v2_rejects_v1_snapshot_extra_issued_at_even_rehashed(tmp_path,monkeypatch):
+    # Repinning never converts an incompatible V1 snapshot into an admissible one.
+    f=fixture(tmp_path,monkeypatch)
+    obj=dict(f.snapshot,issued_at=f.root['issued_at'])
+    raw=can(obj);h=sha(raw)
+    dest=f.store/'sha256'/h[:2]/(h+'.json')
+    dest.parent.mkdir(parents=True,exist_ok=True)
+    dest.write_bytes(raw)
+    f.root['snapshot_binding']={'id':obj['id'],'sha256':h}
+    f.pins['snapshot_sha256']=h
+    f.pins['root_sha256']=put(f.base/'ROOT.json',f.root)
+    f.approval['root_sha256']=f.pins['root_sha256']
+    f.approval['snapshot_sha256']=h
+    f.pins['root_adoption_sha256']=put(f.base/'ROOT_ADOPTION.json',f.approval)
+    with pytest.raises(ValueError,match='SNAPSHOT_SCHEMA_COMPATIBILITY'):
+        f.verify()
