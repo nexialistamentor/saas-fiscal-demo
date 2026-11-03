@@ -28,11 +28,14 @@ def _digest(value):
 
 
 def _time(value):
-    if not isinstance(value, str):
-        _fail('TIME_INVALID')
-    try:
-        when = datetime.fromisoformat(value.replace('Z', '+00:00'))
-    except ValueError:
+    if isinstance(value, datetime):
+        when = value
+    elif isinstance(value, str):
+        try:
+            when = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        except ValueError:
+            _fail('TIME_INVALID')
+    else:
         _fail('TIME_INVALID')
     if when.tzinfo is None:
         _fail('TIME_INVALID')
