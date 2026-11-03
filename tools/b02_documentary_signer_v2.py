@@ -190,7 +190,8 @@ def validate(args, *, now=None, v2_checker=None):
     rev=authority['review']
     expect(set(rev)=={'reviewer_execution','outcome','review_sha256','signer_source_git_blob'} and
            rev['outcome']=='favoravel' and rev['signer_source_git_blob']==signer_blob and
-           rev['reviewer_execution'] not in (adoption['actors']['author'], adoption['actors']['integrator']) and
+           rev['reviewer_execution'] not in (adoption['actors']['author'], adoption['actors']['integrator'],
+                                                adoption['actors']['origin_examiner']) and
            isinstance(rev['review_sha256'],str) and len(rev['review_sha256'])==64,
            'REVIEW_NOT_SEGREGATED_OR_PINNED')
     revoc=authority['revocation_confirmation']
@@ -229,6 +230,7 @@ def sign(args):
     expect(start<=datetime.now(timezone.utc)<end,'SIGNING_WINDOW_CLOSED')
     sig=p.sign(result['decision_raw'])
     result['public'].verify(sig,result['decision_raw'])
+    expect(start<=datetime.now(timezone.utc)<end,'SIGNING_WINDOW_CLOSED_BEFORE_PERSIST')
     c.write_new(root/'signature.bin',sig)
     print('B02_V2_SIGNATURE_CREATED_LOCAL_ONLY')
     print('SIGNATURE_SHA256='+sha(sig))
