@@ -362,7 +362,8 @@ def validate(args, *, now=None, v2_checker=None):
 def sign(args):
     result=validate(args)
     c=result['legacy'];root=result['root']
-    validate_signature_authorization(args, result['decision_raw'], result['signer_source_git_blob'])
+    initial_authorization=validate_signature_authorization(
+        args, result['decision_raw'], result['signer_source_git_blob'])
     priv=Path(args.private)
     expect(priv.is_file() and not priv.is_symlink() and root not in priv.resolve().parents,
            'PRIVATE_KEY_NOT_IN_CUSTODY')
@@ -376,24 +377,33 @@ def sign(args):
     expect(isinstance(p,Ed25519PrivateKey) and
            p.public_key().public_bytes(S.Encoding.DER,S.PublicFormat.SubjectPublicKeyInfo)==result['der'],
            'PRIVATE_KEY_MISMATCH')
-    # Window and approval checked before touching the key and immediately before writing.
     start,end=utc(c.parse(result['decision_raw'])['valid_from']),utc(c.parse(result['decision_raw'])['valid_until'])
-    # Re-fetch issuer-controlled adoption after the password prompt. Its
-    # effective interval must contain the actual signing instant. Re-validate
-    # once more immediately before persistence (no retroactive authorization).
-    before=datetime.now(timezone.utc)
-    live=validate(args,now=before)
+    # Every remote request happens BEFORE taking the time of the actual action.
+    # Reconsult the issuer's ORIGINAL authorization, as well as signer adoption,
+    # after the password delay. The originally observed bytes must be identical.
+    live=validate(args)
     expect(live['decision_raw']==result['decision_raw'] and
            live['signer_source_git_blob']==result['signer_source_git_blob'],
            'PRE_SIGN_PIN_OR_AUTHORITY_CHANGED')
+    current_authorization=validate_signature_authorization(
+        args, result['decision_raw'], result['signer_source_git_blob'])
+    expect(current_authorization==initial_authorization,
+           'ORIGINAL_AUTHORIZATION_CHANGED_AFTER_PASSWORD')
+    before=datetime.now(timezone.utc)
     expect(start<=before<end,'SIGNING_WINDOW_CLOSED')
     sig=p.sign(result['decision_raw'])
     result['public'].verify(sig,result['decision_raw'])
-    after=datetime.now(timezone.utc)
-    live_after=validate(args,now=after)
+    # Before persistence, repeat BOTH remote trust checks, compare the original
+    # authorization against its initial reference, then read the clock again.
+    live_after=validate(args)
     expect(live_after['decision_raw']==result['decision_raw'] and
            live_after['signer_source_git_blob']==result['signer_source_git_blob'],
            'PRE_PERSIST_PIN_OR_AUTHORITY_CHANGED')
+    last_authorization=validate_signature_authorization(
+        args, result['decision_raw'], result['signer_source_git_blob'])
+    expect(last_authorization==initial_authorization,
+           'ORIGINAL_AUTHORIZATION_CHANGED_BEFORE_PERSIST')
+    after=datetime.now(timezone.utc)
     expect(start<=after<end,'SIGNING_WINDOW_CLOSED_BEFORE_PERSIST')
     c.write_new(root/'signature.bin',sig)
     print('B02_V2_SIGNATURE_CREATED_LOCAL_ONLY')
