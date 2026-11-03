@@ -162,8 +162,13 @@ def test_origin_mandate_window_cannot_extend(tmp_path,monkeypatch):
 
 # Focal correction only: GitHub PR #28 is an independent issuer-controlled
 # source; these fixtures mock its responses. No real key or live approval.
-def source_bound_fixture(tmp_path, monkeypatch):
+def source_bound_fixture(tmp_path, monkeypatch, *, late_adoption=False):
     args, fields, authority, checker = fixture(tmp_path, monkeypatch)
+    if late_adoption:
+        # Founder adoption may take effect during (not retroactive to the start of) the original 24h window.
+        authority['issued_at'] = '2026-11-04T15:10:00+00:00'
+        authority['valid_from'] = '2026-11-04T15:30:00+00:00'
+        args.approved_signer_authority_sha256 = write(tmp_path, 'authority.json', authority)
     monkeypatch.setattr(s, 'APPROVED_DECISION_SHA256', args.approved_decision_sha256)
     monkeypatch.setattr(s, 'APPROVED_MANIFEST_SHA256', fields['manifest_sha256'])
     monkeypatch.setattr(s, 'ORIGINAL_WINDOW_START', START.replace('+00:00', 'Z'))
@@ -181,7 +186,8 @@ def source_bound_fixture(tmp_path, monkeypatch):
                 'issue_url':s.GITHUB_ISSUE_API, 'created_at':created_at,
                 'updated_at':created_at, 'body':text}
     original = owner_comment(s.ORIGINAL_AUTHORIZATION_COMMENT_ID,body)
-    issuer_adoption = owner_comment(777777,canonical(authority).decode())
+    issuer_adoption = owner_comment(777777,canonical(authority).decode(),
+         created_at='2026-11-04T15:20:00Z' if late_adoption else '2026-11-03T12:15:00Z')
     def source(url):
         if url.endswith(str(s.ORIGINAL_AUTHORIZATION_COMMENT_ID)):
             return original
@@ -194,7 +200,8 @@ def source_bound_fixture(tmp_path, monkeypatch):
 
 def test_focal_external_issuer_acts_consumed_without_changing_signer_blob(tmp_path,monkeypatch):
     immutable_before = s.git_blob(Path(s.__file__).read_bytes())
-    args,fields,authority,checker,auth_file=source_bound_fixture(tmp_path,monkeypatch)
+    args,fields,authority,checker,auth_file=source_bound_fixture(
+        tmp_path,monkeypatch,late_adoption=True)
     validated = s.validate(args,now=NOW,v2_checker=checker)
     actual_authorization = s.validate_signature_authorization(
         args,validated['decision_raw'],validated['signer_source_git_blob'])
