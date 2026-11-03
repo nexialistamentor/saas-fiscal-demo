@@ -100,7 +100,7 @@ class _BundleSnapshot:
         if name not in self.files:fail('PROFILE_EVIDENCE_MISSING')
         return self.files[name]
 
-def _verify_bundle(directory, *, expected, decisions, context, now, synthetic, execution_binding=None, bundle_snapshot=None):
+def _verify_bundle(directory, *, expected, decisions, context, now, synthetic, execution_binding=None, bundle_snapshot=None, continuity_adoption=None, continuity_trusted_pin=None):
     """Internal pure validation; synthetic positives never yield 'verified'.
 
     context represents a trusted current authorization/history snapshot, never
@@ -108,6 +108,8 @@ def _verify_bundle(directory, *, expected, decisions, context, now, synthetic, e
     """
     now=dt(now)
     if context.get('synthetic_only') is not synthetic: fail('PROFILE_TRUST_DOMAIN_MISMATCH')
+    if (continuity_adoption is None) != (continuity_trusted_pin is None):
+        fail('PROFILE_CONTINUITY_V2_TRUST_PAIR_REQUIRED')
     if (context.get('profile')!=PROFILE or context.get('adoption_sha256')!=ADOPTION
         or context.get('scope')!=SCOPE or context.get('policy_subject')!=expected['policy_subject']
         or context.get('enabled') is not True or context.get('channel_authorized') is not True
@@ -291,7 +293,9 @@ def _verify_bundle(directory, *, expected, decisions, context, now, synthetic, e
         fail('PROFILE_REVIEW_CONTEXT_DIVERGENCE')
     if context.get('execution_records_sha256')!=sha(canonical(records)) or context.get('mandates_sha256')!=sha(canonical(mandates)):
         fail('PROFILE_EXECUTION_NOT_INDEPENDENTLY_BOUND')
-    if expected['audit_report_binding']['sha256']!=d['review_sha256'] or review.get('id')!=expected['audit_report_binding']['id']:
+    # V1 keeps its exact historical audit binding. V2 is a separate, trusted
+    # supplementary documentary adoption and cannot rewrite the October chain.
+    if continuity_adoption is None and (expected['audit_report_binding']['sha256']!=d['review_sha256'] or review.get('id')!=expected['audit_report_binding']['id']):
         fail('PROFILE_EXACT_REPORT_BINDING_DIVERGENCE')
     for item in expected['actor_identity_bindings']+[expected['technical_author']]:
         identity=resolve_pin(item['binding'])
@@ -311,7 +315,7 @@ def _verify_bundle(directory, *, expected, decisions, context, now, synthetic, e
     structural=validate_institutional_chain(decisions,binding,now=now,technical_actor=expected['technical_actor'],activated_at=now)
     if {k:v for k,v in structural.items() if k!='institutional_evidence_verified'}!=expected:
         fail('PROFILE_CANONICAL_CHAIN_DIVERGENCE')
-    if (dt(decisions[0]['timestamp'])<dt(known[(actors[1],'author')]['occurred_at'])
+    if continuity_adoption is None and (dt(decisions[0]['timestamp'])<dt(known[(actors[1],'author')]['occurred_at'])
         or dt(review['completed_at'])<dt(decisions[1]['timestamp'])
         or dt(decisions[2]['timestamp'])<dt(review['completed_at'])
         or dt(d['valid_from'])<dt(decisions[3]['timestamp'])):fail('PROFILE_INSTITUTIONAL_CHRONOLOGY_INVALID')
@@ -337,12 +341,27 @@ def _verify_bundle(directory, *, expected, decisions, context, now, synthetic, e
         if dt(d['valid_from'])<dt(execution_binding['valid_from']) or dt(d['valid_until'])>dt(execution_binding['valid_until']):
             fail('PROFILE_EXECUTION_WRITER_INTERVAL_INVALID')
         bound_integrator=execution_binding['writer_role']
-    if (expected['actor_identity_bindings'][0]['actor_id']!=actors[1]
-        or expected['actor_identity_bindings'][1]['actor_id']!=actors[0]
-        or expected['technical_author']['actor_id']!=actors[1]
-        or expected['technical_actor']!=bound_integrator
-        or expected['actor_identity_bindings'][3]['actor_id']!='Miguel'):
+    if expected['technical_actor']!=bound_integrator or expected['actor_identity_bindings'][3]['actor_id']!='Miguel':
         fail('PROFILE_ACTOR_BINDING_DIVERGENCE')
+    if continuity_adoption is None:
+        if (expected['actor_identity_bindings'][0]['actor_id']!=actors[1]
+            or expected['actor_identity_bindings'][1]['actor_id']!=actors[0]
+            or expected['technical_author']['actor_id']!=actors[1]):
+            fail('PROFILE_ACTOR_BINDING_DIVERGENCE')
+    else:
+        # Only the independently pinned root may supply this adoption. The
+        # signed bundle cannot nominate itself or bypass the full V1 checks.
+        if context.get('continuity_adoption_binding') != continuity_trusted_pin:
+            fail('PROFILE_CONTINUITY_V2_TRUST_BINDING_MISSING')
+        from app.services.enterprise_b02_documentary_continuity_v2 import verify_supplemental_continuity
+        try:
+            verify_supplemental_continuity(adoption=continuity_adoption,
+                trusted_pin=continuity_trusted_pin, evidence=evidence,
+                expected=expected, decisions=decisions, now=now,
+                valid_from=d['valid_from'], valid_until=d['valid_until'],
+                synthetic=synthetic)
+        except (ValueError, TypeError, KeyError, AttributeError):
+            fail('PROFILE_CONTINUITY_V2_REJECTED')
     return {'status':'verified_synthetic' if synthetic else 'verified','verified_bindings':expected}
 
 class _FounderAdapter:
