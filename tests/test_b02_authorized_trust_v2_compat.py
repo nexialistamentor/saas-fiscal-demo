@@ -258,3 +258,54 @@ def test_v2_rejects_v1_snapshot_extra_issued_at_even_rehashed(tmp_path,monkeypat
     f.pins['root_adoption_sha256']=put(f.base/'ROOT_ADOPTION.json',f.approval)
     with pytest.raises(ValueError,match='SNAPSHOT_SCHEMA_COMPATIBILITY'):
         f.verify()
+
+
+# Focal successor signer alignment only; the 15 earlier compatibility cases
+# remain untouched. Synthetic graph != issuer adoption or live deployment.
+def test_focal_same_adoption_midwindow_accepted_by_v2_consumer(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    assert v._V2_SIGNER_GIT_BLOB=='0a86ec5512e843fd47c09fcfa5a0a36014819db7'
+    # The exact same canonical SIGNER_AUTHORITY.json can be verified by the
+    # signer via the owner-issued GitHub PR #28 record; the consumer checks
+    # its SHA against the separately adopted deployment ROOT.
+    f.authority['issued_at']='2026-11-03T18:05:00+00:00'
+    f.authority['valid_from']='2026-11-03T18:08:00+00:00'
+    repin_signer_act(f)
+    actual=(f.base/'SIGNER_AUTHORITY.json').read_bytes()
+    assert sha(actual)==f.pins['signer_authority_sha256']
+    assert f.authority['signer_source_git_blob']==v._V2_SIGNER_GIT_BLOB
+    assert f.verify()['status']=='V2_SIGNED_CUSTODY_VALIDATED_NOT_RUNTIME_PROVISIONED'
+
+
+def test_focal_future_signer_adoption_rejected_even_if_repinned(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    f.authority['issued_at']='2026-11-03T18:40:00+00:00'
+    f.authority['valid_from']='2026-11-03T19:10:00+00:00'
+    repin_signer_act(f)
+    with pytest.raises(ValueError,match='AUTHORITY_WINDOW_OR_REVOCATION'):
+        f.verify()
+
+
+def test_focal_expired_signer_adoption_rejected_even_if_repinned(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    f.authority['valid_until']='2026-11-03T18:59:00+00:00'
+    repin_signer_act(f)
+    with pytest.raises(ValueError,match='AUTHORITY_WINDOW_OR_REVOCATION'):
+        f.verify()
+
+
+def test_focal_other_signer_blob_rejected_even_if_repinned(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    f.authority['signer_source_git_blob']='5fd8ed57feb818e6500b74604524e090dce1b011'
+    repin_signer_act(f)
+    with pytest.raises(ValueError,match='SIGNER_ADOPTION_INVALID'):
+        f.verify()
+
+
+def test_focal_backdated_signer_adoption_rejected_even_if_repinned(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    f.authority['issued_at']='2026-11-03T18:05:00+00:00'
+    f.authority['valid_from']='2026-11-03T18:00:00+00:00'
+    repin_signer_act(f)
+    with pytest.raises(ValueError,match='SIGNER_ADOPTION_NOT_PROSPECTIVE'):
+        f.verify()
