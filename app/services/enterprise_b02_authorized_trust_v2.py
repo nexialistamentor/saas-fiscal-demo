@@ -25,6 +25,12 @@ _V2_SUBJECT = {'policy_type':'activation_authority','policy_id':'SOLVERIS-B02-SE
 _V2_SCOPE = 'SEFA_PR_B02_DOCUMENTAL_AUTHENTICATION_ONLY'
 _V2_FILES = ('execution.json','history.json','institutional.json','mandates.json',
              'object.json','proofs.json','review.json')
+# V1 runtime._resolve_history enforces this exact snapshot field set.
+# A V1 snapshot carrying issued_at would fail operational readback.
+_V2_SNAPSHOT_V1_FIELDS = {'id','schema','policy_subject','canonical_decisions_sha256',
+    'head_binding','genesis_binding','context','execution_writer_binding',
+    'origin_report_bindings','origin_mandate_binding','valid_from','valid_until',
+    'revoked','synthetic_only'}
 _V2_DECISION_FIELDS = {'domain','schema_version','profile','algorithm','key_fingerprint',
  'adoption_sha256','continuity_adoption_sha256','signer_policy_id','manifest_sha256',
  'policy_subject','object_sha256','review_sha256','scope','valid_from','valid_until',
@@ -264,6 +270,7 @@ def _v2_validate_exact(base,pins,*,now,profile,continuity_checker):
     snapshot_pin=_v2_pin(root.get('snapshot_binding'))
     _v2_need(snapshot_pin['sha256']==pins['snapshot_sha256'], 'SNAPSHOT_DEPLOYMENT_PIN')
     snapshot=_v2_file_from_store(store,snapshot_pin,profile.parse)
+    _v2_need(set(snapshot)==_V2_SNAPSHOT_V1_FIELDS, 'SNAPSHOT_SCHEMA_COMPATIBILITY')
     _v2_need(snapshot.get('schema')=='SOLVERIS-B02-AUTHORIZED-READ-SNAPSHOT-V1' and
              snapshot.get('policy_subject')==_V2_SUBJECT and
              snapshot.get('revoked') is False and snapshot.get('synthetic_only') is False and
@@ -273,7 +280,9 @@ def _v2_validate_exact(base,pins,*,now,profile,continuity_checker):
                  sorted(evidence['institutional.json']['decisions'],key=lambda x:x['decision_id']))),
              'SNAPSHOT_HISTORY_OR_ORIGIN_BINDINGS')
     _v2_check_window(snapshot,start,end,now,prospectively_issued=True)
-    _v2_need(_v2_time(snapshot['issued_at'])<=_v2_time(snapshot['valid_from'])<=now,
+    # V1 has no issued_at. Prospectivity is anchored to the externally pinned,
+    # separately adopted ROOT issuance; never invent a field for V1.
+    _v2_need(_v2_time(root['issued_at'])<=_v2_time(snapshot['valid_from'])<=now,
              'SNAPSHOT_NOT_PROSPECTIVE')
     for name in ('head_binding','genesis_binding','origin_mandate_binding','execution_writer_binding'):
         _v2_file_from_store(store,_v2_pin(snapshot.get(name)),profile.parse)
