@@ -168,3 +168,9 @@ def activate_successor_for_process():
     return {'status':'SUCCESSOR_PINNED_BOOTSTRAP_ONLY',
             'bundle_directory':str(bundle),'evidence_directory':str(evidence_store),
             'institutional_history_and_origin_still_require_runtime_validation':True}
+
+
+def verify_successor_v2_for_provisioning():
+    """Separate V2 read-only gate; never changes V1 or provisions runtime."""
+    from app.services.enterprise_b02_authorized_trust_v2 import verify_successor_v2_for_provisioning as check_v2
+    return check_v2()
