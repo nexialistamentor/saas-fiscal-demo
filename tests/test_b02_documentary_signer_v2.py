@@ -66,7 +66,8 @@ def fixture(tmp_path,monkeypatch):
     adoption={'schema':'SOLVERIS-B02-DOCUMENTARY-CONTINUITY-ADOPTION-V2',
               'id':'B02-G4-CONTINUIDADE-DOCUMENTAL-V2-ADOCAO-20261103',
               'decision':{'valid_from':limits[0],'valid_until':limits[1]},
-              'actors':{'author':'separate-author','integrator':'separate-integrator'},
+              'actors':{'author':'separate-author','integrator':'separate-integrator',
+                        'origin_examiner':'separate-origin-examiner'},
               'origin_reports':origin_pin}
     adopted=tmp_path/'adoption.json';adopted.write_bytes(canonical(adoption))
     monkeypatch.setattr(s,'CONTINUITY_SHA256',s.sha(adopted.read_bytes()))
