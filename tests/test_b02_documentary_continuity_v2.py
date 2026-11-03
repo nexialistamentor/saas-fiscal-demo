@@ -84,6 +84,9 @@ def fixture():
               'policy_subject':SUB,'object_sha256':oh,'historical_ratification':rat_pin,
               'historical_audit':audit,'successor_review':{'id':'review-new','sha256':revhash},
               'origin_reports':pins,'actors':dict(ACTORS),'synthetic_only':True,
+              'implementation':{'source_commit':'1'*40,'profile_git_blob':'2'*40,
+                                'runtime_git_blob':'3'*40,'continuity_git_blob':'4'*40,
+                                'tests_git_blob':'5'*40},
               'evidence_hashes':{n:v._digest(evidence[n]) for n in ('history.json','mandates.json','execution.json','proofs.json')},
               'decision':{'issuer':'Miguel','status':'adopted','approved':True,'issued_at':NEW,
                           'valid_from':START,'valid_until':END,'revoked':False,'risk_accepted':False,
@@ -200,3 +203,11 @@ def test_profile_passes_offset_aware_datetime_to_v2():
 def test_naive_datetime_rejected_fail_closed():
     s=fixture();s['now']=datetime(2026,11,3,11)
     with pytest.raises(ValueError,match='TIME_INVALID'):check(s)
+
+def test_implementation_source_pins_are_required():
+    s=fixture();s['adoption'].pop('implementation');repin(s,adoption=True)
+    with pytest.raises(ValueError,match='SCHEMA'):check(s)
+
+def test_reviewed_code_pin_format_required():
+    s=fixture();s['adoption']['implementation']['profile_git_blob']='not-a-git-hash';repin(s,adoption=True)
+    with pytest.raises(ValueError,match='IMPLEMENTATION_PINS_INVALID'):check(s)
