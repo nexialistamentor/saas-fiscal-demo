@@ -212,3 +212,64 @@ def test_implementation_source_pins_are_required():
 def test_reviewed_code_pin_format_required():
     s=fixture();s['adoption']['implementation']['profile_git_blob']='not-a-git-hash';repin(s,adoption=True)
     with pytest.raises(ValueError,match='IMPLEMENTATION_PINS_INVALID'):check(s)
+
+
+def _repin_origin_mandate_interval(s, end):
+    """Only a synthetic fixture: rehash every dependent proof and trusted pin.
+
+    Both origin reports share a mandate. Retaining an old hash for the
+    acceptance, examination, report, review, or history would test a different
+    rejection instead of the specific decision-window guard.
+    """
+    proofs = s['evidence']['proofs.json']
+    origin_pins = s['adoption']['origin_reports']
+    old_mandate_hash = proofs[origin_pins[0]['sha256']]['mandate_binding']['sha256']
+    old_mandate = proofs.pop(old_mandate_hash)
+    mandate = copy.deepcopy(old_mandate)
+    mandate['valid_until'] = end
+    new_mandate_hash = add(proofs, mandate)
+
+    old_accept_hash = proofs[origin_pins[0]['sha256']]['mandate_acceptance_sha256']
+    acceptance = copy.deepcopy(proofs.pop(old_accept_hash))
+    acceptance['mandate_sha256'] = new_mandate_hash
+    new_accept_hash = add(proofs, acceptance)
+
+    review = s['evidence']['review.json']
+    for pin in origin_pins:
+        old_report_hash = pin['sha256']
+        report = copy.deepcopy(proofs.pop(old_report_hash))
+        examination = copy.deepcopy(proofs.pop(report['examination_record_sha256']))
+        report['mandate_binding']['sha256'] = new_mandate_hash
+        examination['mandate_binding']['sha256'] = new_mandate_hash
+        report['examination_record_sha256'] = add(proofs, examination)
+        report['mandate_acceptance_sha256'] = new_accept_hash
+        pin['sha256'] = add(proofs, report)
+        review['inputs_sha256'] = [pin['sha256'] if h == old_report_hash else h
+                                   for h in review['inputs_sha256']]
+
+    review_hash = v._digest(review)
+    s['adoption']['successor_review']['sha256'] = review_hash
+    s['evidence']['history.json']['reviews'][1] = review_hash
+    repin(s, evidence=True)
+    assert s['trusted_pin']['sha256'] == v._digest(s['adoption'])
+    assert all(pin['sha256'] in proofs for pin in origin_pins)
+    assert all(proofs[pin['sha256']]['mandate_acceptance_sha256'] == new_accept_hash
+               for pin in origin_pins)
+    assert all(proofs[pin['sha256']]['examination_record_sha256'] in proofs
+               for pin in origin_pins)
+
+
+def test_origin_mandate_decision_window_contained_accepted():
+    s = fixture()
+    # The mandate expires at precisely the decision's exclusive end.
+    _repin_origin_mandate_interval(s, END)
+    assert check(s)['status'] == 'verified_synthetic_continuity_v2'
+
+
+def test_origin_mandate_decision_window_exceeded_rejected():
+    s = fixture()
+    # Origin examination still falls inside the mandate, and the report
+    # remains valid until WINDOW_END, but the decision ends later.
+    _repin_origin_mandate_interval(s, '2026-11-05T00:00:00+00:00')
+    with pytest.raises(ValueError, match=r'^B02_CONTINUITY_V2_ORIGIN_MANDATE_DECISION_WINDOW$'):
+        check(s)
