@@ -192,6 +192,7 @@ def test_no_v1_fallback_on_untrusted_continuity():
     s=fixture();s['adoption']['synthetic_only']=False;repin(s,adoption=True)
     with pytest.raises(ValueError,match='SCOPE_OR_DOMAIN'):check(s)
 
+
 def test_profile_passes_offset_aware_datetime_to_v2():
     s=fixture();s['now']=datetime(2026,11,3,11,tzinfo=timezone.utc)
     assert check(s)['status']=='verified_synthetic_continuity_v2'
