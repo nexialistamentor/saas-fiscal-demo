@@ -191,3 +191,11 @@ def test_unsigned_payload_and_founder_signature_alone_are_not_an_adoption():
 def test_no_v1_fallback_on_untrusted_continuity():
     s=fixture();s['adoption']['synthetic_only']=False;repin(s,adoption=True)
     with pytest.raises(ValueError,match='SCOPE_OR_DOMAIN'):check(s)
+
+def test_profile_passes_offset_aware_datetime_to_v2():
+    s=fixture();s['now']=datetime(2026,11,3,11,tzinfo=timezone.utc)
+    assert check(s)['status']=='verified_synthetic_continuity_v2'
+
+def test_naive_datetime_rejected_fail_closed():
+    s=fixture();s['now']=datetime(2026,11,3,11)
+    with pytest.raises(ValueError,match='TIME_INVALID'):check(s)
