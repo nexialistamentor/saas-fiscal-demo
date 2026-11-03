@@ -252,3 +252,39 @@ def test_focal_rehashed_replaced_authorization_rejected_against_original_owner_a
     with pytest.raises(ValueError, match='EXACT_SIGNATURE_AUTHORIZATION_REQUIRED'):
         s.validate_signature_authorization(
             args,validated['decision_raw'],validated['signer_source_git_blob')
+
+
+# Same founder adoption/issuer-source fixture used by the real preflight.
+# Only new cases; the five historical synthetic tests are not rerun here.
+def _focal_repin_external_adoption(tmp_path,monkeypatch,args,authority):
+    args.approved_signer_authority_sha256=write(tmp_path,'authority.json',authority)
+    previous=s._github_json
+    source_adoption=dict(previous(s.GITHUB_ISSUE_API+'/comments?per_page=100&page=1')[0],
+                         body=canonical(authority).decode('utf-8'))
+    monkeypatch.setattr(s,'_github_json',
+                        lambda url: [source_adoption] if '/comments?per_page=100&page=' in url
+                        else previous(url))
+
+
+def test_focal_future_effective_adoption_refused_by_signer(tmp_path,monkeypatch):
+    args,fields,authority,checker,_=source_bound_fixture(tmp_path,monkeypatch,late_adoption=True)
+    authority['valid_from']='2026-11-04T17:00:00+00:00'
+    _focal_repin_external_adoption(tmp_path,monkeypatch,args,authority)
+    with pytest.raises(ValueError,match='SIGNER_ADOPTION_WINDOW'):
+        s.validate(args,now=NOW,v2_checker=checker)
+
+
+def test_focal_expired_adoption_refused_by_signer(tmp_path,monkeypatch):
+    args,fields,authority,checker,_=source_bound_fixture(tmp_path,monkeypatch,late_adoption=True)
+    authority['valid_until']='2026-11-04T15:59:00+00:00'
+    _focal_repin_external_adoption(tmp_path,monkeypatch,args,authority)
+    with pytest.raises(ValueError,match='SIGNER_ADOPTION_WINDOW'):
+        s.validate(args,now=NOW,v2_checker=checker)
+
+
+def test_focal_other_blob_adoption_refused_by_signer(tmp_path,monkeypatch):
+    args,fields,authority,checker,_=source_bound_fixture(tmp_path,monkeypatch,late_adoption=True)
+    authority['signer_source_git_blob']='5fd8ed57feb818e6500b74604524e090dce1b011'
+    _focal_repin_external_adoption(tmp_path,monkeypatch,args,authority)
+    with pytest.raises(ValueError,match='SIGNER_ADOPTION_WRONG_BINDINGS'):
+        s.validate(args,now=NOW,v2_checker=checker)
