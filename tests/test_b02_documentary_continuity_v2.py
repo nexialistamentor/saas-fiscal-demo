@@ -204,6 +204,7 @@ def test_naive_datetime_rejected_fail_closed():
     s=fixture();s['now']=datetime(2026,11,3,11)
     with pytest.raises(ValueError,match='TIME_INVALID'):check(s)
 
+
 def test_implementation_source_pins_are_required():
     s=fixture();s['adoption'].pop('implementation');repin(s,adoption=True)
     with pytest.raises(ValueError,match='SCHEMA'):check(s)
