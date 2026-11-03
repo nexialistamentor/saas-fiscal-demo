@@ -188,6 +188,15 @@ def validate(args, *, now=None, v2_checker=None):
     signer_blob=git_blob(Path(__file__).read_bytes())
     expect(signer_blob==authority['signer_source_git_blob'],'SIGNER_SOURCE_NOT_REVIEWED')
     rev=authority['review']
+    review_raw,review_act=read(c,args.signer_review)
+    expect(sha(review_raw)==rev['review_sha256'] and
+           review_act.get('reviewer_execution')==rev['reviewer_execution'] and
+           review_act.get('outcome')=='favoravel' and
+           review_act.get('signer_source_git_blob')==signer_blob and
+           review_act.get('conflicts')==[] and review_act.get('limitations') and
+           review_act.get('no_operational_authority') is True and
+           utc(review_act['completed_at'])<=utc(authority['issued_at']),
+           'REVIEW_DOCUMENT_NOT_VERIFIED')
     expect(set(rev)=={'reviewer_execution','outcome','review_sha256','signer_source_git_blob'} and
            rev['outcome']=='favoravel' and rev['signer_source_git_blob']==signer_blob and
            rev['reviewer_execution'] not in (adoption['actors']['author'], adoption['actors']['integrator'],
@@ -199,8 +208,8 @@ def validate(args, *, now=None, v2_checker=None):
            revoc['holder']=='Miguel' and revoc['status']=='no_known_revocation' and
            timedelta(0)<=now-utc(revoc['confirmed_at'])<=timedelta(hours=24),
            'KEY_REVOCATION_CONFIRMATION_REQUIRED')
-    expect(utc(authority['issued_at'])<=now and
-           utc(authority['valid_from'])<=start and end<=utc(authority['valid_until']),
+    expect(utc(authority['issued_at'])<=utc(authority['valid_from'])<=start<=now and
+           end<=utc(authority['valid_until']),
            'SIGNER_ADOPTION_WINDOW')
     return {'root':root,'decision_raw':decision_raw,'public':k,'der':der,'legacy':c,
             'signer_source_git_blob':signer_blob}
@@ -251,7 +260,7 @@ def main():
     p=argparse.ArgumentParser(description='B02 V2 successor signer: separate, pinned, reviewed, never root authority')
     p.add_argument('mode',choices=['preflight','sign','verify'])
     for name in ('repo','legacy','bundle','public','fingerprint','approved-decision-sha256',
-                 'continuity-adoption','signer-authority','approved-signer-authority-sha256',
+                 'continuity-adoption','signer-authority','signer-review','approved-signer-authority-sha256',
                  'reviewed-signer-git-blob','authorization','authorization-sha256','private'):
         p.add_argument('--'+name,required=name not in ('authorization','authorization-sha256','private'))
     a=p.parse_args()
