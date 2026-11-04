@@ -16,8 +16,8 @@ param(
   $adoption = "$repo\evidence\b02\B02_G4_CONTINUIDADE_DOCUMENTAL_V2_ADOCAO_EMITIDA_20261103.json"
   $public = "$env:LOCALAPPDATA\SOLVERIS\CustodiaB02\Chave_ceee5bb6f2a740a58cf4dbaa66565698\miguel-public.der"
   $private = "$env:LOCALAPPDATA\SOLVERIS\CustodiaB02\Chave_ceee5bb6f2a740a58cf4dbaa66565698\miguel-private-encrypted.pem"
-  $commit = '7195b89385700291882f63b2f08c66e73d226c29'
-  $codeblob = 'b8ff97373476bb3ef1b34362612eedd014f0ff21'
+  $commit = 'c70c0ea446dbcbec63ca527dc97c6b3641d228c7'
+  $codeblob = '17dc1b4a9a34a8045bddb97717c01b160411c238'
   $decision = 'd3602168c53debd10421aa83d1e980c632870b660be18a451d5b5a3d998c6520'
   $fingerprint = '6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c'
 
