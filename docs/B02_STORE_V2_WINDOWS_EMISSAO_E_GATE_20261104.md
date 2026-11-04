@@ -1,0 +1,116 @@
+# SOLVERIS B02 — emissão delimitada da store V2, Windows (04/11/2026)
+
+**Estado:** procedimento preparado; nenhuma operação PostgreSQL ou escrita de custódia
+foi realizada por esta entrega. Não é ROOT, adoção, prova R5/R6, revisão, nem R7 CLOSED.
+Preservar a PR #27 e a correção focal submetida à PR #29.
+
+## Artefactos efetivos
+- Entrada Windows: `B02_EMITIR_STORE_V2_WINDOWS.ps1`.
+- Emissor: `tools/b02_store_emission_v2_windows.py`.
+- Fonte preservada fixada: `evidence/b02/successor_v3/` (sete JSON com os hashes
+  existentes, sem os reescrever); adota os dois relatórios ORIGIN fixados em
+  `B02_G4_CONTINUIDADE_DOCUMENTAL_V2_ADOCAO_EMITIDA_20261103.json`.
+- `signature.bin` original: SHA-256
+  `479c9304724e0a92a5d02145e74d99485792b6e8e54b6c098590d3e0c3ca2c8c`;
+  é somente lido, nunca substituído ou novamente assinado.
+- PostgreSQL: `solveris_b02_r4g_test`, conta de acesso
+  `solveris_b02_writer`, sem superuser, memberships ou bypass;
+  transação `REPEATABLE READ, READ ONLY`, conforme o guard existente
+  `enterprise_b02_founder_runtime._read_identity`.
+
+## Fase 1 — inspeção (sem escrita de custódia)
+Preparar a variável de ambiente do processo `SOLVERIS_B02_READER_DSN` por
+mecanismo de credenciais local já autorizado, sem imprimir a password.
+Identificar a **pasta existente** que contém `BUNDLE_ASSINADO`, com
+`decision.json`, `manifest.json`, `signature.bin` e os sete JSON.
+
+No checkout `C:\dev\solveris-b02-g5-v5-publicacao` executar
+somente uma invocação (não construir JSON):
+
+```powershell
+.\B02_EMITIR_STORE_V2_WINDOWS.ps1 -Etapa Inspecionar -PastaBundleAssinado 'CAMINHO_REAL_JA_EXISTENTE_DO_BUNDLE_ASSINADO'
+```
+
+O caminho no comando é uma referência operacional ao diretório já existente:
+não é um nome de evidência presumida. O script deve abortar caso a pasta esteja
+ausente, caso qualquer hash diverja, caso o leitor não seja restrito, ou caso
+a ativação G4 V4 real, a execução e **todas** as decisões PostgreSQL não
+correspondam à cadeia assinada. A verificação da vigência operacional é
+prospectiva; não prolonga autorizações expiradas.
+
+Saída: `%USERPROFILE%\Downloads\B02_STORE_V2_PLANO.json` completo e
+`plan_sha256`. Esse plano contém os **objetos efetivamente derivados**,
+os hashes, os vínculos, a proveniência e o estado `PLAN_NOT_AUTHORITY`.
+A única escrita nesta fase é o plano na área de preparação do utilizador,
+**fora de** `B02Trust\SUCCESSOR_V3\STORE`.
+
+## Ato delimitado a pedir a Miguel ANTES da fase 2
+A decisão incide sobre **um plano exato**, identificado pelo SHA-256 devolvido
+na fase 1, e apenas nos termos seguintes:
+
+> Autorizo a emissão prospectiva na custódia local
+> `%LOCALAPPDATA%\SOLVERIS\B02Trust\SUCCESSOR_V3\STORE`
+> exclusivamente dos objetos CAS integralmente identificados no plano
+> `B02_STORE_V2_PLANO.json`, cujo SHA-256 será o hash apresentado após
+> inspeção. Autorizo somente a escrita local imutável dos seis objetos
+> identificados (head/genesis da revisão 1 compartilham um único corpo,
+> writer derivado de PostgreSQL, mandato ORIGIN, dois relatórios ORIGIN e
+> snapshot). Mantenho PostgreSQL somente leitura. Este ato não cria ROOT,
+> não adota confiança, não autoriza SQL protegido, G5, R5, R6 ou R7,
+> e não altera assinaturas ou atos históricos.
+
+O titular deve manifestar a decisão **depois de ler o SHA real do plano**.
+Não preencher hashes por suposição; não aceitar um token `--authorized-plan-sha256`
+como prova independente da autoria do ato.
+
+## Fase 2 — emissão local (apenas após ato do titular sobre hash exato)
+```powershell
+.\B02_EMITIR_STORE_V2_WINDOWS.ps1 -Etapa Emitir -PastaBundleAssinado 'CAMINHO_REAL_JA_EXISTENTE_DO_BUNDLE_ASSINADO' -HashPlanoAprovado 'SHA256_EXATO_DO_PLANO_RATIFICADO'
+```
+
+É o **mesmo script**, sem coletor. Reabre uma transação de leitura restrita,
+recomputa o snapshot e compara todos os objetos, pins, decisões, ativação e
+execução com o plano aprovado. Mudança de dados/HEAD/hash = STOP.
+O destino usa endereçamento `STORE/sha256/XX/<hash>.json`, criação
+`O_EXCL` (não sobrescreve história) e leitura física de retorno.
+O recibo imprime os SHA-256 efetivamente escritos, `sql_writes=0`,
+`root_issued=false` e `r7_closed=false`.
+
+O plano define início futuro de vigência como 15 minutos após a observação
+PostgreSQL. É **proposta prospectiva**, não cronologia histórica forjada.
+Se a janela original de `decision.json` terminar ou o início previsto
+passar antes da fase 2/ROOT, o procedimento deve parar. **Não retroagir
+nem prolongar a decisão assinada.**
+
+## Consumo posterior, sem reabrir precedentes
+1. Revisor competente verifica os objetos reais, respetivos SHA-256, histórico
+   preservado e writer vinculado à ativação G4 V4 **atual** na transação PG.
+   A revisão da correção V2 na PR #29 é ato separado.
+2. Emissão e revisão competentes de `ROOT.json` com snapshot existente,
+   assinatura Ed25519 já preservada, chave pública DER, revisão/adoções próprias
+   e `issued_at` UTC verificável **anterior ou igual** ao `valid_from` do
+   snapshot. Calcular SHA-256 da ROOT realmente emitida.
+3. Decisão específica de Miguel sobre os **hashes reais** da ROOT e do
+   snapshot; só então produzir `ROOT_ADOPTION.json` e o respetivo SHA-256,
+   sem documentos com identidades ou vigências inventadas.
+4. Revisão e commit separado dos sete `V2_DEPLOYMENT_PINS`, incluindo blob
+   da revisão competente, sem aceitar pins de requisição ou ambiente.
+   Execução de `provision_v2_documentary_for_process` com base e PostgreSQL
+   reais, seguida de `readback_v2_documentary_for_process` positivo.
+   Custódia matemática, custódia validada e admissão no runtime são estados distintos.
+5. Usar provas G5/R5/R6 existentes primeiro. Somente alterações realmente
+   autorizadas e pendentes prosseguem. Reconciliação final R7 por
+   `tools/b02_r7_v2_readonly.py` compatível com o commit
+   `4d658483b9aa0c1d7be5dc340053e38bb348183b`;
+   o verificador histórico é apenas leitor predecessor, não decisor de
+   compatibilidade. Requer-se decisão R7 competente própria antes de `B02 CLOSED`.
+
+## STOP concreto
+Se não existir ativação G4 V4 corrente, o papel restrito falhar, a decisão
+de 24 horas expirar, os objetos históricos preservados não coincidirem,
+ou faltar aprovação exata do plano, **não emitir**. A ação mínima caberá ao
+responsável do respetivo ato: custódio Windows para fonte/DSN/caminhos;
+titular Miguel para autorização de emissão e adoção; revisor independente
+para parecer; autoridade operacional competente para novos eventos, se
+algum predecessor tiver expirado. Nenhum destes impedimentos pode ser
+resolvido fabricando ROOT ou estendendo uma janela.
