@@ -425,3 +425,70 @@ def test_v2_process_rolls_back_on_synthetic_readback_failure(tmp_path,monkeypatc
     with pytest.raises(ValueError,match='SYNTHETIC_READBACK_DENIED'):
         v.provision_v2_documentary_for_process({},connection=None)
     assert not v._V2_PROCESS_DOCUMENTARY_TRUST
+
+# Final reviewer reservation: three new focused behaviors only.
+# Synthetic stubs; never evidence of a physical PostgreSQL or ROOT admission.
+def _focal_v2_readback_setup(monkeypatch):
+    from types import MappingProxyType, SimpleNamespace
+    monkeypatch.setattr(v,'_V2_PROCESS_DOCUMENTARY_TRUST',MappingProxyType({}))
+    monkeypatch.setattr(v,'admit_with_authorized_trust_v2',
+                        lambda evidence,**kw: SimpleNamespace(permitido=True))
+    custody = {'runtime_provisioned':False,'root_sha256':'a'*64,
+               'snapshot_sha256':'b'*64,'signature_sha256':'c'*64,
+               'decision_sha256':'d'*64}
+    monkeypatch.setattr(v,'verify_successor_v2_for_provisioning',
+                        lambda: custody)
+    monkeypatch.setattr(v,'V2_DEPLOYMENT_PINS',{'root_adoption_sha256':'e'*64})
+    return {'status':'V2_DOCUMENTARY_RUNTIME_ADMISSION_READBACK_PASS',
+            'runtime_provisioned':True,'runtime_scope':v._V2_SCOPE,
+            'root_sha256':'a'*64,'snapshot_sha256':'b'*64,
+            'signature_sha256':'c'*64,'fiscal_authority':False,
+            'sql_writes_authorized':False}
+
+
+@pytest.mark.parametrize('negative_kind',[
+    'normal_denial','false_provisioned','wrong_root','no_confirmation','not_a_dict'])
+def test_focal_v2_readback_negative_return_rolls_back(monkeypatch,negative_kind):
+    confirmed = _focal_v2_readback_setup(monkeypatch)
+    negative = dict(confirmed)
+    if negative_kind=='normal_denial':
+        negative['status']='V2_RUNTIME_NOT_ADMITTED'
+    elif negative_kind=='false_provisioned':
+        negative['runtime_provisioned']=False
+    elif negative_kind=='wrong_root':
+        negative['root_sha256']='f'*64
+    elif negative_kind=='no_confirmation':
+        negative.pop('status')
+    else:
+        negative=None
+    monkeypatch.setattr(v,'readback_v2_documentary_for_process',
+                        lambda *args,**kw: negative)
+    with pytest.raises(ValueError,match='V2_RUNTIME_READBACK_NOT_POSITIVE'):
+        v.provision_v2_documentary_for_process({},connection=None)
+    assert dict(v._V2_PROCESS_DOCUMENTARY_TRUST)=={}
+
+
+def test_focal_v2_readback_exception_rolls_back(monkeypatch):
+    _focal_v2_readback_setup(monkeypatch)
+    def fail(*args,**kwargs):
+        raise RuntimeError('FOCAL_SECOND_READ_FAILURE')
+    monkeypatch.setattr(v,'readback_v2_documentary_for_process',fail)
+    with pytest.raises(RuntimeError,match='FOCAL_SECOND_READ_FAILURE'):
+        v.provision_v2_documentary_for_process({},connection=None)
+    assert dict(v._V2_PROCESS_DOCUMENTARY_TRUST)=={}
+
+
+def test_focal_v2_readback_positive_returns_only_after_confirmation(monkeypatch):
+    confirmed = _focal_v2_readback_setup(monkeypatch)
+    observed=[]
+    def readback(*args,**kwargs):
+        observed.append(dict(v._V2_PROCESS_DOCUMENTARY_TRUST))
+        return confirmed
+    monkeypatch.setattr(v,'readback_v2_documentary_for_process',readback)
+    result=v.provision_v2_documentary_for_process({},connection=None)
+    assert result == confirmed
+    assert len(observed)==1
+    assert observed[0]['root_sha256']==confirmed['root_sha256']
+    assert dict(v._V2_PROCESS_DOCUMENTARY_TRUST)==observed[0]
+    assert result['fiscal_authority'] is False
+    assert result['sql_writes_authorized'] is False
