@@ -24,15 +24,19 @@ mecanismo de credenciais local já autorizado, sem imprimir a password.
 Identificar a **pasta existente** que contém `BUNDLE_ASSINADO`, com
 `decision.json`, `manifest.json`, `signature.bin` e os sete JSON.
 
-No checkout `C:\dev\solveris-b02-g5-v5-publicacao` executar
-somente uma invocação (não construir JSON):
+O executor Windows já utiliza, por defeito, a pasta concreta do assinador
+V2 preservado:
+`%USERPROFILE%\Downloads\SOLVERIS_B02_ASSINATURA_AUTORIZADA_20261022\BUNDLE_SUCESSOR_V2_24H_20261103_1800UTC`.
+
+No checkout `C:\dev\solveris-b02-g5-v5-publicacao`, com a variável de processo
+`SOLVERIS_B02_READER_DSN` já configurada pela custódia (não imprimir
+credenciais), executar **sem reconstruir JSON**:
 
 ```powershell
-.\B02_EMITIR_STORE_V2_WINDOWS.ps1 -Etapa Inspecionar -PastaBundleAssinado 'CAMINHO_REAL_JA_EXISTENTE_DO_BUNDLE_ASSINADO'
+.\B02_EMITIR_STORE_V2_WINDOWS.ps1 -Etapa Inspecionar
 ```
 
-O caminho no comando é uma referência operacional ao diretório já existente:
-não é um nome de evidência presumida. O script deve abortar caso a pasta esteja
+O script deve abortar caso a pasta esteja
 ausente, caso qualquer hash diverja, caso o leitor não seja restrito, ou caso
 a ativação G4 V4 real, a execução e **todas** as decisões PostgreSQL não
 correspondam à cadeia assinada. A verificação da vigência operacional é
@@ -65,7 +69,7 @@ como prova independente da autoria do ato.
 
 ## Fase 2 — emissão local (apenas após ato do titular sobre hash exato)
 ```powershell
-.\B02_EMITIR_STORE_V2_WINDOWS.ps1 -Etapa Emitir -PastaBundleAssinado 'CAMINHO_REAL_JA_EXISTENTE_DO_BUNDLE_ASSINADO' -HashPlanoAprovado 'SHA256_EXATO_DO_PLANO_RATIFICADO'
+.\B02_EMITIR_STORE_V2_WINDOWS.ps1 -Etapa Emitir -HashPlanoAprovado 'SHA256_EXATO_DO_PLANO_RATIFICADO'
 ```
 
 É o **mesmo script**, sem coletor. Reabre uma transação de leitura restrita,
@@ -81,6 +85,33 @@ PostgreSQL. É **proposta prospectiva**, não cronologia histórica forjada.
 Se a janela original de `decision.json` terminar ou o início previsto
 passar antes da fase 2/ROOT, o procedimento deve parar. **Não retroagir
 nem prolongar a decisão assinada.**
+
+## Adoção do assinador competente já existente — não reutilizar ato histórico
+
+A execução não precisa recriar a adoção do código final. O ato OWNER aplicável
+ao assinador V2 final foi publicado em
+[PR #28, comentário 6629393455](https://github.com/nexialistamentor/saas-fiscal-demo/pull/28#issuecomment-6629393455)
+em `2026-11-04T11:26:57Z`. O corpo canónico do comentário deve ser consumido
+pelos mecanismos verificados do assinador, sem usar hash fornecido por request
+como fonte de autoridade. Fixa:
+
+- `signer_source_git_blob=f1e866ba31d02a5e6c7f99c80d1e9833a9a0bbc2`;
+- `review.review_sha256=34353ce4dad00bbd3e8a9fc04ed66929d5f952054138d9c127cd7664d0f9b3fe`;
+- `valid_from=2026-11-04T11:36:00Z`,
+  `valid_until=2026-11-04T18:00:00Z`;
+- `revoked=false`, `no_operational_authority=true`.
+
+O ato antigo no ficheiro
+`evidence/b02/SOLVERIS_B02_SIGNER_V2_ADOCAO_ESPECIFICA_EMITIDA_20261104.json`
+refere-se ao blob **anterior** `b8ff97373476bb3ef1b34362612eedd014f0ff21`,
+e portanto **não** é `SIGNER_AUTHORITY.json` elegível para o consumidor final.
+O parecer final do assinador na PR #28 tem Git blob
+`4f4fec7dba218991983f1edf07edbdcec828862a`. A fonte Git e o SHA
+dos bytes canónicos do parecer devem ser conferidos antes da custódia.
+
+A aprovação do assinador e a assinatura Ed25519 existentes **não** autorizam
+automaticamente a emissão de novos objetos CAS, ROOT ou ROOT_ADOPTION.
+Essas etapas continuam sujeitas ao ato delimitado e à revisão competente.
 
 ## Consumo posterior, sem reabrir precedentes
 1. Revisor competente verifica os objetos reais, respetivos SHA-256, histórico
