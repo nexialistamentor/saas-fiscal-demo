@@ -383,3 +383,45 @@ def test_runtime_bridge_wires_existing_admission_synthetic_stub(tmp_path, monkey
     assert result.permitido is True
     assert observed==['EXISTING_ENDPOINT_CALLED_SYNTHETIC_STUB']
     # This test does not call the independent verifier or the real DB.
+
+
+def test_v2_process_readback_default_closed_even_after_synthetic_fixture(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    from types import MappingProxyType
+    monkeypatch.setattr(v,'_V2_PROCESS_DOCUMENTARY_TRUST',MappingProxyType({}))
+    r=v.readback_v2_documentary_for_process({},connection=None)
+    assert r['runtime_provisioned'] is False
+    assert r['fiscal_authority'] is False
+
+
+def test_v2_process_provision_refuses_nonadmission_synthetic_stub(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    from types import MappingProxyType,SimpleNamespace
+    monkeypatch.setattr(v,'_V2_PROCESS_DOCUMENTARY_TRUST',MappingProxyType({}))
+    monkeypatch.setattr(v,'admit_with_authorized_trust_v2',
+                        lambda evidence,**kw: SimpleNamespace(permitido=False))
+    r=v.provision_v2_documentary_for_process({},connection=None)
+    assert r['status']=='V2_RUNTIME_NOT_ADMITTED'
+    assert r['runtime_provisioned'] is False
+    assert not v._V2_PROCESS_DOCUMENTARY_TRUST
+
+
+def test_v2_process_rolls_back_on_synthetic_readback_failure(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    from types import MappingProxyType,SimpleNamespace
+    monkeypatch.setattr(v,'_V2_PROCESS_DOCUMENTARY_TRUST',MappingProxyType({}))
+    monkeypatch.setattr(v,'admit_with_authorized_trust_v2',
+                        lambda evidence,**kw: SimpleNamespace(permitido=True))
+    monkeypatch.setattr(v,'verify_successor_v2_for_provisioning',
+                        lambda:{
+                            'runtime_provisioned':False,
+                            'root_sha256':'a'*64,'snapshot_sha256':'b'*64,
+                            'signature_sha256':'c'*64,'decision_sha256':'d'*64})
+    monkeypatch.setattr(v,'V2_DEPLOYMENT_PINS',
+                        {'root_adoption_sha256':'e'*64})
+    def deny_readback(*args,**kwargs):
+        raise ValueError('SYNTHETIC_READBACK_DENIED')
+    monkeypatch.setattr(v,'readback_v2_documentary_for_process',deny_readback)
+    with pytest.raises(ValueError,match='SYNTHETIC_READBACK_DENIED'):
+        v.provision_v2_documentary_for_process({},connection=None)
+    assert not v._V2_PROCESS_DOCUMENTARY_TRUST
