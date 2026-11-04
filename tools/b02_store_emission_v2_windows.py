@@ -55,8 +55,9 @@ def canonical(obj):
 
 def read(path, pin=None, binary=False):
     path = Path(path)
-    if path.is_symlink() or not path.is_file():
-        stop("INPUT_MISSING_OR_SYMLINK:" + str(path))
+    if (any(p.is_symlink() or (hasattr(p, "is_junction") and p.is_junction())
+            for p in (path, *path.parents)) or not path.is_file()):
+        stop("INPUT_MISSING_OR_SYMLINK_OR_JUNCTION:" + str(path))
     raw = path.read_bytes()
     if pin and sha(raw) != pin:
         stop("INPUT_HASH_DIVERGENCE:" + str(path))
@@ -84,7 +85,7 @@ def sources(repo, bundle):
     if git(repo, "branch", "--show-current") != BRANCH:
         stop("WRONG_CHECKOUT")
     remote = git(repo, "remote", "get-url", "origin")
-    if "nexialistamentor/saas-fiscal-demo" not in remote:
+    if re.search(r"github\.com[:/]nexialistamentor/saas-fiscal-demo(?:\.git)?$", remote) is None:
         stop("REMOTE_MISMATCH")
     source = repo / "evidence/b02/successor_v3"
     for name, digest in SEVEN.items():
@@ -182,11 +183,10 @@ def pg_read(dsn, signed):
             if db_sha != signed_sha or len(decisions) != 4:
                 stop("PG_ALL_DECISIONS_VS_SIGNED_DIVERGENCE")
             if (a != activation or e.get("state") != "concluida"
-                or e.get("policy_activation_execution_id") != ACTIVATION_ID
-                   and e.get("policy_activation_execution_id") != a.get("policy_activation_execution_id")):
+                or e.get("policy_activation_execution_id") != a.get("policy_activation_execution_id")
+                or e.get("policy_decision_id") != signed["expected"]["decision_bindings"][-1]["id"]
+                or e.get("policy_decision_record_hash") != signed["expected"]["decision_bindings"][-1]["sha256"]):
                 stop("PG_EXECUTION_NOT_BOUND")
-            if a.get("policy_activation_execution_id") != e.get("policy_activation_execution_id"):
-                stop("PG_EXECUTION_DIVERGENCE")
             receipt = dict(database=row[1],reader_role=row[2],read_only=row[3],
                            isolation=row[4],canonical_decisions_sha256=db_sha,
                            activation_id=a["policy_activation_id"],
@@ -220,6 +220,8 @@ def projection(history, review, proofs, institutional, adoption, decision,
     writer = dict(
         id="B02-PG-WRITER-PROJECTION-" + activation["record_hash"][:16],
         schema="SOLVERIS-B02-EXECUTION-WRITER-BINDING-V1",
+        policy_subject=SUBJECT,
+        decision_binding=institutional["expected"]["decision_bindings"][-1],
         writer_role=execution["actor_or_worker"],
         activation_binding=dict(id=activation["policy_activation_id"],sha256=activation["record_hash"]),
         execution_record_binding=dict(id=execution["policy_activation_execution_id"],sha256=execution["record_hash"]),
@@ -244,8 +246,9 @@ def projection(history, review, proofs, institutional, adoption, decision,
 
 def rootpath(p):
     p = Path(p).absolute()
-    if any(x.is_symlink() for x in (p,*p.parents)):
-        stop("CUSTODY_LINK")
+    if any(x.is_symlink() or (hasattr(x, "is_junction") and x.is_junction())
+           for x in (p,*p.parents)):
+        stop("CUSTODY_LINK_OR_JUNCTION")
     return p
 
 
@@ -253,8 +256,9 @@ def emit_object(root,obj):
     raw = canonical(obj)
     h = sha(raw)
     dest = root/"STORE"/"sha256"/h[:2]/(h+".json")
-    if any(p.is_symlink() for p in (dest,*dest.parents)):
-        stop("CAS_LINK")
+    if any(p.is_symlink() or (hasattr(p, "is_junction") and p.is_junction())
+           for p in (dest,*dest.parents)):
+        stop("CAS_LINK_OR_JUNCTION")
     dest.parent.mkdir(parents=True,exist_ok=True)
     if not dest.exists():
         try:
@@ -289,7 +293,15 @@ def main():
     if a.mode == "emit":
         if not a.authorized_plan_sha256 or re.fullmatch("[a-f0-9]{64}",a.authorized_plan_sha256) is None:
             stop("EXACT_MIGUEL_PLAN_AUTHORIZATION_REQUIRED")
-        plan_previous = profile.parse(read(a.plan_file,a.authorized_plan_sha256,binary=True))
+        raw_plan = read(a.plan_file,a.authorized_plan_sha256,binary=True)
+        plan_previous = profile.parse(raw_plan)
+        if (canonical(plan_previous) != raw_plan
+            or plan_previous.get("schema") != "SOLVERIS-B02-STORE-V2-EMISSION-PLAN-V1"
+            or plan_previous.get("status") != "PLAN_NOT_AUTHORITY"
+            or plan_previous.get("postgresql_writes") != 0
+            or plan_previous.get("root_issued") is not False
+            or plan_previous.get("runtime_trust_provisioned") is not False):
+            stop("AUTHORIZATION_PLAN_CONTRACT_DIVERGENCE")
         valid_from = datetime.fromisoformat(plan_previous["snapshot_valid_from"])
     else:
         if a.authorized_plan_sha256:
@@ -320,12 +332,7 @@ def main():
                               db_read_only=True,custody_writes=0,
                               no_root_no_trust=True),sort_keys=True))
         return
-    if (plan["source_git_head"] != plan_previous["source_git_head"]
-        or plan["signed_bundle_hashes"] != plan_previous["signed_bundle_hashes"]
-        or plan["db"] != plan_previous["db"]
-        or plan["custody_root"] != plan_previous["custody_root"]
-        or plan["objects"] != plan_previous["objects"]
-        or plan["pins"] != plan_previous["pins"]):
+    if plan != plan_previous:
         stop("PLAN_STALE_DB_OR_SOURCE_DIVERGENCE")
     root = rootpath(a.custody_root)
     hashes = {k:emit_object(root,v) for k,v in objects.items()}
