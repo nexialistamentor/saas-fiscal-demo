@@ -234,7 +234,86 @@ SUCCESSOR_MANDATE_DIR = 'evidence/b02/successor_v3/mandate_bodies/'
 SUCCESSOR_REVIEWER_ACCEPTANCE = '6792209f25f33346cf5d235f2df186e2428679364042337b0c49d2675d66273d'
 
 
-def consume_issued_successor_acts(result, *, proofs, prior_proofs, own, bodies, proofs_blob):
+# Historical 140-object predecessor and the *exact* nine-object
+# 2026-11-03 append-only successor. Neither constitutes runtime trust.
+SUCCESSOR_PROOFS_BASE_140_BLOB = '36be5f40319bab2c359380e4c0bb4fe67e978e80'
+SUCCESSOR_PROOFS_CURRENT_149_BLOB = 'db66310674ccaa4d6043de93513a40ae4fe8de9f'
+SUCCESSOR_149_ADDITIONS = frozenset({
+    # Two examinations, original examiner acceptance, two origin reports,
+    # completed documentary review and three historic role projections.
+    '1393c6a7dae70a044d59ccb28bfcc62fa526ba42fb8b7af167adaa5c09190e06',
+    '235130de77dd9becde0b0d9f82151f96ecd0d66e9d374c2969f768638d9cabd3',
+    '8d2889895a38da9467ba4641924f46064cc9c140381544a36a85ea34cb6a09bf',
+    '9250fc933c41dab84e186019f01ed1f2b29828de1d5e1b879568a96e3ef1a6d4',
+    '9949a7cca164f9ed50f2b92aa2a1f348fdddfc1c4c3a5cced56b292112a86d21',
+    'a281c48d6107817aca97331e5425f81616847e66853a3e179ca66d3353f23fa8',
+    '6c9f7beddb72253f34bdb0f03b7ebdc60de71590d47a7fe230ac168569b7ae51',
+    'baf36947008b628dc68d239fdd001b56eae9035c6f5ca4188fda53371cba160d',
+    'fbee0586a8b949d60961fac7482be5b28db2254f5555eb4d1a03da65dd344fad',
+})
+
+
+def consume_149_append_only_proofs(proofs, prior_140, proofs_blob):
+    """Recognize only the pinned nine-object continuation, not R7 release."""
+    import hashlib
+    if (proofs_blob != SUCCESSOR_PROOFS_CURRENT_149_BLOB
+        or not isinstance(proofs, dict) or len(proofs) != 149
+        or not isinstance(prior_140, dict) or len(prior_140) != 140
+        or set(proofs) != set(prior_140) | SUCCESSOR_149_ADDITIONS
+        or any(proofs.get(k) != v for k, v in prior_140.items())):
+        stop('SUCCESSOR_149_APPEND_ONLY_DIVERGENCE')
+    for key in SUCCESSOR_149_ADDITIONS:
+        obj = proofs.get(key)
+        if (not isinstance(obj, dict)
+            or hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False,
+                separators=(',', ':')).encode('utf-8')).hexdigest() != key):
+            stop('SUCCESSOR_149_CANONICAL_HASH_DIVERGENCE')
+    accepted = proofs['8d2889895a38da9467ba4641924f46064cc9c140381544a36a85ea34cb6a09bf']
+    mandate = SUCCESSOR_MANDATES['origin_examiner'][1]
+    if (accepted != {
+        'accepted': True,
+        'accepted_at': '2026-11-02T22:00:08.460717+00:00',
+        'execution_id': 'GPT-6/examinador-origem-sefa-pr-g4-sucessor-20261101',
+        'mandate_sha256': mandate}):
+        stop('SUCCESSOR_149_ORIGIN_ACCEPTANCE_DIVERGENCE')
+    records = (
+        ('a281c48d6107817aca97331e5425f81616847e66853a3e179ca66d3353f23fa8',
+         '1393c6a7dae70a044d59ccb28bfcc62fa526ba42fb8b7af167adaa5c09190e06',
+         '101202501245'),
+        ('9250fc933c41dab84e186019f01ed1f2b29828de1d5e1b879568a96e3ef1a6d4',
+         '235130de77dd9becde0b0d9f82151f96ecd0d66e9d374c2969f768638d9cabd3',
+         '101201900571'))
+    for report_sha, exam_sha, document_id in records:
+        report = proofs[report_sha]
+        exam = proofs[exam_sha]
+        if (report.get('document', {}).get('id') != document_id
+            or exam.get('document', {}).get('id') != document_id
+            or report.get('mandate_binding', {}).get('sha256') != mandate
+            or exam.get('mandate_binding', {}).get('sha256') != mandate
+            or report.get('mandate_acceptance_sha256') !=
+                '8d2889895a38da9467ba4641924f46064cc9c140381544a36a85ea34cb6a09bf'
+            or report.get('examination_record_sha256') != exam_sha):
+            stop('SUCCESSOR_149_ORIGIN_EXAM_BINDING_DIVERGENCE')
+    reviewer = proofs['9949a7cca164f9ed50f2b92aa2a1f348fdddfc1c4c3a5cced56b292112a86d21']
+    if (reviewer.get('accepted') is not True
+        or not all(report_sha in reviewer.get('inputs_sha256', [])
+                   for report_sha, _, _ in records)
+        or reviewer.get('reviewer_execution') ==
+           accepted['execution_id']):
+        stop('SUCCESSOR_149_REVIEW_BINDING_DIVERGENCE')
+    roles = (('6c9f7beddb72253f34bdb0f03b7ebdc60de71590d47a7fe230ac168569b7ae51',
+              'author'),
+             ('baf36947008b628dc68d239fdd001b56eae9035c6f5ca4188fda53371cba160d',
+              'integrator'),
+             ('fbee0586a8b949d60961fac7482be5b28db2254f5555eb4d1a03da65dd344fad',
+              'reviewer'))
+    if any(proofs[sha].get('role') != role for sha, role in roles):
+        stop('SUCCESSOR_149_ROLE_PROJECTION_DIVERGENCE')
+    return True
+
+
+def consume_issued_successor_acts(result, *, proofs, prior_proofs, own, bodies, proofs_blob,
+                                  prior_140_proofs=None):
     """Reconcile accepted author/integrator roles without creating an origin act."""
     import hashlib
     from datetime import datetime
@@ -292,6 +371,13 @@ def consume_issued_successor_acts(result, *, proofs, prior_proofs, own, bodies, 
             or set(proofs) != set(prior_proofs) | set(add)):
             stop('SUCCESSOR_140_PROOFS_MISMATCH')
         indexed = True
+    elif len(proofs) == 149:
+        consume_149_append_only_proofs(proofs, prior_140_proofs, proofs_blob)
+        if (any(prior_140_proofs.get(k) != v for k, v in prior_proofs.items())
+            or any(prior_140_proofs.get(k) != v for k, v in add.items())
+            or set(prior_140_proofs) != set(prior_proofs) | set(add)):
+            stop('SUCCESSOR_149_HISTORICAL_CHAIN_DIVERGENCE')
+        indexed = True
     else:
         stop('SUCCESSOR_PROOFS_BASE_OR_COUNT_INVALID')
     return dict(result,
@@ -300,7 +386,10 @@ def consume_issued_successor_acts(result, *, proofs, prior_proofs, own, bodies, 
         g4_successor_mandates_issued=3,
         g4_successor_five_issued_proofs_indexed=indexed,
         g4_successor_proofs_count=len(proofs),
-        g4_distinct_origin_examiner_own_acceptance='NOT_PRESENT_IN_THIS_EVIDENCE',
+        g4_origin_current_nine_proof_expansion_only=(len(proofs)==149),
+        g4_distinct_origin_examiner_own_acceptance=(
+            'PRESENT_IN_149_DOCUMENTARY_PROOFS_NOT_RUNTIME_AUTHORITY'
+            if len(proofs)==149 else 'NOT_PRESENT_IN_THIS_EVIDENCE'),
         g4_author_integrator_own_acceptance_reissue_required=False,
         claim_of_b02_release=False, claim_of_b03_release=False)
 
@@ -321,12 +410,17 @@ def consume_distinct_origin_refusal(result, *, refusal):
         or refusal['execution_id'] != 'GPT-6/revisor-documental-g4-segregado-20261101'
         or refusal['mandate_sha256'] != SUCCESSOR_MANDATES['origin_examiner'][1]):
         stop('ORIGIN_ROLE_REFUSAL_NOT_AN_EXAMINER_ACCEPTANCE')
-    if result.get('g4_distinct_origin_examiner_own_acceptance') != 'NOT_PRESENT_IN_THIS_EVIDENCE':
+    status=result.get('g4_distinct_origin_examiner_own_acceptance')
+    if status not in ('NOT_PRESENT_IN_THIS_EVIDENCE',
+                      'PRESENT_IN_149_DOCUMENTARY_PROOFS_NOT_RUNTIME_AUTHORITY'):
         stop('ORIGIN_ROLE_REFUSAL_CONFLICTS_WITH_ACTUAL_ACCEPTANCE')
     return dict(result,
         g4_reviewer_conflicting_origin_role='DECLINED_WITH_OWN_20261102_ACT',
         g4_reviewer_origin_refusal_sha256=REFUSAL_HASH,
-        g4_distinct_origin_examiner_own_acceptance='NOT_YET_EVIDENCED',
+        g4_distinct_origin_examiner_own_acceptance=(
+            'PRESENT_IN_149_DOCUMENTARY_PROOFS_NOT_RUNTIME_AUTHORITY'
+            if status=='PRESENT_IN_149_DOCUMENTARY_PROOFS_NOT_RUNTIME_AUTHORITY'
+            else 'NOT_YET_EVIDENCED'),
         g4_reviewer_current_mandate_preserved=True,
         claim_of_b02_release=False,
         claim_of_b03_release=False)
@@ -379,9 +473,18 @@ def main():
     if baseline.returncode:
         stop('SUCCESSOR_135_BASE_BLOB_UNAVAILABLE')
     prior_proofs = json.loads(baseline.stdout)
+    prior_140 = None
+    if len(proofs) == 149:
+        historic = subprocess.run(
+            ['git', 'cat-file', 'blob', SUCCESSOR_PROOFS_BASE_140_BLOB],
+            cwd=REPO, capture_output=True, timeout=30)
+        if historic.returncode:
+            stop('SUCCESSOR_140_BASE_BLOB_UNAVAILABLE')
+        prior_140=json.loads(historic.stdout)
     result = consume_issued_successor_acts(
         result, proofs=proofs, prior_proofs=prior_proofs, own=own, bodies=bodies,
-        proofs_blob=git('hash-object', SUCCESSOR_PROOFS_PATH))
+        proofs_blob=git('hash-object', SUCCESSOR_PROOFS_PATH),
+        prior_140_proofs=prior_140)
     if (git('status', '--porcelain', '--', REFUSAL_PATH)
         or git('hash-object', REFUSAL_PATH) != git('rev-parse', 'HEAD:' + REFUSAL_PATH)):
         stop('ORIGIN_ROLE_REFUSAL_UNCOMMITTED')
