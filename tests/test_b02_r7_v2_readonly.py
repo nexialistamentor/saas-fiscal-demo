@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-MOD = Path(__file__).with_name('b02_r7_v2_readonly.py')
+MOD = Path(__file__).resolve().parents[1] / 'tools' / 'b02_r7_v2_readonly.py'
 spec = importlib.util.spec_from_file_location('b02_r7_v2_overlay', MOD)
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
