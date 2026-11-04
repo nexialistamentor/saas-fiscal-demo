@@ -6,8 +6,7 @@ param(
     [ValidateSet('Inspecionar','Emitir')]
     [string]$Etapa,
 
-    [Parameter(Mandatory=$true)]
-    [string]$PastaBundleAssinado,
+    [string]$PastaBundleAssinado = (Join-Path $env:USERPROFILE 'Downloads\SOLVERIS_B02_ASSINATURA_AUTORIZADA_20261022\BUNDLE_SUCESSOR_V2_24H_20261103_1800UTC'),
 
     [string]$Repositorio = 'C:\dev\solveris-b02-g5-v5-publicacao',
     [string]$Plano = (Join-Path $env:USERPROFILE 'Downloads\B02_STORE_V2_PLANO.json'),
