@@ -1,6 +1,7 @@
 """Only new B02 R7 V2 overlay; synthetic read-only focused tests."""
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -82,6 +83,8 @@ def test_projection_keeps_b02_open_when_previous_two_closed(tmp_path, monkeypatc
     monkeypatch.setattr(m,'clean_pinned',lambda repo,paths: None)
     monkeypatch.setattr(m,'git',lambda repo,*args: 'deadbeef')
     monkeypatch.setattr(m,'ADOPTION_SHA', 'a'*64)
+    monkeypatch.setattr(m,'resolve_v3_snapshots',
+                        lambda repo, old, post, raw, candidate: (b'historic',{}))
     (tmp_path/'A2.md').write_text('synthetic current A2 already closed')
     adoption = {'schema':'SOLVERIS-B02-DOCUMENTARY-CONTINUITY-ADOPTION-V2',
         'decision':{'signing_authorized':False},'successor_review':{'sha256':m.REVIEW_SHA},
@@ -100,3 +103,106 @@ def test_projection_keeps_b02_open_when_previous_two_closed(tmp_path, monkeypatc
     assert len(actual['current_unproved_r7_predecessors'])==6
     assert set(actual['closed_gates_only_in_scope'])=={
         'CURRENT_G4_V3_SUCCESSOR','RCV31_A2_V4_OWN_REVIEW'}
+
+
+def _synthetic_historic_v3():
+    """Minimum old V3 schema; deliberately no ROOT, signature or inspections."""
+    docs = []
+    for doc_id in m.G4_HISTORICAL_ORIGIN:
+        docs.append({
+            'document_id': doc_id,
+            'g4': {
+                'origin_report_binding': None,
+                'verifier': None,
+                'outcome': 'AWAITING_OWN_CURRENT_FOUNDER_ORIGIN',
+            },
+            'sanitization': {'outcome': 'AWAITING_CURRENT_REAL_INDEPENDENT_INSPECTION'},
+        })
+    return {
+        'status': 'V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY',
+        '__AVISO_G4_PREENCHIDO__': 'historical-not-linked',
+        '__V3_DRAFT_PROVENANCE__': {
+            'not_signed_or_authorized': True,
+            'policy_body_sha256_is_draft_only': 'old-hash',
+        },
+        'policy_candidate_body': {
+            'rules': {'b02_noncredential': {'security': {'g5_release': {
+                'capability_root_id': None, 'actor': None, 'documents': docs,
+            }}}},
+        },
+    }
+
+
+def test_r7_current_v3_reconstruction_preserves_historical_roots():
+    old = _synthetic_historic_v3()
+    candidate = m.reconstruct_current_v3_from_historic(old)
+    assert all(d['g4']['origin_report_binding'] is None
+               for d in old['policy_candidate_body']['rules']
+                            ['b02_noncredential']['security']['g5_release']['documents'])
+    docs = candidate['policy_candidate_body']['rules']['b02_noncredential']['security']['g5_release']['documents']
+    assert {d['document_id'] for d in docs} == set(m.G4_HISTORICAL_ORIGIN)
+    for d in docs:
+        identifier, digest = m.G4_HISTORICAL_ORIGIN[d['document_id']]
+        assert d['g4']['origin_report_binding'] == {'id': identifier, 'sha256': digest}
+        assert d['g4']['verifier'] is None
+        assert d['g4']['outcome'] == 'AWAITING_OWN_CURRENT_FOUNDER_ORIGIN'
+        assert d['sanitization']['outcome'] == 'AWAITING_CURRENT_REAL_INDEPENDENT_INSPECTION'
+    assert candidate['status'] == 'V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY'
+
+
+def test_r7_historic_v3_reconstruction_rejects_authority_promotion():
+    old = _synthetic_historic_v3()
+    old['policy_candidate_body']['rules']['b02_noncredential']['security']['g5_release']['capability_root_id'] = 'pretend-root'
+    with pytest.raises(ValueError, match='V3_HISTORIC_AUTHORITY_NOT_CLOSED'):
+        m.reconstruct_current_v3_from_historic(old)
+
+
+def _stub_v3_snapshots(monkeypatch):
+    old = _synthetic_historic_v3()
+    historical_raw = json.dumps(old, sort_keys=True).encode('utf-8')
+    monkeypatch.setattr(m, 'HISTORIC_G5_V3_SHA256', m.sha(historical_raw))
+    candidate = m.reconstruct_current_v3_from_historic(old)
+    new_body = json.dumps(candidate['policy_candidate_body'],
+                          sort_keys=True, separators=(',', ':'),
+                          ensure_ascii=False).encode('utf-8')
+    monkeypatch.setattr(m, 'CURRENT_G5_V3_BODY_SHA256', m.sha(new_body))
+    candidate = m.reconstruct_current_v3_from_historic(old)
+    current_raw = json.dumps(candidate, sort_keys=True).encode('utf-8')
+    monkeypatch.setattr(m, 'CURRENT_G5_V3_SHA256', m.sha(current_raw))
+    monkeypatch.setattr(m, 'git', lambda repo, *args: m.CURRENT_G5_V3_BLOB)
+    monkeypatch.setattr(m.subprocess, 'run', lambda *args, **kwargs:
+                        SimpleNamespace(returncode=0, stdout=historical_raw))
+    old_adapter = SimpleNamespace(
+        V3_PATH='POLICY_G5_CANDIDATO_SUCESSOR_V3_PARA_REVISAO.json',
+        G5_V3_FILE_SHA256=m.HISTORIC_G5_V3_SHA256)
+    pin = {'g5_v3_consumer': {
+        'path': old_adapter.V3_PATH,
+        'git_blob': m.HISTORIC_G5_V3_BLOB,
+        'sha256_exact': m.HISTORIC_G5_V3_SHA256,
+        'policy_active': False,
+    }}
+    return old_adapter, pin, current_raw, candidate, historical_raw
+
+
+def test_r7_two_v3_snapshots_use_historic_blob_and_current_exact_delta(monkeypatch, tmp_path):
+    old_adapter, pin, raw, candidate, historic_raw = _stub_v3_snapshots(monkeypatch)
+    returned_raw, returned = m.resolve_v3_snapshots(
+        tmp_path, old_adapter, pin, raw, candidate)
+    assert returned_raw == historic_raw
+    assert returned['status'] == 'V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY'
+
+
+def test_r7_two_v3_snapshots_reject_an_unscoped_current_change(monkeypatch, tmp_path):
+    old_adapter, pin, raw, candidate, _ = _stub_v3_snapshots(monkeypatch)
+    candidate['policy_candidate_body']['rules']['b02_noncredential']['security']['g5_release']['actor'] = 'unapproved'
+    changed_raw = json.dumps(candidate, sort_keys=True).encode('utf-8')
+    monkeypatch.setattr(m, 'CURRENT_G5_V3_SHA256', m.sha(changed_raw))
+    with pytest.raises(ValueError, match='CURRENT_V3_UNSCOPED_CHANGE'):
+        m.resolve_v3_snapshots(tmp_path, old_adapter, pin, changed_raw, candidate)
+
+
+def test_r7_two_v3_snapshots_reject_historic_pin_replacement(monkeypatch, tmp_path):
+    old_adapter, pin, raw, candidate, _ = _stub_v3_snapshots(monkeypatch)
+    pin['g5_v3_consumer']['git_blob'] = 'e'*40
+    with pytest.raises(ValueError, match='HISTORIC_V3_PIN_CONFLICT'):
+        m.resolve_v3_snapshots(tmp_path, old_adapter, pin, raw, candidate)
