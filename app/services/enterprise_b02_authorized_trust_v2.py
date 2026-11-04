@@ -348,6 +348,11 @@ def _v2_verify_independent_history(base, snapshot, profile, now):
     seen = set()
     nodes = []
     history = profile.parse((base/'BUNDLE_ASSINADO'/'history.json').read_bytes())
+    _v2_need(type(snapshot.get('context')) is dict and
+             type(history) is dict and
+             type(history.get('reviews')) is list and
+             type(history.get('prior_reviews')) is list,
+             'RUNTIME_HISTORY_CONTEXT_SCHEMA')
     object_hash = _v2_sha((base/'BUNDLE_ASSINADO'/'object.json').read_bytes())
     review_hash = _v2_sha((base/'BUNDLE_ASSINADO'/'review.json').read_bytes())
     while current is not None:
@@ -431,7 +436,8 @@ class _V2RuntimeProofAdapter:
         runtime._read_identity(connection)
         signed = self.profile.parse(
             (self.base/'BUNDLE_ASSINADO'/'institutional.json').read_bytes())
-        _v2_need(expected==signed['expected'], 'RUNTIME_BINDINGS_NOT_SIGNED')
+        _v2_need(type(signed) is dict and expected==signed.get('expected'),
+             'RUNTIME_BINDINGS_NOT_SIGNED')
         decisions,activation,execution = runtime._read_snapshot(
             connection, _V2_SUBJECT, self.policy_binding)
         digest = _v2_sha(self.profile.canonical(
