@@ -19,10 +19,21 @@ Preservar a PR #27 e a correção focal submetida à PR #29.
   `enterprise_b02_founder_runtime._read_identity`.
 
 ## Fase 1 — inspeção (sem escrita de custódia)
-Preparar a variável de ambiente do processo `SOLVERIS_B02_READER_DSN` por
-mecanismo de credenciais local já autorizado, sem imprimir a password.
-Identificar a **pasta existente** que contém `BUNDLE_ASSINADO`, com
-`decision.json`, `manifest.json`, `signature.bin` e os sete JSON.
+**Não é necessário configurar `SOLVERIS_B02_READER_DSN` manualmente.**
+Quando a variável não existe, o mesmo executor utiliza
+`tools/b02_store_v2_readonly_bridge.py`, que reutiliza
+`b02_g5_v5_local_bridge.py`: verifica branch e HEAD remoto, o contentor
+`solveris-pg17-migration-test` e o volume protegido exato, cria somente
+uma porta efémera de loopback, estabelece a ligação como
+`solveris_b02_writer` e passa a DSN apenas ao processo Python. Não
+imprime palavras-passe, não abre uma porta PostgreSQL no host e não
+altera `pg_hba`, roles, volumes ou esquema. O emissor exige
+`REPEATABLE READ, READ ONLY` e a identidade PostgreSQL já fixada no
+verificador. Se uma DSN autorizada já estiver definida, continua
+compatível com o caminho direto original, sujeito aos mesmos guardas.
+
+A pasta `BUNDLE_ASSINADO` é a mesma do assinador V2 existente e
+deve conter `decision.json`, `manifest.json`, `signature.bin` e os sete JSON.
 
 O executor Windows já utiliza, por defeito, a pasta concreta do assinador
 V2 preservado:
@@ -36,8 +47,8 @@ credenciais), executar **sem reconstruir JSON**:
 .\B02_EMITIR_STORE_V2_WINDOWS.ps1 -Etapa Inspecionar
 ```
 
-O script deve abortar caso a pasta esteja
-ausente, caso qualquer hash diverja, caso o leitor não seja restrito, ou caso
+O script deve abortar caso a pasta ou o contentor protegido estejam
+ausentes ou divergentes, caso qualquer hash diverja, caso o leitor não seja restrito, ou caso
 a ativação G4 V4 real, a execução e **todas** as decisões PostgreSQL não
 correspondam à cadeia assinada. A verificação da vigência operacional é
 prospectiva; não prolonga autorizações expiradas.
