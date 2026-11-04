@@ -359,3 +359,27 @@ def test_runtime_bridge_rejects_unsigned_structural_bindings(tmp_path, monkeypat
         adapter.verify_exact_chain(
             connection=object(),expected={'policy_subject':v._V2_SUBJECT,
                                            'decision_bindings':[]})
+
+
+def test_runtime_bridge_wires_existing_admission_synthetic_stub(tmp_path, monkeypatch):
+    """Wiring-only positive simulation, NOT a production trust/admission proof."""
+    f=fixture(tmp_path,monkeypatch)
+    from types import SimpleNamespace
+    from app.services import enterprise_b02_founder_runtime as runtime
+    from app.services import sefa_pr_documentary_admission as admission
+    monkeypatch.setattr(runtime,'_read_identity',lambda connection:None)
+    monkeypatch.setattr(v,'verify_successor_v2_for_provisioning',lambda:{
+        'status':'V2_SIGNED_CUSTODY_VALIDATED_NOT_RUNTIME_PROVISIONED',
+        'runtime_provisioned':False})
+    observed=[]
+    def fake_existing_admission(evidence,*,connection,now,institutional_proof_verifier):
+        assert isinstance(institutional_proof_verifier,v._V2RuntimeProofAdapter)
+        observed.append('EXISTING_ENDPOINT_CALLED_SYNTHETIC_STUB')
+        return SimpleNamespace(permitido=True)
+    monkeypatch.setattr(admission,'admit_documentary_verification',fake_existing_admission)
+    result=v.admit_with_authorized_trust_v2(
+        {'policy_binding':{'policy_id':'synthetic'}},
+        connection=object(),now=datetime.fromisoformat(f.now))
+    assert result.permitido is True
+    assert observed==['EXISTING_ENDPOINT_CALLED_SYNTHETIC_STUB']
+    # This test does not call the independent verifier or the real DB.
