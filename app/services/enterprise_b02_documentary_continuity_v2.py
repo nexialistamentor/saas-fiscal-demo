@@ -17,6 +17,31 @@ REQUIRED_ROLES = ('reviewer', 'author', 'integrator', 'origin_examiner')
 ORIGIN_KIND = 'independent_document_origin_founder_sealed'
 MECHANISM = 'preserved_official_channel_corroboration'
 
+# Exactly these two already-custodied ORIGIN reports have scoped reservations
+# INSIDE mechanism_assessment, not in a separate limitations field. Their
+# canonical SHA-256 pins are validated again against proofs.json below.
+HISTORIC_ORIGIN_RESERVATIONS_IN_ASSESSMENT = frozenset({
+    'a281c48d6107817aca97331e5425f81616847e66853a3e179ca66d3353f23fa8',
+    '9250fc933c41dab84e186019f01ed1f2b29828de1d5e1b879568a96e3ef1a6d4',
+})
+
+
+def _origin_has_scoped_reservations(report, report_sha):
+    limits = report.get('limitations')
+    if isinstance(limits, list) and limits and all(
+            isinstance(item, str) and item.strip() for item in limits):
+        return True
+    if report_sha not in HISTORIC_ORIGIN_RESERVATIONS_IN_ASSESSMENT:
+        return False
+    scope = report.get('mechanism_assessment')
+    return (isinstance(scope, list) and scope
+            and all(isinstance(item, str) and item.strip() for item in scope)
+            and any('COM RESSALVAS' in item for item in scope)
+            and any(item.startswith('Ressalvas:') for item in scope)
+            and any('NOT_GRANTED' in item for item in scope))
+
+
+
 
 def _fail(code):
     raise ValueError('B02_CONTINUITY_V2_' + code)
@@ -210,7 +235,8 @@ def verify_supplemental_continuity(*, adoption, trusted_pin, evidence,
                 < _time(mandate['valid_until'])
                 or _time(report['examined_at']) > _time(review['completed_at'])):
             _fail('ORIGIN_CHRONOLOGY_INVALID')
-        if (not report.get('limitations') or not report.get('mechanism_assessment')
+        if (not _origin_has_scoped_reservations(report, pin['sha256'])
+                or not report.get('mechanism_assessment')
                 or not report.get('receipt_binding') or not report.get('tls_evidence_binding')):
             _fail('ORIGIN_SCOPE_INSUFFICIENT')
         if (_time(valid_from) < _time(mandate['valid_from'])
