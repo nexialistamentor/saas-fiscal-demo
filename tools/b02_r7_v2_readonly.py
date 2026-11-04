@@ -8,6 +8,7 @@ An absent external operational receipt remains UNKNOWN, never proof of nonexecut
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import importlib.util
 import json
@@ -26,6 +27,22 @@ PUBLIC_DER_SHA = '6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d6
 SIGNER_BLOB = 'f1e866ba31d02a5e6c7f99c80d1e9833a9a0bbc2'
 OBJECT_SHA = '615c8d6466871a94981358e9cab6f4f5d797f317b9026c77e304b7af6ac50906'
 REVIEW_SHA = '9949a7cca164f9ed50f2b92aa2a1f348fdddfc1c4c3a5cced56b292112a86d21'
+HISTORIC_G5_V3_BLOB = '895b277634c50fd17c0f20514fe69ccc40d40a88'
+HISTORIC_G5_V3_SHA256 = '32068cadf7297fb5958af25650899abffc667c17f3508f9261a165b8dfbd5fc7'
+CURRENT_G5_V3_BLOB = 'fa88b2f98c7f5d24e0c092f0ea02afce22efb2e2'
+CURRENT_G5_V3_SHA256 = '29ec3504f7f6c6d4b4dca23484ef3de283768573b5b02095cf53e896350063a5'
+CURRENT_G5_V3_BODY_SHA256 = '1011f3f6ba4ab9ee6085aa1d7959f9f87d6880b9384243423bf3686ff0845577'
+CURRENT_G4_NOTICE = (
+    'G4 V4 activation and two existing historical ORIGIN reports linked by exact '
+    'hashes; this does NOT establish G5 V3 operational origin, current inspection '
+    'or ratification.'
+)
+G4_HISTORICAL_ORIGIN = {
+ '101202501245': ('B02-G4-SUCESSOR-ORIGIN-REPORT-101202501245-20261102',
+                 'a281c48d6107817aca97331e5425f81616847e66853a3e179ca66d3353f23fa8'),
+ '101201900571': ('B02-G4-SUCESSOR-ORIGIN-REPORT-101201900571-20261102',
+                 '9250fc933c41dab84e186019f01ed1f2b29828de1d5e1b879568a96e3ef1a6d4'),
+}
 SEVEN = {
  'execution.json': '5cdc4e6fca726edbc14aeb7cf253739cca9dc6067d7895096211ee89c0b6e903',
  'history.json': '8c585bdb3ec42d2ebc100f96013ff7be5144d78a1b29435f4025670c6bcd36c1',
@@ -81,6 +98,76 @@ def clean_pinned(repo: Path, paths: list[str]) -> None:
             reject('WORKTREE_GIT_BLOB_' + path)
 
 
+def reconstruct_current_v3_from_historic(historic: dict) -> dict:
+    """Allow only the two G4 historical references, notice and draft-body pin."""
+    if not isinstance(historic, dict) or historic.get('status') != (
+            'V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY'):
+        reject('V3_HISTORIC_DOCUMENT_INVALID')
+    expected = copy.deepcopy(historic)
+    body = expected.get('policy_candidate_body')
+    try:
+        release = body['rules']['b02_noncredential']['security']['g5_release']
+        docs = release['documents']
+        if (len(docs) != 2 or
+                {d['document_id'] for d in docs} != set(G4_HISTORICAL_ORIGIN)):
+            reject('V3_HISTORIC_TWO_SOURCES_INVALID')
+        if release['capability_root_id'] is not None or release['actor'] is not None:
+            reject('V3_HISTORIC_AUTHORITY_NOT_CLOSED')
+        if expected['__V3_DRAFT_PROVENANCE__']['not_signed_or_authorized'] is not True:
+            reject('V3_HISTORIC_NOT_DRAFT')
+        for doc in docs:
+            g4 = doc['g4']
+            if (g4['origin_report_binding'] is not None
+                    or g4['verifier'] is not None
+                    or g4['outcome'] != 'AWAITING_OWN_CURRENT_FOUNDER_ORIGIN'
+                    or doc['sanitization']['outcome'] !=
+                    'AWAITING_CURRENT_REAL_INDEPENDENT_INSPECTION'):
+                reject('V3_HISTORIC_G4_ALREADY_PROMOTED')
+            report_id, report_sha = G4_HISTORICAL_ORIGIN[doc['document_id']]
+            g4['origin_report_binding'] = {'id': report_id, 'sha256': report_sha}
+    except (KeyError, TypeError, AttributeError):
+        reject('V3_HISTORIC_STRUCTURE_INVALID')
+    expected['__AVISO_G4_PREENCHIDO__'] = CURRENT_G4_NOTICE
+    expected['__V3_DRAFT_PROVENANCE__']['policy_body_sha256_is_draft_only'] = (
+        CURRENT_G5_V3_BODY_SHA256)
+    return expected
+
+
+def resolve_v3_snapshots(repo: Path, old, consumption: dict,
+                         current_raw: bytes, current_v3: dict) -> tuple[bytes, dict]:
+    """Consume old G4 report against its frozen blob; exact-check current delta."""
+    pin = consumption.get('g5_v3_consumer', {})
+    if (old.V3_PATH != 'POLICY_G5_CANDIDATO_SUCESSOR_V3_PARA_REVISAO.json'
+            or old.G5_V3_FILE_SHA256 != HISTORIC_G5_V3_SHA256
+            or not isinstance(pin, dict)
+            or pin.get('path') != old.V3_PATH
+            or pin.get('git_blob') != HISTORIC_G5_V3_BLOB
+            or pin.get('sha256_exact') != HISTORIC_G5_V3_SHA256
+            or pin.get('policy_active') is not False):
+        reject('HISTORIC_V3_PIN_CONFLICT')
+    p = subprocess.run(
+        ['git', '-C', str(repo), 'cat-file', 'blob', HISTORIC_G5_V3_BLOB],
+        capture_output=True, timeout=35)
+    if p.returncode != 0 or sha(p.stdout) != HISTORIC_G5_V3_SHA256:
+        reject('HISTORIC_V3_BLOB_DIVERGENCE')
+    try:
+        historic = json.loads(p.stdout, object_pairs_hook=unique)
+    except (ValueError, UnicodeDecodeError):
+        reject('HISTORIC_V3_JSON_INVALID')
+    if (git(repo, 'rev-parse', 'HEAD:' + old.V3_PATH) != CURRENT_G5_V3_BLOB
+            or sha(current_raw) != CURRENT_G5_V3_SHA256):
+        reject('CURRENT_V3_PIN_DIVERGENCE')
+    expected = reconstruct_current_v3_from_historic(historic)
+    if current_v3 != expected:
+        reject('CURRENT_V3_UNSCOPED_CHANGE')
+    canonical_body = json.dumps(
+        current_v3['policy_candidate_body'], sort_keys=True,
+        ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+    if sha(canonical_body) != CURRENT_G5_V3_BODY_SHA256:
+        reject('CURRENT_V3_CANONICAL_BODY_DIVERGENCE')
+    return p.stdout, historic
+
+
 def load_old(repo: Path):
     file = repo / 'tools/b02_r7_release_readiness.py'
     spec = importlib.util.spec_from_file_location('historic_b02_r7_readonly', file)
@@ -99,10 +186,11 @@ def baseline(repo: Path) -> dict:
     _,manifest = read(repo, old.MANIFEST_PATH)
     current = old.evaluate(fence, manifest, fence_blob=git(repo, 'hash-object', old.FENCE_PATH))
     _,post = read(repo, old.POST_G4_PATH)
-    v3raw,v3 = read(repo, old.V3_PATH)
+    current_raw,current_v3 = read(repo, old.V3_PATH)
+    v3raw,v3 = resolve_v3_snapshots(repo, old, post, current_raw, current_v3)
     current = old.evaluate_post_g4(current, fence,
         fence_blob=git(repo,'hash-object',old.FENCE_PATH),
-        consumption=post, v3=v3, v3_blob=git(repo,'hash-object',old.V3_PATH), v3_raw=v3raw)
+        consumption=post, v3=v3, v3_blob=HISTORIC_G5_V3_BLOB, v3_raw=v3raw)
     a2txt = (repo/old.A2_FOCAL_PATH).read_text(encoding='utf-8-sig')
     current = old.consume_a2_v4_focal_review(current,
         report_blob=git(repo,'hash-object',old.A2_FOCAL_PATH), report_text=a2txt)
