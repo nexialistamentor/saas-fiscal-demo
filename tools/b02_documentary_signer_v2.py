@@ -130,12 +130,14 @@ def _original_authorization(decision_raw):
 
 
 def _source_pinned_signer_authority(authority_raw, authority):
-    """Find the ONE owner-issued canonical adoption in the existing PR #28.
+    """Bind only the owner-issued adoption applicable to THIS exact signer.
 
-    Local authority file and any CLI SHA must agree with those GitHub-served
-    bytes. New issuer acts are posted after the signer code blob is fixed.
+    Historical adoptions with the same schema/id but a different signer blob
+    remain valid historical evidence and cannot create false duplicate matches.
+    No CLI value or local authority body selects the applicable signer.
     """
-    matches = []
+    current_blob = git_blob(Path(__file__).read_bytes())
+    applicable = []
     for page in range(1, 11):
         url = GITHUB_ISSUE_API + f'/comments?per_page=100&page={page}'
         items = _github_json(url)
@@ -149,23 +151,45 @@ def _source_pinned_signer_authority(authority_raw, authority):
                 obj = json.loads(body)
             except (UnicodeError, ValueError):
                 continue
-            if (type(obj) is dict and
-                obj.get('schema') == 'SOLVERIS-B02-SIGNER-V2-AUTHORITY-ADOPTION-V1' and
-                obj.get('id') == SIGNER_ID):
-                # This is the SAME existing adoption body, not a new schema.
-                expect(canonical_for_hash(obj) == body.encode('utf-8'),
-                       'SIGNER_AUTHORITY_SOURCE_NOT_CANONICAL')
-                matches.append((item, body.encode('utf-8')))
+            if not (type(obj) is dict and
+                    obj.get('schema') == 'SOLVERIS-B02-SIGNER-V2-AUTHORITY-ADOPTION-V1' and
+                    obj.get('id') == SIGNER_ID and
+                    obj.get('signer_source_git_blob') == current_blob):
+                # Preserve unrelated and predecessor adoptions without
+                # accepting them as authority for the currently running code.
+                continue
+            expect(canonical_for_hash(obj) == body.encode('utf-8'),
+                   'SIGNER_AUTHORITY_SOURCE_NOT_CANONICAL')
+            applicable.append((item, body.encode('utf-8'), obj))
         if len(items) < 100:
             break
     else:
         stop('SIGNER_AUTHORITY_SOURCE_PAGINATION_LIMIT')
-    expect(len(matches) == 1, 'COMPETENT_SIGNER_ADOPTION_NOT_UNIQUELY_ISSUED')
-    item, source_raw = matches[0]
-    expect(source_raw == authority_raw and
-           item['created_at'] is not None and
-           utc(authority['issued_at']) <= utc(item['created_at']) <= utc(authority['valid_from']),
+    # Count *all* owner-authenticated acts for this signer before examining
+    # validity; never choose newest or silently ignore a conflicting/revoked act.
+    expect(len(applicable) == 1, 'COMPETENT_SIGNER_ADOPTION_NOT_UNIQUELY_ISSUED')
+    item, source_raw, source = applicable[0]
+    expect(source_raw == authority_raw and source == authority and
+           source.get('signer_source_git_blob') == current_blob,
            'SIGNER_AUTHORITY_NOT_INDEPENDENTLY_PINNED')
+    expect(source.get('issuer') == 'Miguel' and
+           source.get('policy_subject') == SUBJECT and
+           source.get('scope') == SCOPE and
+           source.get('decision_sha256') == APPROVED_DECISION_SHA256 and
+           source.get('manifest_sha256') == APPROVED_MANIFEST_SHA256 and
+           source.get('approved') is True and
+           source.get('signing_authorized') is True and
+           source.get('status') == 'adopted' and
+           source.get('revoked') is False and
+           source.get('no_operational_authority') is True and
+           source.get('no_g4_reactivation') is True,
+           'SIGNER_AUTHORITY_APPLICABLE_ACT_INVALID')
+    issued = utc(source['issued_at'])
+    effective = utc(source['valid_from'])
+    end = utc(source['valid_until'])
+    expect(utc(ORIGINAL_WINDOW_START) <= effective < end <= utc(ORIGINAL_WINDOW_END) and
+           issued <= utc(item['created_at']) <= effective,
+           'SIGNER_AUTHORITY_CHRONOLOGY_INVALID')
     return sha(source_raw)
 
 
