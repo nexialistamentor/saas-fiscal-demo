@@ -264,7 +264,7 @@ def test_v2_rejects_v1_snapshot_extra_issued_at_even_rehashed(tmp_path,monkeypat
 # remain untouched. Synthetic graph != issuer adoption or live deployment.
 def test_focal_same_adoption_midwindow_accepted_by_v2_consumer(tmp_path,monkeypatch):
     f=fixture(tmp_path,monkeypatch)
-    assert v._V2_SIGNER_GIT_BLOB=='17dc1b4a9a34a8045bddb97717c01b160411c238'
+    assert v._V2_SIGNER_GIT_BLOB=='f1e866ba31d02a5e6c7f99c80d1e9833a9a0bbc2'
     # The exact same canonical SIGNER_AUTHORITY.json can be verified by the
     # signer via the owner-issued GitHub PR #28 record; the consumer checks
     # its SHA against the separately adopted deployment ROOT.
