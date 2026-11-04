@@ -333,3 +333,161 @@ def verify_successor_v2_for_provisioning():
     base=Path.home()/'AppData/Local/SOLVERIS/B02Trust/SUCCESSOR_V3'
     return _v2_validate_exact(base,V2_DEPLOYMENT_PINS,now=datetime.now(timezone.utc),
                               profile=profile,continuity_checker=verify_supplemental_continuity)
+
+
+# --- B02 V2 focal runtime bridge: same consumer, no V1 fallback. ---
+# This is not a ROOT issuer or deployment action. Only a separately deployed,
+# source-pinned ROOT + competent ROOT_ADOPTION can reach the live adapter.
+
+def _v2_verify_independent_history(base, snapshot, profile, now):
+    """Resolve current V2 head/genesis from the independent pinned store."""
+    store = _v2_safe_path(base/'STORE')
+    head_pin = _v2_pin(snapshot['head_binding'])
+    genesis_pin = _v2_pin(snapshot['genesis_binding'])
+    current = head_pin
+    seen = set()
+    nodes = []
+    history = profile.parse((base/'BUNDLE_ASSINADO'/'history.json').read_bytes())
+    object_hash = _v2_sha((base/'BUNDLE_ASSINADO'/'object.json').read_bytes())
+    review_hash = _v2_sha((base/'BUNDLE_ASSINADO'/'review.json').read_bytes())
+    while current is not None:
+        pin = _v2_pin(current)
+        key = (pin['id'], pin['sha256'])
+        _v2_need(key not in seen and len(seen)<64, 'RUNTIME_HISTORY_CYCLE')
+        seen.add(key)
+        node = _v2_file_from_store(store, pin, profile.parse)
+        _v2_need(set(node)=={'id','schema','policy_subject','sequence','previous',
+             'history_sha256','review_hashes','object_sha256','current_review_sha256',
+             'supersedes','valid_from','valid_until','revoked','synthetic_only'}
+             and node['schema']=='SOLVERIS-B02-PRESERVED-REVIEW-PROJECTION-V1'
+             and node['policy_subject']==_V2_SUBJECT
+             and type(node['sequence']) is int and node['sequence']>=1
+             and type(node['review_hashes']) is list
+             and bool(node['review_hashes'])
+             and len(set(node['review_hashes']))==len(node['review_hashes'])
+             and node['revoked'] is False and node['synthetic_only'] is False,
+             'RUNTIME_HISTORY_NODE')
+        _v2_check_window(node, now, now, now, prospectively_issued=True)
+        if nodes:
+            child = nodes[-1]
+            _v2_need(child['sequence']==node['sequence']+1 and
+                     child['supersedes']==pin and
+                     child['object_sha256']!=node['object_sha256'],
+                     'RUNTIME_HISTORY_SUCCESSION')
+        nodes.append(node)
+        if node['previous'] is None:
+            _v2_need(node['sequence']==1 and pin==genesis_pin and
+                     node['supersedes'] is None,
+                     'RUNTIME_HISTORY_GENESIS')
+        else:
+            _v2_pin(node['previous'])
+        current = node['previous']
+    _v2_need(bool(nodes) and nodes[0]['history_sha256']==_v2_sha(profile.canonical(history))
+             and nodes[0]['object_sha256']==object_hash
+             and nodes[0]['current_review_sha256']==review_hash
+             and nodes[0]['review_hashes']==history['reviews']
+             and nodes[0]['sequence']==history['revision']
+             and snapshot['context'].get('history_sha256')==nodes[0]['history_sha256']
+             and snapshot['context'].get('current_object_sha256')==object_hash
+             and snapshot['context'].get('current_review_sha256')==review_hash,
+             'RUNTIME_HEAD_OR_CONTEXT_DIVERGENCE')
+    projected = [review for node in reversed(nodes) for review in node['review_hashes']]
+    full_reviews = history['reviews']+history['prior_reviews']
+    _v2_need(len(projected)==len(set(projected)) and
+             set(projected)==set(full_reviews), 'RUNTIME_REVIEW_OMISSION')
+    previous = history
+    proofs = profile.parse((base/'BUNDLE_ASSINADO'/'proofs.json').read_bytes())
+    for index,node in enumerate(nodes):
+        _v2_need(_v2_sha(profile.canonical(previous))==node['history_sha256']
+                 and previous['object_sha256']==node['object_sha256']
+                 and previous['reviews']==node['review_hashes']
+                 and previous['revision']==node['sequence'],
+                 'RUNTIME_HISTORY_BYTES_DIVERGENCE')
+        if index==len(nodes)-1:
+            _v2_need(previous['previous_revision'] is None,
+                     'RUNTIME_PREDECESSOR_OMISSION')
+        else:
+            previous=proofs.get(previous['previous_revision'])
+            _v2_need(type(previous) is dict, 'RUNTIME_PREDECESSOR_MISSING')
+    return nodes
+
+
+class _V2RuntimeProofAdapter:
+    """Internal, fail-closed proof adapter for the existing documentary endpoint.
+
+    Constructed only after exact custody validation. Never accepts a root,
+    store path, or deployment pins from client evidence.
+    """
+    def __init__(self, *, base, now, policy_binding, profile):
+        self.base = _v2_safe_path(base)
+        self.now = now
+        self.policy_binding = policy_binding
+        self.profile = profile
+
+    def verify_exact_chain(self, *, connection, expected):
+        from app.services import enterprise_b02_founder_runtime as runtime
+        # The existing policy projector performs structural authority validation
+        # before calling this method. Read the entire independent DB snapshot.
+        runtime._read_identity(connection)
+        signed = self.profile.parse(
+            (self.base/'BUNDLE_ASSINADO'/'institutional.json').read_bytes())
+        _v2_need(expected==signed['expected'], 'RUNTIME_BINDINGS_NOT_SIGNED')
+        decisions,activation,execution = runtime._read_snapshot(
+            connection, _V2_SUBJECT, self.policy_binding)
+        digest = _v2_sha(self.profile.canonical(
+            sorted(decisions, key=lambda r:r['decision_id'])))
+        snapshot_pin = _v2_pin(self.profile.parse(
+            (self.base/'ROOT.json').read_bytes())['snapshot_binding'])
+        store = _v2_safe_path(self.base/'STORE')
+        snapshot = _v2_file_from_store(store, snapshot_pin, self.profile.parse)
+        _v2_need(digest==snapshot['canonical_decisions_sha256']
+                 and digest==_v2_sha(self.profile.canonical(
+                     sorted(signed['decisions'],key=lambda r:r['decision_id']))),
+                 'RUNTIME_DB_SNAPSHOT_DIVERGENCE')
+        _v2_verify_independent_history(self.base,snapshot,self.profile,self.now)
+        writer = _v2_file_from_store(
+            store,_v2_pin(snapshot['execution_writer_binding']),self.profile.parse)
+        _v2_need(writer.get('schema')=='SOLVERIS-B02-EXECUTION-WRITER-BINDING-V1'
+                 and writer.get('revoked') is False,
+                 'RUNTIME_WRITER_NOT_RECOGNIZED')
+        # Writer must bind this *real* activation and execution, not V1
+        # historical activation or a pin supplied by the request.
+        context = dict(snapshot['context'])
+        runtime._binding(context,writer,activation,execution,expected,now=self.now)
+        return {'status':'verified','verified_bindings':expected}
+
+
+def admit_with_authorized_trust_v2(evidence, *, connection, now=None):
+    """Explicit V2 runtime readback over the existing admission endpoint.
+
+    No deployment/root auto-promotion, filesystem writes, SQL writes, or
+    inference of G5 authority. A positive result requires actual current
+    PostgreSQL authority and independent custody; no synthetic shortcut.
+    """
+    from app.services.sefa_pr_documentary_admission import admit_documentary_verification
+    from app.services import enterprise_b02_founder_runtime as runtime
+    from app.services import enterprise_b02_founder_review_profile as profile
+    from datetime import datetime, timezone
+    if now is None:
+        now = datetime.now(timezone.utc)
+    _v2_need(isinstance(now,datetime) and now.tzinfo is not None,
+             'RUNTIME_CLOCK_REQUIRED')
+    _v2_need(type(evidence) is dict and type(evidence.get('policy_binding')) is dict,
+             'RUNTIME_POLICY_BINDING_REQUIRED')
+    runtime._read_identity(connection)
+    # This reads exclusively the deployment-pinned custody location and
+    # requires competent ROOT_ADOPTION. The legacy V1 path is not called.
+    custody = verify_successor_v2_for_provisioning()
+    _v2_need(custody['status']=='V2_SIGNED_CUSTODY_VALIDATED_NOT_RUNTIME_PROVISIONED'
+             and custody['runtime_provisioned'] is False,
+             'RUNTIME_V2_CUSTODY_NOT_VALIDATED')
+    base = Path.home()/'AppData/Local/SOLVERIS/B02Trust/SUCCESSOR_V3'
+    adapter = _V2RuntimeProofAdapter(
+        base=base, now=now, policy_binding=evidence['policy_binding'],
+        profile=profile)
+    outcome = admit_documentary_verification(
+        evidence,connection=connection,now=now,institutional_proof_verifier=adapter)
+    # Return the source-authority decision unchanged. A caller may label the
+    # live result 'admitted' only if outcome.permitido is True, NOT because
+    # custody validation returned success. This does not persist a root.
+    return outcome
