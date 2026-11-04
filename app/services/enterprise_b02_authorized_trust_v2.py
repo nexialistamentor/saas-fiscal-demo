@@ -434,16 +434,31 @@ class _V2RuntimeProofAdapter:
         # The existing policy projector performs structural authority validation
         # before calling this method. Read the entire independent DB snapshot.
         runtime._read_identity(connection)
-        signed = self.profile.parse(
-            (self.base/'BUNDLE_ASSINADO'/'institutional.json').read_bytes())
+        # Re-pin the signed bytes at use time; a custody preflight alone does
+        # not protect against a later filesystem replacement (TOCTOU).
+        manifest_raw=(self.base/'BUNDLE_ASSINADO'/'manifest.json').read_bytes()
+        _v2_need(_v2_sha(manifest_raw)==_V2_MANIFEST_SHA256,
+                 'RUNTIME_SIGNED_MANIFEST_CHANGED')
+        manifest=self.profile.parse(manifest_raw)
+        signed_raw=(self.base/'BUNDLE_ASSINADO'/'institutional.json').read_bytes()
+        entry=next((x for x in manifest['entries']
+                    if x.get('path')=='institutional.json'),None)
+        _v2_need(entry is not None and
+                 _v2_sha(signed_raw)==entry['sha256'] and
+                 len(signed_raw)==entry['size'],
+                 'RUNTIME_SIGNED_INSTITUTIONAL_CHANGED')
+        signed=self.profile.parse(signed_raw)
         _v2_need(type(signed) is dict and expected==signed.get('expected'),
              'RUNTIME_BINDINGS_NOT_SIGNED')
         decisions,activation,execution = runtime._read_snapshot(
             connection, _V2_SUBJECT, self.policy_binding)
         digest = _v2_sha(self.profile.canonical(
             sorted(decisions, key=lambda r:r['decision_id'])))
-        snapshot_pin = _v2_pin(self.profile.parse(
-            (self.base/'ROOT.json').read_bytes())['snapshot_binding'])
+        root_raw=(self.base/'ROOT.json').read_bytes()
+        _v2_need(_v2_sha(root_raw)==V2_DEPLOYMENT_PINS['root_sha256'],
+                 'RUNTIME_ROOT_CHANGED')
+        snapshot_pin = _v2_pin(
+            self.profile.parse(root_raw)['snapshot_binding'])
         store = _v2_safe_path(self.base/'STORE')
         snapshot = _v2_file_from_store(store, snapshot_pin, self.profile.parse)
         _v2_need(digest==snapshot['canonical_decisions_sha256']
