@@ -36,6 +36,7 @@ ALLOWED = {
     'tools/b02_g4_g5_temporal_successor_runner.py',
     'tools/b02_g5_v3_temporal_materialize_candidate.py',
     'tools/b02_r4_private_backup_disposable_restore.py',
+    'tools/b02_store_emission_v2_windows.py',
 }
 
 
