@@ -7,6 +7,7 @@ no signing. A candidate for ROOT cannot be passed off as an issued ROOT.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -136,8 +137,19 @@ def root_inputs(repo, plan, custody, source_bundle, public):
         raw,_ = read(dest,ADOPTION_SHA)
         if raw != adoption_raw:
             stop("CONTINUITY_ADOPTION_DIVERGENCE")
-    review_raw=git(repo,"show",REVIEW_COMMIT+":"+REVIEW_PATH)
-    if blob_sha(review_raw) != REVIEW_BLOB or sha(review_raw) != REVIEW_SHA:
+    review_url=("https://api.github.com/repos/nexialistamentor/"
+                "saas-fiscal-demo/git/blobs/"+REVIEW_BLOB)
+    request=urllib.request.Request(review_url,headers={
+        "Accept":"application/vnd.github+json", "User-Agent":"SOLVERIS-B02-root-readonly"})
+    with urllib.request.urlopen(request,timeout=15) as response:
+        if response.status!=200 or response.geturl()!=review_url:
+            stop("REVIEW_GITHUB_SOURCE_INVALID")
+        gitblob=json.load(response)
+    if gitblob.get("sha")!=REVIEW_BLOB or gitblob.get("encoding")!="base64":
+        stop("REVIEW_GITHUB_BLOB_UNPINNED")
+    review_raw=base64.b64decode(gitblob["content"],validate=False)
+    if (len(review_raw)!=gitblob.get("size") or
+        blob_sha(review_raw) != REVIEW_BLOB or sha(review_raw) != REVIEW_SHA):
         stop("REVIEW_SOURCE_UNPINNED")
     review = profile.parse(review_raw)
     if review.get("outcome") != "favoravel" or review.get("conflicts") != []:
