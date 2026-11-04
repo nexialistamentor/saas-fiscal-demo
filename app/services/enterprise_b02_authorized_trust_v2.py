@@ -546,8 +546,22 @@ def provision_v2_documentary_for_process(evidence, *, connection, now=None):
     # No fabricated readback: a second independent authoritative admission
     # must pass against current custody, root adoption, store and DB rows.
     try:
-        return readback_v2_documentary_for_process(
+        readback = readback_v2_documentary_for_process(
             evidence,connection=connection,now=now)
+        # A non-exceptional return is not necessarily a positive readback.
+        # Only the exact admitted response with the provisioned pins qualifies;
+        # all other results roll back the process-local state as exceptions do.
+        _v2_need(
+            type(readback) is dict and
+            readback.get('status') == 'V2_DOCUMENTARY_RUNTIME_ADMISSION_READBACK_PASS' and
+            readback.get('runtime_provisioned') is True and
+            readback.get('runtime_scope') == _V2_SCOPE and
+            all(readback.get(key) == expected[key] for key in (
+                'root_sha256', 'signature_sha256', 'snapshot_sha256')) and
+            readback.get('fiscal_authority') is False and
+            readback.get('sql_writes_authorized') is False,
+            'V2_RUNTIME_READBACK_NOT_POSITIVE')
+        return readback
     except Exception:
         _V2_PROCESS_DOCUMENTARY_TRUST=MappingProxyType(old)
         raise
