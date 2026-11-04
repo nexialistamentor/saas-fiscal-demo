@@ -519,7 +519,6 @@ def provision_v2_documentary_for_process(evidence, *, connection, now=None):
     custody=verify_successor_v2_for_provisioning()
     _v2_need(custody['runtime_provisioned'] is False,
              'V2_CUSTODY_FALSE_OPERATIONAL_STATUS_CHANGED')
-    import types
     global _V2_PROCESS_DOCUMENTARY_TRUST
     expected={'root_sha256':custody['root_sha256'],
               'signature_sha256':custody['signature_sha256'],
@@ -531,8 +530,12 @@ def provision_v2_documentary_for_process(evidence, *, connection, now=None):
     _V2_PROCESS_DOCUMENTARY_TRUST=MappingProxyType(expected)
     # No fabricated readback: a second independent authoritative admission
     # must pass against current custody, root adoption, store and DB rows.
-    return readback_v2_documentary_for_process(
-        evidence,connection=connection,now=now)
+    try:
+        return readback_v2_documentary_for_process(
+            evidence,connection=connection,now=now)
+    except Exception:
+        _V2_PROCESS_DOCUMENTARY_TRUST=MappingProxyType(old)
+        raise
 
 
 def readback_v2_documentary_for_process(evidence, *, connection, now=None):
