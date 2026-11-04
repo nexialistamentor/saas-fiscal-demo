@@ -497,3 +497,65 @@ def admit_with_authorized_trust_v2(evidence, *, connection, now=None):
     # live result 'admitted' only if outcome.permitido is True, NOT because
     # custody validation returned success. This does not persist a root.
     return outcome
+
+
+# V2 process-local admission is separate from immutable V1 runtime mappings.
+# A source-pinned ROOT alone never creates this state.
+_V2_PROCESS_DOCUMENTARY_TRUST = MappingProxyType({})
+
+
+def provision_v2_documentary_for_process(evidence, *, connection, now=None):
+    """Explicitly install V2 *documentary-only* process trust after real readback.
+
+    This entrypoint is internal to the deployment. It cannot issue ROOT or
+    authorize fiscal/G5 SQL. No untrusted request/env may set deployment pins.
+    """
+    outcome = admit_with_authorized_trust_v2(
+        evidence,connection=connection,now=now)
+    if getattr(outcome,'permitido',False) is not True:
+        return {'status':'V2_RUNTIME_NOT_ADMITTED',
+                'runtime_provisioned':False,'fiscal_authority':False,
+                'sql_writes_authorized':False}
+    custody=verify_successor_v2_for_provisioning()
+    _v2_need(custody['runtime_provisioned'] is False,
+             'V2_CUSTODY_FALSE_OPERATIONAL_STATUS_CHANGED')
+    import types
+    global _V2_PROCESS_DOCUMENTARY_TRUST
+    expected={'root_sha256':custody['root_sha256'],
+              'signature_sha256':custody['signature_sha256'],
+              'decision_sha256':custody['decision_sha256'],
+              'snapshot_sha256':custody['snapshot_sha256'],
+              'root_adoption_sha256':V2_DEPLOYMENT_PINS['root_adoption_sha256']}
+    old=dict(_V2_PROCESS_DOCUMENTARY_TRUST)
+    _v2_need(not old or old==expected,'V2_RUNTIME_ROOT_CONFLICT')
+    _V2_PROCESS_DOCUMENTARY_TRUST=MappingProxyType(expected)
+    # No fabricated readback: a second independent authoritative admission
+    # must pass against current custody, root adoption, store and DB rows.
+    return readback_v2_documentary_for_process(
+        evidence,connection=connection,now=now)
+
+
+def readback_v2_documentary_for_process(evidence, *, connection, now=None):
+    """Physical readback of the per-process V2 documentary trust gate."""
+    pin=dict(_V2_PROCESS_DOCUMENTARY_TRUST)
+    if not pin:
+        return {'status':'V2_RUNTIME_NOT_PROVISIONED','runtime_provisioned':False,
+                'fiscal_authority':False,'sql_writes_authorized':False}
+    custody=verify_successor_v2_for_provisioning()
+    _v2_need(
+        pin=={'root_sha256':custody['root_sha256'],
+              'signature_sha256':custody['signature_sha256'],
+              'decision_sha256':custody['decision_sha256'],
+              'snapshot_sha256':custody['snapshot_sha256'],
+              'root_adoption_sha256':V2_DEPLOYMENT_PINS['root_adoption_sha256']},
+        'V2_RUNTIME_READBACK_REPIN')
+    outcome=admit_with_authorized_trust_v2(
+        evidence,connection=connection,now=now)
+    _v2_need(getattr(outcome,'permitido',False) is True,
+             'V2_RUNTIME_READBACK_AUTHORITY_DENIED')
+    return {'status':'V2_DOCUMENTARY_RUNTIME_ADMISSION_READBACK_PASS',
+            'runtime_provisioned':True,'runtime_scope':_V2_SCOPE,
+            'root_sha256':pin['root_sha256'],
+            'snapshot_sha256':pin['snapshot_sha256'],
+            'signature_sha256':pin['signature_sha256'],
+            'fiscal_authority':False,'sql_writes_authorized':False}
