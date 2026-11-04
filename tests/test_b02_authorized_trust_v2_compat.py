@@ -309,3 +309,53 @@ def test_focal_backdated_signer_adoption_rejected_even_if_repinned(tmp_path,monk
     repin_signer_act(f)
     with pytest.raises(ValueError,match='SIGNER_ADOPTION_NOT_PROSPECTIVE'):
         f.verify()
+
+
+# Focal V2 runtime-bridge tests: all synthetic; never a live admission.
+def test_runtime_bridge_rejects_unpinned_deployment(tmp_path, monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    # Even a synthetic ROOT with a valid mathematical signature is not a
+    # competent deployment when the source pins are not installed.
+    with pytest.raises(ValueError, match='COMPETENT_DEPLOYMENT_PINS_REQUIRED'):
+        v.verify_successor_v2_for_provisioning()
+
+
+def test_runtime_bridge_denies_untrusted_db_identity(tmp_path, monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    # Bypass only the custody stage to isolate the independent SQL identity gate.
+    monkeypatch.setattr(v,'verify_successor_v2_for_provisioning',lambda:{
+        'status':'V2_SIGNED_CUSTODY_VALIDATED_NOT_RUNTIME_PROVISIONED',
+        'runtime_provisioned':False})
+    from app.services import enterprise_b02_founder_runtime as runtime
+    def deny_connection(_):
+        raise ValueError('RUNTIME_RESTRICTED_READ_REQUIRED')
+    monkeypatch.setattr(runtime,'_read_identity',deny_connection)
+    with pytest.raises(ValueError, match='RUNTIME_RESTRICTED_READ_REQUIRED'):
+        v.admit_with_authorized_trust_v2(
+            {'policy_binding':{'policy_id':'synthetic'}},
+            connection=None,now=datetime.fromisoformat(f.now))
+
+
+def test_runtime_bridge_rejects_missing_independent_history(tmp_path, monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    from app.services import enterprise_b02_founder_review_profile as profile
+    # The synthetic positive custody graph intentionally supplies placeholder
+    # history/store nodes. They must never become operational V2 authority.
+    with pytest.raises((ValueError,KeyError),match='RUNTIME_HISTORY_NODE|RUNTIME_HISTORY'):
+        v._v2_verify_independent_history(
+            f.base,f.snapshot,profile,datetime.fromisoformat(f.now))
+
+
+def test_runtime_bridge_rejects_unsigned_structural_bindings(tmp_path, monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    from app.services import enterprise_b02_founder_review_profile as profile
+    adapter=v._V2RuntimeProofAdapter(
+        base=f.base,now=datetime.fromisoformat(f.now),
+        policy_binding={},profile=profile)
+    from app.services import enterprise_b02_founder_runtime as runtime
+    monkeypatch.setattr(runtime,'_read_identity',lambda connection:None)
+    # The signed synthetic institutional.json has no full structural bindings.
+    with pytest.raises(ValueError,match='RUNTIME_BINDINGS_NOT_SIGNED'):
+        adapter.verify_exact_chain(
+            connection=object(),expected={'policy_subject':v._V2_SUBJECT,
+                                           'decision_bindings':[]})
