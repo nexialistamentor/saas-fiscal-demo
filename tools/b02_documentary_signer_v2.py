@@ -297,7 +297,7 @@ def validate(args, *, now=None, v2_checker=None):
         app_root=Path(args.repo)
         source=app_root/'app/services/enterprise_b02_documentary_continuity_v2.py'
         expect(source.is_file() and not source.is_symlink() and
-               git_blob(source.read_bytes())=='32b4ee9c8c11b5eb9564d4f258cef5a40cae3119', 'V2_CONTRACT_CODE_PIN')
+               git_blob(source.read_bytes())=='31be879d8d0fab9c572916b67f66ee32037b3495', 'V2_CONTRACT_CODE_PIN')
         sys.path.insert(0,str(app_root))
         from app.services.enterprise_b02_documentary_continuity_v2 import verify_supplemental_continuity
         v2_checker=verify_supplemental_continuity
