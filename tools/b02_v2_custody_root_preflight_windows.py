@@ -191,24 +191,83 @@ def root_inputs(repo, plan, custody, source_bundle, public):
     return observed,sha(authority_raw),adoption,review
 
 
+def verify_issued_root(custody, plan, expected_sha, signer_sha, adoption, review, public):
+    """Readback only: issued ROOT is not ROOT_ADOPTION or runtime trust."""
+    import re
+    if re.fullmatch(r"[0-9a-f]{64}", expected_sha) is None:
+        stop("ROOT_EXPECTED_SHA256_REQUIRED")
+    raw,root=read(custody/"ROOT.json",expected_sha)
+    snap=plan["objects"]["snapshot"]
+    pin=plan["pins"]["snapshot"]
+    der=read(public,PUBLIC_SHA,json_file=False)[0]
+    expected={
+        "id":"B02-ROOT-V2-"+pin["sha256"][:16],
+        "schema":"SOLVERIS-B02-RECOGNIZED-SUCCESSOR-ROOT-V2",
+        "profile":"FOUNDER_SIGNED_REVIEW_BUNDLE_B02_V2",
+        "policy_subject":snap["policy_subject"],
+        "key_fingerprint":PUBLIC_SHA,
+        "public_key_der_hex":der.hex(),
+        "decision_sha256":SIGNED["decision.json"],
+        "manifest_sha256":SIGNED["manifest.json"],
+        "signature_sha256":SIGNED["signature.bin"],
+        "origin_document_scope":["101201900571","101202501245"],
+        "continuity_adoption_binding":{"id":adoption["id"],"sha256":ADOPTION_SHA},
+        "signer_adoption_binding":{"id":"SOLVERIS-B02-G4-DOCUMENTARY-LOCAL-SIGNER-V2",
+                                   "sha256":signer_sha},
+        "signer_review_binding":{"id":review["id"],"sha256":REVIEW_SHA},
+        "snapshot_binding":pin,
+        "no_operational_authority":True,
+        "valid_from":snap["valid_from"],
+        "valid_until":snap["valid_until"],
+        "revoked":False,
+        "synthetic_only":False,
+    }
+    if type(root) is not dict or set(root)!=set(expected)|{"issued_at"}:
+        stop("ROOT_EXACT_FIELD_SET")
+    if any(root[k]!=v for k,v in expected.items()):
+        stop("ROOT_SOURCE_PINS_OR_BOUNDARY")
+    try:
+        issued=datetime.fromisoformat(root["issued_at"].replace("Z","+00:00"))
+        start=datetime.fromisoformat(root["valid_from"].replace("Z","+00:00"))
+        end=datetime.fromisoformat(root["valid_until"].replace("Z","+00:00"))
+    except (ValueError,TypeError,KeyError):
+        stop("ROOT_TIMESTAMP_INVALID")
+    if not all(t.tzinfo is not None and t.utcoffset().total_seconds()==0
+               for t in (issued,start,end)):
+        stop("ROOT_UTC_REQUIRED")
+    if not issued<start<end:
+        stop("ROOT_NOT_PROSPECTIVELY_ISSUED")
+    return {"sha256":sha(raw),"issued_at_utc":issued.isoformat(),
+            "valid_from_utc":start.isoformat(),"valid_until_utc":end.isoformat(),
+            "window_current":start<=datetime.now(timezone.utc)<end,
+            "status":"ROOT_PHYSICAL_READBACK_PASS_NOT_ADOPTION"}
+
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--repo",type=Path,default=Path(__file__).resolve().parents[1])
+    ap.add_argument("--plan-sha256",default=PLAN_SHA)
+    ap.add_argument("--root-sha256")
     ap.add_argument("--plan",type=Path,default=Path.home()/"Downloads/B02_STORE_V2_PLANO_REVALIDADO_20261104.json")
     ap.add_argument("--custody",type=Path,default=Path(os.environ.get("LOCALAPPDATA",Path.home()/"AppData/Local"))/"SOLVERIS/B02Trust/SUCCESSOR_V3")
     ap.add_argument("--signed-bundle",type=Path,default=Path.home()/"Downloads/SOLVERIS_B02_ASSINATURA_AUTORIZADA_20261022/BUNDLE_SUCESSOR_V2_24H_20261103_1800UTC")
     ap.add_argument("--public-der",type=Path,default=Path(os.environ.get("LOCALAPPDATA",Path.home()/"AppData/Local"))/"SOLVERIS/CustodiaB02/Chave_ceee5bb6f2a740a58cf4dbaa66565698/miguel-public.der")
     a=ap.parse_args()
-    _,plan=read(a.plan,PLAN_SHA)
+    _,plan=read(a.plan,a.plan_sha256)
     now=datetime.now(timezone.utc)
     observed,signer_sha,adoption,review=root_inputs(
         a.repo.resolve(),plan,a.custody,a.signed_bundle,a.public_der)
     snap=plan["objects"]["snapshot"]
     start=datetime.fromisoformat(snap["valid_from"])
     end=datetime.fromisoformat(snap["valid_until"])
+    root_result=(verify_issued_root(a.custody,plan,a.root_sha256,
+                                    signer_sha,adoption,review,a.public_der)
+                 if a.root_sha256 else None)
     print(json.dumps({
-        "status":"ROOT_INPUTS_PHYSICAL_READ_ONLY_INSPECTED_NO_ROOT",
-        "plan_sha256":PLAN_SHA,
+        "status":("ROOT_PHYSICAL_READBACK_PASS_NOT_ADOPTION" if root_result
+                  else "ROOT_INPUTS_PHYSICAL_READ_ONLY_INSPECTED_NO_ROOT"),
+        "plan_sha256":a.plan_sha256,
+        "root_readback":root_result,
         "six_cas_readback":"PASS",
         "signed_bundle_ed25519":"MATHEMATICAL_PASS_NO_AUTHORITY",
         "signer_authority_sha256":signer_sha,
@@ -219,8 +278,9 @@ def main():
         "signed_decision_until_utc":end.isoformat(),
         "root_issuance_still_prospective":now<=start,
         "custody_inputs":observed,
-        "custody_writes":0,"sql_writes":0,"root_issued":False,
-        "root_adopted":False,"runtime_provisioned":False,"r7_closed":False
+        "custody_writes":0,"sql_writes":0,"root_issued":root_result is not None,
+        "root_adopted":False if observed["ROOT_ADOPTION.json"]=="NOT_ISSUED" else None,
+        "runtime_provisioned":False,"r7_closed":False
     },sort_keys=True))
 
 
