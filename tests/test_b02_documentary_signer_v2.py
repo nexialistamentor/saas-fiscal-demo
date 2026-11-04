@@ -10,7 +10,7 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization as S
 
-spec=importlib.util.spec_from_file_location('b02signerv2',Path(__file__).with_name('b02_documentary_signer_v2.py'))
+spec=importlib.util.spec_from_file_location('b02signerv2',Path(__file__).resolve().parents[1]/'tools/b02_documentary_signer_v2.py')
 s=importlib.util.module_from_spec(spec);spec.loader.exec_module(s)
 NOW=datetime(2026,11,4,16,tzinfo=timezone.utc)
 START='2026-11-04T15:00:00+00:00'
