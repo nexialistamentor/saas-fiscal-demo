@@ -1,6 +1,6 @@
 {
   "__AVISO_CAMPOS_INSTITUCIONAIS__": "V3 has no new own audit, ratification, root, signature or release. Old V2 acts are historical only.",
-  "__AVISO_G4_PREENCHIDO__": "New G4 activation ID and hash physically read, but own G4 origin reports NOT established.",
+  "__AVISO_G4_PREENCHIDO__": "G4 V4 activation and two existing historical ORIGIN reports linked by exact hashes; this does NOT establish G5 V3 operational origin, current inspection or ratification.",
   "__AVISO_VALIDADE_G4__": "Ativacao G4 de outubro reconciliada por leitura independente; G5 ainda exige parecer, ratificacao e propria autorizacao operacional.",
   "__V3_DRAFT_PROVENANCE__": {
     "0064_not_installed_or_operationally_authorized": true,
@@ -14,7 +14,7 @@
       "outbox": "B02-05ede-outbox-v4"
     },
     "not_signed_or_authorized": true,
-    "policy_body_sha256_is_draft_only": "87ea43c09e6315da44c2b8bd36dc35345da0a05452b11a35f757ab741f80b868",
+    "policy_body_sha256_is_draft_only": "1011f3f6ba4ab9ee6085aa1d7959f9f87d6880b9384243423bf3686ff0845577",
     "source_v2_blob": "87dd0560d842f8b9f20d808363496fa60786710c",
     "temporal_decision_reference": "B02-G4-G5-TEMP-SUCCESSOR-20261031-01"
   },
@@ -183,7 +183,10 @@
                 "byte_size": 258302,
                 "document_id": "101202501245",
                 "g4": {
-                  "origin_report_binding": null,
+                  "origin_report_binding": {
+                    "id": "B02-G4-SUCESSOR-ORIGIN-REPORT-101202501245-20261102",
+                    "sha256": "a281c48d6107817aca97331e5425f81616847e66853a3e179ca66d3353f23fa8"
+                  },
                   "outcome": "AWAITING_OWN_CURRENT_FOUNDER_ORIGIN",
                   "policy_binding": {
                     "decision_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018",
@@ -251,7 +254,10 @@
                 "byte_size": 1944929,
                 "document_id": "101201900571",
                 "g4": {
-                  "origin_report_binding": null,
+                  "origin_report_binding": {
+                    "id": "B02-G4-SUCESSOR-ORIGIN-REPORT-101201900571-20261102",
+                    "sha256": "9250fc933c41dab84e186019f01ed1f2b29828de1d5e1b879568a96e3ef1a6d4"
+                  },
                   "outcome": "AWAITING_OWN_CURRENT_FOUNDER_ORIGIN",
                   "policy_binding": {
                     "decision_hash": "4c5c3d2ffe03118559d3dc617fa90ee90672c13ecec5b616deb3772321d88018",
