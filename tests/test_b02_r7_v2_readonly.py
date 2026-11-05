@@ -126,6 +126,7 @@ def _synthetic_historic_v3():
             'policy_body_sha256_is_draft_only': 'old-hash',
         },
         'policy_candidate_body': {
+            'roles': {'proponent_and_integrator': None, 'functional_reviewer': None},
             'rules': {'b02_noncredential': {'security': {'g5_release': {
                 'capability_root_id': None, 'actor': None, 'documents': docs,
             }}}},
@@ -148,6 +149,9 @@ def test_r7_current_v3_reconstruction_preserves_historical_roots():
         assert d['g4']['outcome'] == 'AWAITING_OWN_CURRENT_FOUNDER_ORIGIN'
         assert d['sanitization']['outcome'] == 'AWAITING_CURRENT_REAL_INDEPENDENT_INSPECTION'
     assert candidate['status'] == 'V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY'
+    assert candidate['policy_candidate_body']['roles']['proponent_and_integrator'] == m.CURRENT_V3_ACCEPTED_PROPONENT
+    assert candidate['policy_candidate_body']['roles']['functional_reviewer'] is None
+    assert old['policy_candidate_body']['roles']['proponent_and_integrator'] is None
 
 
 def test_r7_historic_v3_reconstruction_rejects_authority_promotion():
@@ -206,3 +210,17 @@ def test_r7_two_v3_snapshots_reject_historic_pin_replacement(monkeypatch, tmp_pa
     pin['g5_v3_consumer']['git_blob'] = 'e'*40
     with pytest.raises(ValueError, match='HISTORIC_V3_PIN_CONFLICT'):
         m.resolve_v3_snapshots(tmp_path, old_adapter, pin, raw, candidate)
+
+
+def test_r7_proponent_role_delta_requires_previously_unassigned_historic_role():
+    historic = _synthetic_historic_v3()
+    historic['policy_candidate_body']['roles']['proponent_and_integrator'] = 'unverified-impostor'
+    with pytest.raises(ValueError, match='V3_HISTORIC_ROLE_ALREADY_ASSIGNED'):
+        m.reconstruct_current_v3_from_historic(historic)
+
+
+def test_r7_proponent_role_cannot_preassign_reviewer():
+    historic = _synthetic_historic_v3()
+    historic['policy_candidate_body']['roles']['functional_reviewer'] = 'unaccepted-reviewer'
+    with pytest.raises(ValueError, match='V3_HISTORIC_ROLE_ALREADY_ASSIGNED'):
+        m.reconstruct_current_v3_from_historic(historic)
