@@ -29,9 +29,10 @@ OBJECT_SHA = '615c8d6466871a94981358e9cab6f4f5d797f317b9026c77e304b7af6ac50906'
 REVIEW_SHA = '9949a7cca164f9ed50f2b92aa2a1f348fdddfc1c4c3a5cced56b292112a86d21'
 HISTORIC_G5_V3_BLOB = '895b277634c50fd17c0f20514fe69ccc40d40a88'
 HISTORIC_G5_V3_SHA256 = '32068cadf7297fb5958af25650899abffc667c17f3508f9261a165b8dfbd5fc7'
-CURRENT_G5_V3_BLOB = 'fa88b2f98c7f5d24e0c092f0ea02afce22efb2e2'
-CURRENT_G5_V3_SHA256 = '29ec3504f7f6c6d4b4dca23484ef3de283768573b5b02095cf53e896350063a5'
-CURRENT_G5_V3_BODY_SHA256 = '1011f3f6ba4ab9ee6085aa1d7959f9f87d6880b9384243423bf3686ff0845577'
+CURRENT_G5_V3_BLOB = '04df1906f6a463f591bd7b8e38010fe2130aba3d'
+CURRENT_G5_V3_SHA256 = '023b5a0d7ee4d4489f36be611e7d8a21edc29b25c960149aff14eab7a49fae4f'
+CURRENT_G5_V3_BODY_SHA256 = '6580ecb63cc6d28af975bf92872dd8a0aa3c1d3025a2236b04a9d73209f74d70'
+CURRENT_V3_ACCEPTED_PROPONENT = 'execucao Claude que conduz atualmente o B02'
 CURRENT_G4_NOTICE = (
     'G4 V4 activation and two existing historical ORIGIN reports linked by exact '
     'hashes; this does NOT establish G5 V3 operational origin, current inspection '
@@ -99,7 +100,7 @@ def clean_pinned(repo: Path, paths: list[str]) -> None:
 
 
 def reconstruct_current_v3_from_historic(historic: dict) -> dict:
-    """Allow only the two G4 historical references, notice and draft-body pin."""
+    """Allow only historical G4 references plus one accepted mandate role; never grant authority."""
     if not isinstance(historic, dict) or historic.get('status') != (
             'V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY'):
         reject('V3_HISTORIC_DOCUMENT_INVALID')
@@ -108,6 +109,14 @@ def reconstruct_current_v3_from_historic(historic: dict) -> dict:
     try:
         release = body['rules']['b02_noncredential']['security']['g5_release']
         docs = release['documents']
+        roles = body['roles']
+        if (not isinstance(roles, dict)
+                or roles.get('proponent_and_integrator') is not None
+                or roles.get('functional_reviewer') is not None):
+            reject('V3_HISTORIC_ROLE_ALREADY_ASSIGNED')
+        # Only the already accepted, exactly named Claude proponent is consumed.
+        # This is not a signer, root actor, reviewer, ratification or SQL grant.
+        roles['proponent_and_integrator'] = CURRENT_V3_ACCEPTED_PROPONENT
         if (len(docs) != 2 or
                 {d['document_id'] for d in docs} != set(G4_HISTORICAL_ORIGIN)):
             reject('V3_HISTORIC_TWO_SOURCES_INVALID')
