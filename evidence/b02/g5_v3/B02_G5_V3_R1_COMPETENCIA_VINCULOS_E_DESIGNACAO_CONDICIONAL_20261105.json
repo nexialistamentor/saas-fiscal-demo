@@ -1,0 +1,189 @@
+{
+  "schema": "SOLVERIS_B02_G5_V3_R1_COMPETENCE_AND_AUTHORITY_HANDOFF_V1",
+  "status": "PREPARACAO_DOCUMENTAL_SEM_MANDATO_INSTITUCIONAL_EFICAZ",
+  "as_of": "2026-11-05",
+  "scope": "G5_V3_R1_ONLY_NO_REOPEN_HISTORICAL_GATES",
+  "no_re_review_same_candidate_body": true,
+  "source_candidate": {
+    "repository": "nexialistamentor/saas-fiscal-demo",
+    "branch": "candidate/g5-v5-publicacao-local",
+    "path": "POLICY_G5_CANDIDATO_SUCESSOR_V3_PARA_REVISAO.json",
+    "commit": "8f0864b9cef1be3d63c5c5f087d563915da514d4",
+    "git_blob": "04df1906f6a463f591bd7b8e38010fe2130aba3d",
+    "canonical_body_sha256": "6580ecb63cc6d28af975bf92872dd8a0aa3c1d3025a2236b04a9d73209f74d70",
+    "status": "V3_PROSPECTIVE_DRAFT_UNISSUED_INCOMPLETE_AUTHORITY"
+  },
+  "completed_technical_act": {
+    "pr27_issuecomment_id": 6654940306,
+    "url": "https://github.com/nexialistamentor/saas-fiscal-demo/pull/27#issuecomment-6654940306",
+    "author_declared": "GPT-6/revisor-sucessor-documental-g5-v3-r1-20261105",
+    "scope": "coerencia_documental_focal_do_delta_historico",
+    "conclusion": "FAVORAVEL_COM_RESSALVAS_SOMENTE_TECNICO_DOCUMENTAL",
+    "institutional_identity_competence_segregation_verified": false,
+    "not_institutional_audit_or_ratification": true,
+    "repeat_review_prohibited": true
+  },
+  "exact_clauses": [
+    {
+      "source": "policy_candidate_body.rules.b02_noncredential.security.verifiers",
+      "value": [
+        "/root/canonical_executor_technical_review"
+      ],
+      "meaning": "papel funcional de verificador previsto na candidata"
+    },
+    {
+      "source": "policy_candidate_body.rules.b02_noncredential.security.independence_evidence_required",
+      "value": true
+    },
+    {
+      "source": "policy_candidate_body.segregation_of_duties.reviewer_not_author_or_integrator",
+      "value": true
+    },
+    {
+      "source": "policy_candidate_body.segregation_of_duties.verifier_not_receipt_creator",
+      "value": true
+    },
+    {
+      "source": "policy_candidate_body.segregation_of_duties.ratifier_not_proponent_or_reviewer",
+      "value": true
+    },
+    {
+      "source": "policy_candidate_body.segregation_of_duties.no_internal_model_identity_or_material_independence_asserted",
+      "value": true
+    },
+    {
+      "source": "policy_candidate_body.gates.own_review_record_resolved_by_commit_issuer",
+      "value": true
+    },
+    {
+      "source": "MANDATO_G5_SUCESSOR_EMITIDO.json.designacoes.revisor_segregado.condicao",
+      "value": "designacao CONDICIONAL -- so produz efeito apos identificacao propria, aceitacao propria e declaracao de conflitos pela propria execucao revisora"
+    }
+  ],
+  "reviewed_nominees": [
+    {
+      "declaration": "GPT-6/revisor-sucessor-documental-g5-v3-r1-20261105",
+      "source": "issuecomment-6654940306",
+      "outcome": "tecnico_documental_concluido_sem_independencia_institucional_comprovada"
+    },
+    {
+      "declaration": "GPT-6/examinador-origem-sefa-pr-g4-sucessor-20261101",
+      "source": "issuecomment-6654384345",
+      "outcome": "nao_assume_mandato_de_revisor_g5"
+    },
+    {
+      "declaration": "GPT-6/B02-revisor-segregado-pr28-pr29-20261103",
+      "source": "issuecomment-6654707764",
+      "outcome": "nao_aceita_esta_execucao_nao_se_identifica_com_revisor_original"
+    },
+    {
+      "declaration": "GPT-6/revisor-tecnico-documental-g5-v3-20261101",
+      "source": "evidence/b02/g5_v3/SOLVERIS_B02_G5_V3_PARECER_PROPRIO_20261101.md",
+      "outcome": "parecer_historico_sobre_outro_corpo_e_sem_credencial_institucional_comprovada"
+    }
+  ],
+  "already_linked_without_new_authority": {
+    "proponent_functional_role": "execucao Claude que conduz atualmente o B02",
+    "proponent_textual_submission_issuecomment": 6645653391,
+    "proponent_session_cryptographically_authenticated": false,
+    "canonicalization_contract_hash": "a4b480d7a6fedd54b5c020e338f7dbc133ef0fc87a1ffefdbf1de5e088632fd1",
+    "source_g4_policy_hash": "05ede0f8c8788b93d41e451288efd88d91614a560bdd2191a115f0d736c4fe2a",
+    "source_g4_activation_record_hash": "cf617e146b3451555898d8253fba8bb13dfa6ff99776b50978e0ba68df4cb482",
+    "historical_origin_reports": [
+      {
+        "document_id": "101202501245",
+        "pdf_sha256": "e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832",
+        "report_sha256": "a281c48d6107817aca97331e5425f81616847e66853a3e179ca66d3353f23fa8",
+        "authority": "historical_G4_only"
+      },
+      {
+        "document_id": "101201900571",
+        "pdf_sha256": "af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d",
+        "report_sha256": "9250fc933c41dab84e186019f01ed1f2b29828de1d5e1b879568a96e3ef1a6d4",
+        "authority": "historical_G4_only"
+      }
+    ],
+    "migration_0064_candidate_sha256": "7a42f583a4ca604a697a2e9a11cda7ffdb88d92c40bfbd181e408da736293074",
+    "migration_0065_candidate_sha256": "fbe2c12119572df4e835f0144b7ea25ca4bb92f22471e57dd6e616d179f2f507",
+    "r5_bridge": "tools/b02_r5_g5_v3_installation_bridge.py",
+    "r5_coordinator": "tools/b02_r5_g5_v3_authorized_transaction.py",
+    "r7_consumer": "tools/b02_r7_final_receipt_consumer.py"
+  },
+  "proposed_miguel_decision": {
+    "kind": "DESIGNACAO_CONDICIONAL_PARA_FUNCAO_INSTITUCIONAL_G5_V3_R1",
+    "competent_decider": "Miguel",
+    "proposed_office": "responsavel_institucional_independente_por_revisao_G5_V3_R1",
+    "functional_role": "/root/canonical_executor_technical_review",
+    "proposed_person_or_entity_name": null,
+    "reason_not_effective": "nenhuma pessoa/entidade foi identificada com credencial e segregacao comprovadas; NAO nomear GPT-6, Claude, ORIGIN, proprietario do SQL ou o autor da candidata por rótulo de chat",
+    "eligibility_proof_required": [
+      "identificacao civil/organizacional verificavel ligada ao representante que atuara; sem publicacao de dados pessoais desnecessarios",
+      "termo de designacao assinado pelo titular vinculado ao papel, escopo e mandato prospectivo",
+      "aceitacao propria assinada ou autenticada, com carimbo temporal verificavel",
+      "competencia tecnica e habilitacao institucional especifica para auditoria da politica e provas G5/R1",
+      "declaracao nominal de participacao previa, potenciais conflitos e segregacao do proponente/integrador, custodiante e signatario",
+      "prova de controlo de credencial/chave propria com fingerprint vinculada ao representante e registo de autoria dos atos, sem chave privada no repositório",
+      "capacidade de conferir as lacunas atuais e de emitir parecer institucional positivo, condicionado ou negativo de modo independente"
+    ],
+    "decision_effect": "designacao condicionada somente; nao aprova corpo, raiz, assinatura, instalacao, COMMIT, atos de R5/R6 ou B02 CLOSED",
+    "next_scope": "somente exame da prova nova de identidade/competencia/segregacao e do delta de autoridade material posterior; nao refazer parecer do corpo 6580ecb6"
+  },
+  "outstanding_material_bindings": [
+    {
+      "field": "policy_candidate_body.roles.functional_reviewer",
+      "source": "ato de designacao e aceitacao propria institucional",
+      "responsible": "Miguel e revisor institucional independentemente identificado",
+      "evidence": "mandato_prospectivo_assinado+identidade_credencial+aceitacao_propria+conflictos"
+    },
+    {
+      "field": "policy_candidate_body.rules.b02_noncredential.security.g5_release.actor",
+      "source": "registo autenticado do titular/autoridade emissora e cadeia G5",
+      "responsible": "Miguel e custodiante autorizado",
+      "evidence": "ato_de_emissao_prospectiva_com_prova_de_identidade"
+    },
+    {
+      "field": "policy_candidate_body.rules.b02_noncredential.security.g5_release.capability_root_id",
+      "source": "nova raiz R1 e header com hash/ELF PG17.10",
+      "responsible": "custodiante nativo e instalador autorizados",
+      "evidence": "raiz_prospectiva_revista_e_aprovada+header_hash+elf_hash+prova_custodia_e_perfil"
+    },
+    {
+      "field": "policy_candidate_body.exact_references.adoption_act_sha256",
+      "source": "decisao final sobre corpo definitivo pos revisao institucional",
+      "responsible": "Miguel",
+      "evidence": "ato_de_ratificacao_expresso_e_sha256_real",
+      "dependent_on_ratification": true
+    },
+    {
+      "field": "policy_candidate_body.origin_evidence.institutional_evidence_bindings",
+      "source": "provas atuais próprias por documento, separadas do relatório G4 histórico",
+      "responsible": "examinador de origem habilitado e custodiante da prova",
+      "evidence": "ato_corrente_de_admissao_por_pdf+identidade+pins"
+    },
+    {
+      "field": "policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[*].g4.verifier/outcome",
+      "source": "admissao corrente de FOUNDER_ORIGIN",
+      "responsible": "examinador competente e revisor institucional",
+      "evidence": "resultado_proprio_por_documento"
+    },
+    {
+      "field": "policy_candidate_body.rules.b02_noncredential.security.g5_release.documents[*].sanitization",
+      "source": "inspecoes reais segregadas que examinem manifesto, metodo e provas",
+      "responsible": "verificador independente autorizado das duas unidades",
+      "evidence": "execution_proof_id+independence_evidence_id+manifestos_completos+verifier_acceptance_binding+method_binding"
+    }
+  ],
+  "state_guards": {
+    "g5_v3_policy_issued": false,
+    "r1_current_root_proven": false,
+    "reviewer_institutional_eligibility_proven": false,
+    "installer_authorized": false,
+    "protected_sql_writes": 0,
+    "r5_receipts_produced": false,
+    "r6_eligible_real_nfe_original_received": false,
+    "r7_competent_favorable_decision": false,
+    "b02_closed": false,
+    "b03_released": false,
+    "prior_accepted_proofs_preserved": true
+  }
+}
