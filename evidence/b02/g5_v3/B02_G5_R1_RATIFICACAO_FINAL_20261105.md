@@ -1,0 +1,7 @@
+RATIFICACAO G5/R1 — 2026-11-05
+
+Eu, Miguel, ratifico G5/R1 para a candidata 389cce04dd249c5fb184fce7b876608651dd84ca3db64b7d778bb2de66a0c3d2 (policy_candidate_body do ficheiro POLICY_G5_CANDIDATO_SUCESSOR_V3_R1_SUBSTITUICAO_PROSPECTIVA_20261105.json, commit 518ee8d9a416a59722ab12a7f2e1f8e9a8e9abd6), com base na verificacao assinada e independentemente confirmada abaixo.
+
+Verificacao: mandato Ed25519 emitido, assinado e vinculado ao objeto exato (mandate_sha256 f222a92b299158bb034ddbe238a2c093d4c73ad6900e005a2eff71e9cd652a5f); recibo assinado por chave de agente distinta (receipt_sha256 dca98fbdb39957407d0c46a7ac369e96311f3c85d918ae01ddaeffbc00ff1ad0), com leitura independente do resultado confirmando que o ficheiro fisico e os dois vinculos ORIGIN (a281c48d..., 9250fc93...) correspondem ao hash candidato. Tres chaves distintas (emissor, agente, ratificador) -- segregacao criptografica, nao segregacao de sessoes de chat. Execucao run-g5r1-79e96c84a66c, outcome PASS, verificador SOLVERIS_B02_G5_MANDATED_EXECUTION v1.
+
+Esta ratificacao cobre exclusivamente G5/R1 no ambito verificado acima. Nao autorizo R5 (instalacao, COMMIT, duas unidades reais), nao autorizo R6 real ou sintetico, nao declaro R7 nem B02 CLOSED. A ROOT V2 anterior (a57910bc...) permanece expirada e nao reutilizada. Nao ha backdating. G5_V3_R1_CLOSED_IN_EXACT_APPROVED_SCOPE a partir deste ato.
