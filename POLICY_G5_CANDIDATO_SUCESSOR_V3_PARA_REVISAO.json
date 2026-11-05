@@ -14,7 +14,7 @@
       "outbox": "B02-05ede-outbox-v4"
     },
     "not_signed_or_authorized": true,
-    "policy_body_sha256_is_draft_only": "1011f3f6ba4ab9ee6085aa1d7959f9f87d6880b9384243423bf3686ff0845577",
+    "policy_body_sha256_is_draft_only": "6580ecb63cc6d28af975bf92872dd8a0aa3c1d3025a2236b04a9d73209f74d70",
     "source_v2_blob": "87dd0560d842f8b9f20d808363496fa60786710c",
     "temporal_decision_reference": "B02-G4-G5-TEMP-SUCCESSOR-20261031-01"
   },
@@ -102,7 +102,7 @@
     "roles": {
       "commit_capability_issuer": "Miguel",
       "functional_reviewer": null,
-      "proponent_and_integrator": null,
+      "proponent_and_integrator": "execucao Claude que conduz atualmente o B02",
       "ratifier": "Miguel",
       "sql_writer": "solveris_b02_writer",
       "technical_policy_activation_writers": [
