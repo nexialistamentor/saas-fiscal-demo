@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" synthetic_only="true">
+  <NFe><infNFe Id="NFeSYNTHETIC_NOT_A_REAL_ACCESS_KEY" versao="4.00">
+    <det nItem="1"><prod>
+      <cProd>SOLVERIS-SYNTHETIC-NO-SALE</cProd>
+      <xProd>Henna EXEMPLO SINTETICO SEM VALIDADE FISCAL</xProd>
+      <NCM>12119090</NCM><CEST>2000100</CEST><CFOP>5102</CFOP>
+    </prod></det>
+  </infNFe></NFe>
+</nfeProc>

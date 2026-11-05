@@ -1,0 +1,63 @@
+{
+  "schema": "SOLVERIS_B02_G5_V3R1_SCOPED_AGENT_EVIDENCE_DELTA_V1",
+  "status": "PROPOSED_ONLY_NOT_RATIFIED",
+  "target_existing_candidate": {
+    "path": "POLICY_G5_CANDIDATO_SUCESSOR_V3_R1_SUBSTITUICAO_PROSPECTIVA_20261105.json",
+    "commit": "518ee8d9a416a59722ab12a7f2e1f8e9a8e9abd6",
+    "policy_candidate_body_sha256": "389cce04dd249c5fb184fce7b876608651dd84ca3db64b7d778bb2de66a0c3d2"
+  },
+  "single_policy_delta": {
+    "prior_blocking_evidence": "chat_session_identifier_separation",
+    "replacement": "verifiable_solveris_commanded_agent_execution_receipt",
+    "legal_source": "prospective_SOLVERIS_mandate_subject_to_competent_ratification",
+    "must_bind": [
+      "trusted_active_mandate_and_authorized_operation",
+      "trusted_agent_operational_public_key",
+      "same_policy_object_sha256",
+      "pinned_verifier_id_and_version",
+      "signed_execution_receipt",
+      "independent_result_readback",
+      "independent_revocation_replay_and_nonce_registry"
+    ],
+    "never_sufficient_alone": [
+      "agent_functional_name",
+      "chat_transcript",
+      "github_account_login",
+      "untrusted_public_key_from_receipt",
+      "unsigned_self_attestation"
+    ],
+    "separate_credential_from_miguel_ratification": true,
+    "retain_role_incompatibilities": true,
+    "no_retroactive_reinterpretation_of_prior_review": true,
+    "G5_R1_G4_origin_and_sanitization_required": true,
+    "native_root_elf_and_separate_approval_required": true,
+    "validator": "tools/b02_g5_mandated_execution_v1.py",
+    "validator_id": "SOLVERIS_B02_G5_MANDATED_EXECUTION",
+    "validator_version": 1
+  },
+  "r6_technical_only_scope_proposed": {
+    "requires_miguel_explicit_ratification": true,
+    "synthetic_nfeproc_may_prove": "pipeline_parsing_classification_temporal_cotejo_only",
+    "synthetic_nfeproc_may_not_prove": [
+      "real_fiscal_operation",
+      "private_original_xml",
+      "fiscal_legal_authority",
+      "tax_liability",
+      "R6_REAL_FISCAL"
+    ],
+    "synthetic_flag_mandatory": true,
+    "keep_existing_r7_real_receipt_consumer_unchanged": true,
+    "new_technical_only_r7_decision_allowed_after_real_g5_r1_and_r5_receipts": true,
+    "technical_decision_status_proposed": "B02_TECHNICAL_CLOSED_FISCAL_PENDING",
+    "legacy_global_b02_closed_must_remain_false": true,
+    "b03_released": false
+  },
+  "operational_guard": {
+    "r5_installer_and_commit_outside_this_delta": true,
+    "r5_specific_authorizations_still_required": true,
+    "no_sql_or_signature_granted": true,
+    "r7_competent_act_required": true,
+    "historical_seven_json_and_149_proofs_immutable": true,
+    "closed_gates_preserved": true
+  }
+}
