@@ -96,3 +96,11 @@ Migracao 0064 aplicada com sucesso na BD real (solveris_b02_r4g_test). alembic_v
 SQL aplicado via psql direto (nao via alembic upgrade), extraido do ficheiro de migracao candidato. Script de extracao: extract_0064_sql.py. SQL aplicado: apply_0064.sql.
 
 PROXIMO PASSO: aplicar 0065 (one-shot real) pelo mesmo processo -- extrair, testar em ROLLBACK, aplicar a serio. Depois disso, preparar as duas unidades reais (0064/0065 sao so infraestrutura, ainda sem dados).
+
+## ATUALIZACAO 2026-11-05 23:50 (sessao Claude) -- R5 INFRAESTRUTURA COMPLETA, 0064+0065 APLICADAS
+
+alembic_version = 0065_b02_g5_one_shot_real (estado limpo, uma so linha). Tabela b02_g5_operational_approval_uses criada com todas as guardas (one-shot, two-units trigger). Biblioteca nativa completa funcional (signature + precommit_guard).
+
+R5 so falta: as duas unidades reais (PDFs 101201900571 e 101202501245, ja localizados com hash confirmado em SOLVERIS_ENTERPRISE_B02_R4C_NOVA_AQUISICAO_20261020_121602_f9426b0d/CAS_G19/sha256/). Precisa de: app.services.enterprise_b02_noncredential_acquisition.stage_completion e app.services.enterprise_b02_g5_two_unit_stage para preparar os dois registos reais (binding, receipt, verification), depois b02_g5_reserve_operational_decision() + a transacao real com COMMIT.
+
+NAO repetir 0064/0065 -- ja aplicadas e confirmadas. Scripts: extract_0065_sql.py, apply_0065.sql, test_0065.sql.
