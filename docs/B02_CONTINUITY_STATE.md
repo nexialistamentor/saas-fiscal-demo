@@ -88,3 +88,11 @@ b02_g5_native_REAL_CLOSED.so instalada em /usr/lib/postgresql/17/lib/ no content
 Correcao necessaria no fonte: faltava PG_MODULE_MAGIC; adicionada apos os includes em native/g5/historical_20261022/b02_g5_native_signature.c. Ja commitado em df75985d.
 
 PROXIMO PASSO EXATO: aplicar 0064 a serio (ainda so testado em ROLLBACK). A biblioteca ja esta pronta.
+
+## ATUALIZACAO 2026-11-05 23:30 (sessao Claude) -- 0064 APLICADA DE VERDADE
+
+Migracao 0064 aplicada com sucesso na BD real (solveris_b02_r4g_test). alembic_version agora em 0064_b02_g5_controlled_real_cas (0063 removido, estado limpo). b02g5_native_profile() confirma REAL_PROFILE_COMPILED_APPROVED_ROOTS. Biblioteca nativa completa (signature + precommit_guard) instalada e funcional.
+
+SQL aplicado via psql direto (nao via alembic upgrade), extraido do ficheiro de migracao candidato. Script de extracao: extract_0064_sql.py. SQL aplicado: apply_0064.sql.
+
+PROXIMO PASSO: aplicar 0065 (one-shot real) pelo mesmo processo -- extrair, testar em ROLLBACK, aplicar a serio. Depois disso, preparar as duas unidades reais (0064/0065 sao so infraestrutura, ainda sem dados).
