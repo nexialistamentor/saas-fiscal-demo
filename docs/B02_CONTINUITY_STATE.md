@@ -21,3 +21,17 @@ object_sha256=389cce04..., janela de validade nova. Usar tools/b02_documentary_s
 como base de estrutura (DECISION_KEYS já mapeado).
 
 NÃO repetir: busca de chave, busca de custodiante, verificação de fingerprint, pergunta "quem assina".
+## ATUALIZACAO 2026-11-05 (sessao Claude) -- G5/R1 FECHADO FISICAMENTE NA BD
+
+Cadeia completa materializada e ativa em solveris_b02_r4g_test:
+- policy_versions: B02-389cce04-policy-v3 (record_hash 1370931e...)
+- bootstrap_authority_records: B02-389cce04-bootstrap-v1 (record_hash bf40aeca...)
+- policy_decisions: 4 atos (submetida/auditoria_iniciada/auditada_favoravelmente/ratificada),
+  Miguel em todas as funcoes, segregacao por texto (nao ha terceiro independente, declarado explicitamente)
+- policy_activations: B02-389cce04-activation-v1, state=activa, CONFIRMADO por leitura independente apos o commit
+
+Script fonte: materializar_cadeia_g5r1_389cce04.py (commit e8f10522 e seguintes).
+
+PROXIMO PASSO: R5 -- instalar 0064/0065 (ja preparadas) e as duas unidades reais.
+O bootstrap_authority_record agora existente desbloqueia stage_policy_activation para R5.
+NAO repetir G5/R1 -- esta ja fechado e ativo.
