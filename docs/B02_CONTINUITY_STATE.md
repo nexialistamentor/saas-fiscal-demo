@@ -56,3 +56,15 @@ Estado da R5, dependencia fisica 1 (biblioteca b02_g5_native_REAL_CLOSED):
 
 PROXIMO PASSO EXATO: instalar o .so, confirmar que o SQL de 0064 compila (CREATE FUNCTION ... AS
   '$libdir/b02_g5_native_REAL_CLOSED'), depois aplicar 0064 e 0065 via alembic ou script equivalente.
+
+## ATUALIZACAO 2026-11-05 23:10 (sessao Claude) -- BIBLIOTECA NATIVA FUNCIONAL, CONFIRMADA
+
+b02_g5_native_REAL_CLOSED.so instalada em /usr/lib/postgresql/17/lib/ no contentor
+solveris-pg17-migration-test. Testada em transacao com ROLLBACK:
+SELECT public.b02g5_native_profile() -> 'REAL_PROFILE_COMPILED_APPROVED_ROOTS' (valor exigido por 0064).
+
+Correcao necessaria no fonte: faltava PG_MODULE_MAGIC; adicionada apos os #include
+em native/g5/historical_20261022/b02_g5_native_signature.c.
+
+PROXIMO PASSO EXATO: aplicar 0064 a serio (ainda so testado em ROLLBACK). A biblioteca
+ja esta pronta -- 0064 deve agora conseguir criar as funcoes sem erro de "missing magic block".

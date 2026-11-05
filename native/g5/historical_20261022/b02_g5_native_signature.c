@@ -11,6 +11,8 @@
 #include "utils/timestamp.h"
 #include <openssl/evp.h>
 
+PG_MODULE_MAGIC;
+
 PG_FUNCTION_INFO_V1(b02g5_assert_signature);
 PG_FUNCTION_INFO_V1(b02g5_native_profile);
 
