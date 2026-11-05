@@ -104,3 +104,111 @@ alembic_version = 0065_b02_g5_one_shot_real (estado limpo, uma so linha). Tabela
 R5 so falta: as duas unidades reais (PDFs 101201900571 e 101202501245, ja localizados com hash confirmado em SOLVERIS_ENTERPRISE_B02_R4C_NOVA_AQUISICAO_20261020_121602_f9426b0d/CAS_G19/sha256/). Precisa de: app.services.enterprise_b02_noncredential_acquisition.stage_completion e app.services.enterprise_b02_g5_two_unit_stage para preparar os dois registos reais (binding, receipt, verification), depois b02_g5_reserve_operational_decision() + a transacao real com COMMIT.
 
 NAO repetir 0064/0065 -- ja aplicadas e confirmadas. Scripts: extract_0065_sql.py, apply_0065.sql, test_0065.sql.
+
+=====================================================================
+## RESUMO COMPLETO PARA PROXIMA SESSAO (2026-11-06) -- LER ISTO PRIMEIRO
+=====================================================================
+
+### O QUE JA ESTA FEITO E CONFIRMADO (nao repetir)
+
+1. G5/R1 FECHADO -- candidata 389cce04dd249c5fb184fce7b876608651dd84ca3db64b7d778bb2de66a0c3d2
+   (policy_candidate_body de POLICY_G5_CANDIDATO_SUCESSOR_V3_R1_SUBSTITUICAO_PROSPECTIVA_20261105.json)
+   - Ratificado por Miguel (commit 822b4d38 na PR 27)
+   - Ativado fisicamente na BD: policy_versions, bootstrap_authority_records, 4x policy_decisions,
+     policy_activations (B02-389cce04-activation-v1, state=activa)
+   - Script: materializar_cadeia_g5r1_389cce04.py
+
+2. BIBLIOTECA NATIVA COMPILADA E FUNCIONAL
+   - native/g5/historical_20261022/b02_g5_native_signature.c (assinatura Ed25519)
+   - native/g5/historical_20261022/b02_precommit_guard.c (hook de pre-commit, ja existia completo)
+   - b02_g5_approved_roots.h: nova raiz V2, mesma chave Ed25519 ja confirmada (fingerprint
+     6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c), janela 2026-11-05 a 2036-11-05,
+     vinculada a candidata 389cce04. Raiz V1 antiga preservada.
+   - Compilada DENTRO do contentor Docker (nao tem gcc no host): apt-get install gcc make
+     postgresql-server-dev-17 libssl-dev dentro do contentor solveris-pg17-migration-test
+   - Instalada em /usr/lib/postgresql/17/lib/b02_g5_native_REAL_CLOSED.so
+   - Testada: SELECT public.b02g5_native_profile() = REAL_PROFILE_COMPILED_APPROVED_ROOTS
+
+3. MIGRACAO 0064 APLICADA DE VERDADE (irreversivel, nao tem downgrade)
+   - Todas as funcoes/triggers de validacao R5 criadas na BD solveris_b02_r4g_test
+   - SQL extraido do ficheiro de migracao, testado em ROLLBACK, depois aplicado com COMMIT
+
+4. MIGRACAO 0065 APLICADA DE VERDADE
+   - Tabela b02_g5_operational_approval_uses (reserva one-shot) criada e ativa
+   - alembic_version = 0065_b02_g5_one_shot_real (linha unica, limpa)
+
+5. BACKUPS DISPONIVEIS SE PRECISAR REVERTER (nunca foram necessarios ate agora)
+   - Imagem Docker: solveris-pg17-backup-pre-r5-20261105
+   - Dump logico: C:\Users\Oem\AppData\Local\SOLVERIS\CustodiaB02\b02_pre_r5_backup_20261105.dump
+
+6. TUDO COMMITADO E NO GITHUB (branch candidate/g5-v5-publicacao-local, PR 27 aberta e intacta)
+   - Ultimo commit: a82d364f (feat(b02-r5): 0065 applied for real...)
+   - NOTA: houve um incidente de push (fatal error in commit_refs do GitHub) que obrigou a apagar
+     e recriar a branch remota. Resolvido, PR 27 continua aberta e correta. Nao e preciso repetir nada.
+
+### ONDE PARAMOS -- O ULTIMO PASSO DE R5
+
+Faltam as DUAS UNIDADES REAIS (os dois documentos C3):
+- PDF 101201900571 (Resolucao 571/2019), hash af53bf64313fefa45e5ed490fdd7ca57e7b2d87116f2f74a1ba1ae0cff874a5d,
+  tamanho 1944929 bytes
+- PDF 101202501245 (Resolucao 1245/2025), hash e7bc013d6195e904f780a6be78a1ea0d0ca0bdcff530fba9ec4baa4c348e6832,
+  tamanho 258302 bytes
+
+Ficheiros fisicos JA LOCALIZADOS e hash CONFIRMADO (nao e preciso procurar outra vez), por exemplo em:
+C:\Users\Oem\Downloads\SOLVERIS_ENTERPRISE_B02_R4C_NOVA_AQUISICAO_20261020_121602_f9426b0d\CAS_G19\sha256\
+
+VERIFICACAO FEITA: nao existe NENHUM registo em artifact_references nem acquisition_executions
+para estes dois documentos nesta BD. Tem de se construir a cadeia completa do zero:
+
+1. artifact_references (referencia a fonte) -- nao existe, criar
+2. Uma execucao de planeamento (execution_event=criacao, projected_state=planeada) -- predecessor
+   obrigatorio do binding
+3. acquisition_mode_bindings, com security_policy_binding e sanitization_policy_binding apontando
+   EXATAMENTE para a politica G5/R1 ja ativa (policy_id=SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE,
+   policy_version=3, policy_hash=389cce04...)
+4. Leitura real dos bytes do PDF (ja localizados)
+5. receipt, verification, terminal, artifact -- cadeia de evidencia completa via
+   app.services.enterprise_b02_noncredential_acquisition.stage_completion
+6. stage_authenticity -- a parte mais critica: um registo de autenticidade G4 (artifact_verification_records)
+   que tem de bater EXATAMENTE com a tupla que b02g5_require_authenticity_in_unit() (dentro de 0064)
+   vai verificar: verifier id/version/hash = SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN/1/fab019b18d21f8e47e59ff96fd783dc9732cc3ae1d6e1ed429bddf957f0b9472,
+   vinculado ao g4.origin_report_binding de cada documento (ja confirmados no JSON da candidata:
+   571/2019 -> 9250fc933c41dab84e186019f01ed1f2b29828de1d5e1b879568a96e3ef1a6d4,
+   1245/2025 -> a281c48d6107817aca97331e5425f81616847e66853a3e179ca66d3353f23fa8)
+7. Depois de AMBAS as unidades estarem staged (app.services.enterprise_b02_g5_two_unit_stage.stage_two_real_c3_units
+   exige as duas de uma vez, numa so chamada, numa so transacao): chamar b02_g5_reserve_operational_decision()
+   para a reserva one-shot, depois b02g5_capability_manifest() + a assinatura Ed25519 real com a chave ja
+   confirmada, e so entao COMMIT.
+
+Ficheiros a ler antes de avancar (ainda nao lidos nesta sessao):
+- app/services/enterprise_b02_noncredential_acquisition.py (resto do ficheiro, so os primeiros 150 chars foram lidos)
+- app/models.py -- estrutura exata de artifact_references, acquisition_executions,
+  acquisition_mode_bindings, normative_artifacts, artifact_verification_records
+- O resto de enterprise_b02_g5_two_unit_stage.py ja foi lido por completo (ver secao acima deste ficheiro)
+
+RECOMENDACAO: esta e a parte mais complexa e de maior risco de todo o R5 -- envolve muitos campos
+exatos cruzados entre varias tabelas e triggers. Tratar como sessao propria, com atencao total,
+em vez de continuar com fadiga acumulada. O estado atual esta seguro e nao se perde nada ao parar aqui.
+
+### DEPOIS DE R5 FECHAR, O QUE FALTA PARA O B02 FECHAR DE VEZ
+
+- R6: vinculo fiscal real -- falta ExtractionResult conclusiva, RuleVersion vinculada, item NF-e real
+  com XML/hash (NormativeArtifact fica resolvido como parte das duas unidades acima). Alternativa mais
+  rapida, ja discutida e aceite como caminho valido: R6 SINTETICO, documentado como tal (nao substitui
+  o real, mas desbloqueia o fecho tecnico B02_TECHNICAL_CLOSED_FISCAL_PENDING). Scripts ja existentes:
+  tools/b02_r6_synthetic_nfeproc_pipeline_v1.py, fixtures/b02_r6_synthetic_nfeproc_20261105.xml
+  (criados no commit e4301c3 de outra sessao, nunca aplicados).
+- R7: decisao final -- consumir G5/R1 (feito), R5 (duas unidades reais) e R6, e so Miguel pode emitir
+  a decisao institucional B02_CLOSED.
+
+### REGRAS QUE NAO MUDAM, EM QUALQUER SESSAO FUTURA
+
+- Miguel assume todos os papeis institucionais nesta missao (proponente/auditor/ratificador) -- ja
+  decidido e aplicado, nao reabrir essa discussao. Segregacao e por TEXTO DISTINTO no campo actor,
+  nunca por fingir ser outra pessoa.
+- Nunca aplicar SQL real sem primeiro testar em transacao com ROLLBACK.
+- Backup (imagem Docker + pg_dump) ja existe; nao e preciso refazer a menos que algo corra mal.
+- Sempre commitar e dar push ao fim de cada passo que grava algo no repo ou na BD.
+- O contentor Docker e solveris-pg17-migration-test, porta mapeada 55432 (nao 5432). Utilizadores:
+  solveris_test (owner, password solveris_test), solveris_b02_writer (sql_writer restrito),
+  solveris_b02_policy_writer (password solveris_policy_writer_local, so para stage_policy_activation).
