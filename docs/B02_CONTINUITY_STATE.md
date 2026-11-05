@@ -35,3 +35,24 @@ Script fonte: materializar_cadeia_g5r1_389cce04.py (commit e8f10522 e seguintes)
 PROXIMO PASSO: R5 -- instalar 0064/0065 (ja preparadas) e as duas unidades reais.
 O bootstrap_authority_record agora existente desbloqueia stage_policy_activation para R5.
 NAO repetir G5/R1 -- esta ja fechado e ativo.
+
+## ATUALIZACAO 2026-11-05 22:55 (sessao Claude) -- BIBLIOTECA NATIVA COMPILADA
+
+Estado da R5, dependencia fisica 1 (biblioteca b02_g5_native_REAL_CLOSED):
+- Pacotes de build instalados no contentor solveris-pg17-migration-test (gcc, make, postgresql-server-dev-17, libssl-dev)
+- b02_g5_approved_roots.h atualizado: nova entrada "SOLVERIS-B02-SEFA-PR-G5-COMMIT-MIGUEL-V2",
+  mesma chave Ed25519 ja confirmada (fingerprint 6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c),
+  janela 2026-11-05 a 2036-11-05, vinculada a candidata 389cce04 (ver secao G5/R1 acima).
+  Raiz antiga V1 preservada, nunca editada no seu conteudo historico (so corrigido um erro de escaping meu).
+- Compilado com sucesso dentro do contentor: /tmp/b02_g5_native_signature.o e /tmp/b02_g5_native_REAL_CLOSED.so (25968 bytes)
+- POR FAZER: copiar o .so para o pkglibdir do Postgres (/usr/lib/postgresql/17/lib/), depois aplicar
+  a migracao migrations/candidates/0064_b02_g5_controlled_real_cas_CANDIDATE.py (ainda NAO aplicada,
+  alembic_version continua em 0063). So depois disso aplicar 0065.
+- NOTA: apt upgrade atualizou postgresql-17 de 17.10 para 17.11 dentro do contentor (menor, nao deve
+  ter afetado dados; BD confirmada saudavel e em 0063 depois da atualizacao).
+- Ficheiros fonte ainda NAO copiados de volta para o repo local (estao so dentro do contentor em /tmp
+  e no checkout local em native/g5/historical_20261022/). Falta git add/commit do .h atualizado e dos
+  scripts apply_patch_new_root.py / apply_patch_fix_escaping.py / build_manifest.py.
+
+PROXIMO PASSO EXATO: instalar o .so, confirmar que o SQL de 0064 compila (CREATE FUNCTION ... AS
+  '$libdir/b02_g5_native_REAL_CLOSED'), depois aplicar 0064 e 0065 via alembic ou script equivalente.
