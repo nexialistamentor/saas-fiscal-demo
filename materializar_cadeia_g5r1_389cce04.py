@@ -23,8 +23,8 @@ POLICY_HASH = "389cce04dd249c5fb184fce7b876608651dd84ca3db64b7d778bb2de66a0c3d2"
 DOMAIN = "SEFA_PR_B02_DOCUMENTAL_G5_PERSISTENCE"
 
 AUDITOR_ACTOR = "Miguel (funcao auditor nesta candidatura, sem terceiro independente)"
-PROPONENTE_ACTOR = "Miguel"
-RATIFICADOR_ACTOR = "Miguel"
+PROPONENTE_ACTOR = "Miguel (funcao proponente nesta candidatura)"
+RATIFICADOR_ACTOR = "Miguel (funcao ratificador, autoridade constitucional final)"
 
 def load_body():
     with open(CANDIDATE_PATH, encoding="utf-8") as f:
@@ -41,7 +41,8 @@ def evidence(role, note):
     }
 
 def run(owner_engine, writer_engine, execute: bool):
-    with Session(owner_engine) as session, session.begin():
+    with Session(owner_engine) as session:
+        session.begin()
         conn = session.connection()
         body = load_body()
         pv = models.PolicyVersion(
@@ -76,8 +77,64 @@ def run(owner_engine, writer_engine, execute: bool):
             "origin_evidence": pv.origin_evidence,
         }
         pv.record_hash = hashlib.sha256(_cb(pv_material)).hexdigest()
-        session.add(pv); session.flush()
-        print("POLICY_VERSION_RECORD_HASH =", pv.record_hash)
+        existing_pv = session.query(models.PolicyVersion).filter_by(
+            policy_id=pv.policy_id, policy_version=pv.policy_version, policy_hash=pv.policy_hash
+        ).one_or_none()
+        if existing_pv is not None:
+            pv = existing_pv
+            print("POLICY_VERSION_REUSED, RECORD_HASH =", pv.record_hash)
+        else:
+            session.add(pv); session.flush()
+            print("POLICY_VERSION_RECORD_HASH =", pv.record_hash)
+
+        import hashlib as _hl
+        from app.services.enterprise_b02_noncredential_acquisition import canonical_bytes as _cb2
+        bootstrap_evidence = {
+            "source_kind": "bootstrap authority record for G5/R1 candidate 389cce04, Miguel in all three roles",
+            "segregation_note": "Nao ha segregacao de terceiro nesta fase; funcoes distintas, mesma titularidade.",
+            "no_historical_database_insertion_claim": False,
+        }
+        boot = models.BootstrapAuthorityRecord(
+            bootstrap_authority_record_id="B02-389cce04-bootstrap-v1",
+            policy_type=pv.policy_type, policy_id=pv.policy_id,
+            policy_version=pv.policy_version, policy_hash=pv.policy_hash,
+            domain=pv.domain, scope=pv.scope,
+            actor_proponente=PROPONENTE_ACTOR, actor_auditor=AUDITOR_ACTOR,
+            independent_audit_result="favoravel",
+            constitutional_authority_declaration="Miguel, autoridade constitucional final do B02, declara esta autoridade de arranque para a candidata 389cce04, sem segregacao de terceiro.",
+            actor_ratificador=RATIFICADOR_ACTOR,
+            segregation_evidence={"distinct_functional_actors": [PROPONENTE_ACTOR, AUDITOR_ACTOR, RATIFICADOR_ACTOR], "same_natural_person": True},
+            evidence=bootstrap_evidence,
+            validity="valida", submission_mode="manual", audit_mode="manual",
+            ratification_mode="manual", activation_mode="manual",
+            provenance={"source": "SOLVERIS_B02_G5_R1_MATERIALIZATION", "synthetic_only": False},
+            record_hash="0" * 64,
+        )
+        boot_material = {
+            "bootstrap_authority_record_id": boot.bootstrap_authority_record_id,
+            "policy_type": pv.policy_type, "policy_id": pv.policy_id,
+            "policy_version": pv.policy_version, "policy_hash": pv.policy_hash,
+            "domain": pv.domain, "scope": pv.scope,
+            "actor_proponente": PROPONENTE_ACTOR, "actor_auditor": AUDITOR_ACTOR,
+            "independent_audit_result": "favoravel",
+            "constitutional_authority_declaration": boot.constitutional_authority_declaration,
+            "actor_ratificador": RATIFICADOR_ACTOR,
+            "segregation_evidence": boot.segregation_evidence,
+            "evidence": bootstrap_evidence,
+            "validity": "valida", "submission_mode": "manual", "audit_mode": "manual",
+            "ratification_mode": "manual", "activation_mode": "manual",
+            "provenance": {"source": "SOLVERIS_B02_G5_R1_MATERIALIZATION", "synthetic_only": False},
+        }
+        boot.record_hash = _hl.sha256(_cb2(boot_material)).hexdigest()
+        existing_boot = session.query(models.BootstrapAuthorityRecord).filter_by(
+            bootstrap_authority_record_id=boot.bootstrap_authority_record_id
+        ).one_or_none()
+        if existing_boot is not None:
+            boot = existing_boot
+            print("BOOTSTRAP_REUSED, RECORD_HASH =", boot.record_hash)
+        else:
+            session.add(boot); session.flush()
+            print("BOOTSTRAP_RECORD_HASH =", boot.record_hash)
 
         prev_id = None
         decisions = [
@@ -115,7 +172,11 @@ def run(owner_engine, writer_engine, execute: bool):
                 "idempotency_key": decision_id,
             }
             d.record_hash = hashlib.sha256(_cb(d_material)).hexdigest()
-            session.add(d); session.flush()
+            existing_d = session.query(models.PolicyDecision).filter_by(decision_id=decision_id).one_or_none()
+            if existing_d is not None:
+                d = existing_d
+            else:
+                session.add(d); session.flush()
             print(decision_id, "RECORD_HASH =", d.record_hash)
             prev_id = decision_id
             last = d
@@ -126,7 +187,9 @@ def run(owner_engine, writer_engine, execute: bool):
             policy_decision_record_hash=last.record_hash,
             policy_type=pv.policy_type, policy_id=pv.policy_id,
             policy_version=pv.policy_version, policy_hash=pv.policy_hash,
-            authorization_basis_type="active_policy_chain",
+            authorization_basis_type="bootstrap_authority_record",
+            bootstrap_authority_record_id=boot.bootstrap_authority_record_id,
+            bootstrap_authority_record_hash=boot.record_hash,
             authorization_class="constitucional_reservada",
             execution_mode="manual",
             attempt_number=1, actor_or_worker="solveris_b02_policy_writer",
@@ -145,15 +208,19 @@ def run(owner_engine, writer_engine, execute: bool):
             activated_at=datetime.now(timezone.utc), state="activa",
             provenance={"source": "SOLVERIS_B02_G5_R1_MATERIALIZATION", "synthetic_only": False},
         )
+        session.flush()
         if execute:
             session.commit()
-            print("DECISIONS_COMMITTED")
+            print("DECISIONS_COMMITTED (or already were)")
         else:
-            session.rollback()
-            print("DECISIONS_ROLLED_BACK (dry-run) -- activation stage skipped in dry-run")
-            return
+            print("DRY_RUN: decisions NOT committed by this run (any reused rows were already committed earlier)")
 
-    with Session(writer_engine) as wsession, wsession.begin():
+    if not execute:
+        print("DRY_RUN: stopping before activation stage. Re-run with --execute to attempt it for real.")
+        sys.exit(0)
+
+    with Session(writer_engine) as wsession:
+        wsession.begin()
         wconn = wsession.connection()
         result = stage_policy_activation(
             wconn, execution=execution, activation=activation,
@@ -168,6 +235,7 @@ def run(owner_engine, writer_engine, execute: bool):
         else:
             wsession.rollback()
             print("ACTIVATION_ROLLED_BACK (dry-run)")
+
 
 if __name__ == "__main__":
     owner_engine = create_engine(DSN_OWNER)
