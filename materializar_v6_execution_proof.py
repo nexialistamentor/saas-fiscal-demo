@@ -103,6 +103,11 @@ def run(owner_engine, execute: bool):
             print("POLICY_V6_RECORD_HASH =", pv.record_hash)
 
         prefix = policy_hash[:8]
+        if not execute:
+            session.rollback()
+            print("V6_POLICY_PREVIEW_ONLY: no institutional decisions emitted")
+            return
+
         decisions = [
             (f"B02-{prefix}-submetida-v1", "submetida", "proponente_institucional", PROPONENTE_ACTOR,
              "Submissao institucional da v6 (execution_proof_binding), por Miguel."),
