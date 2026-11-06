@@ -212,3 +212,39 @@ em vez de continuar com fadiga acumulada. O estado atual esta seguro e nao se pe
 - O contentor Docker e solveris-pg17-migration-test, porta mapeada 55432 (nao 5432). Utilizadores:
   solveris_test (owner, password solveris_test), solveris_b02_writer (sql_writer restrito),
   solveris_b02_policy_writer (password solveris_policy_writer_local, so para stage_policy_activation).
+
+## ATUALIZACAO 2026-11-06 (sessao Claude) -- G4.VERIFIER RESOLVIDO, R5 MACHINERY MAPEADA
+
+BLOQUEIO REAL ENCONTRADO E RESOLVIDO: a politica v3 (389cce04...) tinha g4.verifier=null
+nos dois documentos -- a verificacao SQL (NULL=NULL) nunca passaria. Relatorios de
+origem REAIS localizados e verificados por hash proprio (nao por afirmacao de terceiros):
+  C:\Users\Oem\Downloads\SOLVERIS_B02_ORIGIN_RELATORIOS_RETIFICADOS_20261102.zip ->
+  B02_G4_ORIGIN_REPORT_SUCCESSOR_101201900571_20261102.json (sha256 9250fc93...)
+  B02_G4_ORIGIN_REPORT_SUCCESSOR_101202501245_20261102.json (sha256 a281c48d...)
+  Ambos outcome=favoravel, verifier=SOLVERIS_B02_SEFA_PR_FOUNDER_ORIGIN/v1/
+  hash fab019b18d21f8e47e59ff96fd783dc9732cc3ae1d6e1ed429bddf957f0b9472, validos ate 2026-11-15.
+
+POLITICA V4 RATIFICADA E ATIVA NA BD: hash b6055f7e69ca5bd236373a152a9acb2bafb48128cdba6560d58d5813e5beed9d,
+unico delta = g4.verifier preenchido nos dois documentos. Ratificada por Miguel ("RATIFICO", 06/11/2026).
+Script: materializar_delta_g4_verifier_v4.py. Confirmado por leitura independente pos-commit.
+NAO repetir este delta -- ja fechado e ativo. g5_policy_hash correto a usar daqui em diante: b6055f7e...
+
+MAQUINARIA R5 JA CONSTRUIDA E PRONTA (nao reconstruir):
+  tools/b02_r5_g5_v3_authorized_transaction.py -- execute_authorized_r5(), faz staging
+    das 2 unidades + reserva one-shot + manifesto + assinatura + COMMIT + readback independente
+  tools/b02_r5_g5_v3_installation_bridge.py -- real_units_from_custody(), monta os units
+    a partir de custody privada + callbacks reais fornecidos pelo chamador
+
+FALTA CONSTRUIR (nunca feito antes, nao e repeticao):
+  1. approval dict com 10 campos hash reais: approval_id, release_id, operator_sha256,
+     decision_document_sha256, g5_policy_hash (=b6055f7e...), review_act_sha256,
+     ratification_act_sha256, native_root_sha256, native_elf_sha256, install_act_sha256
+  2. funcao competent_sign_manifest(bytes) -- assinatura Ed25519 real com a chave privada
+     ja confirmada (CustodiaB02\Chave_ceee5bb6f2a740a58cf4dbaa66565698\miguel-private-encrypted.pem,
+     fingerprint 6f0ede1267a208505b2443d765cf97f2206759049f938a1d95d92a86c4c5d63c)
+  3. funcao independently_verify_acts(approval) -- confirma cadeia institucional, raiz, ELF
+  4. build_evidence e stage_authenticity por documento (usando os relatorios de origem
+     reais ja verificados acima)
+
+RECOMENDACAO MANTIDA: isto e o passo mais arriscado e irreversivel de todo o B02
+(reserva one-shot, sem retry). Tratar como sessao propria, com atencao total.
