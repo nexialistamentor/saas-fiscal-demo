@@ -111,3 +111,64 @@ Get-Content "C:\dev\solveris-b02-g5-v5-publicacao\tools\b02_r6_synthetic_nfeproc
 # "Miguel, autoridade constitucional final, ratifica B02 CLOSED?" — sim/nao.
 # Isto nao e pedir aprovacao de terceiro: e a autoridade que o proprio
 # dev-workflow ja define como dele, nao delegavel.
+
+=====================================================================
+## CORRECAO URGENTE 2026-11-06 (apos sessao com desvio de repositorio)
+=====================================================================
+
+### GUARDA 1 — UM SO REPOSITORIO, SEMPRE
+Trabalhar EXCLUSIVAMENTE em C:\dev\solveris-b02-g5-v5-publicacao,
+branch candidate/g5-v5-publicacao-local. NUNCA escrever, testar ou
+commitar em C:\dev\saas-fiscal-demo-a1 nem em qualquer outro checkout
+(saas-fiscal-demo, saas-fiscal-demo-mei, etc.) — existem varios
+checkouts antigos na maquina, alguns com centenas de commits locais
+nunca empurrados. Antes de qualquer git add/commit, confirmar sempre:
+git -C C:\dev\solveris-b02-g5-v5-publicacao rev-parse --show-toplevel
+(tem de devolver exatamente esse caminho). Se uma sessao anterior
+tocou noutro repo por engano, NAO dar push la — deixar como esta e
+ignorar, nunca tentar "limpar" ou reconciliar esse outro repo.
+
+### GUARDA 2 — O "bug" planeada->concluida provavelmente nao existe
+Uma sessao anterior testou um INSERT sintetico que ia direto de
+planeada para concluida (2 linhas) e concluiu que stage_completion()
+tem um bug de ordem. Isto E QUASE CERTAMENTE um erro no teste, nao no
+codigo: stage_completion() (em
+app/services/enterprise_b02_noncredential_acquisition.py) insere a
+linha 'start' (ja em_execucao, nao planeada) e depois a linha
+'terminal' (concluida) -- dentro da propria funcao, DUAS linhas. A
+linha 'planeada' tem de ser criada pelo CALLER, ANTES de chamar
+stage_completion, como predecessora de 'start'. Total real: 3 linhas
+(planeada -> em_execucao -> concluida), nao 2. Antes de assumir bug
+real, reler stage_completion() linha a linha e confirmar isto com um
+teste sintetico CORRIGIDO (3 inserts, nao 2) em ROLLBACK. So se esse
+teste corrigido tambem falhar e que ha um bug real a corrigir no
+codigo -- nesse caso documentar com precisao e so entao patchar.
+
+### GUARDA 3 — Testes sinteticos sao uteis, mas tem destino proprio
+Scripts de teste sintetico (tipo _teste_stage_completion_sintetico.py)
+sao bons -- SEMPRE testar em ROLLBACK antes de dados reais, isso ja
+e boa pratica desta missao. Mas guardar esses scripts de teste dentro
+de uma pasta propria (tests_scratch/ ou tools/diagnostics/), nunca na
+raiz do repo, e sempre no repositorio certo (Guarda 1).
+
+### GUARDA 4 — Nao reabrir o que ja fechou
+G5/R1: fechado, nao reabrir.
+0064/0065: aplicadas de verdade, nao reabrir, nao re-testar do zero.
+Politica v4 (g4.verifier, hash b6055f7e...): se outra sessao ja a
+materializou e confirmou por leitura independente (SELECT direto na
+BD, nao so o output de um script), aceitar como feito e avancar. Se
+nao houver confirmacao por leitura independente, reconfirmar com UMA
+leitura, nao refazer a materializacao.
+
+### PRIMEIRO PASSO DE QUALQUER SESSAO NOVA A PARTIR DE AGORA
+1. git -C C:\dev\solveris-b02-g5-v5-publicacao rev-parse --show-toplevel
+   (confirmar que e este o repo antes de tocar em qualquer coisa)
+2. docker start solveris-pg17-migration-test ; docker exec ... pg_isready
+3. SELECT version_num FROM alembic_version (confirmar 0065)
+4. SELECT policy_version, policy_hash FROM policy_versions WHERE
+   policy_id=SOLVERIS-B02-SEFA-PR-G5-REAL-CAS-RELEASE ORDER BY
+   policy_version (ver se v4 ja existe e esta correta)
+5. SELECT rules#>'{b02_noncredential,security,g5_release,documents}'
+   da v4 -- confirmar g4.verifier != null para os dois documentos
+6. SO DEPOIS disto, seguir para o PASSO 4 do runbook original
+   (construir as duas unidades reais), com a Guarda 2 em mente.
