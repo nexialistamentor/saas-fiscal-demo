@@ -248,3 +248,42 @@ FALTA CONSTRUIR (nunca feito antes, nao e repeticao):
 
 RECOMENDACAO MANTIDA: isto e o passo mais arriscado e irreversivel de todo o B02
 (reserva one-shot, sem retry). Tratar como sessao propria, com atencao total.
+
+## ATUALIZACAO 2026-11-06 (sessao Claude, continuacao) -- RUNBOOK CRIADO, PASSOS 0-2 CONFIRMADOS
+
+docs/RUNBOOK_FECHAR_B02.md criado (8 passos para fechar B02 autonomamente, sem
+"revisor segregado" para o ato de R5 -- so a cadeia policy_versions/policy_decisions
+ja provada, e o PASSO 8 reservado exclusivamente para Miguel decidir R7).
+
+CONFIRMADO HOJE (nao repetir):
+  - v4 (b6055f7e...) ja ativa na BD, alembic em 0065. PASSO 0-1 do runbook ja feitos.
+  - g4.verifier preenchido corretamente nos dois documentos (confirmado por leitura).
+  - g4.outcome continua "AWAITING_OWN_CURRENT_FOUNDER_ORIGIN" na politica -- CONFIRMADO
+    IRRELEVANTE: a funcao b02g5_require_authenticity_in_unit (dentro de 0064) nunca
+    verifica doc.g4.outcome, so doc.g4.verifier e doc.g4.origin_report_binding contra
+    artifact_verification_records. NAO criar outro delta de politica por causa disto.
+  - Trigger z_b02_complete_unit (5 tabelas: acquisition_mode_bindings,
+    noncredential_acquisition_receipts, noncredential_sanitization_verifications,
+    acquisition_executions, normative_artifacts) so chama b02_require_complete_unit
+    (verifica completude da cadeia), NUNCA recalcula nem valida o conteudo de record_hash.
+    artifact_references e artifact_verification_records NAO tem este trigger.
+  - Logo: record_hash de artifact_references, acquisition_executions, normative_artifacts
+    e artifact_verification_records e inteira responsabilidade do chamador (app), seguindo
+    o mesmo contrato ADR020_B02_INTEGER_JSON_UTF8_V1 ja usado com sucesso hoje para
+    policy_versions/policy_decisions/bootstrap_authority_records (sha256 de canonical_bytes
+    de todos os campos exceto o proprio record_hash).
+
+4 de 10 hashes do approval ja calculados: operator_sha256=062489ef39cc255a2c17f96a7de9884c04b976702c795aee73cdbdb726fc221d,
+native_root_sha256=53f257dfce6a1f84e7a96d21fbe678fe78c20fb14962cdbef01f5b2dbe897c10,
+native_elf_sha256=d12b26b7faeb9b20800a0a00a9a55ea1c29f59f688fc7013d2a7c0e91a99ed94,
+g5_policy_hash=b6055f7e69ca5bd236373a152a9acb2bafb48128cdba6560d58d5813e5beed9d.
+
+PROXIMO PASSO EXATO (PASSO 4 do runbook): escrever materializar_r5_duas_unidades.py --
+construir artifact_references + acquisition_executions(planeamento) + binding + read_cas
+(bytes reais ja confirmados em CAS_G19/sha256/) + build_evidence + stage_authenticity por
+documento, calculando record_hash manualmente via canonical_bytes, chamar
+stage_two_real_c3_units(). TESTAR SEMPRE PRIMEIRO EM ROLLBACK (never commit real sem
+confirmar cada insert por leitura dentro da mesma transacao).
+
+RECOMENDACAO MANTIDA (ainda valida): tratar PASSO 4 em diante como sessao dedicada,
+atencao total -- e o unico passo irreversivel sem retry de todo o B02.
