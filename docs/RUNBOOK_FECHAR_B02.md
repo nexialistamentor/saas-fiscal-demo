@@ -172,3 +172,58 @@ leitura, nao refazer a materializacao.
    da v4 -- confirmar g4.verifier != null para os dois documentos
 6. SO DEPOIS disto, seguir para o PASSO 4 do runbook original
    (construir as duas unidades reais), com a Guarda 2 em mente.
+
+=====================================================================
+## CORRECAO 2026-11-06 v2 (Guarda 5 reescrita com prova literal)
+=====================================================================
+
+### GUARDA 5 — 0064/0065 FORAM aplicadas; prova literal, nao alegacao
+Os ficheiros em migrations/candidates/0064_*_CANDIDATE.py e
+0065_*_CANDIDATE.py contem comentarios "CANDIDATE ONLY, not
+installed" e vivem fora de migrations/versions/ -- isso descreve o
+FICHEIRO antes de ser aplicado, nao o estado atual da base de dados.
+O SQL desses ficheiros foi extraido e aplicado diretamente (nao via
+alembic upgrade); alembic_version foi atualizado manualmente.
+
+PROVA LITERAL, corrida e colada em 2026-11-06 (nao e alegacao, e o
+output real destes comandos, confirmavel por qualquer sessao
+repetindo-os):
+
+  docker exec solveris-pg17-migration-test psql -U solveris_test -d solveris_b02_r4g_test -c "SELECT public.b02g5_native_profile();"
+    ->          b02g5_native_profile
+      --------------------------------------
+       REAL_PROFILE_COMPILED_APPROVED_ROOTS
+      (1 row)
+
+  docker exec solveris-pg17-migration-test psql -U solveris_test -d solveris_b02_r4g_test -c "\d public.b02_g5_operational_approval_uses"
+    -> tabela existe, colunas approval_id/release_id/assigned_txid/
+       decision_document_sha256/operator_sha256/writer_name/
+       database_name/reserved_at; trigger
+       trg_b02_g5_one_shot_requires_two_units AFTER INSERT DEFERRABLE
+       INITIALLY DEFERRED EXECUTE FUNCTION b02_g5_assert_reserved_two_units()
+
+  docker exec solveris-pg17-migration-test psql -U solveris_test -d solveris_b02_r4g_test -c "SELECT proname FROM pg_proc WHERE proname IN ('b02g5_capability_manifest','b02g5_precommit_validate','b02g5_require_real_release','b02_require_complete_unit') ORDER BY proname;"
+    -> as 4 funcoes existem: b02_require_complete_unit,
+       b02g5_capability_manifest, b02g5_precommit_validate,
+       b02g5_require_real_release
+
+  docker exec solveris-pg17-migration-test psql -U solveris_test -d solveris_b02_r4g_test -c "SELECT tgname, tgrelid::regclass FROM pg_trigger WHERE tgname LIKE 'trg_b02g5%' OR tgname LIKE '%complete_unit%' ORDER BY tgname;"
+    -> trg_b02g5_real_binding_precommit em acquisition_mode_bindings
+       trg_b02g5_real_receipt_precommit em noncredential_acquisition_receipts
+       trg_b02g5_real_verification_precommit em noncredential_sanitization_verifications
+       z_b02_complete_unit em acquisition_executions, acquisition_mode_bindings,
+       normative_artifacts, noncredential_acquisition_receipts,
+       noncredential_sanitization_verifications (8 linhas no total)
+
+NOTA RESOLVIDA: z_b02_complete_unit (mencionado na memoria sobre o
+incidente RCV31-R3) e o MESMO trigger confirmado acima -- nao ha dois
+mecanismos distintos, era a mesma coisa vista de angulos diferentes.
+
+NAO EXISTE um "ficheiro real" diferente em migrations/versions/ para
+procurar -- esta e a unica cadeia 0064/0065 que existe e foi aplicada.
+
+DISCIPLINA PARA SESSOES FUTURAS (nao "nunca verificar de novo"):
+se tiveres duvida sobre se 0064/0065 estao mesmo instaladas, CORRE as
+4 queries acima tu mesmo -- sao baratas, rapidas, e dao prova direta.
+So nao as reaplique nem procure um ficheiro alternativo: reconfirmar
+com leitura, nunca reaplicar, exatamente a disciplina da Guarda 4.
