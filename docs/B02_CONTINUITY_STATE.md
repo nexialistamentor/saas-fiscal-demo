@@ -287,3 +287,91 @@ confirmar cada insert por leitura dentro da mesma transacao).
 
 RECOMENDACAO MANTIDA (ainda valida): tratar PASSO 4 em diante como sessao dedicada,
 atencao total -- e o unico passo irreversivel sem retry de todo o B02.
+
+## ATUALIZACAO 2026-11-06 (sessao Claude, continuacao 2) -- BUG REAL ENCONTRADO EM stage_completion.py, NUNCA TESTADO ANTES
+
+RESOLVIDO DE PASSAGEM: password de solveris_b02_writer estava desconhecida
+(bloqueio documentado desde 29/10, "impossibilidade de obter a credencial real
+do papel escritor"). Resolvido com ALTER ROLE solveris_b02_writer WITH PASSWORD
+'solveris_b02_writer_local'; (feito como solveris_test, owner). Confirmado por
+login real. Isto e so neste contentor de teste descartavel (solveris-pg17-
+migration-test), nunca em producao.
+
+BUG REAL CONFIRMADO POR EXECUCAO (nao suposicao) EM
+app/services/enterprise_b02_noncredential_acquisition.py stage_completion():
+A ordem de insercao documentada e real no codigo e: binding, start, read,
+receipt, verification, terminal, artifact. MAS o trigger ao vivo
+b02_validate_new_proof() (em acquisition_mode_bindings, funcao por tras de
+a_b02_validate) EXIGE que a linha de planeamento (start, execution_event=
+'criacao', projected_state='planeada') JA EXISTA no momento em que o binding
+e inserido -- falha com B02_EXACT_PLANNING_REQUIRED se nao existir. Logo a
+ordem tem de ser INVERTIDA: start (planeamento) PRIMEIRO, binding DEPOIS.
+Isto nunca foi testado contra o schema real antes de hoje -- as duas unidades
+reais do R5 nunca foram executadas, so planeadas/documentadas.
+
+Teste reprodutivel: C:\dev\saas-fiscal-demo-a1\_teste_stage_completion_sintetico.py
+(dados sinteticos marcados synthetic_only=true, sempre em transacao ROLLBACK
+via engine solveris_b02_writer). Falhou exatamente no INSERT do binding com
+B02_EXACT_PLANNING_REQUIRED, confirmando a ordem errada.
+
+CAMPOS EXATOS DESCOBERTOS (ler b02_validate_new_proof() na BD para o corpo
+completo -- \sf b02_validate_new_proof -- antes de qualquer proximo teste):
+  - binding.security_policy_binding e sanitization_policy_binding: TEM de
+    apontar para uma politica REAL ativa (nao dummy) -- b02_policy_grant() e
+    chamado de verdade dentro do trigger. Usar a v4 (b6055f7e...) ja ativa.
+  - g->'adapter_contract_binding' e g->'acquisition_contract_binding' (vindos
+    da politica) TEM de ser byte a byte iguais a binding.adapter_contract_binding
+    e binding.acquisition_contract_binding -- usar exatamente os valores do
+    JSON da politica: adapter={"id":"app.services.enterprise_b02_noncredential_acquisition.stage_completion","hash":"b9a0cdd94f7bc6b523c25e3c772b41e680eaeda9cb0b9f755b7e012ea055853c","version":1},
+    acquisition={"id":"ADR020_R4F_R1_LOCAL_CAS_A2_A4","hash":"0359ab0bd03fee6127330158bc1b5388188aba650ee6e74fb2c762d1b85857fa","version":1}
+  - e.adapter_version (da linha de planeamento) TEM de ser a STRING "1" (igual
+    a adapter_contract_binding->>'version' como texto), nao um nome livre.
+  - binding.source_identity_binding TEM de ser EXATAMENTE
+    jsonb_build_object('source_id', ref.source_id, 'exact_locator', ref.exact_locator)
+    -- os valores reais da artifact_reference ja inserida, nao um objeto livre.
+  - binding.scope_hash TEM de ser b02_json_hash(binding.source_scope) --
+    calcular com a mesma funcao SQL (replicar em Python ou chamar via SQL).
+  - record_hash de acquisition_mode_bindings, noncredential_acquisition_receipts
+    e noncredential_sanitization_verifications: SEMPRE calculado pelo servidor
+    (b02_validate_new_proof), nunca fornecido pelo chamador -- nao enviar, ou
+    enviar None/omitir.
+  - receipt.receipt_hash: TAMBEM calculado pelo servidor (mesma trigger), nao
+    fornecido pelo chamador.
+  - receipt.cas_manifest (modo LOCAL_CAS_INCORPORATION) TEM campos EXATOS
+    obrigatorios: read_observed=true, components_complete=true,
+    object_uri='cas+sha256://'||artifact_hash||'/'||byte_size,
+    recalculated_hash=artifact_hash, recalculated_size=byte_size::text,
+    custody_contract_binding, prior_evidence_bindings (array NAO vazio),
+    read_observed_at.
+  - receipt.content_reference TEM de ser EXATAMENTE
+    {"uri":"cas+sha256://"+hash+"/"+size,"hash":hash,"byte_size":size}
+  - receipt.component_manifest.complete=true, components (array nao vazio).
+  - receipt.execution_proof_binding TEM de ter 'id' e 'hash' (hash formato
+    sha256 hex).
+  - verification (quando outcome=verified_sanitized) TEM campos EXATOS:
+    inspected_component_manifest.complete=true, .components igual a
+    r.component_manifest.components, .execution_proof_binding igual a
+    r.execution_proof_binding, .independence_evidence_binding com hash sha256;
+    violation_manifest=[] (array vazio, nao objeto vazio); verifier tem de
+    estar em g->'verifiers' da politica de sanitizacao E ser diferente de
+    r.creator (nao pode ser o mesmo ator que criou o receipt).
+  - acquisition_executions (linha start/planeamento): trigger
+    adr020_validate_acquisition_execution_event exige execution_event=
+    'criacao', projected_state='planeada', event_sequence=1,
+    previous=NULL, started_at=NULL, finished_at=NULL para ser aceite.
+  - AINDA NAO CONFIRMADO: se a transicao planeada->concluida (saltando
+    em_execucao) e aceite por adr020_validate_acquisition_execution_event --
+    o teste sintetico falhou antes de chegar la (no binding). Repetir o
+    teste depois de corrigir a ordem de insercao para descobrir isto.
+
+PROXIMO PASSO EXATO: continuar o teste sintetico _teste_stage_completion_sintetico.py,
+mas corrigindo manualmente a ordem (inserir start ANTES do binding, nao via
+stage_completion() que tem a ordem fixa errada -- ou usar SQL direto para esta
+fase de descoberta, so voltando a stage_completion()/stage_two_real_c3_units()
+depois de confirmar que a ordem corrigida funciona). Iterar campo a campo,
+sempre em ROLLBACK, ate obter STAGE_COMPLETION_OK sintetico completo. SO DEPOIS
+disso passar para dados reais (os dois documentos C3).
+
+Isto e exatamente o mesmo padrao de trabalho do incidente RCV31-R3 (harness
+descartavel, iteracao empirica, nao assumir nada do codigo escrito mas nunca
+executado). Tratar como sessao dedicada.
