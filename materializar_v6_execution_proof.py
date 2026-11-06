@@ -26,11 +26,11 @@ RATIFICADOR_ACTOR = "Miguel (funcao ratificador, autoridade constitucional final
 
 def evidence(role, note):
     return {
-        "source_kind": "documentary act materialized directly by Miguel, no third-party segregation claimed",
+        "source_kind": "preparatory local draft; independent audit not established",
         "segregation_note": note,
         "actor_identity": {"actor_id": role},
-        "no_historical_database_insertion_claim": False,
-        "real_transaction": True,
+        "no_historical_database_insertion_claim": True,
+        "real_transaction": False,
     }
 
 def run(owner_engine, execute: bool):
