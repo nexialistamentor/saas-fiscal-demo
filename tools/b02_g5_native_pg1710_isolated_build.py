@@ -37,7 +37,7 @@ RUN set -eux; \\
     echo 'deb [ signed-by=/usr/local/share/keyrings/postgres.gpg.asc ] https://apt-archive.postgresql.org/pub/repos/apt trixie-pgdg-archive main' > /etc/apt/sources.list.d/pgdg-archive.list; \\
     apt-mark hold postgresql-17 postgresql-client-17; \\
     apt-get update; \\
-    apt-get install -y --no-install-recommends \\
+    apt-get install -y --allow-downgrades --no-install-recommends \\
       gcc libc6-dev make binutils file libssl-dev \\
       libpq5=17.10-1.pgdg13+1 libpq-dev=17.10-1.pgdg13+1 \\
       postgresql-server-dev-17=17.10-1.pgdg13+1; \\
