@@ -127,7 +127,9 @@ def capture_verified_inputs(header:Path,header_sha:str,policy_hash:str):
 def command(*args,timeout=600):
     p=subprocess.run(args,capture_output=True,text=True,timeout=timeout)
     if p.returncode:
-        stop("COMMAND_FAILED_"+Path(args[0]).name+":"+p.stderr[-400:])
+        # Include the failing Docker RUN trace instead of truncating its cause.
+        details="\n".join((p.stdout+"\n"+p.stderr).splitlines()[-25:])
+        stop("COMMAND_FAILED_"+Path(args[0]).name+":"+details[-5000:])
     return p.stdout
 
 
@@ -145,7 +147,7 @@ def build(header:Path,header_sha:str,policy_hash:str,out:Path):
             (policy_hash+header_sha).encode()).hexdigest()[:12]
         ident=None
         try:
-            command("docker","build","--pull","--no-cache","-q","-t",tag,str(tmp),timeout=1200)
+            command("docker","build","--pull","--no-cache","--progress=plain","-t",tag,str(tmp),timeout=1200)
             # Docker build contains NO private volume mount, docker run is network-isolated.
             verify=command("docker","run","--rm","--network","none",
                 "--entrypoint","sh",tag,"-ceu",
