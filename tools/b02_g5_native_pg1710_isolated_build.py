@@ -49,7 +49,7 @@ WORKDIR /work
 COPY b02_precommit_guard.c b02_g5_native_signature.c b02_g5_approved_roots.h ./
 RUN set -eu; \\
     . /etc/os-release; test "$VERSION_CODENAME" = "trixie"; \\
-    test "$(pg_config --version)" = "PostgreSQL 17.10"; \\
+    test "$(pg_config --version | cut -d ' ' -f1,2)" = "PostgreSQL 17.10"; \\
     case "$(dpkg-query -W -f='${Version}' postgresql-server-dev-17)" in 17.10*) ;; *) echo STOP_PG1710_SERVER_HEADERS_MISMATCH >&2; exit 33;; esac; \\
     gcc -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter \\
         -I"$(pg_config --includedir-server)" \\
@@ -149,7 +149,7 @@ def build(header:Path,header_sha:str,policy_hash:str,out:Path):
             # Docker build contains NO private volume mount, docker run is network-isolated.
             verify=command("docker","run","--rm","--network","none",
                 "--entrypoint","sh",tag,"-ceu",
-                "test \"$(pg_config --version)\" = 'PostgreSQL 17.10'; "
+                "test \"$(pg_config --version | cut -d ' ' -f1,2)\" = 'PostgreSQL 17.10'; "
                 "readelf -Ws /work/"+ELF_NAME+"; sha256sum /work/"+ELF_NAME)
             if not all(x in verify for x in REQUIRED_SYMBOLS):
                 stop("REQUIRED_ELF_SYMBOLS_MISSING")
