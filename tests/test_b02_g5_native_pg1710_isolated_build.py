@@ -30,6 +30,7 @@ class NativePrebuildContract(unittest.TestCase):
         self.assertIn('pg_config --version',dockerfile)
         self.assertIn('test "$(pg_config --version | cut -d \' \' -f1,2)" = "PostgreSQL 17.10"',dockerfile)
         self.assertIn("trixie-pgdg-archive main",dockerfile)
+        self.assertIn("apt-get install -y --allow-downgrades --no-install-recommends",dockerfile)
         self.assertIn("postgresql-server-dev-17=17.10-1.pgdg13+1",dockerfile)
         self.assertIn("libpq-dev=17.10-1.pgdg13+1",dockerfile)
         self.assertIn("libpq5=17.10-1.pgdg13+1",dockerfile)
