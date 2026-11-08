@@ -39,16 +39,18 @@ RUN set -eux; \\
     apt-get update; \\
     apt-get install -y --no-install-recommends \\
       gcc libc6-dev make binutils file libssl-dev \\
+      libpq5=17.10-1.pgdg13+1 libpq-dev=17.10-1.pgdg13+1 \\
       postgresql-server-dev-17=17.10-1.pgdg13+1; \\
-    test "$(dpkg-query -W -f='\x24{Version}' postgresql-server-dev-17)" = '17.10-1.pgdg13+1'; \\
-    test "$(dpkg-query -W -f='\x24{Version}' postgresql-17)" = '17.10-1.pgdg13+1'; \\
+    test "$(dpkg-query -W -f='${Version}' libpq-dev)" = '17.10-1.pgdg13+1'; \\
+    test "$(dpkg-query -W -f='${Version}' postgresql-server-dev-17)" = '17.10-1.pgdg13+1'; \\
+    test "$(dpkg-query -W -f='${Version}' postgresql-17)" = '17.10-1.pgdg13+1'; \\
     rm -rf /var/lib/apt/lists/*
 WORKDIR /work
 COPY b02_precommit_guard.c b02_g5_native_signature.c b02_g5_approved_roots.h ./
 RUN set -eu; \\
     . /etc/os-release; test "$VERSION_CODENAME" = "trixie"; \\
     test "$(pg_config --version)" = "PostgreSQL 17.10"; \\
-    case "$(dpkg-query -W -f='\x24{Version}' postgresql-server-dev-17)" in 17.10*) ;; *) echo STOP_PG1710_SERVER_HEADERS_MISMATCH >&2; exit 33;; esac; \\
+    case "$(dpkg-query -W -f='${Version}' postgresql-server-dev-17)" in 17.10*) ;; *) echo STOP_PG1710_SERVER_HEADERS_MISMATCH >&2; exit 33;; esac; \\
     gcc -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter \\
         -I"$(pg_config --includedir-server)" \\
         b02_precommit_guard.c b02_g5_native_signature.c \\
