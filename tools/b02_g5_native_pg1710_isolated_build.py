@@ -30,14 +30,26 @@ ELF_NAME="b02_g5_native_REAL_CLOSED.so"
 REQUIRED_SYMBOLS=("_PG_init","b02g5_register_real_precommit",
                   "b02g5_assert_signature","b02g5_native_profile")
 DOCKERFILE="""FROM postgres:17.10-trixie
-RUN apt-get update && apt-get install -y --no-install-recommends \\
-    gcc libc6-dev make binutils file libssl-dev postgresql-server-dev-17 \\
- && rm -rf /var/lib/apt/lists/*
+# Historical PGDG 17.10 build headers are immutable release inputs.
+# The live PGDG repository now offers 17.11: never silently upgrade the
+# compiler headers or the runtime server inside this isolated builder.
+RUN set -eux; \\
+    echo 'deb [ signed-by=/usr/local/share/keyrings/postgres.gpg.asc ] https://apt-archive.postgresql.org/pub/repos/apt trixie-pgdg-archive main' > /etc/apt/sources.list.d/pgdg-archive.list; \\
+    apt-mark hold postgresql-17 postgresql-client-17; \\
+    apt-get update; \\
+    apt-get install -y --allow-downgrades --no-install-recommends \\
+      gcc libc6-dev make binutils file libssl-dev \\
+      libpq5=17.10-1.pgdg13+1 libpq-dev=17.10-1.pgdg13+1 \\
+      postgresql-server-dev-17=17.10-1.pgdg13+1; \\
+    test "$(dpkg-query -W -f='${Version}' libpq-dev)" = '17.10-1.pgdg13+1'; \\
+    test "$(dpkg-query -W -f='${Version}' postgresql-server-dev-17)" = '17.10-1.pgdg13+1'; \\
+    test "$(dpkg-query -W -f='${Version}' postgresql-17)" = '17.10-1.pgdg13+1'; \\
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /work
 COPY b02_precommit_guard.c b02_g5_native_signature.c b02_g5_approved_roots.h ./
 RUN set -eu; \\
     . /etc/os-release; test "$VERSION_CODENAME" = "trixie"; \\
-    test "$(pg_config --version)" = "PostgreSQL 17.10"; \\
+    test "$(pg_config --version | cut -d ' ' -f1,2)" = "PostgreSQL 17.10"; \\
     case "$(dpkg-query -W -f='${Version}' postgresql-server-dev-17)" in 17.10*) ;; *) echo STOP_PG1710_SERVER_HEADERS_MISMATCH >&2; exit 33;; esac; \\
     gcc -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter \\
         -I"$(pg_config --includedir-server)" \\
@@ -115,7 +127,9 @@ def capture_verified_inputs(header:Path,header_sha:str,policy_hash:str):
 def command(*args,timeout=600):
     p=subprocess.run(args,capture_output=True,text=True,timeout=timeout)
     if p.returncode:
-        stop("COMMAND_FAILED_"+Path(args[0]).name+":"+p.stderr[-400:])
+        # Include the failing Docker RUN trace instead of truncating its cause.
+        details="\n".join((p.stdout+"\n"+p.stderr).splitlines()[-25:])
+        stop("COMMAND_FAILED_"+Path(args[0]).name+":"+details[-5000:])
     return p.stdout
 
 
@@ -133,11 +147,11 @@ def build(header:Path,header_sha:str,policy_hash:str,out:Path):
             (policy_hash+header_sha).encode()).hexdigest()[:12]
         ident=None
         try:
-            command("docker","build","--pull","--no-cache","-q","-t",tag,str(tmp),timeout=1200)
+            command("docker","build","--pull","--no-cache","--progress=plain","-t",tag,str(tmp),timeout=1200)
             # Docker build contains NO private volume mount, docker run is network-isolated.
             verify=command("docker","run","--rm","--network","none",
                 "--entrypoint","sh",tag,"-ceu",
-                "test \"$(pg_config --version)\" = 'PostgreSQL 17.10'; "
+                "test \"$(pg_config --version | cut -d ' ' -f1,2)\" = 'PostgreSQL 17.10'; "
                 "readelf -Ws /work/"+ELF_NAME+"; sha256sum /work/"+ELF_NAME)
             if not all(x in verify for x in REQUIRED_SYMBOLS):
                 stop("REQUIRED_ELF_SYMBOLS_MISSING")
