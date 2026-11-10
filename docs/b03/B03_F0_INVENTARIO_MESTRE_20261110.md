@@ -129,3 +129,60 @@ das raízes informadas não são descobertos; mesmo o JSON completo não é
 um backup de bytes. A próxima seleção de fontes para commit/push será
 precedida de auditoria dos paths e da presença de segredos; B02/MEI
 não serão alterados para desenvolver B03.
+
+
+## Adenda F0 — 2.ª leitura física Windows (10/11/2026 às 23:18 UTC)
+
+**Origem:** saída textual enviada por Miguel do comando de auditoria V2; o JSON local
+`C:\Users\Oem\AppData\Local\SOLVERIS\B03\B03_INVENTARIO_COMPLETO_20261110T231811Z.json`
+não foi recebido neste ambiente. Os totais abaixo contam entradas `git status`
+e caminhos ignorados reportados; não provam bytes preservados.
+
+- 24 worktrees, **189 entradas WIP** e **1000 entradas ignoradas**.
+- `B03_DISCOVERY_WARNINGS=0` apenas para raízes e worktrees encontrados; não
+  prova cobertura de diretórios externos nem de código em pastas ignoradas.
+- `SNAPSHOT_REFS=0` em todas as linhas é **falso negativo do leitor V2**:
+  `for-each-ref refs/heads/b03/wip-local-` não corresponde a componentes
+  de nome maiores. Corrigido no script publicado para listar `refs/heads/b03`
+  e filtrar `b03/wip-local-*`. As refs físicas continuam por verificar.
+- `.pytest_cache/` deu aviso de permissão no worktree MEI. Não forçar ACL,
+  não apagar cache nem silenciar como prova de completude.
+- As refs locais anteriores NÃO foram enviadas ao GitHub; os ambientes
+  `venv311` podem ter entrado em alguns snapshots por causa do antigo
+  `git add -A`: qualquer push depende da inspeção das árvores.
+- O script atual é **somente leitura**: mostra refs, conta candidatos fonte
+  ignorados (`app/tools/tests/docs/migrations/scripts/frontend-dashboard/src/native`)
+  e classifica ambientes/dependências separadamente.
+
+| Worktree | WIP | Ignorados |
+|---|---:|---:|
+| `atlas/brigade-l3-clean` | 0 | 28 |
+| `atlas/verify-0044` | 0 | 22 |
+| `saas-fiscal-demo` | 13 | 480 |
+| `saas-fiscal-demo-a1` | 81 | 30 |
+| `saas-fiscal-demo-mei` | 65 | 281 |
+| `saas-fiscal-demo-mei-route-release` | 0 | 6 |
+| `saas-fiscal-railpack-proof` | 0 | 2 |
+| `solveris-b02-g5-v5-publicacao` | 21 | 25 |
+| `solveris-b02-v12-safe-20261109_152537` | 0 | 3 |
+| `solveris-mei-composicao-consultiva-v1` | 0 | 20 |
+| `solveris-mei-das-diagnostico` | 0 | 14 |
+| `solveris-mei-das-pdf-lista` | 0 | 14 |
+| `solveris-mei-preview-4b4514a` | 1 | 1 |
+| `solveris-mei-preview-7821072` | 1 | 1 |
+| `solveris-mei-receitas-informadas` | 0 | 19 |
+| `solveris-mei-release-32d16b1` | 2 | 1 |
+| `solveris-mei-release-4334fad` | 1 | 16 |
+| `solveris-mei-release-4ab1262` | 1 | 1 |
+| `solveris-mei-release-b1e114b` | 0 | 0 |
+| `solveris-mei-release-b24a9ef` | 1 | 15 |
+| `solveris-mei-release-fe912d7` | 2 | 1 |
+| `solveris-mei-retirada-abertura` | 0 | 16 |
+| `solveris-vercel-release-83ce80a` | 0 | 1 |
+| `solveris-vercel-release-fd6a16a` | 0 | 3 |
+| **TOTAL** | **189** | **1000** |
+
+**Próxima decisão:** obter o JSON local ou a saída focal das refs corrigidas;
+distinguir source code não commitado, dependências, dados normativos e
+artefactos sensíveis; deduplicar contra HEAD remoto. Nenhum novo motor B03
+ou migração SQL autorizados a partir desta contagem.
