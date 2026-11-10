@@ -78,8 +78,11 @@ foreach($wt in $uniqueWorktrees) {
         $current.branch = GitOne -RepoPath $wt -GitArgs @('branch','--show-current')
         $porcelain = @(Invoke-B03Git -RepoPath $wt -GitArgs @('status','--porcelain=v1','--untracked-files=all'))
         $ignored = @(Invoke-B03Git -RepoPath $wt -GitArgs @('ls-files','--others','--ignored','--exclude-standard','--directory'))
+        # Git for-each-ref trata prefixo parcial do último componente como NÃO match.
+        # Ler refs/heads/b03 e filtrar pelo nome completo do snapshot.
         $snapshots = @(Invoke-B03Git -RepoPath $wt -GitArgs @(
-            'for-each-ref','--format=%(refname:short)','refs/heads/b03/wip-local-'))
+            'for-each-ref','--format=%(refname:short)','refs/heads/b03') |
+            Where-Object { [string]$_ -like 'b03/wip-local-*' })
         $entries = [System.Collections.Generic.List[object]]::new()
         foreach($entry in $porcelain) {
             $line = [string]$entry
