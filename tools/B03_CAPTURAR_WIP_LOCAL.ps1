@@ -1,121 +1,140 @@
-# SOLVERIS B03 — snapshot Git LOCAL de ficheiros ainda não commitados.
-# Cria branch WIP em cada worktree SUJEITO a verificação sensível.
-# Não altera o working tree, HEAD, index original nem faz push.
-param([Parameter(Mandatory=$true)][string]$Repository)
+# SOLVERIS B03 — inventario integral READ-ONLY de Git, WIP e refs locais.
+# Substitui o comportamento inseguro anterior (git add -A); NAO cria commits,
+# NAO altera index, ficheiros, branches ou worktrees. O JSON vai para LOCALAPPDATA.
+# O script NAO afirma capturar fontes fora dos Git repos encontrados.
+param(
+    [Parameter(Mandatory=$true)][string]$Repository,
+    [string[]]$AdditionalRoots = @()
+)
 
-$ErrorActionPreference = "Stop"
-function Invoke-B03Git([string]$where, [string[]]$GitArgs) {
-    $r = & git.exe -C $where -c core.quotepath=false @GitArgs
-    if ($LASTEXITCODE -ne 0) { throw ("STOP_GIT_" + ($GitArgs -join "_")) }
-    return $r
+$ErrorActionPreference = 'Stop'
+function Invoke-B03Git {
+    param([string]$RepoPath, [string[]]$GitArgs)
+    $result = @(& git.exe -C $RepoPath -c core.quotepath=false @GitArgs)
+    if ($LASTEXITCODE -ne 0) {
+        throw ('STOP_GIT_' + ($GitArgs -join '_'))
+    }
+    return $result
 }
-$root = (Invoke-B03Git $Repository @("rev-parse","--show-toplevel") | Select-Object -First 1).Trim()
-$remote = (Invoke-B03Git $root @("remote","get-url","origin") | Select-Object -First 1).Trim()
-if ($remote -notmatch 'nexialistamentor/saas-fiscal-demo(?:\.git)?$') {
-    throw "STOP_WRONG_ORIGIN"
+function GitOne {
+    param([string]$RepoPath, [string[]]$GitArgs)
+    $values = @(Invoke-B03Git -RepoPath $RepoPath -GitArgs $GitArgs)
+    if ($values.Count -eq 0) { return '' }
+    return ([string]$values[0]).Trim()
 }
-$stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ")
-$directory = Join-Path $env:LOCALAPPDATA "SOLVERIS\B03"
-New-Item -ItemType Directory -Path $directory -Force | Out-Null
-$lines = @(Invoke-B03Git $root @("worktree","list","--porcelain"))
-$worktrees = @($lines | Where-Object { $_ -match '^worktree ' } |
-    ForEach-Object { $_.Substring(9) })
-# Buscar clones independentes na pasta irmã, além dos worktrees registrados.
-$parent = Split-Path -Parent $root
-$related = @(Get-ChildItem -LiteralPath $parent -Directory -ErrorAction SilentlyContinue |
-    Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName ".git") })
-foreach($candidate in $related) {
+
+$root = GitOne -RepoPath $Repository -GitArgs @('rev-parse','--show-toplevel')
+$origin = GitOne -RepoPath $root -GitArgs @('remote','get-url','origin')
+if ($origin -notmatch 'nexialistamentor/saas-fiscal-demo(?:\.git)?$') {
+    throw 'STOP_WRONG_ORIGIN'
+}
+$base = Split-Path -Parent $root
+$searchRoots = @($base) + @($AdditionalRoots)
+$repoCandidates = @($root)
+$discoveryIssues = [System.Collections.Generic.List[string]]::new()
+foreach($folder in ($searchRoots | Select-Object -Unique)) {
+    if (-not (Test-Path -LiteralPath $folder -PathType Container)) {
+        $discoveryIssues.Add("ROOT_NOT_FOUND:$folder")
+        continue
+    }
+    # Detectar clones independentes no topo de cada pasta, sem entrar em venvs.
+    $dirs = @(Get-ChildItem -LiteralPath $folder -Directory -Force -ErrorAction SilentlyContinue)
+    foreach($d in $dirs) {
+        if (Test-Path -LiteralPath (Join-Path $d.FullName '.git')) {
+            $repoCandidates += $d.FullName
+        }
+    }
+}
+$worktrees = [System.Collections.Generic.List[string]]::new()
+$seenRepos = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+foreach($candidate in ($repoCandidates | Select-Object -Unique)) {
     try {
-        $url = (Invoke-B03Git $candidate.FullName @("remote","get-url","origin") | Select-Object -First 1).Trim()
-        if ($url -notmatch 'nexialistamentor/saas-fiscal-demo(?:\.git)?$') { continue }
-        $other = @(Invoke-B03Git $candidate.FullName @("worktree","list","--porcelain"))
-        $worktrees += @($other | Where-Object { $_ -match '^worktree ' } |
-            ForEach-Object { $_.Substring(9) })
-    } catch { continue }
+        $foundOrigin = GitOne -RepoPath $candidate -GitArgs @('remote','get-url','origin')
+        if ($foundOrigin -notmatch 'nexialistamentor/saas-fiscal-demo(?:\.git)?$') { continue }
+        $top = GitOne -RepoPath $candidate -GitArgs @('rev-parse','--show-toplevel')
+        if (-not $seenRepos.Add($top)) { continue }
+        $rows = @(Invoke-B03Git -RepoPath $top -GitArgs @('worktree','list','--porcelain'))
+        foreach($line in $rows) {
+            $line = [string]$line
+            if ($line.StartsWith('worktree ')) { $worktrees.Add($line.Substring(9)) }
+        }
+    } catch {
+        $discoveryIssues.Add('DISCOVERY_FAILED:' + $candidate)
+    }
 }
-$worktrees = @($worktrees | Sort-Object -Unique)
-$records = @()
-$counter=0
-foreach ($w in $worktrees) {
-    $counter++
-    $head = (Invoke-B03Git $w @("rev-parse","HEAD") | Select-Object -First 1).Trim()
-    $changes = @(
-        @(Invoke-B03Git $w @("diff","--name-only","HEAD"))
-        @(Invoke-B03Git $w @("ls-files","--others","--exclude-standard"))
-    ) | ForEach-Object { $_ } | Where-Object { $_ } | Sort-Object -Unique
-    $entries=@()
-    $alerts=@()
-    $total=0L
-    foreach($relative in $changes) {
-        $full=Join-Path $w $relative
-        $present=Test-Path -LiteralPath $full -PathType Leaf
-        $size=0L
-        $sha=$null
-        if($present) {
-            $info=Get-Item -LiteralPath $full -Force
-            if($info.LinkType) { $alerts += "SYMLINK:$relative" }
-            $size=$info.Length
-            $total += $size
-            if($size -gt 12000000) { $alerts += "LARGE:$relative" }
-            else { $sha=(Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash.ToLowerInvariant() }
-        }
-        $normalized=$relative.Replace('\','/')
-        $privatePattern='(?i)(^|/)(\.env(\..*)?|\.ssh|\.aws|\.venv|node_modules|__pycache__)(/|$)|\.(pem|key|pfx|p12|p8|keystore|sqlite|sqlite3|db|zip|7z|tar|gz|pdf)$|(^|/)(credentials|secrets|tokens)\.(json|ya?ml|toml|txt)$'
-        if($normalized -match $privatePattern) { $alerts += "SENSITIVE_PATH:$relative" }
-        $textExtensions=@(".py",".md",".json",".js",".jsx",".ts",".tsx",".css",".sql",".ps1",".txt",".toml",".yaml",".yml",".html",".sh",".cfg",".ini")
-        if($present -and $size -lt 2000000 -and [IO.Path]::GetExtension($full).ToLowerInvariant() -in $textExtensions) {
-            $txt = [IO.File]::ReadAllText($full)
-            if($txt -match '-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----' -or
-               $txt -match '(?im)^\s*(?:DATABASE_URL|ACCESS_TOKEN|API_KEY|SECRET_KEY|PASSWORD|MP_ACCESS_TOKEN)\s*[:=]\s*["'']?[a-z0-9_\-\.]{12,}') {
-                $alerts += "POSSIBLE_SECRET_CONTENT:$relative"
+$destination = Join-Path $env:LOCALAPPDATA 'SOLVERIS\B03'
+New-Item -ItemType Directory -Path $destination -Force | Out-Null
+$stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+$records = [System.Collections.Generic.List[object]]::new()
+$uniqueWorktrees = @($worktrees | Sort-Object -Unique)
+foreach($wt in $uniqueWorktrees) {
+    $current = [ordered]@{
+        worktree=$wt; head=$null; branch=$null; status='UNREAD';
+        modified_count=0; ignored_count=0; snapshot_refs=@();
+        modified=@(); ignored=@(); warnings=@()
+    }
+    try {
+        $current.head = GitOne -RepoPath $wt -GitArgs @('rev-parse','HEAD')
+        $current.branch = GitOne -RepoPath $wt -GitArgs @('branch','--show-current')
+        $porcelain = @(Invoke-B03Git -RepoPath $wt -GitArgs @('status','--porcelain=v1','--untracked-files=all'))
+        $ignored = @(Invoke-B03Git -RepoPath $wt -GitArgs @('ls-files','--others','--ignored','--exclude-standard','--directory'))
+        $snapshots = @(Invoke-B03Git -RepoPath $wt -GitArgs @(
+            'for-each-ref','--format=%(refname:short)','refs/heads/b03/wip-local-'))
+        $entries = [System.Collections.Generic.List[object]]::new()
+        foreach($entry in $porcelain) {
+            $line = [string]$entry
+            if ($line.Length -lt 4) { continue }
+            $statusCode = $line.Substring(0,2)
+            $relative = $line.Substring(3)
+            $resolved = Join-Path $wt $relative
+            $category = 'SOURCE_OR_ARTIFACT'
+            if ($relative -match '(?i)(^|/|\\)(venv\d*|\.venv[^/\\]*|node_modules|\.pytest_cache|__pycache__|dist|build)(/|\\|$)') {
+                $category = 'ENVIRONMENT_OR_BUILD'
+            } elseif ($relative -match '(?i)(\.env(?:\.[^/\\]*)?$|\.(pem|p12|pfx|key|db|sqlite|sqlite3|zip|7z|tar|gz)$|(^|[/\\])(?:secrets|credentials|tokens)[^/\\]*$)') {
+                $category = 'SENSITIVE_OR_BINARY_REVIEW'
             }
-        }
-        $entries += [pscustomobject]@{path=$relative;exists=$present;size=$size;sha256=$sha}
-    }
-    $saved=$null; $commit=$null; $state="CLEAN"
-    if($changes.Count -gt 0) {
-        $state="NOT_SNAPSHOTTED"
-        if($total -gt 80000000) { $alerts+="WORKTREE_TOTAL_TOO_LARGE" }
-        if($alerts.Count -eq 0) {
-            $tempIndex=Join-Path $directory ("index_"+[guid]::NewGuid().ToString("N"))
-            $originalIndex=$env:GIT_INDEX_FILE
-            try {
-                $env:GIT_INDEX_FILE=$tempIndex
-                Invoke-B03Git $w @("read-tree","HEAD") | Out-Null
-                Invoke-B03Git $w @("add","-A","--",":/") | Out-Null
-                $tree=(Invoke-B03Git $w @("write-tree") | Select-Object -First 1).Trim()
-                $commit=(Invoke-B03Git $w @("commit-tree",$tree,"-p",$head,"-m","snapshot(b03): local uncommitted WIP, no remote push") | Select-Object -First 1).Trim()
-                $saved="b03/wip-local-$stamp-$counter"
-                Invoke-B03Git $w @("update-ref","refs/heads/$saved",$commit) | Out-Null
-                $state="SNAPSHOT_LOCAL_GIT_ONLY"
-            } catch {
-                $state="SNAPSHOT_FAILED"
-                $alerts += $_.Exception.Message
-            } finally {
-                $env:GIT_INDEX_FILE=$originalIndex
-                if(Test-Path -LiteralPath $tempIndex) { Remove-Item -LiteralPath $tempIndex -Force }
-                if(Test-Path -LiteralPath ($tempIndex+".lock")) { Remove-Item -LiteralPath ($tempIndex+".lock") -Force }
+            $size=$null
+            $sha=$null
+            if (Test-Path -LiteralPath $resolved -PathType Leaf) {
+                $size=(Get-Item -LiteralPath $resolved -Force).Length
+                if ($category -eq 'SOURCE_OR_ARTIFACT' -and $size -le 10000000) {
+                    try { $sha=(Get-FileHash -LiteralPath $resolved -Algorithm SHA256).Hash.ToLowerInvariant() }
+                    catch { $category='HASH_UNREADABLE' }
+                }
             }
-        } else {
-            $state="STOP_SENSITIVE_OR_LARGE_REVIEW_REQUIRED"
+            $entries.Add([pscustomobject]@{git_status=$statusCode;path=$relative;category=$category;bytes=$size;sha256=$sha})
         }
+        $current.modified = @($entries.ToArray())
+        $current.modified_count = $entries.Count
+        $current.ignored = @($ignored | ForEach-Object { [string]$_ })
+        $current.ignored_count = $ignored.Count
+        $current.snapshot_refs = @($snapshots | ForEach-Object { [string]$_ })
+        $current.status = if ($entries.Count -eq 0 -and $ignored.Count -eq 0) {'CLEAN_OBSERVED'} else {'INVENTORIED_NOT_FULLY_BACKED_UP'}
+    } catch {
+        $current.status = 'INCOMPLETE_ERROR'
+        $current.warnings = @($_.Exception.Message)
     }
-    $records += [pscustomobject]@{
-       worktree=$w;head=$head;state=$state;dirty_count=$changes.Count;
-       snapshot_branch=$saved;snapshot_commit=$commit;warnings=$alerts;files=$entries
-    }
-    Write-Output ("B03_WIP="+$state+" COUNT="+$changes.Count+" WORKTREE="+$w)
-    if($saved) { Write-Output ("B03_WIP_GIT_BRANCH="+$saved) }
-    if($alerts.Count) { Write-Output ("B03_WIP_WARNING_COUNT="+$alerts.Count) }
+    $records.Add([pscustomobject]$current)
+    Write-Output ('B03_INVENTORY=' + $current.status +
+        ' WIP=' + $current.modified_count +
+        ' IGNORED=' + $current.ignored_count +
+        ' SNAPSHOT_REFS=' + @($current.snapshot_refs).Count +
+        ' WORKTREE=' + $wt)
 }
-$manifest=Join-Path $directory ("B03_LOCAL_WORKTREES_"+$stamp+".json")
-[pscustomobject]@{
-    schema="SOLVERIS_B03_LOCAL_WIP_INVENTORY_V1"
-    produced_at_utc=$stamp; repository=$root; origin=$remote
-    pushed_to_github=$false; contains_source_bytes=$false
-    scope="TRACKED_MODIFICATIONS_AND_UNTRACKED_NONIGNORED_WORKTREE_FILES"
-    note="WIP content (where safe) persisted in local Git snapshot branches; never auto-push."
-    worktrees=$records
-} | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath $manifest -Encoding UTF8
-Write-Output ("B03_INVENTARIO_LOCAL="+$manifest)
-Write-Output "GIT_WORKTREE_AND_ORIGINAL_INDEX_PRESERVED; NO_REMOTE_PUSH"
+$manifest = Join-Path $destination ('B03_INVENTARIO_COMPLETO_' + $stamp + '.json')
+[ordered]@{
+    schema='SOLVERIS_B03_WIP_READONLY_INVENTORY_V2'
+    produced_at_utc=$stamp
+    git_origin=$origin
+    roots_scanned=@($searchRoots | Select-Object -Unique)
+    discovery_warnings=@($discoveryIssues.ToArray())
+    outside_search_roots_not_scanned=$true
+    ignored_paths_listed_not_hashed=$true
+    local_snapshots_untouched=$true
+    no_git_objects_created=$true
+    no_remote_push=$true
+    worktrees=@($records.ToArray())
+} | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $manifest -Encoding UTF8
+Write-Output ('B03_INVENTARIO_LOCAL=' + $manifest)
+Write-Output ('B03_DISCOVERY_WARNINGS=' + $discoveryIssues.Count)
+Write-Output 'B03_READ_ONLY_DONE_NO_GIT_ADD_NO_COMMIT_NO_PUSH'
