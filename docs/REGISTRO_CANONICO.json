@@ -1,0 +1,102 @@
+{
+  "_schema_versao": 1,
+  "_regra": "Nenhuma função nova em app/services/enterprise_* ou tools/enterprise_* entra em main sem passar por este registo. Entrada com status 'a_confirmar' significa: alegada por relatório estático (GPT), AINDA NAO lida diretamente neste repositório. Promover para 'confirmado' só depois de leitura real do ficheiro + assinatura conferida. 'substitui' lista caminhos de ficheiros/funções antigos que esta entrada torna obsoletos -- preencher sempre que uma nova versão nascer, nunca deixar os dois lado a lado sem essa declaração.",
+  "modulos": [
+    {
+      "id": "parser_xml_nfe",
+      "responsabilidade": "Parsing do XML da NF-e para estrutura interna",
+      "modulo_canonico": "app/services/document_ingestion/xml_fiscal_adapter.py",
+      "funcao_principal": null,
+      "status": "a_confirmar",
+      "substitui": [],
+      "consumidores_conhecidos": ["B03 Fase 3 (input real)"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+      "confirmado_em": null
+    },
+    {
+      "id": "classificador_item",
+      "responsabilidade": "Classificação do item fiscal (NCM/CEST/CFOP/CST)",
+      "modulo_canonico": "app/services/document_ingestion/classifier.py",
+      "funcao_principal": null,
+      "status": "a_confirmar",
+      "substitui": [],
+      "consumidores_conhecidos": ["B03 Fase 3 (input real)"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+      "confirmado_em": null
+    },
+    {
+      "id": "motor_calculo_numerico",
+      "responsabilidade": "Cálculo fiscal numérico independente (MVA/ICMS-ST)",
+      "modulo_canonico": "app/motor_fiscal.py",
+      "funcao_principal": "MotorFiscal",
+      "status": "a_confirmar",
+      "substitui": [],
+      "consumidores_conhecidos": ["B03 Fase 2 (motor de comparação)"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+      "confirmado_em": null
+    },
+    {
+      "id": "consulta_tabela_normativa",
+      "responsabilidade": "Consulta L2 de MVA / base de cálculo ST / cobertura normativa",
+      "modulo_canonico": "app/services/tabela_normativa_service.py",
+      "funcao_principal": "buscar_mva | resolver_base_calculo_st | verificar_cobertura_normativa_st",
+      "status": "a_confirmar",
+      "substitui": [],
+      "consumidores_conhecidos": ["B03 Fase 2 (resolver_regra)"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+      "confirmado_em": null
+    },
+    {
+      "id": "resolvedor_aliquota_mva",
+      "responsabilidade": "Resolução de alíquota e MVA aplicável, incl. fallback",
+      "modulo_canonico": "app/services/fiscal_utils.py",
+      "funcao_principal": "resolver_aliquota_e_mva",
+      "status": "a_confirmar",
+      "observacao_risco": "Relatório aponta possível fallback de valores nao-autorizados entrando silenciosamente -- ler esse trecho com atencao extra antes de confirmar.",
+      "substitui": [],
+      "consumidores_conhecidos": ["B03 Fase 2"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+      "confirmado_em": null
+    },
+    {
+      "id": "comparador_consistencia",
+      "responsabilidade": "Comparação / verificação de consistência fiscal entre valores",
+      "modulo_canonico": "app/services/tax_consistency/tax_consistency_engine.py",
+      "funcao_principal": "TaxConsistencyEngine.verificar_consistencia",
+      "status": "a_confirmar",
+      "substitui": [],
+      "consumidores_conhecidos": ["B03 Fase 2 (comparar_item)"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+      "confirmado_em": null
+    },
+    {
+      "id": "orquestracao_reconciliacao_item",
+      "responsabilidade": "Orquestração da confrontação ST por item (G12)",
+      "modulo_canonico": "app/services/enterprise_g12_st_item_reconciliation.py",
+      "funcao_principal": "confrontar_st_por_item_g12",
+      "status": "a_confirmar",
+      "substitui": [],
+      "consumidores_conhecidos": ["B03 Fase 2/3"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+      "confirmado_em": null
+    },
+    {
+      "id": "guarda_jurisdicao_normativa",
+      "responsabilidade": "Guarda de jurisdição/escopo operacional-normativo -- candidato a 'guarda nacional de aplicabilidade'",
+      "modulo_canonico": "app/services/enterprise_g14_operational_normative_scope.py",
+      "funcao_principal": null,
+      "status": "a_confirmar",
+      "observacao_risco": "Relatorio admite (secao Lacunas, item 2) que pode cobrir so parte de esfera+territorio+operacao+data+competencia -- confirmar extensao real antes de declarar resolvido o pendente de cobertura-nacional-jurisdicoes.",
+      "substitui": [],
+      "consumidores_conhecidos": ["B03 Fase 2 (resolver_regra / CoberturaNaoComprovada)", "cobertura-nacional-jurisdicoes (pendente)"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+      "confirmado_em": null
+    }
+  ],
+  "proibido_por_desenho": [
+    "motor_fiscal_v2",
+    "resolver_mva_novo",
+    "comparador_B03_alt",
+    "qualquer_copia_de_G12_ou_C5_C6"
+  ]
+}
