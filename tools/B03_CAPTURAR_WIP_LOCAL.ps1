@@ -116,10 +116,10 @@ foreach($wt in $uniqueWorktrees) {
                 $changed = @(Invoke-B03Git -RepoPath $wt -GitArgs @(
                     'diff-tree','--name-only','-r',($name+'^'),$name))
                 $envFiles = @($changed | Where-Object {
-                    $_ -match '(?i)(^|/)(venv\\d*|\\.venv[^/]*|node_modules|__pycache__|\\.pytest_cache)(/|$)'
+                    $_ -match '(?i)(^|/)(venv\d*|\.venv[^/]*|node_modules|__pycache__|\.pytest_cache)(/|$)'
                 })
                 $sensitiveFiles = @($changed | Where-Object {
-                    $_ -match '(?i)(\\.env(?:\\..*)?$|\\.(pem|pfx|p12|key|sqlite|db)$|(^|/)(credentials|secrets|tokens)[^/]*$)'
+                    $_ -match '(?i)(\.env(?:\..*)?$|\.(pem|pfx|p12|key|sqlite|db)$|(^|/)(credentials|secrets|tokens)[^/]*$)'
                 })
                 $proofs.Add([pscustomobject]@{
                     ref=$name; changed_count=$changed.Count;
