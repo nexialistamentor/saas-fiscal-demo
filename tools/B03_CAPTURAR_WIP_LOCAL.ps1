@@ -70,7 +70,7 @@ $uniqueWorktrees = @($worktrees | Sort-Object -Unique)
 foreach($wt in $uniqueWorktrees) {
     $current = [ordered]@{
         worktree=$wt; head=$null; branch=$null; status='UNREAD';
-        modified_count=0; ignored_count=0; snapshot_refs=@();
+        modified_count=0; ignored_count=0; snapshot_refs=@(); snapshot_inspection=@();
         modified=@(); ignored=@(); warnings=@()
     }
     try {
@@ -109,6 +109,30 @@ foreach($wt in $uniqueWorktrees) {
         $current.ignored = @($ignored | ForEach-Object { [string]$_ })
         $current.ignored_count = $ignored.Count
         $current.snapshot_refs = @($snapshots | ForEach-Object { [string]$_ })
+        $proofs = [System.Collections.Generic.List[object]]::new()
+        foreach($localRef in $snapshots) {
+            $name=[string]$localRef
+            try {
+                $changed = @(Invoke-B03Git -RepoPath $wt -GitArgs @(
+                    'diff-tree','--name-only','-r',($name+'^'),$name))
+                $envFiles = @($changed | Where-Object {
+                    $_ -match '(?i)(^|/)(venv\\d*|\\.venv[^/]*|node_modules|__pycache__|\\.pytest_cache)(/|$)'
+                })
+                $sensitiveFiles = @($changed | Where-Object {
+                    $_ -match '(?i)(\\.env(?:\\..*)?$|\\.(pem|pfx|p12|key|sqlite|db)$|(^|/)(credentials|secrets|tokens)[^/]*$)'
+                })
+                $proofs.Add([pscustomobject]@{
+                    ref=$name; changed_count=$changed.Count;
+                    environment_files=$envFiles.Count; sensitive_named_files=$sensitiveFiles.Count;
+                    needs_manual_content_review=$true
+                })
+            } catch {
+                $proofs.Add([pscustomobject]@{
+                    ref=$name;status='INSPECTION_FAILED';needs_manual_content_review=$true
+                })
+            }
+        }
+        $current.snapshot_inspection = @($proofs.ToArray())
         $current.status = if ($entries.Count -eq 0 -and $ignored.Count -eq 0) {'CLEAN_OBSERVED'} else {'INVENTORIED_NOT_FULLY_BACKED_UP'}
     } catch {
         $current.status = 'INCOMPLETE_ERROR'
