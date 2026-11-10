@@ -186,3 +186,18 @@ e caminhos ignorados reportados; não provam bytes preservados.
 distinguir source code não commitado, dependências, dados normativos e
 artefactos sensíveis; deduplicar contra HEAD remoto. Nenhum novo motor B03
 ou migração SQL autorizados a partir desta contagem.
+
+## Adenda F0 — 3.ª execução Windows, 10/11/2026 23:23:55Z
+
+**Origem:** saída de PowerShell fornecida por Miguel, após `git fetch` e execução da auditoria de leitura atualizada. JSON detalhado ainda não recebido nesta conversa: `%LOCALAPPDATA%\\SOLVERIS\\B03\\B03_INVENTARIO_COMPLETO_20261110T232355Z.json`.
+
+- `B03_RESUMO_WORKTREES=24` — os mesmos 24 worktrees observados anteriormente.
+- `WIP=189` — 189 entradas de trabalho local, **não** 189 ficheiros confirmados para publicar.
+- `IGNORED=1000` — entradas ignoradas pelo Git, potencialmente dependências, caches ou dados locais.
+- `IGNORED_SOURCE_CANDIDATES=0` — nenhuma candidata ignorada no **filtro limitado** às pastas `app,tools,tests,docs,migrations,scripts,frontend-dashboard/src,native`; isto **não prova** que não exista código fora desse filtro nem em raízes não pesquisadas.
+- `SNAPSHOT_REF_NAMES_UNIQUE=10` — dez nomes de referências Git locais `b03/wip-local-*` encontrados. É prova de existência de referências, **não** de conteúdo íntegro, seguro ou publicável.
+- `B03_DISCOVERY_WARNINGS=0` — zero avisos de descoberta dentro do perímetro percorrido.
+- Permaneceram avisos `.pytest_cache/`: `Permission denied` no acesso ao worktree MEI; não alterar permissões ou apagar caches para concluir B03.
+- `B03_READ_ONLY_DONE_NO_GIT_ADD_NO_COMMIT_NO_PUSH` confirma a intenção operacional da execução; o código foi revisto para não chamar escritas Git.
+
+**Próximo exame concreto:** analisar as entradas `worktrees[].modified`, `snapshot_inspection` e refs `b03/wip-local-*` **antes de qualquer push**, confrontar com o HEAD e retirar ambientes e segredos. O JSON local é necessário para selecionar os ficheiros; não criar outro motor, não transportar snapshots inteiros para o remoto e não modificar B02/MEI.
