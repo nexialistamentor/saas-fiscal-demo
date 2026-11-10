@@ -174,6 +174,22 @@ $manifest = Join-Path $destination ('B03_INVENTARIO_COMPLETO_' + $stamp + '.json
     no_remote_push=$true
     worktrees=@($records.ToArray())
 } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $manifest -Encoding UTF8
+$all = @($records.ToArray())
+$totalWip = 0
+$totalIgnored = 0
+$totalIgnoredCode = 0
+foreach($entry in $all) {
+    $totalWip += [int]$entry.modified_count
+    $totalIgnored += [int]$entry.ignored_count
+    $totalIgnoredCode += [int]$entry.ignored_source_count
+}
+# Snapshot refs podem repetir entre worktrees que partilham o mesmo git-dir.
+$uniqueRefs = @($all | ForEach-Object { $_.snapshot_refs } |
+    Where-Object { $_ } | Sort-Object -Unique)
+Write-Output ('B03_RESUMO_WORKTREES=' + $all.Count +
+    ' WIP=' + $totalWip + ' IGNORED=' + $totalIgnored +
+    ' IGNORED_SOURCE_CANDIDATES=' + $totalIgnoredCode +
+    ' SNAPSHOT_REF_NAMES_UNIQUE=' + $uniqueRefs.Count)
 Write-Output ('B03_INVENTARIO_LOCAL=' + $manifest)
 Write-Output ('B03_DISCOVERY_WARNINGS=' + $discoveryIssues.Count)
 Write-Output 'B03_READ_ONLY_DONE_NO_GIT_ADD_NO_COMMIT_NO_PUSH'
