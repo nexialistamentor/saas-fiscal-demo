@@ -4,9 +4,9 @@
 param([Parameter(Mandatory=$true)][string]$Repository)
 
 $ErrorActionPreference = "Stop"
-function Git([string]$where, [string[]]$args) {
-    $r = & git -C $where -c core.quotepath=false @args
-    if ($LASTEXITCODE -ne 0) { throw ("STOP_GIT_" + ($args -join "_")) }
+function Git([string]$where, [string[]]$GitArgs) {
+    $r = & git -C $where -c core.quotepath=false @GitArgs
+    if ($LASTEXITCODE -ne 0) { throw ("STOP_GIT_" + ($GitArgs -join "_")) }
     return $r
 }
 $root = (Git $Repository @("rev-parse","--show-toplevel") | Select-Object -First 1).Trim()
