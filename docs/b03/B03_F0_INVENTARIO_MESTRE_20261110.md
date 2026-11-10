@@ -96,3 +96,36 @@ git show FETCH_HEAD:docs/b03/B03_F0_INVENTARIO_MESTRE_20261110.md
 ```
 
 A auditoria local é separada: alterações ainda só no Windows não são visíveis no GitHub. `tools/B03_CAPTURAR_WIP_LOCAL.ps1` cria inventário físico com nome/status/hash e não envia conteúdos; após revisão, preservar fontes locais específicas por commit de trabalho próprio (não misturar com o encerramento B02; não enviar segredos ou chaves). Sem ver o WIP, é incorreto declarar que os seus bytes estão no remoto.
+
+
+## Adenda F0 — Auditoria dos snapshots Windows de 10/11/2026 (log recebido)
+
+O comando antigo `tools/B03_CAPTURAR_WIP_LOCAL.ps1` produziu um inventário em
+`%LOCALAPPDATA%\\SOLVERIS\\B03\\B03_LOCAL_WORKTREES_20261110T230734Z.json`
+mas não realizou a captura completa: **22 worktrees** reportados, **10 snapshots
+Git locais**, **11 sem diferenças detetadas** e **1 interrompido**:
+`C:/dev/saas-fiscal-demo-mei` (65 ficheiros de status, 2 alertas).
+A contagem total reportada foi 188 entradas de status, não 188 ficheiros necessariamente preservados.
+
+O antigo script chamava `git add -A` num índice temporário, incluindo ficheiros
+fora do filtro analisado. O log revelou muitos avisos CRLF em
+`venv311/Lib/site-packages`. **Avisos não são prova de inclusão**, mas exigem
+inspeção das árvores Git reais dos snapshots antes de qualquer push.
+Não executar novamente a versão anterior nem publicar `b03/wip-local-*`
+automaticamente. Não apagar refs locais nem limpar diretórios.
+
+Os snapshots registados nos logs (somente locais, não publicados):
+- `b03/wip-local-20261110T230734Z-3` — `C:/dev/saas-fiscal-demo`.
+- `b03/wip-local-20261110T230734Z-4` — `C:/dev/saas-fiscal-demo-a1`.
+- `b03/wip-local-20261110T230734Z-8` — `C:/dev/solveris-b02-g5-v5-publicacao`.
+- `b03/wip-local-20261110T230734Z-13`, `-14`, `-16`, `-17`, `-18`, `-20`, `-21` — worktrees `solveris-mei-*`.
+
+A ferramenta `tools/B03_CAPTURAR_WIP_LOCAL.ps1` foi substituída no Git por
+**V2 somente leitura**: descobre worktrees/clones Git no diretório base e
+em `-AdditionalRoots`, lista `git status`, caminhos ignorados e refs locais,
+gera JSON em `%LOCALAPPDATA%\\SOLVERIS\\B03`. **Não cria snapshots,
+commits, índices temporários nem faz push.** Ficheiros não versionados fora
+das raízes informadas não são descobertos; mesmo o JSON completo não é
+um backup de bytes. A próxima seleção de fontes para commit/push será
+precedida de auditoria dos paths e da presença de segredos; B02/MEI
+não serão alterados para desenvolver B03.
