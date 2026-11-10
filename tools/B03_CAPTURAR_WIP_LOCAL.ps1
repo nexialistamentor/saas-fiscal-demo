@@ -70,14 +70,23 @@ $uniqueWorktrees = @($worktrees | Sort-Object -Unique)
 foreach($wt in $uniqueWorktrees) {
     $current = [ordered]@{
         worktree=$wt; head=$null; branch=$null; status='UNREAD';
-        modified_count=0; ignored_count=0; snapshot_refs=@(); snapshot_inspection=@();
-        modified=@(); ignored=@(); warnings=@()
+        modified_count=0; ignored_count=0; ignored_source_count=0; snapshot_refs=@(); snapshot_inspection=@();
+        modified=@(); ignored=@(); ignored_source_candidates=@(); warnings=@()
     }
     try {
         $current.head = GitOne -RepoPath $wt -GitArgs @('rev-parse','HEAD')
         $current.branch = GitOne -RepoPath $wt -GitArgs @('branch','--show-current')
         $porcelain = @(Invoke-B03Git -RepoPath $wt -GitArgs @('status','--porcelain=v1','--untracked-files=all'))
         $ignored = @(Invoke-B03Git -RepoPath $wt -GitArgs @('ls-files','--others','--ignored','--exclude-standard','--directory'))
+        # Auditar fontes potencialmente ignoradas, excluindo dependencias/cache.
+        # Somente NOMES: nao inclui nem publica o conteudo destes ficheiros.
+        $ignoredCode = @(Invoke-B03Git -RepoPath $wt -GitArgs @(
+            'ls-files','--others','--ignored','--exclude-standard','--',
+            'app','tools','tests','docs','migrations','scripts',
+            'frontend-dashboard/src','native') | Where-Object {
+                $_ -match '(?i)\.(?:py|js|jsx|ts|tsx|sql|md|json|toml|ps1|yaml|yml)$' -and
+                $_ -notmatch '(?i)(^|/)(?:__pycache__|\.pytest_cache|\.venv[^/]*|venv\d*|node_modules|dist|build)(/|$)'
+            } | Sort-Object -Unique)
         # Git for-each-ref trata prefixo parcial do último componente como NÃO match.
         # Ler refs/heads/b03 e filtrar pelo nome completo do snapshot.
         $snapshots = @(Invoke-B03Git -RepoPath $wt -GitArgs @(
@@ -111,6 +120,8 @@ foreach($wt in $uniqueWorktrees) {
         $current.modified_count = $entries.Count
         $current.ignored = @($ignored | ForEach-Object { [string]$_ })
         $current.ignored_count = $ignored.Count
+        $current.ignored_source_candidates = @($ignoredCode)
+        $current.ignored_source_count = $ignoredCode.Count
         $current.snapshot_refs = @($snapshots | ForEach-Object { [string]$_ })
         $proofs = [System.Collections.Generic.List[object]]::new()
         foreach($localRef in $snapshots) {
@@ -145,6 +156,7 @@ foreach($wt in $uniqueWorktrees) {
     Write-Output ('B03_INVENTORY=' + $current.status +
         ' WIP=' + $current.modified_count +
         ' IGNORED=' + $current.ignored_count +
+        ' IGNORED_SOURCE_CANDIDATES=' + $current.ignored_source_count +
         ' SNAPSHOT_REFS=' + @($current.snapshot_refs).Count +
         ' WORKTREE=' + $wt)
 }
