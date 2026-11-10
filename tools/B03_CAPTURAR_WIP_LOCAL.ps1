@@ -4,20 +4,20 @@
 param([Parameter(Mandatory=$true)][string]$Repository)
 
 $ErrorActionPreference = "Stop"
-function Git([string]$where, [string[]]$GitArgs) {
-    $r = & git -C $where -c core.quotepath=false @GitArgs
+function Invoke-B03Git([string]$where, [string[]]$GitArgs) {
+    $r = & git.exe -C $where -c core.quotepath=false @GitArgs
     if ($LASTEXITCODE -ne 0) { throw ("STOP_GIT_" + ($GitArgs -join "_")) }
     return $r
 }
-$root = (Git $Repository @("rev-parse","--show-toplevel") | Select-Object -First 1).Trim()
-$remote = (Git $root @("remote","get-url","origin") | Select-Object -First 1).Trim()
+$root = (Invoke-B03Git $Repository @("rev-parse","--show-toplevel") | Select-Object -First 1).Trim()
+$remote = (Invoke-B03Git $root @("remote","get-url","origin") | Select-Object -First 1).Trim()
 if ($remote -notmatch 'nexialistamentor/saas-fiscal-demo(?:\.git)?$') {
     throw "STOP_WRONG_ORIGIN"
 }
 $stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ")
 $directory = Join-Path $env:LOCALAPPDATA "SOLVERIS\B03"
 New-Item -ItemType Directory -Path $directory -Force | Out-Null
-$lines = @(Git $root @("worktree","list","--porcelain"))
+$lines = @(Invoke-B03Git $root @("worktree","list","--porcelain"))
 $worktrees = @($lines | Where-Object { $_ -match '^worktree ' } |
     ForEach-Object { $_.Substring(9) })
 # Buscar clones independentes na pasta irmã, além dos worktrees registrados.
@@ -26,9 +26,9 @@ $related = @(Get-ChildItem -LiteralPath $parent -Directory -ErrorAction Silently
     Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName ".git") })
 foreach($candidate in $related) {
     try {
-        $url = (Git $candidate.FullName @("remote","get-url","origin") | Select-Object -First 1).Trim()
+        $url = (Invoke-B03Git $candidate.FullName @("remote","get-url","origin") | Select-Object -First 1).Trim()
         if ($url -notmatch 'nexialistamentor/saas-fiscal-demo(?:\.git)?$') { continue }
-        $other = @(Git $candidate.FullName @("worktree","list","--porcelain"))
+        $other = @(Invoke-B03Git $candidate.FullName @("worktree","list","--porcelain"))
         $worktrees += @($other | Where-Object { $_ -match '^worktree ' } |
             ForEach-Object { $_.Substring(9) })
     } catch { continue }
@@ -38,10 +38,10 @@ $records = @()
 $counter=0
 foreach ($w in $worktrees) {
     $counter++
-    $head = (Git $w @("rev-parse","HEAD") | Select-Object -First 1).Trim()
+    $head = (Invoke-B03Git $w @("rev-parse","HEAD") | Select-Object -First 1).Trim()
     $changes = @(
-        @(Git $w @("diff","--name-only","HEAD"))
-        @(Git $w @("ls-files","--others","--exclude-standard"))
+        @(Invoke-B03Git $w @("diff","--name-only","HEAD"))
+        @(Invoke-B03Git $w @("ls-files","--others","--exclude-standard"))
     ) | ForEach-Object { $_ } | Where-Object { $_ } | Sort-Object -Unique
     $entries=@()
     $alerts=@()
@@ -81,12 +81,12 @@ foreach ($w in $worktrees) {
             $originalIndex=$env:GIT_INDEX_FILE
             try {
                 $env:GIT_INDEX_FILE=$tempIndex
-                Git $w @("read-tree","HEAD") | Out-Null
-                Git $w @("add","-A","--",":/") | Out-Null
-                $tree=(Git $w @("write-tree") | Select-Object -First 1).Trim()
-                $commit=(Git $w @("commit-tree",$tree,"-p",$head,"-m","snapshot(b03): local uncommitted WIP, no remote push") | Select-Object -First 1).Trim()
+                Invoke-B03Git $w @("read-tree","HEAD") | Out-Null
+                Invoke-B03Git $w @("add","-A","--",":/") | Out-Null
+                $tree=(Invoke-B03Git $w @("write-tree") | Select-Object -First 1).Trim()
+                $commit=(Invoke-B03Git $w @("commit-tree",$tree,"-p",$head,"-m","snapshot(b03): local uncommitted WIP, no remote push") | Select-Object -First 1).Trim()
                 $saved="b03/wip-local-$stamp-$counter"
-                Git $w @("update-ref","refs/heads/$saved",$commit) | Out-Null
+                Invoke-B03Git $w @("update-ref","refs/heads/$saved",$commit) | Out-Null
                 $state="SNAPSHOT_LOCAL_GIT_ONLY"
             } catch {
                 $state="SNAPSHOT_FAILED"
