@@ -1,0 +1,37 @@
+#!/bin/sh
+# Pre-commit hook: bloqueia o commit se check_duplicacao.py encontrar
+# duplicacao nao declarada ou cobertura parcial. Instalado via
+# tools/instalar_hooks.ps1 (este ficheiro vive versionado em githooks/,
+# .git/hooks/ nao e versionado pelo git).
+#
+# Bypass deliberado (ex. commit so de ficheiros nao-Python, ou emergencia
+# documentada): git commit --no-verify -- mas isto fica no log do commit,
+# nao e silencioso.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+REGISTRO="docs/REGISTRO_CANONICO.json"
+SCRIPT="tools/check_duplicacao.py"
+
+if [ ! -f "$REPO_ROOT/$SCRIPT" ] || [ ! -f "$REPO_ROOT/$REGISTRO" ]; then
+    echo "AVISO (pre-commit): $SCRIPT ou $REGISTRO nao encontrados -- hook nao pode rodar, commit prossegue sem verificacao."
+    exit 0
+fi
+
+python "$REPO_ROOT/$SCRIPT" --repo "$REPO_ROOT" --registro "$REGISTRO"
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+    echo ""
+    echo "=========================================================="
+    echo "COMMIT BLOQUEADO pelo pre-commit hook (check_duplicacao.py)"
+    echo "=========================================================="
+    echo "Corrija a duplicacao/cobertura parcial acima, ou declare o"
+    echo "falso-positivo/substituicao em docs/REGISTRO_CANONICO.json."
+    echo ""
+    echo "Bypass deliberado (nao recomendado sem motivo documentado):"
+    echo "    git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+exit 0
