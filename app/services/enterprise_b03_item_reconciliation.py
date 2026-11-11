@@ -25,11 +25,14 @@ os chama.
 
 Ver docs/B03_FASE2_DESENHO.md (a atualizar) e docs/B03_GOVERNANCE_LEVEL.md.
 
-PENDENTE antes de ligar a Fase 3 (entrada real): a forma exata que
-app/services/document_ingestion/xml_fiscal_adapter.py::extrair_evidencia_xml_fiscal
-devolve ainda nao foi lida -- este modulo assume que o caller ja produz
-`itens_xml` no formato abaixo. Nao assumir que o adaptador ja entrega isto
-pronto sem confirmar.
+RESOLVIDO (2026-11-11): a entrada real NAO vem de xml_fiscal_adapter (esse
+so devolve metadados do DOCUMENTO -- chave, CNPJs, protocolo -- nenhum dado
+por item). A fonte real e app/xml_service.py::ler_xml_unico, cujo
+dados['itens'] ja tem EXATAMENTE os campos que confrontar_documento_b03
+espera (ncm, cfop, valor_produto, base_st, valor_st, st_observado_xml) --
+so que como strings (nunca convertidas). confrontar_xml_b03() abaixo faz
+essa ponte, reaproveitando _parse_float/_parse_data_emissao ja existentes
+em xml_service.py (nao reimplementados aqui).
 """
 from __future__ import annotations
 
@@ -40,6 +43,7 @@ from typing import Any
 from app.services.fiscal_utils import resolver_aliquota_e_mva
 from app.motor_fiscal import MotorFiscal
 from app.services.tax_consistency.tax_consistency_engine import TaxConsistencyEngine
+from app.xml_service import ler_xml_unico, _parse_float, _parse_data_emissao
 
 SCHEMA = "SOLVERIS_ENTERPRISE_B03_ITEM_RECONCILIATION_V2"
 
@@ -127,6 +131,21 @@ def confrontar_documento_b03(
             })
             continue
 
+        if item.get("valor_produto") is None:
+            # Fail-closed: sem valor_produto valido nao se chama o motor
+            # (nunca calcular com None/adivinhar) -- fica como bloqueio,
+            # igual a quando falta autoridade normativa.
+            itens_calculados.append({
+                "indice_item": indice, "ncm": ncm, "cfop": cfop,
+                "valor_st_calculado": None, "base_st_calculada": None,
+            })
+            blocos_normativos.append({
+                "indice_item": indice,
+                "motivo_bloqueio": "valor_produto_ausente_ou_invalido",
+                "aviso": None,
+            })
+            continue
+
         # --- calcular independentemente (funcoes puras, ja existem) ---
         base_st = motor.calcular_base_st(item["valor_produto"], regra["mva"])
         icms_proprio = motor.calcular_icms_proprio(item["valor_produto"], regra["aliquota"])
@@ -171,3 +190,49 @@ def confrontar_documento_b03(
         modulos_usados=modulos_usados,
     )
     return resultado
+
+
+def confrontar_xml_b03(*, db, xml_bytes: bytes, quem_rodou: str = "sistema") -> dict:
+    """
+    Ponto de entrada real (Fase 3): recebe XML bruto, parseia via
+    ler_xml_unico (ja existe, nao reimplementar), converte os campos
+    textuais para os tipos que confrontar_documento_b03 e MotorFiscal
+    esperam (usando _parse_float/_parse_data_emissao ja existentes em
+    xml_service.py), e delega a comparacao real.
+
+    Erro de parsing do XML (ler_xml_unico pode levantar excecao -- nao
+    engole silenciosamente, nunca prossegue com dados parciais como se
+    fossem completos).
+    """
+    try:
+        dados = ler_xml_unico(xml_bytes=xml_bytes)
+    except Exception as exc:
+        return {
+            "schema_version": SCHEMA,
+            "estado": "NAO_AVALIADO",
+            "autoridade_fiscal": False,
+            "motivo": f"ERRO_PARSE_XML: {exc}",
+        }
+
+    chave_nfe = dados.get("chave_nfe")
+    uf_operacao = dados.get("uf_dest") or dados.get("uf_emit")
+    data_operacao = _parse_data_emissao(dados.get("data_emissao"))
+
+    itens_xml = []
+    for item in dados.get("itens", []):
+        item_convertido = dict(item)  # nao mutar o dict original de ler_xml_unico
+        valor_produto_raw = item.get("valor_produto")
+        item_convertido["valor_produto"] = (
+            _parse_float(valor_produto_raw) if valor_produto_raw else None
+        )
+        itens_xml.append(item_convertido)
+
+    return confrontar_documento_b03(
+        db=db,
+        chave_nfe=chave_nfe,
+        itens_xml=itens_xml,
+        uf_operacao=uf_operacao,
+        data_operacao=data_operacao,
+        xml_bytes=xml_bytes,
+        quem_rodou=quem_rodou,
+    )
