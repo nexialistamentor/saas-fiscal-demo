@@ -1,6 +1,22 @@
 """
 enterprise_b03_item_reconciliation.py
 
+RECLASSIFICADO (2026-11-11, ratificado por Miguel): NAO e o produtor de
+producao da capacidade icms_st. app/services/enterprise_g12_st_item_
+reconciliation.py::confrontar_st_por_item_g12 (gate G12, ja ligado via
+G13 a registro_analise_service.py) ja implementa esta capacidade com mais
+rigor (valida componentes de base frete/seguro/desconto/reducao, coerencia
+aritmetica do ICMS proprio, cruza buscar_mva com resolver_base_calculo_st)
+e nunca teve o bug de 100x (fracao vs percentual) que este modulo teve e
+corrigiu nesta sessao. Ver docs/B03_FECHAMENTO.md, adendo.
+
+Este modulo fica como scaffold de aprendizagem/especificacao executavel do
+contrato resolver_aliquota_e_mva->MotorFiscal->TaxConsistencyEngine -- os
+testes continuam validos, mas NAO entra no caminho comercial. B04 liga
+G13 a I1/I0 diretamente; nao usa este modulo.
+
+--- Texto original da Fase 2/3, mantido para contexto historico ---
+
 Orquestrador fino do B03 (comparacao monetaria: XML vs calculo independente),
 POR DOCUMENTO -- nao por item. Reescrito apos leitura real do corpo de
 TaxConsistencyEngine.verificar_consistencia (2026-11-11): o contrato real

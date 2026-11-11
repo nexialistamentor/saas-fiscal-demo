@@ -66,3 +66,38 @@ cadastradas).
 Push do branch (`git push`) e abertura de PR para revisão humana antes de
 merge em qualquer branch principal — nenhum merge foi feito nesta sessão,
 tudo fica em `b03/inventario-antidup-20261110` até ratificação.
+
+## ADENDO (2026-11-11, ratificado por Miguel) — reclassificação do módulo
+
+Durante o levantamento de B04 descobriu-se que `app/services/
+enterprise_g12_st_item_reconciliation.py::confrontar_st_por_item_g12`
+(gate G12, já ligado em produção via G13→`registro_analise_service.py`)
+**já implementa, com mais rigor, a mesma capacidade que
+`enterprise_b03_item_reconciliation.py` construiu nesta sessão** — ambos
+usam `resolver_aliquota_e_mva`, `MotorFiscal`, `TaxConsistencyEngine` e
+`ler_xml_unico`, mas G12 valida adicionalmente componentes de base
+(frete/seguro/desconto/redução), coerência aritmética do ICMS próprio, e
+cruza `buscar_mva` com `resolver_base_calculo_st`. G12 nunca teve o bug de
+100× (fração vs percentual) que B03 teve e corrigiu nesta sessão — porque
+G12 já fazia a conversão corretamente desde antes.
+
+**Decisão ratificada:** `confrontar_documento_b03`/`confrontar_xml_b03`
+**NÃO entram no caminho comercial**. São reclassificados como scaffold de
+aprendizagem/especificação executável do contrato
+(`resolver_aliquota_e_mva`→`MotorFiscal`→`TaxConsistencyEngine`) — os 7
+testes continuam válidos e úteis para entender o fluxo, mas o produtor
+real da capacidade `icms_st` no catálogo de B04
+(`enterprise_integral_projection.py::_CAPACIDADES`) é **G12/G13**, não o
+módulo de B03.
+
+B04 liga G13 à cadeia I1/I0; não se constrói um motor novo para isto. Se
+no futuro surgir necessidade genuína de um caminho stateless (sem
+`relatorio_id`/documento persistido), ele deve chamar
+`confrontar_st_por_item_g12` diretamente, nunca reimplementar o cálculo.
+
+Isto não invalida o valor desta sessão: o processo (Fase 0 real,
+catraca anti-duplicação, testes, fail-closed) funcionou exatamente como
+desenhado — só não tinha ainda mapeado que G12/G13 já cobriam esta
+capacidade específica. Essa lacuna de mapeamento é, em si, a lição para
+B04 em diante: ler `enterprise_integral_projection.py::_CAPACIDADES`
+e os gates G-numerados **antes** de qualquer bloco novo, não depois.
