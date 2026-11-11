@@ -1,102 +1,129 @@
 {
-  "_schema_versao": 1,
-  "_regra": "Nenhuma função nova em app/services/enterprise_* ou tools/enterprise_* entra em main sem passar por este registo. Entrada com status 'a_confirmar' significa: alegada por relatório estático (GPT), AINDA NAO lida diretamente neste repositório. Promover para 'confirmado' só depois de leitura real do ficheiro + assinatura conferida. 'substitui' lista caminhos de ficheiros/funções antigos que esta entrada torna obsoletos -- preencher sempre que uma nova versão nascer, nunca deixar os dois lado a lado sem essa declaração.",
+  "_schema_versao": 2,
+  "_regra": "Nenhuma funcao nova em app/services/enterprise_* ou tools/enterprise_* entra em main sem passar por este registo. 'substitui' lista caminhos de ficheiros/funcoes antigos que esta entrada torna obsoletos -- preencher sempre que uma nova versao nascer, nunca deixar os dois lado a lado sem essa declaracao. v2: Fase 0 do B03 concluida em 2026-11-10 -- 6 de 7 entradas confirmadas por leitura real de assinatura/corpo (ast.parse / ast.get_source_segment, nunca grep-com-contexto); 1 entrada (G14) reclassificada apos leitura do corpo -- nao e o resolvedor de jurisdicao que se presumia.",
   "modulos": [
     {
+      "id": "parser_xml_base",
+      "responsabilidade": "Parser de baixo nivel do XML da NF-e, base real sob todos os adaptadores de parsing",
+      "modulo_canonico": "app/xml_service.py",
+      "funcao_principal": "ler_xml_unico",
+      "status": "confirmado_por_uso",
+      "observacao": "Localizado via git grep (nao alegado pelo relatorio GPT original). Consumido por xml_fiscal_adapter.py, motor_fiscal.py, enterprise_g12_st_item_reconciliation.py, registro_analise_service.py, app/main.py e scripts de teste. NAO e duplicacao: e o parser-base unico; os consumidores produzem formatos de saida diferentes para propositos diferentes. Corpo de ler_xml_unico em si ainda nao lido -- nao bloqueia B03 porque B03 consome via xml_fiscal_adapter, nunca diretamente.",
+      "substitui": [],
+      "consumidores_conhecidos": ["parser_xml_nfe (via import)", "motor_calculo_numerico.analisar_xml (consumidor legado, NAO usado por B03)", "orquestracao_reconciliacao_item (via import)"],
+      "fonte_alegacao": "git_grep_sessao_2026-11-10",
+      "confirmado_em": "2026-11-10"
+    },
+    {
       "id": "parser_xml_nfe",
-      "responsabilidade": "Parsing do XML da NF-e para estrutura interna",
+      "responsabilidade": "Adaptador de alto nivel: XML da NF-e -> EvidenciaFiscalComparavel",
       "modulo_canonico": "app/services/document_ingestion/xml_fiscal_adapter.py",
-      "funcao_principal": null,
-      "status": "a_confirmar",
+      "funcao_principal": "extrair_evidencia_xml_fiscal",
+      "status": "confirmado",
+      "observacao": "Confirmado por assinatura real. Usa app/xml_service.py::ler_xml_unico como base (linha 30). E a entrada escolhida para B03 Fase 3 -- motor_fiscal.analisar_xml NAO e alternativa valida para B03 (ver parser_xml_base).",
       "substitui": [],
       "consumidores_conhecidos": ["B03 Fase 3 (input real)"],
       "fonte_alegacao": "relatorio_gpt_b03_indice_30",
-      "confirmado_em": null
+      "confirmado_em": "2026-11-10"
     },
     {
       "id": "classificador_item",
-      "responsabilidade": "Classificação do item fiscal (NCM/CEST/CFOP/CST)",
+      "responsabilidade": "Classificacao do item fiscal (NCM/CEST/CFOP/CST) e do tipo de documento",
       "modulo_canonico": "app/services/document_ingestion/classifier.py",
-      "funcao_principal": null,
-      "status": "a_confirmar",
+      "funcao_principal": "classificar",
+      "status": "confirmado",
       "substitui": [],
       "consumidores_conhecidos": ["B03 Fase 3 (input real)"],
       "fonte_alegacao": "relatorio_gpt_b03_indice_30",
-      "confirmado_em": null
+      "confirmado_em": "2026-11-10"
     },
     {
       "id": "motor_calculo_numerico",
-      "responsabilidade": "Cálculo fiscal numérico independente (MVA/ICMS-ST)",
+      "responsabilidade": "Calculo fiscal numerico independente, puro e deterministico (MVA/ICMS-ST)",
       "modulo_canonico": "app/motor_fiscal.py",
-      "funcao_principal": "MotorFiscal",
-      "status": "a_confirmar",
+      "funcao_principal": "MotorFiscal (calcular_base_st, calcular_icms_proprio, calcular_icms_st, estimar_restituicao)",
+      "status": "confirmado",
+      "observacao": "O mesmo ficheiro tambem expoe analisar_xml() e carregar_mva() -- consumidores legados de app/main.py, NAO usados por B03. B03 usa so a classe MotorFiscal (funcoes puras).",
       "substitui": [],
-      "consumidores_conhecidos": ["B03 Fase 2 (motor de comparação)"],
+      "consumidores_conhecidos": ["B03 Fase 2 (motor de comparacao)"],
       "fonte_alegacao": "relatorio_gpt_b03_indice_30",
-      "confirmado_em": null
+      "confirmado_em": "2026-11-10"
     },
     {
       "id": "consulta_tabela_normativa",
-      "responsabilidade": "Consulta L2 de MVA / base de cálculo ST / cobertura normativa",
+      "responsabilidade": "Consulta L2 de MVA / base de calculo ST / cobertura normativa por UF+NCM+data -- E O RESOLVEDOR DE JURISDICAO REAL usado por B03 Fase 2 (resolver_regra)",
       "modulo_canonico": "app/services/tabela_normativa_service.py",
       "funcao_principal": "buscar_mva | resolver_base_calculo_st | verificar_cobertura_normativa_st",
-      "status": "a_confirmar",
+      "status": "confirmado",
+      "observacao": "As 3 funcoes confirmadas com assinatura identica ao alegado. verificar_cobertura_normativa_st(db, uf, ncm, data_referencia) e resolver_base_calculo_st ja implementam o padrao resolver_regra(ncm, jurisdiction, data) -> RuleVersion | CoberturaNaoComprovada que B03 Fase 2 pretendia construir -- NAO reconstruir, so ligar.",
       "substitui": [],
       "consumidores_conhecidos": ["B03 Fase 2 (resolver_regra)"],
       "fonte_alegacao": "relatorio_gpt_b03_indice_30",
-      "confirmado_em": null
+      "confirmado_em": "2026-11-10"
     },
     {
       "id": "resolvedor_aliquota_mva",
-      "responsabilidade": "Resolução de alíquota e MVA aplicável, incl. fallback",
+      "responsabilidade": "Resolucao de aliquota e MVA aplicavel, com bloqueio normativo explicito quando faltar autoridade",
       "modulo_canonico": "app/services/fiscal_utils.py",
       "funcao_principal": "resolver_aliquota_e_mva",
-      "status": "a_confirmar",
-      "observacao_risco": "Relatório aponta possível fallback de valores nao-autorizados entrando silenciosamente -- ler esse trecho com atencao extra antes de confirmar.",
+      "status": "confirmado",
+      "observacao": "Corpo lido por inteiro (linha 63-223). Risco de fallback silencioso DESCARTADO: toda ausencia de autoridade normativa retorna _bloqueio() com calculo_autorizado=False explicito. Unico caminho parcial (convenio_base_sem_aliquota) e declarado via aliquota_autorizada=False + campo 'aviso' -- nunca silencioso. Callers de B03 devem sempre checar calculo_autorizado/calculo_parcial antes de usar o resultado.",
       "substitui": [],
       "consumidores_conhecidos": ["B03 Fase 2"],
       "fonte_alegacao": "relatorio_gpt_b03_indice_30",
-      "confirmado_em": null
+      "confirmado_em": "2026-11-10"
     },
     {
       "id": "comparador_consistencia",
-      "responsabilidade": "Comparação / verificação de consistência fiscal entre valores",
+      "responsabilidade": "Comparacao / verificacao de consistencia fiscal entre valores do XML e do motor",
       "modulo_canonico": "app/services/tax_consistency/tax_consistency_engine.py",
       "funcao_principal": "TaxConsistencyEngine.verificar_consistencia",
-      "status": "a_confirmar",
+      "status": "confirmado",
+      "observacao": "Assinatura e comportamento (so itens_calculados explicitos originam confronto numerico, nunca inferencia) confirmados.",
       "substitui": [],
       "consumidores_conhecidos": ["B03 Fase 2 (comparar_item)"],
       "fonte_alegacao": "relatorio_gpt_b03_indice_30",
-      "confirmado_em": null
+      "confirmado_em": "2026-11-10"
     },
     {
       "id": "orquestracao_reconciliacao_item",
-      "responsabilidade": "Orquestração da confrontação ST por item (G12)",
+      "responsabilidade": "Orquestracao da confrontacao ST por item (G12) -- padrao de orquestracao a reaproveitar, nao a copiar",
       "modulo_canonico": "app/services/enterprise_g12_st_item_reconciliation.py",
       "funcao_principal": "confrontar_st_por_item_g12",
-      "status": "a_confirmar",
+      "status": "confirmado",
       "substitui": [],
       "consumidores_conhecidos": ["B03 Fase 2/3"],
       "fonte_alegacao": "relatorio_gpt_b03_indice_30",
-      "confirmado_em": null
+      "confirmado_em": "2026-11-10"
     },
     {
-      "id": "guarda_jurisdicao_normativa",
-      "responsabilidade": "Guarda de jurisdição/escopo operacional-normativo -- candidato a 'guarda nacional de aplicabilidade'",
+      "id": "guarda_g14_coerencia_candidata",
+      "responsabilidade": "RECLASSIFICADO: nao e o resolvedor de jurisdicao -- coteja candidatos normativos fornecidos externamente contra cadeia de custodia G13 ja verificada; conclusao maxima e so 'coerencia estrutural', nunca prova legal nem calculo definitivo. So valida operacoes intra-UF (rejeita interestadual).",
       "modulo_canonico": "app/services/enterprise_g14_operational_normative_scope.py",
-      "funcao_principal": null,
-      "status": "a_confirmar",
-      "observacao_risco": "Relatorio admite (secao Lacunas, item 2) que pode cobrir so parte de esfera+territorio+operacao+data+competencia -- confirmar extensao real antes de declarar resolvido o pendente de cobertura-nacional-jurisdicoes.",
+      "funcao_principal": "cotejar_enquadramento_normativo_operacao_g14",
+      "status": "confirmado_mas_fora_de_escopo_direto_b03",
+      "observacao_risco": "NAO usar como resolver_regra de B03 Fase 2 -- esse papel ja e coberto por consulta_tabela_normativa. G14 resolve um problema diferente (coerencia de candidatos + custodia G13), provavelmente relevante a outro bloco Enterprise, nao ao B03. Confirma tambem que cobertura interestadual continua pendente (ver cobertura-nacional-jurisdicoes) -- G14 nao resolve isso, so rejeita explicitamente operacoes interestaduais.",
       "substitui": [],
-      "consumidores_conhecidos": ["B03 Fase 2 (resolver_regra / CoberturaNaoComprovada)", "cobertura-nacional-jurisdicoes (pendente)"],
-      "fonte_alegacao": "relatorio_gpt_b03_indice_30",
-      "confirmado_em": null
+      "consumidores_conhecidos": ["cobertura-nacional-jurisdicoes (confirma pendencia, nao resolve)"],
+      "fonte_alegacao": "relatorio_gpt_b03_indice_30 + leitura direta do corpo",
+      "confirmado_em": "2026-11-10"
+    }
+  ],
+  "falsos_positivos_confirmados": [
+    {
+      "ficheiro": "app/services/imposto_service.py",
+      "funcao": "calcular_imposto",
+      "similar_a_id": "motor_calculo_numerico",
+      "motivo": "imposto_service.py e sobre estimativa de imposto Simples Nacional/MEI (DAS) -- calcular_imposto_simples, calcular_imposto_simples_nacional, _obter_faixa_simples. calcular_imposto(valor, aliquota=0.06) e um helper generico (valor*aliquota) para estimativa MEI simplificada, formula e dominio diferentes de calcular_icms_st (base_st*aliquota-icms_proprio) do motor ICMS-ST do B03. Nomes parecidos (similaridade de string 83%), responsabilidades distintas -- confirmado por leitura direta do corpo em 2026-11-10, nao por suposicao.",
+      "confirmado_em": "2026-11-10"
     }
   ],
   "proibido_por_desenho": [
     "motor_fiscal_v2",
     "resolver_mva_novo",
     "comparador_B03_alt",
-    "qualquer_copia_de_G12_ou_C5_C6"
+    "qualquer_copia_de_G12_ou_C5_C6",
+    "qualquer_novo_parser_xml_paralelo_a_xml_service",
+    "usar_g14_como_resolver_regra_de_b03"
   ]
 }

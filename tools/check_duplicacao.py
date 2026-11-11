@@ -51,6 +51,19 @@ def carregar_registro(caminho_registro: Path) -> dict:
         return json.load(f)
 
 
+def falsos_positivos_confirmados(registro: dict):
+    """
+    Lista de (ficheiro_relativo, nome_funcao, similar_a_id) explicitamente
+    revistos por leitura direta e confirmados como NAO sendo duplicacao --
+    nomes parecidos, responsabilidades diferentes. Diferente de 'substitui':
+    aqui nao ha superacao, as duas funcoes coexistem legitimamente.
+    """
+    saida = set()
+    for fp in registro.get("falsos_positivos_confirmados", []):
+        saida.add((fp["ficheiro"], fp["funcao"], fp["similar_a_id"]))
+    return saida
+
+
 def nomes_canonicos_confirmados(registro: dict):
     """
     Retorna lista de (id, nome_funcao_normalizado, caminho_ficheiro, status)
@@ -135,6 +148,7 @@ def normalizar(nome: str) -> str:
 def verificar(repo_root: Path, registro: dict, pastas: list):
     canonicos = nomes_canonicos_confirmados(registro)
     proibidos = set(registro.get("proibido_por_desenho", []))
+    falsos_positivos = falsos_positivos_confirmados(registro)
 
     problemas = []
 
@@ -163,12 +177,16 @@ def verificar(repo_root: Path, registro: dict, pastas: list):
                 ).ratio()
                 if ratio >= LIMIAR_SIMILARIDADE:
                     # permitido se esta entrada (ou outra) declarar 'substitui'
-                    # apontando para este ficheiro -- senao, e duplicacao nao declarada
+                    # apontando para este ficheiro, OU se este par exato ja foi
+                    # revisto e confirmado como falso positivo -- senao, e
+                    # duplicacao nao declarada
                     declarado = False
                     for mod in registro.get("modulos", []):
                         if caminho_relativo in mod.get("substitui", []):
                             declarado = True
                             break
+                    if (caminho_relativo, nome_funcao, mod_id) in falsos_positivos:
+                        declarado = True
                     if not declarado:
                         problemas.append(
                             f"[SUSPEITO] {caminho_relativo}:{lineno} funcao '{nome_funcao}' "
