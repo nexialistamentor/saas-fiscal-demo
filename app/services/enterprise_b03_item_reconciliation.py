@@ -173,9 +173,20 @@ def confrontar_documento_b03(
             continue
 
         # --- calcular independentemente (funcoes puras, ja existem) ---
-        base_st = motor.calcular_base_st(item["valor_produto"], regra["mva"])
-        icms_proprio = motor.calcular_icms_proprio(item["valor_produto"], regra["aliquota"])
-        icms_st = motor.calcular_icms_st(base_st, regra["aliquota"], icms_proprio)
+        # CRITICO: resolver_aliquota_e_mva devolve mva/aliquota como FRACAO
+        # (0.45, 0.19), mas MotorFiscal.calcular_* espera PERCENTUAL (45, 19)
+        # -- confirmado por leitura real do corpo em 2026-11-11 (docstring
+        # "MVA em percentual (ex: 40 para 40%)" + corpo "mva / 100"). Sem
+        # esta conversao, o resultado sai 100x menor (bug real encontrado
+        # no primeiro teste contra regra real da BD, nunca detectado em
+        # mocks porque o MotorFiscal mock usado nos testes locais tinha
+        # uma formula diferente, auto-inventada).
+        mva_percentual = regra["mva"] * 100
+        aliquota_percentual = regra["aliquota"] * 100
+
+        base_st = motor.calcular_base_st(item["valor_produto"], mva_percentual)
+        icms_proprio = motor.calcular_icms_proprio(item["valor_produto"], aliquota_percentual)
+        icms_st = motor.calcular_icms_st(base_st, aliquota_percentual, icms_proprio)
 
         itens_calculados.append({
             "indice_item": indice,
