@@ -102,6 +102,32 @@ def confrontar_documento_b03(
     ]
     hash_xml_entrada = hashlib.sha256(xml_bytes).hexdigest()
 
+    # Fail-closed: sem estes 3 campos nao ha como resolver regra nem montar
+    # o resultado -- NUNCA prosseguir e deixar explodir mais tarde (ex.
+    # data_operacao.isoformat() com None). Retorna NAO_AVALIADO com o motivo
+    # exato, mesma filosofia de _bloqueio() em fiscal_utils.py.
+    campos_ausentes = [
+        nome for nome, valor in (
+            ("chave_nfe", chave_nfe), ("uf_operacao", uf_operacao),
+            ("data_operacao", data_operacao),
+        ) if valor is None
+    ]
+    if campos_ausentes:
+        resultado = {
+            "schema_version": SCHEMA,
+            "estado": "NAO_AVALIADO",
+            "autoridade_fiscal": False,
+            "motivo": f"CAMPOS_ESSENCIAIS_AUSENTES: {', '.join(campos_ausentes)}",
+            "chave_nfe": chave_nfe,
+            "uf_operacao": uf_operacao,
+            "data_operacao": data_operacao.isoformat() if data_operacao else None,
+        }
+        resultado["_auditoria"] = _log_auditoria_leve(
+            quem_rodou=quem_rodou, hash_xml_entrada=hash_xml_entrada,
+            hash_resultado=_money_hash(resultado), modulos_usados=modulos_usados,
+        )
+        return resultado
+
     itens_calculados: list[dict] = []
     blocos_normativos: list[dict] = []  # auditoria paralela, fora do contrato do engine
     motor = MotorFiscal()
