@@ -42,7 +42,7 @@ cadastro e autoridade, o bloqueio no resolvedor já existente, o isolamento
 jurisdicional, a vigência e a data explícita.
 
 **Prova executada no Windows em 2026-11-12** (saída do operador,
-`C:\\dev\\saas-fiscal-demo-a1`, `.venv-release`): `python -m pytest -q`
+`C:\dev\saas-fiscal-demo-a1`, `.venv-release`): `python -m pytest -q`
 sobre `test_jurisdicao_normativa_fase1_pa.py`,
 `test_enterprise_b03_item_reconciliation.py`,
 `test_empresarial_normative_key.py` e
@@ -50,8 +50,8 @@ sobre `test_jurisdicao_normativa_fase1_pa.py`,
 **72 passed, 1 warning, 0 failed (5.55s)**.
 
 Catraca executada no mesmo ambiente:
-`python tools\\check_duplicacao.py --repo C:\\dev\\saas-fiscal-demo-a1
---registro docs\\REGISTRO_CANONICO.json`:
+`python tools\check_duplicacao.py --repo C:\dev\saas-fiscal-demo-a1
+--registro docs\REGISTRO_CANONICO.json`:
 **OK: nenhuma duplicacao nao declarada encontrada (cobertura completa)**.
 O aviso `SyntaxWarning` em `danfe_pdf_adapter.py` não reprovou a catraca.
 O aviso `StarletteDeprecationWarning` também não reprovou a suíte.
