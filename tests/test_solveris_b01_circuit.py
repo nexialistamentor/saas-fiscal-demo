@@ -153,8 +153,16 @@ class TestEnterpriseB01SyntheticIntegration(TestCase):
         self.assertEqual(r['itens'][0]['dossie']['comparacoes_monetarias_condicionais']['BASE_ST']['valor_motor_condicional'],
                          next(x['valor_motor'] for x in g1['comparacoes'] if x['tipo']=='BASE_ST'))
         self.assertEqual(len(r['i0']['cobertura']), 52)
+        # B04: icms_st/mva/consistencia_fiscal saem de
+        # 'nao_integrado_ao_snapshot' para 'informativo_sem_prova' via G13
+        # precomputado -- 33 cai para 30 (exatamente essas 3), nunca
+        # 'apurado' nem autoridade_fiscal=True.
         self.assertEqual(sum(x['estado']=='nao_integrado_ao_snapshot'
-                             for x in r['i0']['cobertura']), 33)
+                             for x in r['i0']['cobertura']), 30)
+        cobertura_por_id = {x['id']: x for x in r['i0']['cobertura']}
+        for nome in ('icms_st', 'mva', 'consistencia_fiscal'):
+            self.assertEqual(cobertura_por_id[nome]['estado'], 'informativo_sem_prova')
+            self.assertIs(cobertura_por_id[nome]['autoridade_fiscal'], False)
         self.assertFalse(r['autoridade_fiscal'])
         self.assertFalse(r['credito_confirmado'])
         self.assertFalse(r['checkout_autorizado'])

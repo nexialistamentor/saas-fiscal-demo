@@ -27,6 +27,8 @@ historico desta decisao.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 from copy import deepcopy
 
 from app.services.enterprise_i2_documentary_bridge import projetar_diagnostico_integral_i2
@@ -42,6 +44,7 @@ SCHEMA_VERSION = "SOLVERIS_ENTERPRISE_B04_ICMS_ST_INTEGRAL_BRIDGE_V1"
 
 def projetar_diagnostico_integral_icms_st(
     *, db, authenticated_user_id: int, empresa_id: int, relatorio_id: int, xml_bytes: bytes,
+    g13_precomputado: dict | None = None,
 ) -> dict:
     """Projeta I2 e preenche icms_st/mva/consistencia_fiscal via G13 (G12).
 
@@ -50,6 +53,14 @@ def projetar_diagnostico_integral_icms_st(
     estado fica em 'informativo_sem_prova' (nunca 'apurado'), e o resultado
     bruto de G13 e preservado em 'resultado_bruto_nao_validado' para
     auditoria, nunca usado como numero comercial.
+
+    g13_precomputado (opcional): resultado ja calculado de
+    projetar_confronto_st_sujeito_g13 na MESMA analise (ex.: por
+    executar_circuito_enterprise_01, que ja chama G13 antes desta ponte).
+    Evita recalcular G13 uma segunda vez na mesma analise. A identidade e
+    validada (empresa_id, relatorio_id, xml_sha256) antes de ser aceite --
+    em caso de divergencia, falha fechado (EnterpriseG13GateError), nunca
+    ignora silenciosamente nem recalcula por baixo do pano.
     """
     base = projetar_diagnostico_integral_i2(
         db=db, authenticated_user_id=authenticated_user_id,
@@ -58,22 +69,33 @@ def projetar_diagnostico_integral_icms_st(
     saida = deepcopy(base)
     itens = {e["id"]: e for e in saida["cobertura"]}
 
-    try:
-        g13 = projetar_confronto_st_sujeito_g13(
-            db=db, authenticated_user_id=authenticated_user_id,
-            empresa_id=empresa_id, relatorio_id=relatorio_id, xml_bytes=xml_bytes,
-        )
-    except EnterpriseG13GateError as exc:
-        causa = str(exc)
-        for nome in _COMPONENTES_ICMS_ST:
-            if nome in itens:
-                itens[nome]["estado"] = "falha_motor"
-                itens[nome]["causa"] = causa
-        saida["icms_st_g13"] = {
-            "estado": "falha_motor", "causa": causa,
-            "itens_total": None, "itens_simulados": None,
-        }
-        return saida
+    if g13_precomputado is not None:
+        sha = hashlib.sha256(xml_bytes).hexdigest()
+        if (
+            type(g13_precomputado) is not dict
+            or g13_precomputado.get("empresa_id") != empresa_id
+            or g13_precomputado.get("relatorio_id") != relatorio_id
+            or not hmac.compare_digest(str(g13_precomputado.get("xml_sha256", "")), sha)
+        ):
+            raise EnterpriseG13GateError("B04_G13_PRECOMPUTADO_IDENTIDADE_DIVERGENTE")
+        g13 = g13_precomputado
+    else:
+        try:
+            g13 = projetar_confronto_st_sujeito_g13(
+                db=db, authenticated_user_id=authenticated_user_id,
+                empresa_id=empresa_id, relatorio_id=relatorio_id, xml_bytes=xml_bytes,
+            )
+        except EnterpriseG13GateError as exc:
+            causa = str(exc)
+            for nome in _COMPONENTES_ICMS_ST:
+                if nome in itens:
+                    itens[nome]["estado"] = "falha_motor"
+                    itens[nome]["causa"] = causa
+            saida["icms_st_g13"] = {
+                "estado": "falha_motor", "causa": causa,
+                "itens_total": None, "itens_simulados": None,
+            }
+            return saida
 
     # Nunca promover a apurado/autoridade_fiscal=True -- G13 e sempre
     # "simulacao condicional sem autoridade", qualquer que seja o estado.

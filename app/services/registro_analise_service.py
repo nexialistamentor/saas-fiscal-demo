@@ -289,6 +289,7 @@ def executar_circuito_enterprise_01(
     from app.services.enterprise_integral_projection import projetar_diagnostico_integral_i0
     from app.services.enterprise_i2_documentary_bridge import projetar_diagnostico_integral_i2
     from app.services.enterprise_g13_subject_st_bridge import projetar_confronto_st_sujeito_g13
+    from app.services.enterprise_b04_icms_st_integral_bridge import projetar_diagnostico_integral_icms_st
     from app.services.enterprise_g14_operational_normative_scope import cotejar_enquadramento_normativo_operacao_g14
     from app.services.enterprise_g17_publication_coverage_checkpoint import cotejar_cobertura_publicacao_g17
     from tools.enterprise_g113_temporal_mva_evidence import selecionar_mva_temporal_g113_c3
@@ -385,6 +386,11 @@ def executar_circuito_enterprise_01(
                 empresa_id=empresa_id, relatorio_id=rel.id, xml_bytes=xml_bytes)
     i2 = projetar_diagnostico_integral_i2(**args)
     g13 = projetar_confronto_st_sujeito_g13(**args)
+    i0_icms_st_g13 = projetar_diagnostico_integral_icms_st(
+        db=db, authenticated_user_id=authenticated_user_id,
+        empresa_id=empresa_id, relatorio_id=rel.id, xml_bytes=xml_bytes,
+        g13_precomputado=g13,
+    )
     g14 = cotejar_enquadramento_normativo_operacao_g14(**args, candidatos_normativos=candidatos_normativos)
     # Invoca realmente ADR-020 (G17->G16->G15); na falta de referencias,
     # os gates retornam lacunas sem promover normatividade.
@@ -545,7 +551,7 @@ def executar_circuito_enterprise_01(
         "authenticated_user_id": authenticated_user_id,
         "relatorio_id": rel.id, "documento_id": doc["documento_id"],
         "xml_sha256": sha, "resultado_fingerprint": rel.fingerprint,
-        "i0": i0, "i2": i2, "g13": g13, "g14": g14,
+        "i0": i0_icms_st_g13, "i2": i2, "g13": g13, "g14": g14,
         "adr020_g17": g17, "itens": itens,
         "compatibilidade_g1_apenas_negacao_comercial": c4_subject is not g13,
         "autoridade_fiscal": False, "credito_confirmado": False,
