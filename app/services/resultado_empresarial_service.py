@@ -18,6 +18,7 @@ def compor_resultado_empresarial(empresa_id: int, resultado_xml: dict, resultado
         "oportunidades": deepcopy(rico.get("oportunidades")),
         "creditos_detectados": deepcopy(rico.get("creditos_detectados")),
         "risco_tributario": deepcopy(rico.get("risco_tributario")),
+        "inteligencia_capturas": deepcopy(rico.get("inteligencia_capturas")),
         "resultados_engines": deepcopy(rico.get("resultados_engines")),
         "comparativo_regime": deepcopy(rico.get("comparativo_regime")),
         "context_flags": {

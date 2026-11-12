@@ -1,3 +1,4 @@
+from copy import deepcopy
 from sqlalchemy import func
 from datetime import datetime
 from app.models import (
@@ -201,6 +202,7 @@ class InsightEngine:
                 relatorio_analise_id = relatorio.id
 
         insights = []
+        capturas_inteligencia = {}
 
         context = self._montar_contexto_engines(empresa_id)
 
@@ -237,7 +239,7 @@ class InsightEngine:
         )
 
         insights.extend(
-            self._analisar_ranking_restituicao(empresa_id)
+            self._analisar_ranking_restituicao(empresa_id, capturas=capturas_inteligencia)
         )
 
         insights.extend(prever_impacto_st(self.db, empresa_id))
@@ -250,9 +252,9 @@ class InsightEngine:
 
         insights.extend(self._analisar_oportunidades_preditivas(empresa_id))
 
-        insights.extend(self._analisar_ranking_estrategico(empresa_id))
+        insights.extend(self._analisar_ranking_estrategico(empresa_id, capturas=capturas_inteligencia))
 
-        insights.extend(self._analisar_impacto_financeiro(empresa_id))
+        insights.extend(self._analisar_impacto_financeiro(empresa_id, capturas=capturas_inteligencia))
 
         self.db.query(Insight).filter(
             Insight.empresa_id == empresa_id,
@@ -300,6 +302,13 @@ class InsightEngine:
         score = calcular_score_global_tributario(self.db, empresa_id)
         risco = calcular_risco_tributario(self.db, empresa_id)
         maturidade = calcular_maturidade_tributaria(self.db, empresa_id)
+        capturas_inteligencia["score_tributario"] = deepcopy(score)
+        capturas_inteligencia["maturidade"] = deepcopy(maturidade)
+        inteligencia_capturas = {
+            "empresa_id": empresa_id,
+            "relatorio_id": relatorio_analise_id,
+            "dados": capturas_inteligencia,
+        }
         registrar_snapshot_inteligencia(
             self.db,
             empresa_id,
@@ -418,6 +427,7 @@ class InsightEngine:
                 "oportunidades": oportunidades,
                 "creditos_detectados": creditos_detectados,
                 "risco_tributario": risco,
+                "inteligencia_capturas": deepcopy(inteligencia_capturas),
                 "resultados_engines": resultados_engines_enriquecidos,
                 "context_flags": context_flags_final,
                 "decomposicao_impacto": decomp,
@@ -434,6 +444,7 @@ class InsightEngine:
 
         return {
             "empresa_id": empresa_id,
+            "inteligencia_capturas": deepcopy(inteligencia_capturas),
             "oportunidades": oportunidades,
             "creditos_detectados": creditos_detectados,
             "risco_tributario": risco,
@@ -443,9 +454,11 @@ class InsightEngine:
             "decomposicao_impacto": decomp,
         }
 
-    def _analisar_impacto_financeiro(self, empresa_id: int):
+    def _analisar_impacto_financeiro(self, empresa_id: int, *, capturas: dict | None = None):
         """Seleciona top 5 impactos financeiros e transforma em insights estruturados."""
         impactos = calcular_impacto_financeiro(self.db, empresa_id)
+        if capturas is not None:
+            capturas["impacto_financeiro"] = deepcopy(impactos)
         insights = []
         for item in impactos[:5]:
             insights.append({
@@ -456,9 +469,11 @@ class InsightEngine:
             })
         return insights
 
-    def _analisar_ranking_estrategico(self, empresa_id: int):
+    def _analisar_ranking_estrategico(self, empresa_id: int, *, capturas: dict | None = None):
         """Transforma o ranking estratégico em insights consumíveis pela plataforma."""
         ranking = gerar_ranking_estrategico(self.db, empresa_id)
+        if capturas is not None:
+            capturas["ranking_estrategico"] = deepcopy(ranking)
         insights = []
         for item in ranking[:5]:
             insights.append({
@@ -878,8 +893,10 @@ class InsightEngine:
 
         return insights
 
-    def _analisar_ranking_restituicao(self, empresa_id: int):
+    def _analisar_ranking_restituicao(self, empresa_id: int, *, capturas: dict | None = None):
         ranking = gerar_ranking_restituicao(self.db, empresa_id)
+        if capturas is not None:
+            capturas["ranking_restituicao"] = deepcopy(ranking)
         insights = []
         for item in ranking[:5]:
             if item["restituicao_estimada"] > 0:

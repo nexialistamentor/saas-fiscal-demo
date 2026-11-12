@@ -152,6 +152,14 @@ def test_insight_engine_writer_persiste_empresa_tax_verificavel_sem_expor_proven
     }
     assert retorno == {
         "empresa_id": empresa_id,
+        "inteligencia_capturas": {
+            "empresa_id": empresa_id,
+            "relatorio_id": 991,
+            "dados": {
+                "score_tributario": {"score_global_tributario": 87.5},
+                "maturidade": {"nivel_maturidade": "alto"},
+            },
+        },
         "oportunidades": [],
         "creditos_detectados": [],
         "risco_tributario": {"nivel_risco": "baixo"},
