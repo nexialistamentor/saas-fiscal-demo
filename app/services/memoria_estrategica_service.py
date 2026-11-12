@@ -54,5 +54,3 @@ def registrar_snapshot_inteligencia(
             "criado_em": datetime.utcnow()
         }
     )
-
-    db.commit()

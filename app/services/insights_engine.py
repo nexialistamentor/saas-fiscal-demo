@@ -182,7 +182,7 @@ class InsightEngine:
             "context_flags": flags,
         }
 
-    def gerar_insights_empresa(self, empresa_id: int, relatorio_analise_id: int | None = None):
+    def gerar_insights_empresa(self, empresa_id: int, relatorio_analise_id: int | None = None, *, commit: bool = True):
 
         inicio = datetime.utcnow()
         relatorio = None
@@ -430,7 +430,8 @@ class InsightEngine:
                 relatorio.resultado_json
             )
 
-        self.db.commit()
+        if commit:
+            self.db.commit()
 
         return {
             "empresa_id": empresa_id,

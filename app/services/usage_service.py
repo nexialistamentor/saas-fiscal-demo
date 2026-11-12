@@ -69,7 +69,7 @@ def _obter_ou_criar_uso(db, empresa_id: int) -> UsoPlataforma:
     return uso
 
 
-def incrementar_uso_analise(db, empresa_id: int | None, xmls: int = 1) -> None:
+def incrementar_uso_analise(db, empresa_id: int | None, xmls: int = 1, *, commit: bool = True) -> None:
     """
     Incrementa contadores de uso após conclusão de análise.
     empresa_id=None: não registra uso.
@@ -81,4 +81,5 @@ def incrementar_uso_analise(db, empresa_id: int | None, xmls: int = 1) -> None:
     uso = _obter_ou_criar_uso(db, empresa_id)
     uso.analises_mes += 1
     uso.xmls_processados += xmls
-    db.commit()
+    if commit:
+        db.commit()

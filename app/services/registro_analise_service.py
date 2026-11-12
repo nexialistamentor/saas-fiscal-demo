@@ -59,6 +59,7 @@ def finalizar_registro_analise(
     total_alertas: int | None = None,
     score_resultante: float | None = None,
     resultado_json: dict | None = None,
+    commit: bool = True,
 ):
     """Atualiza registro com resultado final da execução."""
     rel = db.query(RelatorioAnalise).filter(RelatorioAnalise.id == relatorio_id).first()
@@ -77,7 +78,8 @@ def finalizar_registro_analise(
     if resultado_json is not None:
         rel.resultado_json = resultado_json
         rel.fingerprint = fingerprint_resultado_json(resultado_json)
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def contar_alertas_empresa(db, empresa_id: int, relatorio_id: int | None = None) -> int:
@@ -198,71 +200,79 @@ def executar_e_registrar_analise_xml(
                 }
         raise
 
-    resultado_insights = None
-    if empresa_id:
-        try:
-            from app.services.insights_engine import InsightEngine
+    try:
+        resultado_insights = None
+        if empresa_id:
+            try:
+                from app.services.insights_engine import InsightEngine
 
-            engine = InsightEngine(db)
-            resultado_insights = engine.gerar_insights_empresa(
-                empresa_id=empresa_id,
-                relatorio_analise_id=rel.id,
-            )
-        except Exception:
-            logger.exception(
-                "Falha ao gerar insights (InsightEngine): empresa_id=%s relatorio_analise_id=%s",
-                empresa_id,
-                rel.id,
-            )
+                engine = InsightEngine(db)
+                resultado_insights = engine.gerar_insights_empresa(
+                    empresa_id=empresa_id,
+                    relatorio_analise_id=rel.id,
+                    commit=False,
+                )
+            except Exception:
+                db.rollback()
+                logger.exception(
+                    "Falha ao gerar insights (InsightEngine): empresa_id=%s relatorio_analise_id=%s",
+                    empresa_id,
+                    rel.id,
+                )
 
-    score_resultante = None
-    if empresa_id:
-        try:
-            score_dict = calcular_score_global_tributario(db, empresa_id)
-            s = score_dict.get("score_global_tributario")
-            if s is not None:
-                score_resultante = round(float(s), 2)
-        except Exception:
-            logger.exception(
-                "Falha ao calcular score global: empresa_id=%s",
-                empresa_id,
-            )
+        score_resultante = None
+        if empresa_id:
+            try:
+                score_dict = calcular_score_global_tributario(db, empresa_id)
+                s = score_dict.get("score_global_tributario")
+                if s is not None:
+                    score_resultante = round(float(s), 2)
+            except Exception:
+                logger.exception(
+                    "Falha ao calcular score global: empresa_id=%s",
+                    empresa_id,
+                )
 
-    total_alertas = contar_alertas_empresa(db, empresa_id) if empresa_id else 0
+        total_alertas = contar_alertas_empresa(db, empresa_id) if empresa_id else 0
 
-    if empresa_id:
-        resultado_final = compor_resultado_empresarial(empresa_id, resultado, resultado_insights)
-        producer_id = "app.services.resultado_empresarial_service.compor_resultado_empresarial"
-        if documento_fiscal is not None:
-            if "_enterprise_xml_evidence" in resultado_final:
-                raise ValueError("P103B_XML_EVIDENCE_KEY_ALREADY_PRESENT")
-            resultado_final["_enterprise_xml_evidence"] = construir_vinculo_documento_relatorio(
-                xml_bytes,
-                empresa_id=empresa_id,
-                relatorio_id=rel.id,
-                documento=documento_fiscal,
-                xml_chave=xml_chave,
-            )
-    else:
-        resultado_final = resultado
-        producer_id = "app.services.analysis_orchestrator.executar_analise_xml"
+        if empresa_id:
+            resultado_final = compor_resultado_empresarial(empresa_id, resultado, resultado_insights)
+            producer_id = "app.services.resultado_empresarial_service.compor_resultado_empresarial"
+            if documento_fiscal is not None:
+                if "_enterprise_xml_evidence" in resultado_final:
+                    raise ValueError("P103B_XML_EVIDENCE_KEY_ALREADY_PRESENT")
+                resultado_final["_enterprise_xml_evidence"] = construir_vinculo_documento_relatorio(
+                    xml_bytes,
+                    empresa_id=empresa_id,
+                    relatorio_id=rel.id,
+                    documento=documento_fiscal,
+                    xml_chave=xml_chave,
+                )
+        else:
+            resultado_final = resultado
+            producer_id = "app.services.analysis_orchestrator.executar_analise_xml"
 
-    resultado_persistido = selar_resultado_nao_mei(
-        resultado_final,
-        producer_id=producer_id,
-    )
+        resultado_persistido = selar_resultado_nao_mei(
+            resultado_final,
+            producer_id=producer_id,
+        )
 
-    finalizar_registro_analise(
-        db,
-        rel.id,
-        status="erro" if resultado.get("dados_fiscais", {}).get("erro") else "ok",
-        tempo_execucao=tempo,
-        total_alertas=total_alertas,
-        score_resultante=score_resultante,
-        resultado_json=resultado_persistido,
-    )
-    incrementar_uso_analise(db, empresa_id)
-    db.refresh(rel)
+        finalizar_registro_analise(
+            db,
+            rel.id,
+            status="erro" if resultado.get("dados_fiscais", {}).get("erro") else "ok",
+            tempo_execucao=tempo,
+            total_alertas=total_alertas,
+            score_resultante=score_resultante,
+            resultado_json=resultado_persistido,
+            commit=False,
+        )
+        incrementar_uso_analise(db, empresa_id, commit=False)
+        db.commit()
+        db.refresh(rel)
+    except Exception:
+        db.rollback()
+        raise
     return rel, resultado_final
 
 def executar_circuito_enterprise_01(
