@@ -41,10 +41,27 @@ SQLite, sem escrita no `test.db`. Verifica o registo PA, a diferença entre
 cadastro e autoridade, o bloqueio no resolvedor já existente, o isolamento
 jurisdicional, a vigência e a data explícita.
 
-**Prova pendente:** execução da suíte relevante e da catraca anti-duplicação
-no ambiente Windows com o `test.db` restaurado. Os commits remotos são
-artefactos de entrega para essa verificação, não constituem PASS dos testes.
-Até à saída verificável, não declarar o fecho técnico validado.
+**Prova executada no Windows em 2026-11-12** (saída do operador,
+`C:\\dev\\saas-fiscal-demo-a1`, `.venv-release`): `python -m pytest -q`
+sobre `test_jurisdicao_normativa_fase1_pa.py`,
+`test_enterprise_b03_item_reconciliation.py`,
+`test_empresarial_normative_key.py` e
+`test_l3_normative_resolution_invariants.py`:
+**72 passed, 1 warning, 0 failed (5.55s)**.
+
+Catraca executada no mesmo ambiente:
+`python tools\\check_duplicacao.py --repo C:\\dev\\saas-fiscal-demo-a1
+--registro docs\\REGISTRO_CANONICO.json`:
+**OK: nenhuma duplicacao nao declarada encontrada (cobertura completa)**.
+O aviso `SyntaxWarning` em `danfe_pdf_adapter.py` não reprovou a catraca.
+O aviso `StarletteDeprecationWarning` também não reprovou a suíte.
+
+**Fecho técnico desta Fase 1 no âmbito ratificado: GREEN** para seleção
+jurisdicional com distinção cadastro/autoridade e proteção fail-closed.
+Não foi apresentado hash do `test.db` antes/depois do conjunto de testes;
+portanto, uma prova independente de identidade de bytes do banco não está
+documentada nesta execução. Os seis testes próprios usam conexão read-only.
+Nenhum merge ou deploy integra este fecho.
 
 O teste positivo com autoridade normativa verificada não integra o critério
 de fecho desta Fase 1: a portaria identificável não consta do dado real.
