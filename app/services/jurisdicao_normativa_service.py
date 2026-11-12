@@ -16,7 +16,7 @@ _USO = "icms_st_mva"
 _AVISO_SEM_PROVA = "cobertura normativa não comprovada"
 
 
-def selecionar_norma_por_jurisdicao(*, db, empresa, ncm: str, data_referencia: date) -> dict:
+def selecionar_norma_por_jurisdicao(*, db, empresa, uf_operacao: str, ncm: str, data_referencia: date) -> dict:
     """Lê a UF da empresa e seleciona uma norma por UF/NCM/data.
 
     O objecto retornado reaproveita as chaves de metadados ``scope``,
@@ -27,7 +27,9 @@ def selecionar_norma_por_jurisdicao(*, db, empresa, ncm: str, data_referencia: d
     Norma só é liberada quando o resolvedor fiscal existente autoriza
     integralmente e a fonte legal está explicitamente identificada.
     """
-    uf_bruta = getattr(empresa, "uf", None)
+    # Nunca inferir jurisdicao de empresa.uf, uf_emit ou uf_dest.
+    # A escolha da UF operacional pertence exclusivamente ao chamador.
+    uf_bruta = uf_operacao
     uf = uf_bruta.strip().upper() if isinstance(uf_bruta, str) else ""
     ncm_norm = ncm.strip() if isinstance(ncm, str) else ""
 

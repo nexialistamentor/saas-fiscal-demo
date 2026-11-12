@@ -57,6 +57,7 @@ def test_pa_regra_real_cadastrada_sem_fonte_identificada(db):
 def test_pa_encontrada_mas_autoridade_nao_comprovada(db):
     resposta = selecionar_norma_por_jurisdicao(
         db=db, empresa=SimpleNamespace(uf="PA", municipio=None),
+        uf_operacao="PA",
         ncm=_NCM_PA, data_referencia=_DATA,
     )
     assert resposta["regra_cadastrada"] is True
@@ -93,6 +94,7 @@ def test_uf_sem_regra_nao_recebe_norma_de_pa(db):
     ).scalar_one() == 0
     resposta = selecionar_norma_por_jurisdicao(
         db=db, empresa=SimpleNamespace(uf="SP", municipio=None),
+        uf_operacao="SP",
         ncm=_NCM_PA, data_referencia=_DATA,
     )
     assert resposta["estado"] == "COBERTURA_NORMATIVA_NAO_COMPROVADA"
@@ -108,7 +110,7 @@ def test_uf_sem_regra_nao_recebe_norma_de_pa(db):
 
 def test_pa_fora_da_vigencia_nao_e_promovida(db):
     resposta = selecionar_norma_por_jurisdicao(
-        db=db, empresa=SimpleNamespace(uf="PA"),
+        db=db, empresa=SimpleNamespace(uf="PA"), uf_operacao="PA",
         ncm=_NCM_PA, data_referencia=date(2023, 12, 31),
     )
     assert resposta["regra_cadastrada"] is False
@@ -118,9 +120,45 @@ def test_pa_fora_da_vigencia_nao_e_promovida(db):
 
 def test_chave_sem_data_explicitamente_bloqueada(db):
     resposta = selecionar_norma_por_jurisdicao(
-        db=db, empresa=SimpleNamespace(uf="PA"),
+        db=db, empresa=SimpleNamespace(uf="PA"), uf_operacao="PA",
         ncm=_NCM_PA, data_referencia=None,
     )
     assert resposta["estado"] == "COBERTURA_NORMATIVA_NAO_COMPROVADA"
     assert resposta["calculo_autorizado"] is False
     assert resposta["norma_resolvida"] is None
+
+
+
+def test_documento_pa_com_empresa_sem_uf_usa_uf_da_operacao(db):
+    empresa = SimpleNamespace(uf=None)
+    documento = SimpleNamespace(uf_emit="PA", uf_dest=None)
+    resposta = selecionar_norma_por_jurisdicao(
+        db=db, empresa=empresa, uf_operacao=documento.uf_emit,
+        ncm=_NCM_PA, data_referencia=_DATA,
+    )
+    assert resposta["scope"]["jurisdiction"] == "BR-PA"
+    assert resposta["scope"]["territory"]["uf"] == "PA"
+    assert resposta["regra_cadastrada"] is True
+    assert resposta["estado"] == "REGRA_CADASTRADA_AUTORIDADE_NAO_COMPROVADA"
+    assert resposta["motivo"] == "fonte_legal_ausente"
+    assert resposta["autoridade_normativa_verificada"] is False
+    assert resposta["calculo_autorizado"] is False
+    assert resposta["norma_resolvida"] is None
+
+
+def test_uf_operacao_obrigatoria_e_sem_fallback_para_empresa(db):
+    empresa = SimpleNamespace(uf="PA")
+    with pytest.raises(TypeError, match="uf_operacao"):
+        selecionar_norma_por_jurisdicao(
+            db=db, empresa=empresa, ncm=_NCM_PA, data_referencia=_DATA,
+        )
+    for uf_operacao in (None, "", "  "):
+        resposta = selecionar_norma_por_jurisdicao(
+            db=db, empresa=empresa, uf_operacao=uf_operacao,
+            ncm=_NCM_PA, data_referencia=_DATA,
+        )
+        assert resposta["scope"]["jurisdiction"] is None
+        assert resposta["regra_cadastrada"] is False
+        assert resposta["autoridade_normativa_verificada"] is False
+        assert resposta["calculo_autorizado"] is False
+        assert resposta["norma_resolvida"] is None
