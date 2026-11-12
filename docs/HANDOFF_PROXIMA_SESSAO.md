@@ -4,6 +4,44 @@ Escrito pela sessão Claude de 2026-11-11, para a próxima sessão (Claude ou
 GPT) continuar exatamente de onde parou. Leia isto por inteiro antes de
 tocar em qualquer ficheiro.
 
+## STATUS ATUALIZADO (sessao 2026-11-12, apos ratificacao de Miguel + GPT)
+
+Passos 1-3 do handoff original FECHADOS nesta sessao, com uma correcao de rumo:
+
+- Passo 2 original (mudar `origem` no catalogo `_CAPACIDADES` de 'pendente'
+  para 'engine'/'snapshot') estava ERRADO -- quebrou o teste canonico
+  `test_enterprise_integral_projection_contract.py::test_01_no_omission...`
+  (AssertionError: 'nao_apurado' != 'nao_integrado_ao_snapshot'). Revertido
+  via `git restore`. NAO mexer em `_CAPACIDADES` para este fim -- a ponte
+  B04 ja faz a fusao em runtime, sem depender do catalogo estatico.
+- Passo 3 (ligar a ponte ao consumidor real) FECHADO: `executar_circuito_
+  enterprise_01` (registro_analise_service.py) agora chama
+  `projetar_diagnostico_integral_icms_st` passando `g13_precomputado=g13`
+  (novo parametro na ponte, com validacao fail-closed de identidade:
+  empresa_id/relatorio_id/xml_sha256). O `i0` retornado pelo circuito e
+  agora o fundido, nao mais o I0 puro.
+- Commit: `1af67fe4` no branch `b04/integracao-g13-icms-st-20261111`.
+  Suite completa (117 testes relevantes + catraca anti-duplicacao) verde
+  antes do commit.
+- Teste canonico `tests/test_solveris_b01_circuit.py::test_01_...` foi
+  atualizado: contagem de `nao_integrado_ao_snapshot` cai de 33 para 30
+  (exatamente as 3 capacidades icms_st/mva/consistencia_fiscal que a
+  ponte agora preenche), com assercoes novas provando que ficam em
+  `informativo_sem_prova`/`autoridade_fiscal=False`, nunca `apurado`.
+
+## DIVIDA TECNICA IDENTIFICADA, NAO RESOLVIDA (fora do escopo desta sessao)
+
+G13 (`projetar_confronto_st_sujeito_g13`) ainda pode ser chamado MAIS DE
+UMA VEZ na mesma analise dentro de `executar_circuito_enterprise_01`:
+alem da chamada direta (agora reutilizada pela ponte B04), G14
+(`cotejar_enquadramento_normativo_operacao_g14`) tambem chama G13
+internamente, e G17 (`cotejar_cobertura_publicacao_g17`, cadeia
+G17->G16->G15->G14) aciona G14 de novo -- logo G13 pode rodar ate 3x por
+analise, independente do trabalho desta sessao. NAO foi corrigido aqui:
+exige mapear o grafo de chamadas G13-G17 por inteiro antes de qualquer
+mudanca de assinatura em G14/G15/G17 (risco maior do que o escopo do B04
+original). Tratar como handoff proprio, com ratificacao propria.
+
 ## Onde estamos agora
 
 - **Repo:** `C:\dev\saas-fiscal-demo-a1` (worktree de `C:\dev\saas-fiscal-demo`;
