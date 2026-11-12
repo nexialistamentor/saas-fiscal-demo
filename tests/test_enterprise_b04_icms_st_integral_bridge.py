@@ -47,6 +47,15 @@ def _g13_sucesso():
     }
 
 
+def _g13_sem_simulacao():
+    return {
+        "estado": "SEM_SIMULACAO_VINCULADA",
+        "itens_total": 2, "itens_simulados": 0,
+        "chave_nfe": "1" * 44, "documento_id": 10, "competencia_declarada": "2026-01",
+        "confronto_condicional_g12": {"estado": "G12_SEM_SIMULACAO"},
+    }
+
+
 class TestProjetarDiagnosticoIntegralIcmsSt(unittest.TestCase):
 
     @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_confronto_st_sujeito_g13")
@@ -90,6 +99,71 @@ class TestProjetarDiagnosticoIntegralIcmsSt(unittest.TestCase):
 
         self.assertEqual(r["icms_st_g13"]["estado"], "falha_motor")
         self.assertIsNone(r["icms_st_g13"]["itens_total"])
+
+    @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_confronto_st_sujeito_g13")
+    @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_diagnostico_integral_i2")
+    def test_sem_simulacao_nenhuma_vira_nao_apurado_nao_informativo(self, mock_i2, mock_g13):
+        """itens_simulados == 0: G12/G13 rodaram mas nao ha item com ST
+        aplicavel -- nao e 'informativo_sem_prova' (nao ha simulacao a
+        reportar), e sim 'nao_apurado' (ja no enum ESTADOS)."""
+        mock_i2.return_value = _cobertura_base()
+        mock_g13.return_value = _g13_sem_simulacao()
+
+        r = projetar_diagnostico_integral_icms_st(
+            db=DB_SENTINELA, authenticated_user_id=1, empresa_id=1,
+            relatorio_id=1, xml_bytes=b"x",
+        )
+        itens = {e["id"]: e for e in r["cobertura"]}
+
+        for nome in ("icms_st", "mva", "consistencia_fiscal"):
+            self.assertEqual(itens[nome]["estado"], "nao_apurado")
+            self.assertFalse(itens[nome]["autoridade_fiscal"])
+
+        self.assertEqual(r["icms_st_g13"]["itens_simulados"], 0)
+
+    @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_confronto_st_sujeito_g13")
+    @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_diagnostico_integral_i2")
+    def test_g13_precomputado_e_usado_sem_recalcular(self, mock_i2, mock_g13):
+        """Quando g13_precomputado e passado com identidade correta, a
+        ponte NAO deve chamar projetar_confronto_st_sujeito_g13 de novo."""
+        import hashlib
+        xml_bytes = b"conteudo_xml_teste"
+        sha = hashlib.sha256(xml_bytes).hexdigest()
+        mock_i2.return_value = _cobertura_base()
+        g13_pronto = dict(_g13_sucesso())
+        g13_pronto["empresa_id"] = 7
+        g13_pronto["relatorio_id"] = 99
+        g13_pronto["xml_sha256"] = sha
+
+        r = projetar_diagnostico_integral_icms_st(
+            db=DB_SENTINELA, authenticated_user_id=1, empresa_id=7,
+            relatorio_id=99, xml_bytes=xml_bytes,
+            g13_precomputado=g13_pronto,
+        )
+        mock_g13.assert_not_called()
+        itens = {e["id"]: e for e in r["cobertura"]}
+        self.assertEqual(itens["icms_st"]["estado"], "informativo_sem_prova")
+
+    @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_confronto_st_sujeito_g13")
+    @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_diagnostico_integral_i2")
+    def test_g13_precomputado_identidade_divergente_falha_fechado(self, mock_i2, mock_g13):
+        """g13_precomputado com empresa_id/relatorio_id/xml_sha256 errados
+        deve ser rejeitado (EnterpriseG13GateError), nunca usado as cegas."""
+        mock_i2.return_value = _cobertura_base()
+        g13_adulterado = dict(_g13_sucesso())
+        g13_adulterado["empresa_id"] = 999
+        g13_adulterado["relatorio_id"] = 1
+        g13_adulterado["xml_sha256"] = "0" * 64
+
+        r = projetar_diagnostico_integral_icms_st(
+            db=DB_SENTINELA, authenticated_user_id=1, empresa_id=1,
+            relatorio_id=1, xml_bytes=b"x",
+            g13_precomputado=g13_adulterado,
+        )
+        mock_g13.assert_not_called()
+        itens = {e["id"]: e for e in r["cobertura"]}
+        for nome in ("icms_st", "mva", "consistencia_fiscal"):
+            self.assertEqual(itens[nome]["estado"], "falha_motor")
 
     @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_confronto_st_sujeito_g13")
     @patch("app.services.enterprise_b04_icms_st_integral_bridge.projetar_diagnostico_integral_i2")

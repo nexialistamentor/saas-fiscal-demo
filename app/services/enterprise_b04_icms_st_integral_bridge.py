@@ -69,40 +69,48 @@ def projetar_diagnostico_integral_icms_st(
     saida = deepcopy(base)
     itens = {e["id"]: e for e in saida["cobertura"]}
 
-    if g13_precomputado is not None:
-        sha = hashlib.sha256(xml_bytes).hexdigest()
-        if (
-            type(g13_precomputado) is not dict
-            or g13_precomputado.get("empresa_id") != empresa_id
-            or g13_precomputado.get("relatorio_id") != relatorio_id
-            or not hmac.compare_digest(str(g13_precomputado.get("xml_sha256", "")), sha)
-        ):
-            raise EnterpriseG13GateError("B04_G13_PRECOMPUTADO_IDENTIDADE_DIVERGENTE")
-        g13 = g13_precomputado
-    else:
-        try:
+    try:
+        if g13_precomputado is not None:
+            sha = hashlib.sha256(xml_bytes).hexdigest()
+            if (
+                type(g13_precomputado) is not dict
+                or g13_precomputado.get("empresa_id") != empresa_id
+                or g13_precomputado.get("relatorio_id") != relatorio_id
+                or not hmac.compare_digest(str(g13_precomputado.get("xml_sha256", "")), sha)
+            ):
+                raise EnterpriseG13GateError("B04_G13_PRECOMPUTADO_IDENTIDADE_DIVERGENTE")
+            g13 = g13_precomputado
+        else:
             g13 = projetar_confronto_st_sujeito_g13(
                 db=db, authenticated_user_id=authenticated_user_id,
                 empresa_id=empresa_id, relatorio_id=relatorio_id, xml_bytes=xml_bytes,
             )
-        except EnterpriseG13GateError as exc:
-            causa = str(exc)
-            for nome in _COMPONENTES_ICMS_ST:
-                if nome in itens:
-                    itens[nome]["estado"] = "falha_motor"
-                    itens[nome]["causa"] = causa
-            saida["icms_st_g13"] = {
-                "estado": "falha_motor", "causa": causa,
-                "itens_total": None, "itens_simulados": None,
-            }
-            return saida
+    except EnterpriseG13GateError as exc:
+        causa = str(exc)
+        for nome in _COMPONENTES_ICMS_ST:
+            if nome in itens:
+                itens[nome]["estado"] = "falha_motor"
+                itens[nome]["causa"] = causa
+        saida["icms_st_g13"] = {
+            "estado": "falha_motor", "causa": causa,
+            "itens_total": None, "itens_simulados": None,
+        }
+        return saida
 
     # Nunca promover a apurado/autoridade_fiscal=True -- G13 e sempre
     # "simulacao condicional sem autoridade", qualquer que seja o estado.
+    # Quando G12/G13 rodam mas nao ha nenhum item com obrigacao ST simulada
+    # (itens_simulados == 0), nao existe simulacao para reportar -- usar
+    # 'nao_apurado' (ja no enum ESTADOS de enterprise_integral_projection.py)
+    # em vez de 'informativo_sem_prova', que erroneamente sugeriria haver
+    # uma simulacao condicional presente.
+    estado_destino = (
+        "nao_apurado" if g13.get("itens_simulados") == 0 else "informativo_sem_prova"
+    )
     for nome in _COMPONENTES_ICMS_ST:
         if nome not in itens:
             continue
-        itens[nome]["estado"] = "informativo_sem_prova"
+        itens[nome]["estado"] = estado_destino
         itens[nome]["causa"] = f"G13_{g13['estado']}"
         itens[nome]["autoridade_fiscal"] = False
         itens[nome]["resultado_bruto_nao_validado"] = deepcopy(g13)
