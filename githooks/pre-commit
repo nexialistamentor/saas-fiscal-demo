@@ -13,8 +13,24 @@ REGISTRO="docs/REGISTRO_CANONICO.json"
 SCRIPT="tools/check_duplicacao.py"
 
 if [ ! -f "$REPO_ROOT/$SCRIPT" ] || [ ! -f "$REPO_ROOT/$REGISTRO" ]; then
-    echo "AVISO (pre-commit): $SCRIPT ou $REGISTRO nao encontrados -- hook nao pode rodar, commit prossegue sem verificacao."
-    exit 0
+    echo ""
+    echo "=========================================================="
+    echo "COMMIT BLOQUEADO: catraca anti-duplicacao ausente"
+    echo "=========================================================="
+    echo "$SCRIPT ou $REGISTRO nao foram encontrados neste branch."
+    echo "Isto normalmente significa que o branch foi criado a partir"
+    echo "de uma base sem o commit a31ee81b (que introduziu a catraca"
+    echo "em B03) -- ou seja, este branch pode estar desatualizado em"
+    echo "relacao ao trabalho atual do projeto."
+    echo ""
+    echo "Confirme antes de continuar:"
+    echo "    git log --oneline -1 -- \$SCRIPT"
+    echo "    git merge-base HEAD origin/main"
+    echo ""
+    echo "Bypass deliberado (exige motivo documentado):"
+    echo "    git commit --no-verify"
+    echo ""
+    exit 1
 fi
 
 python "$REPO_ROOT/$SCRIPT" --repo "$REPO_ROOT" --registro "$REGISTRO"
