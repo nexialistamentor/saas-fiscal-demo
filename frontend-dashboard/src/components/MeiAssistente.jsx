@@ -19,7 +19,7 @@ export default function MeiAssistente({ empresaId }) {
   return (
     <section className="card" style={{ marginBottom: 20 }} aria-labelledby="mei-assistente-titulo">
       <h3 id="mei-assistente-titulo">Assistente de orientação MEI</h3>
-      <p>Orientação gratuita sobre limite e estimativa de DAS. Usa os dados que você informar; não consulta XMLs, débitos ou pagamentos da empresa e não comprova regularidade fiscal.</p>
+      <p>Orientação gratuita sobre limite e estimativa de DAS.</p>
       <form onSubmit={consultar} style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
         <label>O que deseja saber?
           <select value={tema} onChange={e => editar(setTema, e.target.value)} disabled={state.loading}>
