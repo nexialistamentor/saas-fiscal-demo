@@ -102,3 +102,12 @@ Cópia segura para ratificação:
 - PixMEI descrito como inscrição aberta, promessa de concessão, opt-in de aviso sem persistência/disparo, ou pedido de chave Pix.
 
 **Estado final:** investigação encerrada com decisões fail-closed; alterações operacionais **não iniciadas** e requerem contratos RED verdes, evidência normativa, autorização e ratificação visual antes de qualquer deploy.
+
+
+## 7. Gate orçamentário verificado — LOA 2027 ainda pendente (13/11/2026)
+
+Fonte oficial: Congresso Nacional, Orçamento 2027 — https://www.congressonacional.leg.br/web/orcamento/acompanhe/orcamento-anual/-/loa/2027
+
+Constatação em 13/11/2026: projeto **PLN 24/2026**, último estado **06/11/2026 — AGUARDANDO RECEBIMENTO DE EMENDAS**; as etapas de votação em plenário e sanção estão **não iniciadas**. A Lei Complementar 238/2026, art. 3º, condiciona a ampliação dos limites de receita bruta à consideração da renúncia de receita nas LOAs 2027–2029.
+
+**Consequência L3 vinculante:** não se demonstrou ainda o cumprimento da condição orçamentária para 2027. **Não trocar o valor constante do motor para R$ 110.000 em 2027 nem R$ 140.000 em 2028 por simples hardcode.** O texto do usuário pode explicar que a lei *prevê* os tetos, sujeitos à condição; no assistente fiscal, preservar bloqueio para ano sem autoridade completamente resolvida. A transição só se torna elegível para GREEN depois de localizar LOA sancionada, demonstrar a dotação/renúncia exigida, internalizar prova e vincular fonte+vigência+jurisdição+hash, com testes temporais; examinar também a LOA posterior para 2028.
