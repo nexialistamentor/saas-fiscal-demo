@@ -1,0 +1,58 @@
+{
+  "mission": "SOLVERIS.MEI-ANISTIA-001",
+  "date": "2026-11-13",
+  "releaseHead": "325af7b6472c03bafac5fcc2c396ae4c60af7887",
+  "environment": "disposable sandbox, SQLite, real FastAPI and Chromium Playwright",
+  "status": "GREEN",
+  "scenarios": [
+    {
+      "width": 1365,
+      "login": true,
+      "b1": true,
+      "b3": true,
+      "checkboxPersists": true,
+      "noUnexpectedWrites": true,
+      "noOverflow": true,
+      "noBrokenImages": true,
+      "noJavascriptErrors": true
+    },
+    {
+      "width": 390,
+      "login": true,
+      "b1": true,
+      "b3": true,
+      "checkboxPersists": true,
+      "noUnexpectedWrites": true,
+      "noOverflow": true,
+      "noBrokenImages": true,
+      "noJavascriptErrors": true
+    }
+  ],
+  "productionDeployment": "HOLD_VERCEL_402",
+  "screenshots": [
+    {
+      "name": "desktop-anistia.png",
+      "sha256": "e5e63dbe8b4a6c82e4998ecdc1878906cd82461d5803c012a4558893bb8bed2c"
+    },
+    {
+      "name": "desktop-pixmei.png",
+      "sha256": "5df2bae9912c45058c8fb30da1d2acbacadc1c0b5370b466e392326c8189ea3b"
+    },
+    {
+      "name": "desktop-viewport.png",
+      "sha256": "e40498527fa173d878dcd262936904597d18f07fb7a3eadfeecd9b8652bd3761"
+    },
+    {
+      "name": "mobile-anistia.png",
+      "sha256": "0214af0906223209d99b911df7d1c9ea6a3c8c459be64d7fa07da94c99292597"
+    },
+    {
+      "name": "mobile-pixmei.png",
+      "sha256": "001a526bd279fd4bb57b7dc1050c815cdc87bbd183bd7b8317d7144c312e5ce2"
+    },
+    {
+      "name": "mobile-viewport.png",
+      "sha256": "8a041f3a201e95c75697f729883581509b842ad84098d17c0c6397a02424aad2"
+    }
+  ]
+}
