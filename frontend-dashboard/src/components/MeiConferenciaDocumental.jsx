@@ -47,18 +47,17 @@ export default function MeiConferenciaDocumental({ empresaId }) {
   const resultado = state.empresaId === empresaId && state.anoCalendario === anoCalendario ? state.resultado : null
   return <section className="card" aria-labelledby="mei-conferencia-titulo" style={{ marginBottom: 20, overflowWrap: 'anywhere' }}>
     <h3 id="mei-conferencia-titulo">Documentos para conferência anual</h3>
-    <p>Este inventário não comprova a receita anual completa. Os valores dos documentos ainda não são receitas confirmadas. A conferência automática dessas pendências ainda não está disponível.</p>
-    <p>A comparação de CNPJ não comprova autenticidade nem confirma receita.</p>
-    <p>A natureza, a finalidade e os CFOPs são informações observadas no documento; sua apresentação não confirma receita nem situação fiscal.</p>
+    <p>A conferência automática dessas pendências ainda não está disponível.</p>
     <label>Ano de referência <input type="number" min="1900" max="9999" step="1" value={ano} onChange={event => { client.invalidar(); setState({ resultado: null, loading: false, erro: '' }); setAno(event.target.value) }} /></label>
     <button type="button" disabled={state.loading || !Number.isInteger(anoCalendario) || anoCalendario < 1900 || anoCalendario > 9999} onClick={() => client.carregar({ empresaId, anoCalendario, enabled: true })}>Atualizar documentos</button>
     {state.loading && <p role="status">Carregando documentos...</p>}
     {state.erro && <p role="alert">{state.erro}</p>}
     {resultado && <>
       <h4>Documentos do ano selecionado</h4>
-      {resultado.documentos_para_revisao.length ? <Documentos itens={resultado.documentos_para_revisao} observacoes={resultado.observacoes_emitente} operacoes={resultado.observacoes_operacao} /> : <p>Nenhum documento encontrado para este ano. Isso não significa receita anual zero.</p>}
+      {resultado.documentos_para_revisao.length ? <Documentos itens={resultado.documentos_para_revisao} observacoes={resultado.observacoes_emitente} operacoes={resultado.observacoes_operacao} /> : <p>Nenhum documento encontrado para este ano.</p>}
       <h4>Documentos sem período comprovado</h4>
       {resultado.documentos_sem_periodo.length ? <Documentos itens={resultado.documentos_sem_periodo} observacoes={resultado.observacoes_emitente} operacoes={resultado.observacoes_operacao} /> : <p>Nenhum documento sem data encontrado.</p>}
     </>}
+    <p className="mei-informative-note">*Documentos têm caráter informativo.</p>
   </section>
 }
