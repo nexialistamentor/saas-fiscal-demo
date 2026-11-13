@@ -5,6 +5,8 @@ import MeiHistoricoAlertas from "./components/MeiHistoricoAlertas"
 import MeiAssistente from "./components/MeiAssistente"
 import MeiConferenciaDocumental from "./components/MeiConferenciaDocumental"
 import MeiReceitasInformadas from "./components/MeiReceitasInformadas"
+import MeiAnistiaInformativa from "./components/MeiAnistiaInformativa"
+import MeiPixMeiPreparacao from "./components/MeiPixMeiPreparacao"
 import useMeiCompetenciaCheckout from "./hooks/useMeiCompetenciaCheckout"
 import useCpfDashboard from "./hooks/useCpfDashboard"
 import useEmpresaDashboard from "./hooks/useEmpresaDashboard"
@@ -1862,6 +1864,9 @@ function App() {
           </nav>
         </section>
       )}
+
+      {isExistingMei && <MeiAnistiaInformativa />}
+      {isExistingMei && <MeiPixMeiPreparacao key={idPerfil} empresaId={idPerfil} />}
 
       {tipoPerfil === "empresa" && idPerfil && (
         <div
