@@ -27,7 +27,8 @@
 **Preparação corretiva já efetuada:**
 - Projeto Vercel **dedicado** `solveris-mei` criado no time `nexialistamentors-projects`, ID `prj_QAjnb2VNcFLTFqF6kUHg4AaRT8xg`; domínio reservado `solveris-mei.vercel.app`; **sem deployment**, **sem integração Git automática**, **sem API configurada**, não público.
 - Rota futura preparada em **PR draft** [solveris-institucional#7](https://github.com/nexialistamentor/solveris-institucional/pull/7), altera `/mei` e `/mei/:path*` para `solveris-mei.vercel.app/mei`; **NÃO MESCLAR/ATIVAR** antes de frontend, backend e dados segregados, QA e transição segura.
-- A segregação Railway/BD e a migração/sessões dos MEIs existentes continuam por executar; **não criar serviços dispendiosos, replicar dados de clientes nem migrar o banco à revelia das provas e autoridades**.
+- Ambiente Railway **dedicado mas ainda vazio** `solveris-mei`: projeto `a276bd1b-f709-48d2-b3b1-c472513a9a6e`, environment `production` `d8fdbe52-d3fd-43dc-8537-3b2a6a334ad2`, privado, PR deploys desativados, **sem serviços/DB/credenciais/execuções**. Esse provisionamento não corrige o roteamento publicado nem aprova migrar dados.
+- A segregação efetiva Railway/BD, provisão de serviços e a migração/sessões dos MEIs existentes continuam por executar; **não criar serviços dispendiosos, replicar dados de clientes nem migrar o banco à revelia das provas e autoridades**.
 
 ## Gate 1 — RED (identidade imutável do binário)
 
