@@ -20,6 +20,14 @@ export default function MeiAssistente({ empresaId }) {
     <section className="card" style={{ marginBottom: 20 }} aria-labelledby="mei-assistente-titulo">
       <h3 id="mei-assistente-titulo">Assistente de orientação MEI</h3>
       <p>Orientação gratuita sobre limite e estimativa de DAS. Usa os dados que você informar; não consulta XMLs, débitos ou pagamentos da empresa e não comprova regularidade fiscal.</p>
+      <p className="mei-limite-futuro-nota" style={{ fontSize: 13 }}>
+        A Lei Complementar 238/2026 prevê R$ 110.000 para o ano-calendário 2027 e
+        R$ 140.000 a partir de 2028. Esses limites estão condicionados à consideração da renúncia de receita na lei orçamentária de 2027 a 2029 (art. 3º).
+        Sem comprovação dessa condição e fonte normativa internalizada, a SOLVERIS mantém bloqueada a consulta do limite futuro.
+        Este aviso não substitui a consulta de limite aos canais oficiais.{' '}
+        <a href="https://www2.camara.leg.br/legin/fed/leicom/2026/leicomplementar-238-21-outubro-2026-800071-publicacaooriginal-181678-pl.html"
+          target="_blank" rel="noopener noreferrer">Confira a lei oficial</a>.
+      </p>
       <form onSubmit={consultar} style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
         <label>O que deseja saber?
           <select value={tema} onChange={e => editar(setTema, e.target.value)} disabled={state.loading}>
