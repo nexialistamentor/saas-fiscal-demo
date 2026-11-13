@@ -1157,7 +1157,7 @@ function App() {
             </div>
             <img
               className="solveris-logo"
-              src={`${import.meta.env.BASE_URL}solveris-logo.jpg`}
+              src="/solveris-logo.jpg"
               alt="SOLVERIS"
             />
           </header>
