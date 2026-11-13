@@ -50,7 +50,7 @@ export default function MeiPixMeiPreparacao({ empresaId }) {
         com faturamento de até R$ 40.500 por ano. Isso ainda não constitui
         critério definitivo, pré-seleção nem aprovação.
       </p>
-      <p><strong>A SOLVERIS não processa inscrições nem garante acesso ao benefício.</strong>
+      <p><strong>A SOLVERIS não processa inscrições e não garante acesso ao benefício.</strong>
         Esta área é exclusivamente de preparação: não solicita dados bancários,
         não oferece vaga e não substitui os canais oficiais.</p>
       <h4>Organize-se para consultar as regras quando saírem</h4>
