@@ -1,0 +1,45 @@
+{
+  "url": "https://solveris.ia.br/mei",
+  "deployment": "dpl_rW17vyNoK8Bz64HtHNhXEsTKrQ4N",
+  "sha": "4a15c6d9f29c5677cf19856d6da33bd6e0530d2d",
+  "type": "public-dom-no-auth-mock",
+  "desktop": {
+    "status": "PASS",
+    "during": {
+      "heading": true,
+      "brand": true,
+      "dark": true,
+      "adExists": true,
+      "adHidden": true
+    },
+    "after": {
+      "login": true,
+      "adVisible": true,
+      "loaderGone": true,
+      "overflow": 0
+    },
+    "blockedRequests": [],
+    "jsErrors": []
+  },
+  "mobile": {
+    "status": "PASS",
+    "during": {
+      "heading": true,
+      "brand": true,
+      "dark": true,
+      "adExists": true,
+      "adHidden": true
+    },
+    "after": {
+      "login": true,
+      "adVisible": true,
+      "loaderGone": true,
+      "overflow": 0
+    },
+    "blockedRequests": [],
+    "jsErrors": []
+  },
+  "fiscalWrites": 0,
+  "financialWrites": 0,
+  "status": "GREEN_UI_ONLY"
+}
