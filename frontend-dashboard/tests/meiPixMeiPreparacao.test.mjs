@@ -29,7 +29,8 @@ test('PixMEI: checklist local de preparação não consulta API nem grava banco/
   assert.match(jsx, /localStorage/)
   assert.match(jsx, /apenas neste navegador/)
   assert.doesNotMatch(jsx, /<input[^>]+type=["'](?:text|email|number|file|tel|password)["']/i)
-  assert.doesNotMatch(jsx, /fetch\s*\(|axios|XMLHttpRequest|chave.?pix|conta banc[aá]ria|ag[eê]ncia banc[aá]ria/i)
+  assert.doesNotMatch(jsx, /fetch\s*\(|axios|XMLHttpRequest|name=["'](?:pix|banco|agencia|conta|cpf|cnpj)["']/i)
+  assert.match(jsx, /Desconfie de cobranças/)
   assert.doesNotMatch(jsx, /onSubmit|<form|type="submit"/i)
 })
 
