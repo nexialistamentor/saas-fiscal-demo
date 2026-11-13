@@ -23,6 +23,7 @@ import { chromium } from 'playwright';
 
 const PREVIEW = (process.env.MEI_SMOKE_URL || '').trim().replace(/\/$/, '');
 const PROD = (process.env.MEI_SMOKE_PROD_URL || 'https://www.fiscosoberano.com.br/mei').trim().replace(/\/$/, '');
+const SHARE_URL = process.env.MEI_SMOKE_SHARE_URL || '';
 const EMAIL = process.env.MEI_SMOKE_EMAIL || '';
 const PASSWORD = process.env.MEI_SMOKE_PASSWORD || '';
 const OUT = path.resolve(process.env.MEI_SMOKE_OUT || 'mei-smoke-artifacts');
@@ -32,6 +33,10 @@ let browser;
 
 if (!PREVIEW || !/^https:\/\/[^/]+\/mei$/.test(PREVIEW)) {
   console.error('MEI_SMOKE_URL deve ser uma URL HTTPS exata terminada em /mei.');
+  process.exit(2);
+}
+if (SHARE_URL && new URL(SHARE_URL).origin !== new URL(PREVIEW).origin) {
+  console.error('MEI_SMOKE_SHARE_URL deve apontar para o mesmo deployment do preview.');
   process.exit(2);
 }
 if (Boolean(EMAIL) !== Boolean(PASSWORD)) {
@@ -61,7 +66,7 @@ async function shot(page, profile, label) {
 }
 async function isVisible(locator) { return (await locator.count()) > 0 && await locator.first().isVisible(); }
 async function openReadOnly(page, url) {
-  const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+  const response = await page.goto(url === PREVIEW && SHARE_URL ? SHARE_URL : url, { waitUntil: 'domcontentloaded', timeout: 45000 });
   assert.equal(response?.status(), 200, 'HTTP deve ser 200');
   await page.locator('#root').waitFor({ state: 'visible', timeout: 20000 });
   await page.waitForTimeout(500);
