@@ -1399,3 +1399,47 @@ body{
 .app.solveris-existing-app .solveris-existing-diagnostic-heading p { color:#cbdcf0; }
 .app.solveris-existing-app [id^="mei-"] { scroll-margin-top:24px; }
 @media(max-width:480px){ .app.solveris-existing-app .solveris-existing-actions { flex-direction:column; } }
+
+/* SOLVERIS.MEI: verificação de sessão não deve parecer página vazia de publicidade. */
+.solveris-mei-session-loading {
+  box-sizing: border-box;
+  min-height: 100svh;
+  width: 100%;
+  background: #071320;
+  color: #e8f1fa;
+  display: grid;
+  place-items: center;
+  padding: clamp(20px, 5vw, 48px);
+}
+.solveris-mei-session-card {
+  box-sizing: border-box;
+  width: min(100%, 520px);
+  padding: clamp(24px, 5vw, 44px);
+  border-radius: 18px;
+  background: #0b2034;
+  border: 1px solid rgba(177, 205, 230, .3);
+  text-align: center;
+}
+.solveris-mei-session-brand { display: block; font-weight: 800; letter-spacing: .07em; }
+.solveris-mei-session-card h1 { color: #f4f7fb; font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.2; margin: 16px 0; letter-spacing: 0; }
+.solveris-mei-session-card p { color: #d5e3f1; line-height: 1.55; }
+.solveris-mei-session-spinner {
+  width: 32px; height: 32px; display: block; margin: 24px auto 0;
+  border: 3px solid rgba(175, 208, 255, .25); border-top-color: #afd0ff;
+  border-radius: 50%; animation: solveris-mei-session-spin 1s linear infinite;
+}
+@keyframes solveris-mei-session-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .solveris-mei-session-spinner { animation: none; border-color: #afd0ff; }
+}
+.solveris-mei-session-retry { margin-top: 20px; }
+.solveris-mei-session-retry button {
+  margin-top: 14px; min-height: 44px; border-radius: 9px; padding: 10px 18px;
+  background: #afd0ff; color: #071320; border: 1px solid #afd0ff;
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.solveris-mei-session-retry button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+/* O consentimento opcional permanece acessível ao concluir o carregamento. */
+#root > .solveris-mei-session-loading ~ aside[aria-label="Preferências de medição publicitária"] {
+  display: none;
+}
