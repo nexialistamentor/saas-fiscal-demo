@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const frontend = new URL('../src/components/MeiAssistente.jsx', import.meta.url)
-const backend = new URL('../../../app/services/assistente_service.py', import.meta.url)
-const engine = new URL('../../../app/services/tax_engines/mei_tax_engine.py', import.meta.url)
+const backend = new URL('../../app/services/assistente_service.py', import.meta.url)
+const engine = new URL('../../app/services/tax_engines/mei_tax_engine.py', import.meta.url)
 
 test('MEI: nota futura explicita teto previsto, vigência, LC238 e condição LOA', () => {
   const jsx = readFileSync(frontend, 'utf8')
