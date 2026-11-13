@@ -1157,7 +1157,7 @@ function App() {
             </div>
             <img
               className="solveris-logo"
-              src={`${import.meta.env.BASE_URL}solveris-logo.jpg`}
+              src="/solveris-logo.jpg"
               alt="SOLVERIS"
             />
           </header>
@@ -1853,8 +1853,8 @@ function App() {
         <section className="solveris-existing-overview" aria-labelledby="solveris-existing-title">
           <span className="solveris-opening-kicker">Seu negócio na SOLVERIS</span>
           <h2 id="solveris-existing-title">Meu MEI</h2>
-          <p>Encontre seus serviços sem preencher um simulador de abertura.</p>
-          <p className="solveris-existing-status">Situação cadastrada: {perfilAtual.status_empresa || "não informada"}. Os serviços oficiais dependem de validação dos requisitos.</p>
+          <p>Seu DAS, seus documentos e seu diagnóstico fiscal em um só lugar.</p>
+          <p className="solveris-existing-status">Situação cadastrada: {perfilAtual.status_empresa || "não informada"}.</p>
           <nav className="solveris-existing-actions" aria-label="Serviços do MEI">
             <a href="#mei-das-oficial">DAS oficial</a>
             <a href="#mei-documentos">Documentos fiscais</a>
@@ -2145,7 +2145,7 @@ function App() {
       {tipoPerfil !== "cpf" && podeUploadXML && (
         <section id={isExistingMei ? "mei-documentos" : undefined} className={isExistingMei ? "solveris-existing-files" : undefined}>
           {isExistingMei && (
-            <><h2>Documentos fiscais</h2><p>Se desejar uma análise fiscal, selecione seus arquivos XML. A contratação de relatórios é apresentada separadamente.</p></>
+            <><h2>Documentos fiscais</h2><p>Envie seu XML e veja o que ele revela sobre seu negócio.</p></>
           )}
           <input
             type="file"
@@ -2291,7 +2291,7 @@ function App() {
             !perfilAtual.cnpj ||
             !Number.isInteger(idPerfil) ||
             idPerfil <= 0 ? (
-              <p style={{ color: "#92400e", marginBottom: 0 }}>
+              <p style={{ color: "var(--text-secondary, #a8b7c8)", marginBottom: 0 }}>
                 Este perfil é apenas de orientação e não está vinculado a uma empresa real.
                 A emissão oficial não está disponível.
               </p>

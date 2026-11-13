@@ -89,8 +89,7 @@ export default function MeiReceitasInformadas({ empresaId, usuarioId }) {
   return <section className="card" aria-labelledby="mei-receitas-titulo"
     style={{ marginBottom: 20, padding: 16, overflowWrap: 'anywhere', minWidth: 0 }}>
     <h3 id="mei-receitas-titulo">Receitas sem nota informadas</h3>
-    <p>Registre receitas sem nota e acompanhe os valores por mês e categoria. Os totais refletem somente os lançamentos informados e não comprovam a receita anual completa.</p>
-    <p>Os documentos para conferência permanecem separados destes lançamentos. Este acompanhamento não confirma regularidade fiscal nem envia uma declaração.</p>
+    <p>Registre aqui o que você recebeu sem nota fiscal e acompanhe seu total do ano.</p>
     {recuperacao.erro && <p role="alert">A tentativa anterior não pôde ser recuperada. Confira o registro antes de criar outro lançamento.</p>}
     {pendente && <p role="status">Há um registro pendente de confirmação. Os dados foram preservados para recuperar a mesma tentativa.</p>}
     <form onSubmit={registrar} style={{ display: 'grid', gap: 12, minWidth: 0 }}>
@@ -137,7 +136,7 @@ export default function MeiReceitasInformadas({ empresaId, usuarioId }) {
         <ul>{resultado.receitas_incluidas.map(item => <li key={item.identidade_receita}>
           {item.data_receita} — {moeda(item.valor)} — {item.categoria === 'servicos' ? 'Serviços' : 'Comércio e indústria'} — informada sem nota.
         </li>)}</ul>
-      </> : <><p>Nenhuma receita informada para este ano.</p><p>Isso não significa faturamento anual zero.</p></>}
+      </> : <><p>Nenhuma receita informada para este ano.</p><p>Registre sua primeira receita no formulário acima e comece a acompanhar seu limite.</p></>}
       <h4>Acompanhamento mensal</h4>
       <ul>{resultado.meses.map(item => <li key={item.mes}>
         {meses[item.mes - 1]}: {item.estado === 'nao_informado' ? 'sem informação' : `${moeda(item.total_receitas_incluidas)} — parcial`}.

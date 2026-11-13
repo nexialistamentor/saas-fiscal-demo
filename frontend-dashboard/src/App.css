@@ -1398,4 +1398,33 @@ body{
 .app.solveris-existing-app .solveris-existing-diagnostic-heading h2 { color:#f4f7fb; }
 .app.solveris-existing-app .solveris-existing-diagnostic-heading p { color:#cbdcf0; }
 .app.solveris-existing-app [id^="mei-"] { scroll-margin-top:24px; }
+
+/* SOLVERIS.MEI-COPY-001: aviso único visível em todas as etapas da rota MEI. */
+.solveris-mei-legal-footer {
+  position: fixed;
+  z-index: 20;
+  inset: auto 0 0;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(177,205,230,.18);
+  background: #071320;
+  color: #a8b7c8;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.solveris-mei-theme.solveris-public-entry,
+.solveris-mei-theme.solveris-consent-page,
+.app.solveris-mei-theme { padding-bottom: 64px; }
+.app.solveris-existing-app .card .mei-informative-note {
+  font-size: 12px;
+  color: #a8b7c8;
+  margin-top: 16px;
+}
+@media (max-width: 480px) {
+  .solveris-mei-legal-footer { padding: 8px 12px; font-size: 10px; }
+  .solveris-mei-theme.solveris-public-entry,
+  .solveris-mei-theme.solveris-consent-page,
+  .app.solveris-mei-theme { padding-bottom: 80px; }
+}
 @media(max-width:480px){ .app.solveris-existing-app .solveris-existing-actions { flex-direction:column; } }
