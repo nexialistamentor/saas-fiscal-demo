@@ -75,6 +75,12 @@ function App() {
 
   const [mostrarSenhaRegisto, setMostrarSenhaRegisto] = useState(false)
   const [verificandoSessao, setVerificandoSessao] = useState(true)
+  const [sessaoDemorada, setSessaoDemorada] = useState(false)
+  useEffect(() => {
+    if (!verificandoSessao || !isMeiPublicJourney) return
+    const timeout = window.setTimeout(() => setSessaoDemorada(true), 12000)
+    return () => window.clearTimeout(timeout)
+  }, [verificandoSessao, isMeiPublicJourney])
   const [precisaAceitarTermos, setPrecisaAceitarTermos] = useState(false)
   const [erroTermos, setErroTermos] = useState("")
   const [precisaConsentir, setPrecisaConsentir] = useState(false)
@@ -1145,6 +1151,24 @@ function App() {
   }
 
   if (verificandoSessao) {
+    if (isMeiPublicJourney) {
+      return (
+        <main className="solveris-mei-session-loading" aria-busy="true">
+          <section className="solveris-mei-session-card" aria-live="polite">
+            <span className="solveris-mei-session-brand">SOLVERIS / MEI</span>
+            <span className="solveris-mei-session-spinner" aria-hidden="true" />
+            <h1>Estamos verificando seu acesso</h1>
+            <p>Aguarde enquanto confirmamos sua sessão com segurança.</p>
+            {sessaoDemorada && (
+              <div className="solveris-mei-session-retry" role="alert">
+                <p>A verificação está demorando mais que o esperado. Nenhuma operação fiscal foi iniciada por esta tela.</p>
+                <button type="button" onClick={() => window.location.reload()}>Tentar novamente</button>
+              </div>
+            )}
+          </section>
+        </main>
+      )
+    }
     return <p style={{ padding: 40 }}>Validando sessão...</p>
   }
 
