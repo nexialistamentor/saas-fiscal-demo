@@ -31,26 +31,18 @@ def prever_impacto_st(db: Session, empresa_id: int):
         uf = uf_do_documento(doc)
         ncm = (item.ncm or "").strip()
 
-        if uf:
-            regra = buscar_mva(
-                db,
-                uf,
-                item.ncm,
-                data_referencia=doc.data_emissao if doc else None,
-            )
-            if not regra:
-                continue
-            mva_dec = regra["mva"] / 100
-            aliquota_dec = regra["aliquota_interna"]
-        else:
-            res = resolver_aliquota_e_mva(
-                db,
-                "",
-                ncm,
-                data_referencia=doc.data_emissao if doc else None,
-            )
-            mva_dec = res["mva"]
-            aliquota_dec = res["aliquota"]
+        res = resolver_aliquota_e_mva(
+            db,
+            uf or "",
+            ncm,
+            data_referencia=doc.data_emissao if doc else None,
+        )
+
+        if not res.get("calculo_autorizado") or res.get("calculo_parcial"):
+            continue
+
+        mva_dec = res["mva"]
+        aliquota_dec = res["aliquota"]
 
         analise = calcular_impacto_st(
             valor_produto=valor,
