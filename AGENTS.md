@@ -60,3 +60,24 @@ GREEN só pode ser declarado quando, cumulativamente:
 Qualquer incompatibilidade deve terminar como `CONTRACT_CONFLICT`, sem adaptar o teste.
 
 A contagem de testes `passed` não constitui prova suficiente de GREEN quando o diff modifica o contrato observado.
+
+## 4. Gate Zero — Exequibilidade antes da construção e da ratificação
+
+**Regra preventiva transversal a todos os projetos, verticais, agentes e políticas SOLVERIS.**
+
+Um sistema rigoroso pode bloquear operações inválidas e também bloquear a sua própria operação legítima. O B02 demonstrou este risco: políticas imutáveis foram avançadas antes de se verificar a compatibilidade integral com os contratos SQL e com a produção real das evidências.
+
+**Nenhum projeto, componente governado ou nova versão de política deve avançar da conceção para a implementação ou ratificação sem um Gate Zero explícito**, proporcional ao risco e baseado nas fontes de autoridade efetivamente aplicáveis.
+
+Antes de construir ou ratificar, o responsável deve:
+1. Identificar o contrato de conclusão observável, os predicados e guardas aplicáveis, a fonte canónica e o ambiente correto (instalado versus candidato ou histórico).
+2. Produzir uma matriz de exequibilidade: cada requisito, origem dos dados, autoridade para atestá-lo, momento em que a evidência existe e forma de comprovação.
+3. Identificar contradições entre campos imutáveis e provas que só podem surgir em execução, dependências circulares, versões ou escopos incompatíveis e requisitos institucionais sem titular elegível.
+4. Demonstrar o percurso completo em ambiente seguro com ensaios positivos e negativos apropriados; quando a execução real depender de autoridade ainda ausente, marcar **BLOQUEADO**, não inventar provas nem declarar GREEN.
+5. Submeter a matriz e os bloqueios a revisão segregada efetiva antes da decisão humana competente. Duas IAs, duas sessões ou dois títulos funcionais não constituem automaticamente independência institucional.
+
+**STOP:** se um requisito não puder ser satisfeito ou provado, suspender promoção de versão, ratificação, ativação e execução protegida. Apresentar o conjunto de incompatibilidades conhecido e a proposta mínima única; não corrigir apenas o primeiro erro devolvido pelo trigger.
+
+Guia de execução e registo do incidente: [docs/GATE_ZERO_EXEQUIBILIDADE_PRE_CONSTRUCAO.md](docs/GATE_ZERO_EXEQUIBILIDADE_PRE_CONSTRUCAO.md).
+
+Este artigo acrescenta um controlo preventivo; não ratifica por si mesmo ADRs, não cria autoridades, não altera guardas, não autoriza COMMIT ou deploy e não reabre provas historicamente aceites.
