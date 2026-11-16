@@ -1,0 +1,19 @@
+﻿# SOLVERIS — B05 — Checklist consolidado para fecho sem ressalva (empresa_id=4, NCM 22021000, PA)
+
+**Última atualização:** 16/11/2026
+
+Esta é a lista única e viva do que falta para fechar B05 com cálculo real autorizado. Arquitetura e investigação dos itens abaixo estão documentadas nos ficheiros referenciados; isto aqui é só o estado.
+
+| # | Item | Estado | Referência |
+|---|---|---|---|
+| 1 | Dependência de revisor humano independente | Resolvido — removida, fundida na ratificação de Miguel | docs/FASE4_CORRECAO_P1_P4_SEM_REVISOR_20261116.md |
+| 2 | Natureza da assinatura digital do ato soberano | Resolvido — chave própria de Miguel, sem certificadora externa | docs/SOLVERIS_PRINCIPIO_SOBERANIA_SEM_TERCEIROS.md |
+| 3 | Como o motor de cálculo consome a autoridade promovida | Resolvido — arquitetura ratificada (I1-I5) | docs/FASE4_RATIFICACAO_I1_I5_MOTOR_CALCULO_20261116.md |
+| 4 | Infraestrutura persistente da base PostgreSQL segregada (hosting, credenciais) | Pendente — decisão ainda não pedida | — |
+| 5 | Serviço do escritor ADR-020 (ORM segregado, extração real dos decretos) | Pendente — implementação não iniciada | docs/FASE4_ETAPA3_TAREFAB_PROPOSTA_ESCRITOR_ADR020_20261113.md (arquitetura) |
+| 6 | Registo da cadeia de ativação (ActivationDecision/Execution/NormativeActivation/Generation) + proteção 0035/0036 como código de aplicação | Pendente — implementação não iniciada | docs/FASE4_RATIFICACAO_D2_FINAL_PROTECAO_APLICACAO_20261116.md (arquitetura) |
+| 7 | Confirmar se CEST e categoria de remetente existem/são extraíveis na ingestão de documentos (NFe XML) — `ItemFiscal` hoje não tem estes campos | Pendente — investigação ainda não aberta | achado em docs/FASE4_RATIFICACAO_I1_I5_MOTOR_CALCULO_20261116.md |
+| 8 | Preflight em Postgres descartável (Docker, regras já em vigor) para provar a base em 0024 na prática | Pendente — não iniciado | — |
+| 9 | Teste ponta-a-ponta com o caso real `empresa_id=4` em ambiente seguro, antes de produção | Pendente — depende de 4-8 | — |
+
+Nenhuma implementação, migração, conexão a base de dados ou escrita de código foi realizada em nenhum dos itens marcados "Resolvido" acima — resolvido significa decisão de arquitetura ratificada, não execução.
