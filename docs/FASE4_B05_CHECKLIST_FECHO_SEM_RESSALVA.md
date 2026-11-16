@@ -17,3 +17,20 @@ Esta é a lista única e viva do que falta para fechar B05 com cálculo real aut
 | 9 | Teste ponta-a-ponta com o caso real `empresa_id=4` em ambiente seguro, antes de produção | Pendente — depende de 4-8 | — |
 
 Nenhuma implementação, migração, conexão a base de dados ou escrita de código foi realizada em nenhum dos itens marcados "Resolvido" acima — resolvido significa decisão de arquitetura ratificada, não execução.
+
+## ATUALIZACAO 2026-11-16 — Item 7 reframed e parcialmente resolvido
+
+Ver docs/FASE4_B05_ACHADO_CATEGORIA_REMETENTE_MVA_DUPLA_20261116.md.
+
+O decreto PA ja custodiado (DOE_PA_20230307_EXTRA_35315.pdf) diferencia MVA
+por categoria do remetente: CEST 03.010.01 (refrigerante PET, NCM 2202.10.00)
+= 140% (industrial/importador/arrematante/engarrafador) ou 40%
+(distribuidor/atacadista). O seed de teste usa 40% sem nunca declarar a
+categoria assumida — risco de erro de ~100 pontos percentuais se o remetente
+real for industrial.
+
+Item 7 deixa de ser "investigar categoria via compra ou Consulta Tributaria"
+e passa a ser: implementar no motor o passo CNPJ do remetente -> CNAE
+(Receita Federal, publico, nacional, sem terceiro) -> categoria -> coluna de
+MVA correta. Isso e construcao, nao investigacao — a investigacao normativa
+esta encerrada.
