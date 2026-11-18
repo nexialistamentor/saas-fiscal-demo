@@ -1,0 +1,184 @@
+diff --git a/tests/recovery_v3_snapshot_guard.py b/tests/recovery_v3_snapshot_guard.py
+index 0790c450..87deb47c 100644
+--- a/tests/recovery_v3_snapshot_guard.py
++++ b/tests/recovery_v3_snapshot_guard.py
+@@ -13,6 +13,11 @@ from pathlib import Path
+ from unittest.mock import patch
+ 
+ TARGET = "app/services/enterprise_g12_st_item_reconciliation.py"
++G19_TEST_PATH = "tests/test_enterprise_g19_local_cas_custody.py"
++G19_TEST_V3_BLOB = "16904b0eaa38be105e94fe92723ec97dcd4be4f2"
++G19_TEST_V43_BLOB = "5207b5ac17c53435ebe62a100edd33f3f25ed3ad"
++G19_LEGACY_ASSERTION = b"self.assertEqual(hashlib.sha256(target.read_bytes()).hexdigest(), DIGEST)"
++G19_V43_ASSERTION = b"self.assertEqual(target.read_bytes(), PDF)"
+ SNAPSHOT = "tests/fixtures/enterprise_g12_v3_frozen_source.py.txt"
+ V4_MANIFEST = "docs/B03_B04_BASELINE_ESCOPO_G12_V4_20261118.json"
+ V41_MANIFEST = "docs/B03_B04_BASELINE_ESCOPO_G12_V41_20261118.json"
+@@ -35,6 +40,22 @@ def _git_blob(data: bytes) -> str:
+     ).hexdigest()
+ 
+ 
++def verify_g19_test_only_successor(repo: Path, original_git) -> bool:
++    """Prova por bytes a única alteração do teste, sem reescrever a origem V3."""
++    observed = original_git(repo, "hash-object", G19_TEST_PATH)
++    if observed == G19_TEST_V3_BLOB:
++        return False
++    if observed != G19_TEST_V43_BLOB:
++        raise AssertionError("V43_G19_TEST_BLOB_NAO_RATIFICADO")
++    live = (repo / G19_TEST_PATH).read_bytes()
++    if live.count(G19_V43_ASSERTION) != 1:
++        raise AssertionError("V43_G19_TEST_DELTA_NAO_UNICO")
++    original = live.replace(G19_V43_ASSERTION, G19_LEGACY_ASSERTION, 1)
++    if _git_blob(original) != G19_TEST_V3_BLOB:
++        raise AssertionError("V43_G19_TEST_HISTORICO_NAO_RECONSTITUIDO")
++    return True
++
++
+ def verify_frozen_v3_source(repo: Path) -> None:
+     raw = (repo / SNAPSHOT).read_bytes()
+     if _git_blob(raw) != V3_G12_BLOB:
+@@ -129,6 +150,7 @@ def historical_v3_test_context(gate, repo: Path):
+     verify_frozen_v3_source(repo)
+     original_git = gate.v2._git
+     current = original_git(repo, "hash-object", TARGET)
++    g19_test_only_succeeded = verify_g19_test_only_successor(repo, original_git)
+     if current == V3_G12_BLOB:
+         yield
+         return
+@@ -142,6 +164,10 @@ def historical_v3_test_context(gate, repo: Path):
+             # O retorno e o hash dos bytes V3 ja comprovados acima, nunca
+             # a identidade da candidata V4. O gate V4 mede esta separadamente.
+             return V3_G12_BLOB
++        if (g19_test_only_succeeded and root == repo
++                and args == ("hash-object", G19_TEST_PATH)):
++            # O conteúdo V3 foi reconstituído e conferido byte a byte acima.
++            return G19_TEST_V3_BLOB
+         return original_git(root, *args)
+ 
+     with patch.object(gate.v2, "_git", side_effect=historical_git):
+diff --git a/tests/test_enterprise_recovery_v43_delta_gate.py b/tests/test_enterprise_recovery_v43_delta_gate.py
+new file mode 100644
+index 00000000..d29b1f75
+--- /dev/null
++++ b/tests/test_enterprise_recovery_v43_delta_gate.py
+@@ -0,0 +1,120 @@
++"""V4.3: regressões negativas reais, sem substituir os contratos históricos."""
++from __future__ import annotations
++
++import ast
++import json
++from pathlib import Path
++import unittest
++from unittest.mock import patch
++
++from recovery_v3_snapshot_guard import (
++    G19_TEST_PATH,
++    G19_TEST_V43_BLOB,
++    verify_g19_test_only_successor,
++)
++from tests.test_solveris_mei_vercel_routing_contract_red import (
++    test_legacy_mei_route_is_not_reopened,
++)
++
++
++ROOT = Path(__file__).resolve().parents[1]
++B01 = ROOT / "app/services/registro_analise_service.py"
++
++
++def _b01_insight_guarded(source: str) -> list[ast.If]:
++    tree = ast.parse(source)
++    service = next(
++        node for node in tree.body
++        if isinstance(node, ast.FunctionDef)
++        and node.name == "executar_e_registrar_analise_xml"
++    )
++    result = []
++    for node in ast.walk(service):
++        if not (
++            isinstance(node, ast.If)
++            and isinstance(node.test, ast.Name)
++            and node.test.id == "empresa_id"
++        ):
++            continue
++        if any(
++            isinstance(child, ast.Call)
++            and isinstance(child.func, ast.Attribute)
++            and child.func.attr == "gerar_insights_empresa"
++            for child in ast.walk(node)
++        ):
++            result.append(node)
++    return result
++
++
++class TestRecoveryV43DeltaGate(unittest.TestCase):
++    def test_b01_guarda_externa_preserva_lineage_mei(self):
++        guards = _b01_insight_guarded(B01.read_text(encoding="utf-8"))
++        self.assertEqual(len(guards), 1)
++        self.assertTrue(any(
++            isinstance(child, ast.If)
++            and isinstance(child.test, ast.UnaryOp)
++            and isinstance(child.test.op, ast.Not)
++            and isinstance(child.test.operand, ast.Name)
++            and child.test.operand.id == "enterprise_opt_in"
++            for child in ast.walk(guards[0])
++        ))
++
++    def test_b01_condicao_boolop_antiga_reprovada(self):
++        original = B01.read_text(encoding="utf-8")
++        before = "    if empresa_id:\n        if not enterprise_opt_in:"
++        self.assertEqual(original.count(before), 1)
++        tampered = original.replace(
++            before,
++            "    if empresa_id and not enterprise_opt_in:\n        if not enterprise_opt_in:",
++            1,
++        )
++        self.assertEqual(_b01_insight_guarded(tampered), [])
++
++    def test_g19_sucessor_test_only_reconstitui_bytes_v3(self):
++        def observed(_repo, command, path):
++            self.assertEqual((command, path), ("hash-object", G19_TEST_PATH))
++            return G19_TEST_V43_BLOB
++
++        self.assertTrue(verify_g19_test_only_successor(ROOT, observed))
++
++    def test_g19_sucessor_sem_prova_falha_fechado(self):
++        with self.assertRaisesRegex(AssertionError, "BLOB_NAO_RATIFICADO"):
++            verify_g19_test_only_successor(ROOT, lambda *_: "0" * 40)
++
++        original = Path.read_bytes
++
++        def tampered_read(path):
++            data = original(path)
++            if path == ROOT / G19_TEST_PATH:
++                return data + b"\n# adulterado"
++            return data
++
++        with patch.object(Path, "read_bytes", tampered_read):
++            with self.assertRaisesRegex(AssertionError, "HISTORICO_NAO_RECONSTITUIDO"):
++                verify_g19_test_only_successor(
++                    ROOT, lambda *_: G19_TEST_V43_BLOB
++                )
++
++    def test_vercel_hold_impede_true_em_main_ou_branch(self):
++        original = Path.read_text
++        config = json.loads((ROOT / "frontend-dashboard/vercel.json").read_text())
++        flags = config["git"]["deploymentEnabled"]
++        self.assertFalse(flags["main"])
++        self.assertFalse(flags["recovery/enterprise-b00-b04-20261117"])
++
++        for branch in ("main", "recovery/enterprise-b00-b04-20261117"):
++            altered = json.loads(json.dumps(config))
++            altered["git"]["deploymentEnabled"][branch] = True
++
++            def read_config(path, *args, **kwargs):
++                if path == ROOT / "frontend-dashboard/vercel.json":
++                    return json.dumps(altered)
++                return original(path, *args, **kwargs)
++
++            with patch.object(Path, "read_text", read_config):
++                with self.assertRaises(AssertionError):
++                    test_legacy_mei_route_is_not_reopened()
++
++
++if __name__ == "__main__":
++    unittest.main()
