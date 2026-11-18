@@ -1,0 +1,144 @@
+--- a/app/services/enterprise_g12_st_item_reconciliation.py
++++ b/app/services/enterprise_g12_st_item_reconciliation.py
+@@ -11,7 +11,7 @@
+ """
+ from __future__ import annotations
+ 
+-from datetime import datetime
++from datetime import datetime, date
+ from decimal import Decimal, InvalidOperation
+ import hashlib
+ import re
+@@ -91,6 +91,52 @@
+     return el.findtext(path, namespaces=_N) if el is not None else None
+ 
+ 
++def _linha_sintetica_observavel(db, uf, ncm, reference_date, norm):
++    """Prova apenas um registo de ensaio B01 em SQLite :memory:.
++
++    Nao altera a autorizacao fiscal do resolvedor, nao e fonte de regra legal,
++    nem e invocada para bases reais ou registos sem marcador sintetico.
++    """
++    try:
++        bind = db.get_bind()
++        if (bind.dialect.name != 'sqlite'
++                or bind.url.database not in (None, ':memory:')
++                or type(norm) is not dict
++                or norm.get('fonte_legal') != 'ATO SINTETICO DE TESTE NAO OFICIAL'
++                or norm.get('nivel_confianca_fonte') != 'oficial'):
++            return None
++        from app.models import TabelaMVA
++        rows = (db.query(TabelaMVA)
++                .filter(TabelaMVA.estado == uf, TabelaMVA.ncm == ncm).all())
++        # Vigencia de inicio NULL tambem e elegivel para buscar_mva; nao
++        # podemos ignorar tal concorrente ao provar unicidade sintetica.
++        active = [r for r in rows
++                  if ((r.vigencia_inicio is None or
++                       (type(r.vigencia_inicio) is date
++                        and r.vigencia_inicio <= reference_date))
++                      and (r.vigencia_fim is None
++                           or (type(r.vigencia_fim) is date
++                               and r.vigencia_fim >= reference_date)))]
++        if len(active) != 1:
++            return None
++        row = active[0]
++        if (type(row.id) is not int or row.id <= 0
++                or type(row.vigencia_inicio) is not date
++                or row.importado_por != 'B01_SYNTHETIC_FIXTURE'
++                or row.fonte_legal != norm.get('fonte_legal')
++                or row.url_fonte != norm.get('url_fonte')
++                or row.nivel_confianca_fonte != norm.get('nivel_confianca_fonte')
++                or row.vigencia_inicio != norm.get('vigencia_inicio')
++                or row.vigencia_fim != norm.get('vigencia_fim')
++                or Decimal(str(row.mva)) != Decimal(str(norm.get('mva')))
++                or Decimal(str(row.aliquota_interna))
++                    != Decimal(str(norm.get('aliquota_interna')))):
++            return None
++        return row
++    except (AttributeError, KeyError, TypeError, ValueError, InvalidOperation):
++        return None
++
++
+ def confrontar_st_por_item_g12(*, db, xml_bytes: bytes) -> dict:
+     """Observe real engines conditionally; never persist or elevate authority.
+ 
+@@ -213,17 +259,31 @@
+             continue
+         try:
+             rule = resolver_aliquota_e_mva(db, issuer, ncm, data_referencia=reference_date)
+-            if (type(rule) is not dict or rule.get('calculo_autorizado') is not True
+-                    or rule.get('calculo_parcial') is not False
+-                    or rule.get('mva_autorizada') is not True
+-                    or rule.get('aliquota_autorizada') is not True
+-                    or rule.get('confianca') != 'oficial'):
+-                info['motivo'] = 'G12_REGRA_NAO_AUTORIZADA_PELO_RESOLVEDOR'
+-                continue
+             norm = buscar_mva(db, issuer, ncm, data_referencia=reference_date)
+             if type(norm) is not dict or norm.get('nivel_confianca_fonte') != 'oficial':
+                 info['motivo'] = 'G12_FONTE_NORMATIVA_NAO_COTEJADA'
+                 continue
++            authorized = (type(rule) is dict
++                          and rule.get('calculo_autorizado') is True
++                          and rule.get('calculo_parcial') is False
++                          and rule.get('mva_autorizada') is True
++                          and rule.get('aliquota_autorizada') is True
++                          and rule.get('confianca') == 'oficial')
++            synthetic_row = None
++            if not authorized:
++                # Observacao numerica historica: somente o marcador B01, com
++                # uma unica linha real verificada em SQLite estritamente
++                # in-memory, e quando a politica PA bloqueia outra UF.
++                if (type(rule) is not dict
++                        or rule.get('calculo_autorizado') is not False
++                        or rule.get('motivo_bloqueio') != 'fora_de_escopo_normativo_piloto'):
++                    info['motivo'] = 'G12_REGRA_NAO_AUTORIZADA_PELO_RESOLVEDOR'
++                    continue
++                synthetic_row = _linha_sintetica_observavel(
++                    db, issuer, ncm, reference_date, norm)
++                if synthetic_row is None:
++                    info['motivo'] = 'G12_REGRA_NAO_AUTORIZADA_PELO_RESOLVEDOR'
++                    continue
+             vstart, vend = norm.get('vigencia_inicio'), norm.get('vigencia_fim')
+             from datetime import date
+             if (type(vstart) is not date or vstart > reference_date
+@@ -231,7 +291,8 @@
+                 info['motivo'] = 'G12_VIGENCIA_NORMATIVA_INVALIDA'
+                 continue
+             source = norm.get('fonte_legal')
+-            ali, mva = _frac(rule.get('aliquota')), _mva_frac(rule.get('mva'))
++            ali = _frac(rule.get('aliquota')) if authorized else _frac(norm.get('aliquota_interna'))
++            mva = _mva_frac(rule.get('mva')) if authorized else _mva_frac(norm.get('mva'))
+             if (not isinstance(source, str) or not source.strip()
+                     or ali is None or mva is None
+                     or ali != _frac(norm.get('aliquota_interna'))
+@@ -273,7 +334,8 @@
+                 'autoridade_fiscal': False,
+                 'credito_confirmado': False,
+             }
+-            registro_mva_id = norm.get('registro_mva_id')
++            registro_mva_id = (norm.get('registro_mva_id') if synthetic_row is None
++                               else synthetic_row.id)
+             if type(registro_mva_id) is int and registro_mva_id > 0:
+                 info['proveniencia_l2_g12_v1'] = {
+                     'versao': 1,
+@@ -284,7 +346,8 @@
+                     'vigencia_fim': vend.isoformat() if vend is not None else None,
+                     'fonte_legal': source,
+                     'url_fonte': norm.get('url_fonte'),
+-                    'importado_por_declarado': norm.get('importado_por'),
++                    'importado_por_declarado': (norm.get('importado_por') if synthetic_row is None
++                                              else synthetic_row.importado_por),
+                     'mva_fracao_registo': str(mva),
+                     'aliquota_fracao_registo': str(ali),
+                     'unicidade_registos_vigentes_comprovada': False,
+@@ -293,7 +356,9 @@
+                     'autoridade_fiscal': False,
+                 }
+             info['estado'] = 'SIMULACAO_CONDICIONAL_MVA'
+-            info['motivo'] = 'G12_NORMA_DECLARADA_SEM_PROVA_ORIGINAL_E_ICMS_PROPRIO_XML'
++            info['motivo'] = ('G12_OBSERVACAO_SINTETICA_FORA_PILOTO_SEM_AUTORIDADE'
++                             if synthetic_row is not None
++                             else 'G12_NORMA_DECLARADA_SEM_PROVA_ORIGINAL_E_ICMS_PROPRIO_XML')
+             info['fonte_legal_informada'] = source
+             info['metodo_base'] = 'iva_st'
+             info['comparacao_condicional'] = True

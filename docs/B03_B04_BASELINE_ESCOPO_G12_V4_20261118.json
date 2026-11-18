@@ -1,0 +1,52 @@
+{
+  "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_G12_SCOPE_V4",
+  "GLOBAL_GREEN": false,
+  "parent_v3_manifest_blob": "15cec67dd76de676796d0957200a594820fe2565",
+  "preserved_v3_g12_blob": "7b70bd28af292dc8028d572336b80f22bac0a945",
+  "preserved_v3_gate_blob": "ef82eb97e7560bfc446c8daa8b4f8c067e3d0a77",
+  "original_b01_test_blob": "eb961ee500de8a3dee76c0a6e4c4b4be577367e5",
+  "candidate_g12_blob": "4a782490cf8fd6d6b9d2d6d7b801370cbe6e2ea0",
+  "product_patch_git_blob": "2fc4026b026cfe0036f40ca457c04a1a25bed931",
+  "extra_paths": [
+    "docs/B03_B04_BASELINE_ESCOPO_G12_V4_20261118.json",
+    "docs/B03_B04_EXECUCAO_G12_V4_20261118.md",
+    "docs/B03_B04_EXECUCAO_TEST_ONLY_V4_20261118.md",
+    "docs/B03_B04_PATCH_G12_V4_PRODUTO_20261118.patch",
+    "docs/B03_B04_PATCH_V4_GATE_TESTS_20261118.patch",
+    "docs/B03_B04_PATCH_V4_TEST_ONLY_20261118.patch",
+    "docs/B03_B04_STOP_B01_PR_VS_PILOTO_PA_20261118.md",
+    "docs/B03_B04_STOP_V4_CATRACA_G12_20261118.md",
+    "docs/HANDOFF_B03_B04_RECOVERY_V4_20261118.md",
+    "tests/fixtures/enterprise_g12_v3_frozen_source.py.txt",
+    "tests/recovery_v3_snapshot_guard.py",
+    "tests/test_enterprise_g12_synthetic_observation_v4_gate.py",
+    "tests/test_enterprise_recovery_scope_v4_gate.py",
+    "tests/test_enterprise_recovery_scope_v4_history_gate.py",
+    "tools/enterprise_recovery_test_gate_v4.py"
+  ],
+  "modified_v3_paths": [
+    "app/services/enterprise_g12_st_item_reconciliation.py",
+    "tests/test_enterprise_recovery_scope_v3_gate.py"
+  ],
+  "candidate_source_blobs": {
+    "tests/test_enterprise_recovery_scope_v3_gate.py": "3191ebb16662b6eb08cce45c85ddcaf05a6a71ae",
+    "tests/fixtures/enterprise_g12_v3_frozen_source.py.txt": "7b70bd28af292dc8028d572336b80f22bac0a945",
+    "tests/recovery_v3_snapshot_guard.py": "de2e72093b07ebb5575d85783361050ade5bcd09",
+    "tests/test_enterprise_recovery_scope_v4_history_gate.py": "c48c3548282b4746fea83cf58483fd74bb966293",
+    "tests/test_enterprise_g12_synthetic_observation_v4_gate.py": "867be6c5d3685b95f7c7ed3237ff158bb85d6bef",
+    "tests/test_enterprise_recovery_scope_v4_gate.py": "565c8ff12a992a9aceef84f4a0b79cac6fed0848",
+    "docs/B03_B04_PATCH_G12_V4_PRODUTO_20261118.patch": "2fc4026b026cfe0036f40ca457c04a1a25bed931"
+  },
+  "gate_self_blob": "0c6a5d9332a0c6185db8d5a5b557f6d9b3ac3f66",
+  "required_original_b01_b03_b04": 25,
+  "required_v2_atomic": 6,
+  "required_v3_g1_original": 22,
+  "required_v3_g1_coexistence": 8,
+  "required_v4_historical": 8,
+  "required_v4_g12_synthetic": 6,
+  "required_v4_gate": 7,
+  "ratification": "Miguel ratificou preservar PR/12119090 no teste original, nao converter em PA, isolar observacao sintetica e proibir ampliacao da autorizacao fiscal PA. Uso somente no branch de recuperacao, sem mexer no partilhado, MEI, migrations, main, deploy ou producao.",
+  "baseline_junit_sha256": "798a14e3a2c6c517dd179559395a12e7fc370cdb49eb2fa3bd674b1599523692",
+  "expected_outcome": "PASS_WITH_BASELINE_RED",
+  "status": "CANDIDATO_G12_V4_PENDENTE_TESTES_WINDOWS_NAO_GREEN"
+}
