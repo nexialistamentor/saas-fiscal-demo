@@ -1,0 +1,50 @@
+{
+  "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_G12_SCOPE_V42",
+  "GLOBAL_GREEN": false,
+  "parent_v411_manifest_blob": "9e83c45623c168c292fb1d8136db0a003f7ed8f0",
+  "parent_v411_gate_blob": "0ea401f454626e551ebf3880cc46553db594a521",
+  "preserved_v41_g12_blob": "13ef36fe50ed55086092ca81b3c5f7f2c4ec07ae",
+  "candidate_g12_blob": "8fb2559b093d2435f7395936cedb6f7ad4186ca3",
+  "preserved_rs_fixture_blob": "4d2fcf95db9156bbf286dfe0ecce1ece7dca7e7c",
+  "candidate_rs_fixture_blob": "70050471a5dddb25d4ac580fc4e79bacffa4fc3a",
+  "preserved_historical_guard_blob": "d4d04241bf34561951a4542fee9400f58cecc1f3",
+  "candidate_historical_guard_blob": "0790c450cc9426ac68ec764faae9bfb6cbaa2c42",
+  "original_b01_test_blob": "eb961ee500de8a3dee76c0a6e4c4b4be577367e5",
+  "extra_paths": [
+    "docs/B03_B04_BASELINE_ESCOPO_G12_V42_20261118.json",
+    "docs/B03_B04_EXECUCAO_G12_V42_20261118.md",
+    "docs/B03_B04_PATCH_G12_V42_PRODUTO_20261118.patch",
+    "docs/B03_B04_PATCH_V42_GATE_TESTS_20261118.patch",
+    "docs/B03_B04_RESULTADO_GATE_V42_20261118.json",
+    "docs/B03_B04_STOP_V411_FUNCIONAIS_G12_20261118.md",
+    "tests/test_enterprise_g12_g1_xml_observation_v42_contract.py",
+    "tests/test_enterprise_recovery_scope_v42_gate.py",
+    "tools/enterprise_recovery_test_gate_v42.py"
+  ],
+  "modified_v411_paths": [
+    "app/services/enterprise_g12_st_item_reconciliation.py",
+    "tests/recovery_v3_snapshot_guard.py",
+    "tests/test_enterprise_g12_xml_parser_v41_contract.py"
+  ],
+  "candidate_source_blobs": {
+    "docs/B03_B04_PATCH_G12_V41_PRODUTO_20261118.patch": "b2e2fa22ba27647e6fb08d3fb7333eff8f752247",
+    "docs/B03_B04_PATCH_G12_V42_PRODUTO_20261118.patch": "4a37c108a5a05cd86fa8426e554a421f575ee974",
+    "tests/recovery_v3_snapshot_guard.py": "0790c450cc9426ac68ec764faae9bfb6cbaa2c42",
+    "tests/test_enterprise_g12_xml_parser_v41_contract.py": "70050471a5dddb25d4ac580fc4e79bacffa4fc3a",
+    "tests/test_enterprise_recovery_scope_v41_gate.py": "f29e88d63c285abd60615c253b3dab65b214792d",
+    "tests/test_enterprise_recovery_v41_history_gate.py": "7823e4354bb73ae631f1695241f1756e0fdccdb5",
+    "tests/test_enterprise_recovery_scope_v411_gate.py": "f2d15f3ce343568db4fe8b62be51b4b0bd29d22f",
+    "tests/test_enterprise_g12_g1_xml_observation_v42_contract.py": "0c03c80b5516e7af878f004f723e0af050c5b941",
+    "tests/test_enterprise_recovery_scope_v42_gate.py": "9511678f6c4cec8bbb0a8f9de3ec73b3e9b09daf"
+  },
+  "gate_self_blob": "c64123bc41e666e7f3af7f4f8506475287ada093",
+  "required_v411_original_nodes": 73,
+  "required_v42_extra_nodes": 10,
+  "required_v42_total_nodes": 83,
+  "required_unittest_controls": 73,
+  "required_directed_functional_tests": 80,
+  "ratification": "Miguel ratificou a recuperacao integral B03/B04 sem trocar PR por PA. V4.2 repara somente a ponte G12 Enterprise -> G1 privado com marcador derivado de igualdade real XML-parser; RS exige PMPF apenas como tabela vazia do ensaio em memoria. Dois cenarios positivos diferentes, negativos de divergencia e marcador forjado. V2/V3/V4/V4.1/V4.1.1 congelados; B01 original, motor compartilhado, MEI, resolvedor, migrations e main intocados. Nenhuma autoridade fiscal ou publicacao.",
+  "baseline_junit_sha256": "798a14e3a2c6c517dd179559395a12e7fc370cdb49eb2fa3bd674b1599523692",
+  "expected_outcome": "PASS_WITH_BASELINE_RED",
+  "status": "CANDIDATO_G12_V42_PENDENTE_TESTES_WINDOWS_NAO_GREEN"
+}
