@@ -1,0 +1,44 @@
+--- a/app/services/enterprise_g12_st_item_reconciliation.py
++++ b/app/services/enterprise_g12_st_item_reconciliation.py
+@@ -91,6 +91,24 @@ def _text(el, path):
+     return el.findtext(path, namespaces=_N) if el is not None else None
+ 
+ 
++def _st_xml_parser_conciliado(group, parsed_item):
++    """Compara dois observadores do MESMO XML, sem qualquer fonte normativa.
++
++    Nao usa UF/NCM, ID, marcador de fixture, valor padrao ou autorizacao fiscal.
++    Exige pares monetarios de ICMS10 presentes nos dois leitores e identicos.
++    """
++    if type(parsed_item) is not dict:
++        return False
++    xml_base = _money(_text(group, 'n:vBCST'))
++    xml_st = _money(_text(group, 'n:vICMSST'))
++    parsed_base = _money(str(parsed_item.get('base_st')))
++    parsed_st = _money(str(parsed_item.get('valor_st')))
++    return (xml_base is not None and xml_base > 0
++            and xml_st is not None and xml_st >= 0
++            and parsed_base is not None and parsed_st is not None
++            and xml_base == parsed_base and xml_st == parsed_st)
++
++
+ def _linha_sintetica_observavel(db, uf, ncm, reference_date, norm):
+     """Prova apenas um registo de ensaio B01 em SQLite :memory:.
+ 
+@@ -252,10 +270,12 @@ def confrontar_st_por_item_g12(*, db, xml_bytes: bytes) -> dict:
+         if abs(expected_own - own_icms) > Decimal('0.01'):
+             info['motivo'] = 'G12_ICMS_PROPRIO_XML_INCOERENTE'
+             continue
+-        if (item.get('st_observado_xml') is not True
+-                or _money(str(item.get('base_st'))) is None
+-                or _money(str(item.get('valor_st'))) is None):
+-            info['motivo'] = 'G12_ST_NAO_OBSERVADO_XML'
++        # O parser partilhado devolve base_st e valor_st, mas NAO fornece a
++        # chave historica st_observado_xml. Requerer esse marcador fazia toda
++        # observacao real falhar antes do gate normativo. A reconciliacao
++        # generalizada verifica ambos os leitores sem presumir autoridade.
++        if not _st_xml_parser_conciliado(group, item):
++            info['motivo'] = 'G12_ST_XML_PARSER_AUSENTE_OU_DIVERGENTE'
+             continue
+         try:
+             rule = resolver_aliquota_e_mva(db, issuer, ncm, data_referencia=reference_date)
