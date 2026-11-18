@@ -1,0 +1,6 @@
+{
+  "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_GATE_V42",
+  "GLOBAL_GREEN": false,
+  "ENTERPRISE_RECOVERY_STATUS": "PENDING_WINDOWS",
+  "note": "Placeholder rastreado em Git; substituir apenas pelo recibo real do gate V4.2 apos suite global. Nenhuma aprovacao inferida."
+}
