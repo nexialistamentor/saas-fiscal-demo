@@ -1,0 +1,38 @@
+{
+  "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_G12_SCOPE_V411",
+  "GLOBAL_GREEN": false,
+  "parent_v41_manifest_blob": "a26572484cfac26b614b2bc9e63c1a70fd1b68b1",
+  "parent_v41_gate_blob": "74b503e795a2519074b63f3a621cdb31b77816b0",
+  "preserved_v41_history_test_blob": "7b12c0f3efd6a4c5baded068a885cff1ec8ed2ff",
+  "candidate_history_test_blob": "7823e4354bb73ae631f1695241f1756e0fdccdb5",
+  "candidate_g12_blob": "13ef36fe50ed55086092ca81b3c5f7f2c4ec07ae",
+  "extra_paths": [
+    "docs/B03_B04_BASELINE_ESCOPO_G12_V411_20261118.json",
+    "docs/B03_B04_EXECUCAO_G12_V411_20261118.md",
+    "docs/B03_B04_PATCH_V411_TEST_ONLY_20261118.patch",
+    "docs/B03_B04_STOP_V41_PATHLIB_WINDOWS_20261118.md",
+    "tests/test_enterprise_recovery_scope_v411_gate.py",
+    "tools/enterprise_recovery_test_gate_v411.py"
+  ],
+  "modified_v41_paths": [
+    "tests/test_enterprise_recovery_v41_history_gate.py"
+  ],
+  "candidate_source_blobs": {
+    "docs/B03_B04_PATCH_G12_V41_PRODUTO_20261118.patch": "b2e2fa22ba27647e6fb08d3fb7333eff8f752247",
+    "tests/recovery_v3_snapshot_guard.py": "d4d04241bf34561951a4542fee9400f58cecc1f3",
+    "tests/test_enterprise_g12_xml_parser_v41_contract.py": "4d2fcf95db9156bbf286dfe0ecce1ece7dca7e7c",
+    "tests/test_enterprise_recovery_scope_v41_gate.py": "f29e88d63c285abd60615c253b3dab65b214792d",
+    "tests/test_enterprise_recovery_v41_history_gate.py": "7823e4354bb73ae631f1695241f1756e0fdccdb5",
+    "tests/test_enterprise_recovery_scope_v411_gate.py": "f2d15f3ce343568db4fe8b62be51b4b0bd29d22f"
+  },
+  "gate_self_blob": "0ea401f454626e551ebf3880cc46553db594a521",
+  "required_v41_original_nodes": 70,
+  "required_v411_extra_nodes": 3,
+  "required_v411_total_nodes": 73,
+  "required_unittest_controls": 69,
+  "required_directed_functional_tests": 74,
+  "ratification": "Delta técnico V4.1.1 derivado da ratificação V4.1: corrigir apenas a nova prova de ausência de manifesto para pathlib no Windows; manter imutáveis V2/V3/V4/V4.1, G12 Enterprise, B01 PR original, resolvedor partilhado, MEI, migrations e main. STOP do Windows guardado em Git.",
+  "baseline_junit_sha256": "798a14e3a2c6c517dd179559395a12e7fc370cdb49eb2fa3bd674b1599523692",
+  "expected_outcome": "PASS_WITH_BASELINE_RED",
+  "status": "TEST_ONLY_V411_PENDENTE_WINDOWS_NAO_GREEN"
+}
