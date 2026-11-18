@@ -1,0 +1,16 @@
+diff --git a/tests/test_solveris_mei_vercel_routing_contract_red.py b/tests/test_solveris_mei_vercel_routing_contract_red.py
+index bb5ef798..f82c3797 100644
+--- a/tests/test_solveris_mei_vercel_routing_contract_red.py
++++ b/tests/test_solveris_mei_vercel_routing_contract_red.py
+@@ -11,7 +11,10 @@ def test_legacy_mei_route_is_not_reopened():
+     )
+ 
+     # Coordinated release hold established by 79207c0; routing cannot lift it.
+-    assert config["git"]["deploymentEnabled"] == {"main": False}
++    deployment_enabled = config["git"]["deploymentEnabled"]
++    assert isinstance(deployment_enabled, dict)
++    assert deployment_enabled.get("main") is False
++    assert all(value is False for value in deployment_enabled.values())
+     assert not any(
+         str(route.get("source", "")).rstrip("/") == "/mei"
+         or str(route.get("source", "")).startswith("/mei/")
