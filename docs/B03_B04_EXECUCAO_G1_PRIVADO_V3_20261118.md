@@ -12,6 +12,12 @@
 - Manifesto ratificado V2 **inalterado**: Git blob `4eafb57b917a3910ef873d0b8ca30145a0940b09`; extensão apenas em `docs/B03_B04_BASELINE_ESCOPO_G1_V3_20261118.json`.
 - Novo patch incremental: `docs/B03_B04_PATCH_G1_PRIVADO_V3_20261118.patch`. Não reaplicar V2.
 
+### Adendo V3.1 — leitura binária de blob Git em Windows
+
+O primeiro ensaio Windows identificou `G1_HISTORICAL_BLOB_DIVERGED` exclusivamente na catraca: o comando `git show` era lido com `text=True`, dependente da locale Windows, e depois recodificado antes do SHA. O blob Git original permanece inalterado. A correção V3.1 usa os **bytes exatos** do Git para SHA-1 e só descodifica UTF-8 depois de confirmar a identidade; não altera o G1 nem relaxa nenhuma asserção. O patch original V3 permanece intacto.
+
+**Se já aplicaste V3**, atualizar o branch documental e aplicar **somente** `docs/B03_B04_PATCH_G1_WINDOWS_BLOB_V31_20261118.patch`. Com o adendo passam a existir **39** controlos `test_enterprise_recovery*gate.py` (não 38). Não usar `PYTHONUTF8` como substituto do conserto.
+
 ## Passo 1 — conferir base e aplicar só o delta V3
 
 ```powershell
@@ -31,6 +37,10 @@ git apply --check 'docs/B03_B04_PATCH_G1_PRIVADO_V3_20261118.patch'
 if ($LASTEXITCODE -ne 0) { throw 'STOP_V3_PATCH_CONTEXT' }
 git apply 'docs/B03_B04_PATCH_G1_PRIVADO_V3_20261118.patch'
 if ($LASTEXITCODE -ne 0) { throw 'STOP_V3_PATCH' }
+git apply --check 'docs/B03_B04_PATCH_G1_WINDOWS_BLOB_V31_20261118.patch'
+if ($LASTEXITCODE -ne 0) { throw 'STOP_V31_PATCH_CONTEXT' }
+git apply 'docs/B03_B04_PATCH_G1_WINDOWS_BLOB_V31_20261118.patch'
+if ($LASTEXITCODE -ne 0) { throw 'STOP_V31_PATCH' }
 git diff --check
 if ($LASTEXITCODE -ne 0) { throw 'STOP_WHITESPACE' }
 if ((git hash-object tests/enterprise_g1_contract_origin.py) -ne '45a2080a8adead467aa4b00275e3a33616b0966c') { throw 'STOP_ORIGINAL_G1_TEST' }
@@ -54,7 +64,7 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP_G1_V3_DIRECTED_RED' }
 Write-Host 'G1_V3_DIRIGIDOS_OK_SEM_GREEN_GLOBAL'
 ```
 
-São **25 contratos originais B01/B03/B04 + 6 de atomicidade + 22 G1 de origem + 8 de coexistência = 61 testes dirigidos esperados**, sem os 12 B01 duplicados acidentalmente. Se a recolha não for 61, parar e reportar. Os 9 controlos novos V3 estão incluídos na execução independente dos testes do gate (38 testes).
+São **25 contratos originais B01/B03/B04 + 6 de atomicidade + 22 G1 de origem + 8 de coexistência = 61 testes dirigidos esperados**, sem os 12 B01 duplicados acidentalmente. Se a recolha não for 61, parar e reportar. Os 10 controlos V3/V3.1 estão incluídos na execução independente dos testes do gate (**39 testes**).
 
 ## Passo 3 — somente se 61 dirigidos GREEN
 

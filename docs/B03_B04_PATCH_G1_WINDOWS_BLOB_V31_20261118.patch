@@ -1,0 +1,68 @@
+diff --git a/tools/enterprise_recovery_test_gate_v3.py b/tools/enterprise_recovery_test_gate_v3.py
+index 9cd1a3f1..ef82eb97 100644
+--- a/tools/enterprise_recovery_test_gate_v3.py
++++ b/tools/enterprise_recovery_test_gate_v3.py
+@@ -31,7 +31,7 @@ V2_MANIFEST_BLOB = "4eafb57b917a3910ef873d0b8ca30145a0940b09"
+ ORIGINAL_G1_BLOB = "543f19b4b777ecaaa107d699dd13c002b378e8a2"
+ ORIGINAL_TEST_BLOB = "45a2080a8adead467aa4b00275e3a33616b0966c"
+ SHARED_G1_BLOB = "9f7a5ddf144293fe3591989c784c8ec6d875cd07"
+-MANIFEST_FINGERPRINT = "dc195d2418cdf3e8c355575a4dfff80021738f952673287e3c59f8fd7ffb0ff2"
++MANIFEST_FINGERPRINT = "523d260edff3e31c402f0951c0688e69b452c7ad3915a6f0ba9b5b4bc64a7797"
+ 
+ # Todos estes caminhos foram individualmente ratificados por Miguel apenas
+ # para o branch de recuperação. O manifesto V2 fica byte a byte intacto.
+@@ -44,6 +44,7 @@ V3_DELTA = frozenset({
+     "docs/B03_B04_STOP_DEPENDENCIA_G1_20261118.md",
+     "docs/B03_B04_BASELINE_ESCOPO_G1_V3_20261118.json",
+     "docs/B03_B04_PATCH_G1_PRIVADO_V3_20261118.patch",
++    "docs/B03_B04_PATCH_G1_WINDOWS_BLOB_V31_20261118.patch",
+     "docs/B03_B04_EXECUCAO_G1_PRIVADO_V3_20261118.md",
+     "tests/enterprise_g1_contract_origin.py",
+     "tests/test_enterprise_g1_private_original_contract.py",
+@@ -108,14 +109,21 @@ def verify_historical_source(repo: Path) -> None:
+     """Compara AST original e privado, ignorando SOMENTE docstring e nome da classe."""
+     command = ["git", "-C", str(repo), "show",
+                "ee100756:app/services/tax_consistency/tax_consistency_engine.py"]
+-    result = subprocess.run(command, capture_output=True, text=True, check=False)
++    # Git devolve bytes de blob UTF-8. Em Windows text=True usa a locale
++    # (frequentemente cp1252), alterando o digest ao recodificar a saída.
++    # A identidade Git só pode ser confrontada com bytes originais.
++    result = subprocess.run(command, capture_output=True, check=False)
+     if result.returncode:
+         raise v2.RecoveryGateError("G1_HISTORICAL_SOURCE_UNAVAILABLE")
+-    source = result.stdout
+-    digest = hashlib.sha1(b"blob " + str(len(source.encode())).encode()
+-                          + b"\0" + source.encode()).hexdigest()
++    raw_source = result.stdout
++    digest = hashlib.sha1(b"blob " + str(len(raw_source)).encode()
++                          + b"\0" + raw_source).hexdigest()
+     if digest != ORIGINAL_G1_BLOB:
+         raise v2.RecoveryGateError("G1_HISTORICAL_BLOB_DIVERGED")
++    try:
++        source = raw_source.decode("utf-8")
++    except UnicodeDecodeError as exc:
++        raise v2.RecoveryGateError("G1_HISTORICAL_SOURCE_NOT_UTF8") from exc
+     old = ast.parse(source)
+     new = ast.parse((repo / "app/services/enterprise_tax_consistency/"
+                      "enterprise_tax_consistency_engine.py").read_text(encoding="utf-8"))
+diff --git a/tests/test_enterprise_recovery_scope_v3_gate.py b/tests/test_enterprise_recovery_scope_v3_gate.py
+index 3c58d18b..5d8acdfb 100644
+--- a/tests/test_enterprise_recovery_scope_v3_gate.py
++++ b/tests/test_enterprise_recovery_scope_v3_gate.py
+@@ -104,6 +104,16 @@ class TestRecoveryGatePrivateG1ScopeV3(unittest.TestCase):
+             with self.assertRaisesRegex(gate.v2.RecoveryGateError, "G1_AST_TAMPERED"):
+                 self.check()
+ 
++    def test_v31_hash_original_git_lido_em_bytes_ignora_locale_windows(self):
++        # O Git armazena UTF-8. text=True decodifica via locale Windows e
++        # altera o SHA depois de recodificar; a entrada tem de ser binária.
++        original_run = gate.subprocess.run
++        with patch.object(gate.subprocess, "run", wraps=original_run) as mocked:
++            gate.verify_historical_source(ROOT)
++        mocked.assert_called_once()
++        self.assertIs(mocked.call_args.kwargs.get("capture_output"), True)
++        self.assertIsNone(mocked.call_args.kwargs.get("text"))
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
