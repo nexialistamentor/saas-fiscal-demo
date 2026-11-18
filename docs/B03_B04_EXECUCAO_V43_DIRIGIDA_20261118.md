@@ -115,6 +115,17 @@ Executar uma única vez em `.venv-release`:
 }
 ```
 
+### Inventário JUnit V4.2 existente (read-only; não espera os dirigidos)
+
+Disponível desde o commit documental `0dec5d7e`: `docs/B03_B04_JUNIT_INVENTARIO_V43_20261118.py`, blob `93764e9de753f641573bc29c5dcee76387acb271`. Não cria ficheiro, não corrige a diferença 34/40 e não ratifica V4.3. Confronta digest baseline, contagens e IDs/RED no JUnit real e emite digests de roster para análise de completude. Executar sem novo pytest global:
+
+```powershell
+python docs/B03_B04_JUNIT_INVENTARIO_V43_20261118.py --self-test
+if ($LASTEXITCODE -ne 0) { throw 'STOP_V43_INVENTARIO_AUTOTESTE' }
+python docs/B03_B04_JUNIT_INVENTARIO_V43_20261118.py --repo . --baseline .pytest_cache/b03b04_baseline_main.xml --candidate .pytest_cache/b03b04_candidate_g12_v42.xml
+if ($LASTEXITCODE -ne 0) { throw 'STOP_V43_INVENTARIO_XML' }
+```
+
 ### Próxima decisão após esta etapa
 
 Somente se os dirigidos passarem: examinar o JUnit **já existente** em `.pytest_cache` para produzir identificação verificável de `testcase`, digests e subtestes antes de escrever o parser derivado V4.3. **Não correr novamente o pytest global ainda.** A catraca V4.2 original conserva a sua recusa quando os hashes vivos são V4.3; nunca invocá-la para afirmar que V4.3 foi ratificada.
