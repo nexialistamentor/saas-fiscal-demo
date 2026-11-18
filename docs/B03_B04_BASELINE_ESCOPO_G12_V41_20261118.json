@@ -1,0 +1,46 @@
+{
+  "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_G12_SCOPE_V41",
+  "GLOBAL_GREEN": false,
+  "parent_v4_manifest_blob": "864c0a82ce9df1e70b43ab8931b8c307af13646e",
+  "preserved_v4_g12_blob": "4a782490cf8fd6d6b9d2d6d7b801370cbe6e2ea0",
+  "candidate_g12_blob": "13ef36fe50ed55086092ca81b3c5f7f2c4ec07ae",
+  "original_b01_test_blob": "eb961ee500de8a3dee76c0a6e4c4b4be577367e5",
+  "product_patch_git_blob": "b2e2fa22ba27647e6fb08d3fb7333eff8f752247",
+  "extra_paths": [
+    "docs/B03_B04_BASELINE_ESCOPO_G12_V41_20261118.json",
+    "docs/B03_B04_EXECUCAO_G12_V41_20261118.md",
+    "docs/B03_B04_PATCH_G12_V41_PRODUTO_20261118.patch",
+    "docs/B03_B04_PATCH_V41_GATE_TESTS_20261118.patch",
+    "docs/B03_B04_STOP_G12_V4_ST_OBSERVADO_XML_20261118.md",
+    "tests/test_enterprise_g12_xml_parser_v41_contract.py",
+    "tests/test_enterprise_recovery_scope_v41_gate.py",
+    "tests/test_enterprise_recovery_v41_history_gate.py",
+    "tools/enterprise_recovery_test_gate_v41.py"
+  ],
+  "modified_v4_paths": [
+    "app/services/enterprise_g12_st_item_reconciliation.py",
+    "tests/recovery_v3_snapshot_guard.py"
+  ],
+  "candidate_source_blobs": {
+    "docs/B03_B04_PATCH_G12_V41_PRODUTO_20261118.patch": "b2e2fa22ba27647e6fb08d3fb7333eff8f752247",
+    "tests/recovery_v3_snapshot_guard.py": "d4d04241bf34561951a4542fee9400f58cecc1f3",
+    "tests/test_enterprise_g12_xml_parser_v41_contract.py": "4d2fcf95db9156bbf286dfe0ecce1ece7dca7e7c",
+    "tests/test_enterprise_recovery_scope_v41_gate.py": "f29e88d63c285abd60615c253b3dab65b214792d",
+    "tests/test_enterprise_recovery_v41_history_gate.py": "7b12c0f3efd6a4c5baded068a885cff1ec8ed2ff"
+  },
+  "gate_self_blob": "74b503e795a2519074b63f3a621cdb31b77816b0",
+  "required_original_b01_b03_b04": 25,
+  "required_v2_atomic": 6,
+  "required_v3_g1_original": 22,
+  "required_v3_g1_coexistence": 8,
+  "required_v4_historical": 8,
+  "required_v4_g12_synthetic": 6,
+  "required_v4_gate": 7,
+  "required_v41_xml_parser": 7,
+  "required_v41_gate": 7,
+  "required_v41_historical": 5,
+  "ratification": "Miguel ratificou G12 Enterprise V4.1: reconciliacao XML-parser geral, duas amostras sintéticas diferentes, negativos ausente/divergente/fonte nao autorizada, sem acoplamento a UF/NCM/ID/valores; B01 original PR intacto, resolvedor normativo e motor partilhado intactos. Somente branch de recuperacao; sem main/MEI/migrations/deploy nem GLOBAL_GREEN.",
+  "baseline_junit_sha256": "798a14e3a2c6c517dd179559395a12e7fc370cdb49eb2fa3bd674b1599523692",
+  "expected_outcome": "PASS_WITH_BASELINE_RED",
+  "status": "CANDIDATO_G12_V41_PENDENTE_TESTES_WINDOWS_NAO_GREEN"
+}
