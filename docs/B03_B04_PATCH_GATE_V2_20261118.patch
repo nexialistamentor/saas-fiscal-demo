@@ -1,9 +1,9 @@
 diff --git a/tests/test_enterprise_recovery_scope_v2_gate.py b/tests/test_enterprise_recovery_scope_v2_gate.py
 new file mode 100644
-index 00000000..930bfde0
+index 00000000..a6cd6de8
 --- /dev/null
 +++ b/tests/test_enterprise_recovery_scope_v2_gate.py
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,106 @@
 +"""Controles mecânicos adicionais da ampliação B03/B04 aprovada por Miguel.
 +
 +Preserva os 20 controles originais V1 e não executa código de produto.
@@ -49,7 +49,10 @@ index 00000000..930bfde0
 +            approved=self.approved,
 +            contract_hashes=gate.PROTECTED,
 +            harness_hashes=gate.BASELINE_HARNESS_OVERLAY,
-+            changed_paths=set(self.approved["allowed_recovery_paths"]),
++            changed_paths=(
++                set(self.approved["allowed_recovery_paths"])
++                - {"app/services/insights_engine.py"}
++            ),
 +        )
 +
 +    def test_v2_ratifcado_exige_25_mais_6_e_nao_declara_green_global(self):
@@ -83,6 +86,21 @@ index 00000000..930bfde0
 +        self.approved["candidate_patch_git_blob"] = "0" * 40
 +        with self.assertRaisesRegex(gate.RecoveryGateError, "SCOPE_V2_UNRATIFIED_OR_EXPANDED"):
 +            self.evaluate()
++
++    def test_codigo_candidato_diferente_do_patch_bloqueia(self):
++        self.approved["candidate_source_blobs"]["app/xml_service.py"] = "0" * 40
++        with self.assertRaisesRegex(gate.RecoveryGateError, "SCOPE_V2_UNRATIFIED_OR_EXPANDED"):
++            self.evaluate()
++
++    def test_insights_com_commit_nao_integrado_bloqueia(self):
++        with self.assertRaisesRegex(gate.RecoveryGateError, "INSIGHTS_COMMIT_NOT_PROVEN_ATOMIC"):
++            gate.evaluate(
++                baseline=self.baseline,
++                candidate=self.candidate,
++                approved=self.approved,
++                contract_hashes=gate.PROTECTED,
++                changed_paths=set(self.approved["allowed_recovery_paths"]),
++            )
 +
 +    def test_schema_desconhecido_bloqueia(self):
 +        self.approved["schema_version"] = "v3_inesperada"
@@ -335,10 +353,10 @@ index 00000000..6ff3c720
 +    unittest.main()
 diff --git a/tools/enterprise_recovery_test_gate.py b/tools/enterprise_recovery_test_gate.py
 new file mode 100644
-index 00000000..1954987b
+index 00000000..a38771bf
 --- /dev/null
 +++ b/tools/enterprise_recovery_test_gate.py
-@@ -0,0 +1,411 @@
+@@ -0,0 +1,440 @@
 +"""Gate diferencial B03/B04: nunca converter RED de baseline em GREEN global.
 +
 +Uso (somente no branch isolado, após ratificação do manifesto de baseline):
@@ -439,6 +457,12 @@ index 00000000..1954987b
 +SCOPE_V2_SCHEMA = "SOLVERIS_ENTERPRISE_RECOVERY_BASELINE_SCOPE_V2"
 +SCOPE_V2_PARENT_BLOB = "494700e32c3f9717484c22c8179f696bd9abf4a1"
 +SCOPE_V2_PATCH_BLOB = "1ffce9965c313b788fe00e84d1ac576ab6fbac49"
++SCOPE_V2_CANDIDATE_SOURCE_BLOBS = {
++    "app/services/registro_analise_service.py": "4e889089049f5be38d28e8b36a9398a401b16a3c",
++    "app/services/usage_service.py": "ac55269003c73c67d16f2eed05ea42b93e221352",
++    "app/xml_service.py": "b56a5dd36cd70064bdf55db86e00c416d55f21fb",
++    "tests/test_enterprise_b01_atomic_rollback_contract.py": "bd7caf7e9a1de68a604b1d22cdaac92704950219",
++}
 +SCOPE_V1_PATHS_DIGEST = "3309e6a5c1413f99275dce83a4545fbc1b38259dc09870fd687d1d0eca6237a9"
 +SCOPE_V2_DELTA = frozenset({
 +    "app/services/registro_analise_service.py",
@@ -621,12 +645,15 @@ index 00000000..1954987b
 +                != SCOPE_V1_PATHS_DIGEST
 +            or approved.get("parent_manifest_git_blob") != SCOPE_V2_PARENT_BLOB
 +            or approved.get("candidate_patch_git_blob") != SCOPE_V2_PATCH_BLOB
++            or approved.get("candidate_source_blobs") != SCOPE_V2_CANDIDATE_SOURCE_BLOBS
 +            or set(approved.get("required_atomic_nodes", ()))
 +                != SCOPE_V2_REQUIRED_ATOMIC_NODES
 +        ):
 +            raise RecoveryGateError("SCOPE_V2_UNRATIFIED_OR_EXPANDED")
 +    if changed_paths - set(allowed_paths):
 +        raise RecoveryGateError("UNAPPROVED_RECOVERY_FILE_CHANGED")
++    if transactional_v2 and "app/services/insights_engine.py" in changed_paths:
++        raise RecoveryGateError("INSIGHTS_COMMIT_NOT_PROVEN_ATOMIC")
 +    missing = set(baseline) - set(candidate)
 +    if missing:
 +        raise RecoveryGateError("BASELINE_TESTS_NOT_EXECUTED")
@@ -714,6 +741,26 @@ index 00000000..1954987b
 +    changed = set(_git(repo, "diff", "--name-only", BASELINE_SHA).splitlines())
 +    changed.update(_git(repo, "ls-files", "--others", "--exclude-standard").splitlines())
 +    hashes = {path: _git(repo, "hash-object", path) for path in PROTECTED}
++    if approved.get("schema_version") == SCOPE_V2_SCHEMA:
++        source_hashes = {
++            path: _git(repo, "hash-object", path)
++            for path in SCOPE_V2_CANDIDATE_SOURCE_BLOBS
++        }
++        if source_hashes != SCOPE_V2_CANDIDATE_SOURCE_BLOBS:
++            raise RecoveryGateError("CANDIDATE_SOURCE_BLOB_DIVERGENCE")
++        provenance_path = repo / "docs/B03_B04_BLOB_PROVENIENCE_20261118.json"
++        try:
++            with provenance_path.open(encoding="utf-8") as handle:
++                provenance = json.load(handle)
++            sources = provenance["items"]
++        except (OSError, ValueError, KeyError, TypeError) as exc:
++            raise RecoveryGateError("SOURCE_PROVENANCE_MANIFEST_INVALID") from exc
++        if len(sources) != 36 or any(
++            type(x) is not dict
++            or _git(repo, "hash-object", x.get("path", "")) != x.get("git_blob")
++            for x in sources
++        ):
++            raise RecoveryGateError("SOURCE_BLOB_PROVENANCE_DIVERGENCE")
 +    harness_hashes = {
 +        path: _git(repo, "hash-object", path) for path in BASELINE_HARNESS_OVERLAY
 +    }

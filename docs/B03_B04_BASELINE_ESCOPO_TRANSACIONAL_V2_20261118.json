@@ -110,6 +110,12 @@
   "scope_extension_ratification": "Miguel ratificou a expansão cirúrgica B03/B04 a registro_analise_service.py, xml_service.py, usage_service.py e insights_engine.py, somente no branch isolado, sem tocar MEI, motor, migrations ou produção.",
   "parent_manifest_git_blob": "494700e32c3f9717484c22c8179f696bd9abf4a1",
   "candidate_patch_git_blob": "1ffce9965c313b788fe00e84d1ac576ab6fbac49",
+  "candidate_source_blobs": {
+    "app/services/registro_analise_service.py": "4e889089049f5be38d28e8b36a9398a401b16a3c",
+    "app/services/usage_service.py": "ac55269003c73c67d16f2eed05ea42b93e221352",
+    "app/xml_service.py": "b56a5dd36cd70064bdf55db86e00c416d55f21fb",
+    "tests/test_enterprise_b01_atomic_rollback_contract.py": "bd7caf7e9a1de68a604b1d22cdaac92704950219"
+  },
   "required_atomic_nodes": [
     "tests.test_enterprise_b01_atomic_rollback_contract.TestEnterpriseB01AtomicRollback::test_escritor_optin_avulso_nao_pode_contornar_transacao",
     "tests.test_enterprise_b01_atomic_rollback_contract.TestEnterpriseB01AtomicRollback::test_falha_contador_desfaz_documento_e_relatorio",

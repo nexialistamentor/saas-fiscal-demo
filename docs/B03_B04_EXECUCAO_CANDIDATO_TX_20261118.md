@@ -13,6 +13,7 @@ Não operar em `C:\dev\saas-fiscal-demo-a1`, `main`, Railway ou Vercel.
 - Patch do candidato: `docs/B03_B04_PATCH_TX_CANDIDATO_20261118.patch`,
   blob Git `1ffce9965c313b788fe00e84d1ac576ab6fbac49`.
 - Patch da catraca: `docs/B03_B04_PATCH_GATE_V2_20261118.patch`,
+  blob Git `1db0216373f1eba9c12875b0cd309f0fd203f17c`,
   conferido via `git apply --cached --reverse --check` na origem.
 - Manifesto novo: `docs/B03_B04_BASELINE_ESCOPO_TRANSACIONAL_V2_20261118.json`.
   Não modifica o manifesto ratificado V1 nem as 13 falhas de baseline.
@@ -57,6 +58,7 @@ foreach ($item in $manifest.items) {
 }
 
 if ((git hash-object docs/B03_B04_PATCH_TX_CANDIDATO_20261118.patch) -ne '1ffce9965c313b788fe00e84d1ac576ab6fbac49') { throw 'STOP_CANDIDATE_PATCH_HASH' }
+if ((git hash-object docs/B03_B04_PATCH_GATE_V2_20261118.patch) -ne '1db0216373f1eba9c12875b0cd309f0fd203f17c') { throw 'STOP_GATE_PATCH_HASH' }
 git apply --check 'docs/B03_B04_PATCH_TX_CANDIDATO_20261118.patch'
 if ($LASTEXITCODE -ne 0) { throw 'STOP_CANDIDATE_PATCH_CONTEXT' }
 git apply --check 'docs/B03_B04_PATCH_GATE_V2_20261118.patch'
@@ -82,6 +84,11 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP_ENTERPRISE_TARGETED_RED' }
 
 São **31 testes obrigatórios** (25 originais e 6 de atomicidade nova).
 Isso ainda não constitui GREEN global nem autoriza commit de código.
+
+A catraca V2 verifica ainda os hashes exatos dos quatro ficheiros do
+candidato e dos 36 blobs de origem; alterações adicionais em `insights_engine`
+continuam bloqueadas enquanto a confirmação interna da memória estratégica
+não tiver fronteira transacional comprovada.
 
 ## Etapa 2 — somente depois dos testes dirigidos aprovados
 
