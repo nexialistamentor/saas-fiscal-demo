@@ -1,0 +1,155 @@
+{
+  "schema_version": "SOLVERIS_B03_B04_RECOVERY_SOURCE_BLOBS_V1",
+  "base_commit": "a6a2da6cbf07c7b9922f8571bf2e6016376304d5",
+  "source_commit": "c9a17fd1bc21f5abc50450e258cce490f3d196c6",
+  "provenance": "git trees only; no downloaded/copied loose files",
+  "blob_count": 36,
+  "items": [
+    {
+      "path": "app/services/enterprise_b03_item_reconciliation.py",
+      "git_blob": "b1b7b79c46f99a48bbbfdaae7a1943fd1b143373"
+    },
+    {
+      "path": "app/services/enterprise_b04_icms_st_integral_bridge.py",
+      "git_blob": "f2f851115c8c37626148b5db8002ebb864697f0d"
+    },
+    {
+      "path": "app/services/enterprise_g12_st_item_reconciliation.py",
+      "git_blob": "29d9cafcd94f8f5e5a8dbb3d0f87750143103951"
+    },
+    {
+      "path": "app/services/enterprise_g13_subject_st_bridge.py",
+      "git_blob": "b37784ed8a06ee46be7d568b08a1b56460844553"
+    },
+    {
+      "path": "app/services/enterprise_g14_operational_normative_scope.py",
+      "git_blob": "e4cc5be28755af81b39fa9a937670d9805c87fc4"
+    },
+    {
+      "path": "app/services/enterprise_g15_adr020_primary_artifact_link.py",
+      "git_blob": "7d929a061248af3b54df24900903960c666d8bc6"
+    },
+    {
+      "path": "app/services/enterprise_g16_temporal_rule_chain.py",
+      "git_blob": "cb08fe3a3d733d570745c5ccba09dfdfce8cd71b"
+    },
+    {
+      "path": "app/services/enterprise_g17_publication_coverage_checkpoint.py",
+      "git_blob": "0b41fa2c740e849504898316f785d8772378447e"
+    },
+    {
+      "path": "app/services/enterprise_g19_local_cas_custody.py",
+      "git_blob": "2a52234f844780035513fd080f83122f5bb81a62"
+    },
+    {
+      "path": "app/services/enterprise_i2_documentary_bridge.py",
+      "git_blob": "f2bbc8ee21eb623bdd5165cd697f865d0c6956db"
+    },
+    {
+      "path": "app/services/enterprise_integral_projection.py",
+      "git_blob": "f6aebe255d27b917cbd8e4b979f064b5949419d2"
+    },
+    {
+      "path": "app/services/enterprise_pis_cofins_authority_i1.py",
+      "git_blob": "4a9f8157eb0d7a4faee117f8b4a2d5729eab569d"
+    },
+    {
+      "path": "app/services/enterprise_xml_evidence_binding.py",
+      "git_blob": "613cc94862e0dfb17921d6b4c4b12ea4ef24902b"
+    },
+    {
+      "path": "app/services/resultado_empresarial_service.py",
+      "git_blob": "f3bc0932422a3b219a6f8133f0653a70bbaa32b9"
+    },
+    {
+      "path": "tests/test_enterprise_b03_item_reconciliation.py",
+      "git_blob": "a8b90b8f177083dda07d9c11ac717ee722bff920"
+    },
+    {
+      "path": "tests/test_enterprise_b04_icms_st_integral_bridge.py",
+      "git_blob": "fcbc15f662c8496d0eb23a3d04fbc7e1e65dda76"
+    },
+    {
+      "path": "tests/test_enterprise_g113_c4_fiscal_item_bridge.py",
+      "git_blob": "0704f42ec775553f56d3555e43dbf3f97cffcd7c"
+    },
+    {
+      "path": "tests/test_enterprise_g113_c5_parameter_trace.py",
+      "git_blob": "4063f9b3e7908317f3643f78f4f700a7f547b11d"
+    },
+    {
+      "path": "tests/test_enterprise_g113_c6_l2_record_provenance.py",
+      "git_blob": "030f195434f16713ca0f8f78deaeebd7878e8650"
+    },
+    {
+      "path": "tests/test_enterprise_g113_c7_diagnostic_dossier.py",
+      "git_blob": "6cc9af73c5175d382818ed8fe33d5d8ddf3acdc2"
+    },
+    {
+      "path": "tests/test_enterprise_g113_temporal_mva_evidence.py",
+      "git_blob": "61d8e8ab62dbac856e0adb56d31169eec587ef33"
+    },
+    {
+      "path": "tests/test_enterprise_g13_subject_st_bridge.py",
+      "git_blob": "7beb50d266d94e28ffb5da636077a5b6cbceb8f4"
+    },
+    {
+      "path": "tests/test_enterprise_g14_operational_normative_scope.py",
+      "git_blob": "7d331b76f75e6c5422ff96c7cfbc6f7ea604cabc"
+    },
+    {
+      "path": "tests/test_enterprise_g15_adr020_primary_artifact_link.py",
+      "git_blob": "58366d5925570fe21a2932e6724a8746ceed2709"
+    },
+    {
+      "path": "tests/test_enterprise_g16_temporal_rule_chain.py",
+      "git_blob": "2b5a689a0c022c53f20b42b42d7435e0e8671266"
+    },
+    {
+      "path": "tests/test_enterprise_g17_publication_coverage_checkpoint.py",
+      "git_blob": "58a46f7c0699b88dba91ac0738b663a04d4c05a6"
+    },
+    {
+      "path": "tests/test_enterprise_g19_local_cas_custody.py",
+      "git_blob": "16904b0eaa38be105e94fe92723ec97dcd4be4f2"
+    },
+    {
+      "path": "tests/test_enterprise_i2_documentary_bridge_contract.py",
+      "git_blob": "350638d2e10b26f224d333d5947e814766642af2"
+    },
+    {
+      "path": "tests/test_enterprise_integral_projection_contract.py",
+      "git_blob": "f6657ea5fdb333ab074c5a6bac82bc85ffa3c903"
+    },
+    {
+      "path": "tests/test_enterprise_pis_cofins_authority_i1.py",
+      "git_blob": "ab03bed12c69274c8cb54a63c29a6f010ee3e3b3"
+    },
+    {
+      "path": "tests/test_solveris_b01_circuit.py",
+      "git_blob": "eb961ee500de8a3dee76c0a6e4c4b4be577367e5"
+    },
+    {
+      "path": "tools/enterprise_g113_c4_fiscal_item_bridge.py",
+      "git_blob": "840552c68ac66edd7c1f4d65afdf7a36651d7946"
+    },
+    {
+      "path": "tools/enterprise_g113_c5_parameter_trace.py",
+      "git_blob": "bf80905beea064b409aab7ff3428f653a07b5a51"
+    },
+    {
+      "path": "tools/enterprise_g113_c6_l2_record_provenance.py",
+      "git_blob": "341ea3fc5decd6b3b3ddd52fdc325d3146882439"
+    },
+    {
+      "path": "tools/enterprise_g113_c7_diagnostic_dossier.py",
+      "git_blob": "08cbe272006f0823b5287b95ad2e7e3daf96d2f6"
+    },
+    {
+      "path": "tools/enterprise_g113_temporal_mva_evidence.py",
+      "git_blob": "c13b2210cfbc053492716915c8449dc18c09401b"
+    }
+  ],
+  "scope": "isolated recovery only; no main, MEI, payment, migrations, deploy",
+  "integration_status": "STAGED_UNCOMMITTED_NOT_GREEN"
+}
