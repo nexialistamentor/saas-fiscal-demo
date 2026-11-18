@@ -1,0 +1,564 @@
+diff --git a/tests/test_enterprise_g12_xml_parser_v41_contract.py b/tests/test_enterprise_g12_xml_parser_v41_contract.py
+index 4d2fcf95..70050471 100644
+--- a/tests/test_enterprise_g12_xml_parser_v41_contract.py
++++ b/tests/test_enterprise_g12_xml_parser_v41_contract.py
+@@ -15,7 +15,7 @@ from sqlalchemy import create_engine
+ from sqlalchemy.orm import sessionmaker
+ 
+ from app.database import Base
+-from app.models import TabelaMVA
++from app.models import TabelaMVA, TabelaPMPF
+ from app.xml_service import ler_xml_unico
+ from app.services import enterprise_g12_st_item_reconciliation as g12
+ 
+@@ -47,7 +47,9 @@ KEY = "2" * 44
+ class TestEnterpriseG12XmlParserV41(TestCase):
+     def setUp(self):
+         self.engine = create_engine("sqlite+pysqlite:///:memory:")
+-        Base.metadata.create_all(self.engine, tables=[TabelaMVA.__table__])
++        Base.metadata.create_all(
++            self.engine, tables=[TabelaMVA.__table__, TabelaPMPF.__table__]
++        )
+         self.db = sessionmaker(bind=self.engine, expire_on_commit=False)()
+         self.db.add(TabelaMVA(
+             id=191, estado=UF, ncm=NCM, mva=0.4, aliquota_interna=0.17,
+diff --git a/tests/recovery_v3_snapshot_guard.py b/tests/recovery_v3_snapshot_guard.py
+index d4d04241..0790c450 100644
+--- a/tests/recovery_v3_snapshot_guard.py
++++ b/tests/recovery_v3_snapshot_guard.py
+@@ -16,7 +16,12 @@ SNAPSHOT = "tests/fixtures/enterprise_g12_v3_frozen_source.py.txt"
+ V4_MANIFEST = "docs/B03_B04_BASELINE_ESCOPO_G12_V4_20261118.json"
+ V41_MANIFEST = "docs/B03_B04_BASELINE_ESCOPO_G12_V41_20261118.json"
++V411_MANIFEST = "docs/B03_B04_BASELINE_ESCOPO_G12_V411_20261118.json"
++V42_MANIFEST = "docs/B03_B04_BASELINE_ESCOPO_G12_V42_20261118.json"
+ V4_MANIFEST_BLOB = "864c0a82ce9df1e70b43ab8931b8c307af13646e"
++V41_MANIFEST_BLOB = "a26572484cfac26b614b2bc9e63c1a70fd1b68b1"
++V411_MANIFEST_BLOB = "9e83c45623c168c292fb1d8136db0a003f7ed8f0"
+ V4_G12_BLOB = "4a782490cf8fd6d6b9d2d6d7b801370cbe6e2ea0"
++V41_G12_BLOB = "13ef36fe50ed55086092ca81b3c5f7f2c4ec07ae"
+ V3_G12_BLOB = "7b70bd28af292dc8028d572336b80f22bac0a945"
+ V3_SCHEMA = "SOLVERIS_ENTERPRISE_RECOVERY_G1_SCOPE_V3"
+ V4_SCHEMA = "SOLVERIS_ENTERPRISE_RECOVERY_G12_SCOPE_V4"
+@@ -71,7 +76,7 @@ def verify_v4_predecessor(gate, repo: Path, live_blob: str) -> None:
+ 
+ 
+ def verify_v41_predecessor(gate, repo: Path, live_blob: str) -> None:
+-    """Prova em Git o elo V3 -> V4 -> V4.1, sem reinterpretar V4 como V4.1."""
++    """Prova em Git V3 -> V4 -> V4.1 e, se aplicavel, sucessao V4.2."""
+     if gate.v2._git(repo, "hash-object", V4_MANIFEST) != V4_MANIFEST_BLOB:
+         raise gate.v2.RecoveryGateError("V41_PARENT_V4_BLOB_DIVERGED")
+     if gate.v2._git(repo, "rev-parse", "HEAD:" + V4_MANIFEST) != V4_MANIFEST_BLOB:
+@@ -91,9 +95,29 @@ def verify_v41_predecessor(gate, repo: Path, live_blob: str) -> None:
+     if (data.get("schema_version") != V41_SCHEMA
+             or data.get("parent_v4_manifest_blob") != V4_MANIFEST_BLOB
+             or data.get("preserved_v4_g12_blob") != V4_G12_BLOB
+-            or data.get("candidate_g12_blob") != live_blob
++            or data.get("candidate_g12_blob") != V41_G12_BLOB
+             or data.get("GLOBAL_GREEN") is not False):
+         raise gate.v2.RecoveryGateError("V41_G12_SOURCE_NOT_RATIFIED")
++    if live_blob == V41_G12_BLOB:
++        return
++    # O teste V3 historico nao deve ficar preso ao blob atual V4.1;
++    # o sucessor V4.2 exige dois manifestos imutaveis no proprio Git.
++    next_file = repo / V42_MANIFEST
++    if not next_file.is_file():
++        raise gate.v2.RecoveryGateError("V41_G12_SOURCE_NOT_RATIFIED")
++    if (gate.v2._git(repo, "hash-object", V41_MANIFEST) != V41_MANIFEST_BLOB
++            or gate.v2._git(repo, "hash-object", V411_MANIFEST) != V411_MANIFEST_BLOB
++            or gate.v2._git(repo, "rev-parse", "HEAD:" + V411_MANIFEST) != V411_MANIFEST_BLOB
++            or gate.v2._git(repo, "hash-object", V42_MANIFEST)
++            != gate.v2._git(repo, "rev-parse", "HEAD:" + V42_MANIFEST)):
++        raise gate.v2.RecoveryGateError("V42_HISTORICAL_MANIFEST_DIVERGED")
++    successor = json.loads(next_file.read_text(encoding="utf-8"))
++    if (successor.get("schema_version") != "SOLVERIS_ENTERPRISE_RECOVERY_G12_SCOPE_V42"
++            or successor.get("parent_v411_manifest_blob") != V411_MANIFEST_BLOB
++            or successor.get("preserved_v41_g12_blob") != V41_G12_BLOB
++            or successor.get("candidate_g12_blob") != live_blob
++            or successor.get("GLOBAL_GREEN") is not False):
++        raise gate.v2.RecoveryGateError("V41_G12_SOURCE_NOT_RATIFIED")
+ 
+ 
+ @contextmanager
+diff --git a/tests/test_enterprise_g12_g1_xml_observation_v42_contract.py b/tests/test_enterprise_g12_g1_xml_observation_v42_contract.py
+new file mode 100644
+index 00000000..0c03c80b
+--- /dev/null
++++ b/tests/test_enterprise_g12_g1_xml_observation_v42_contract.py
+@@ -0,0 +1,116 @@
++"""V4.2: observacao XML-parser G12 alimenta G1 privado sem falsa autoridade.
++
++Original B01 PR e segundo RS exercitam motores reais. Os negativos provam
++que um marcador isolado, origem não autorizada ou valor divergente nao produz
++pares numéricos nem desbloqueia politica fiscal.
++"""
++from __future__ import annotations
++
++from unittest import TestCase
++from unittest.mock import patch
++
++from app.services import enterprise_g12_st_item_reconciliation as g12
++import test_solveris_b01_circuit as b01
++import test_enterprise_g12_xml_parser_v41_contract as rs
++
++
++class TestEnterpriseG12G1XmlObservationV42(TestCase):
++    def _fixture(self, cls, name):
++        fixture = cls(name)
++        fixture.setUp()
++        self.addCleanup(fixture.tearDown)
++        return fixture
++
++    def test_01_pr_original_g1_compara_dois_pares_sem_autoridade(self):
++        f = self._fixture(
++            b01.TestEnterpriseB01SyntheticIntegration,
++            "test_01_circuito_real_writer_i2_g12_g14_adr020_c3_c7",
++        )
++        self.assertNotIn("st_observado_xml", g12.ler_xml_unico(xml_bytes=f.raw)["itens"][0])
++        result = g12.confrontar_st_por_item_g12(db=f.db, xml_bytes=f.raw)
++        self.assertEqual(result["itens_simulados"], 1)
++        compare = result["confronto_g1"]
++        self.assertEqual(compare["estado"], "COMPARACAO_NUMERICA_SEM_AUTORIDADE")
++        self.assertEqual({row["tipo"] for row in compare["comparacoes"]},
++                         {"BASE_ST", "ICMS_ST"})
++        self.assertIsNone(compare["consistente"])
++        self.assertIs(result["autoridade_fiscal"], False)
++
++    def test_02_rs_independente_g1_compara_valores_diferentes(self):
++        f = self._fixture(
++            rs.TestEnterpriseG12XmlParserV41,
++            "test_01_segundo_cenario_rs_valores_novos_simula_sem_autoridade",
++        )
++        result = g12.confrontar_st_por_item_g12(db=f.db, xml_bytes=f.raw)
++        self.assertEqual(result["itens_simulados"], 1)
++        compare = result["confronto_g1"]
++        pairs = {row["tipo"]: row for row in compare["comparacoes"]}
++        self.assertEqual(set(pairs), {"BASE_ST", "ICMS_ST"})
++        self.assertEqual(pairs["BASE_ST"]["valor_xml"], "280.00")
++        self.assertEqual(pairs["ICMS_ST"]["valor_xml"], "13.60")
++        self.assertIs(compare["autoridade_fiscal"], False)
++
++    def test_03_rs_base_st_ausente_sem_pares(self):
++        f = self._fixture(
++            rs.TestEnterpriseG12XmlParserV41,
++            "test_04_st_xml_ausente_falha_fechado",
++        )
++        broken = f.raw.replace(b"<vBCST>280.00</vBCST>", b"")
++        result = g12.confrontar_st_por_item_g12(db=f.db, xml_bytes=broken)
++        self.assertEqual(result["itens_simulados"], 0)
++        self.assertEqual(result["confronto_g1"]["comparacoes_realizadas"], 0)
++        self.assertIs(result["checkout_autorizado"], False)
++
++    def test_04_rs_marcador_normativo_ausente_nao_basta_para_par(self):
++        f = self._fixture(
++            rs.TestEnterpriseG12XmlParserV41,
++            "test_03_marcador_ausente_mantem_bloqueio_normativo_rs",
++        )
++        row = f.db.get(rs.TabelaMVA, 191)
++        row.importado_por = "PROVENIENCIA_NAO_ELEGIVEL"
++        f.db.commit()
++        result = g12.confrontar_st_por_item_g12(db=f.db, xml_bytes=f.raw)
++        self.assertEqual(result["itens_simulados"], 0)
++        self.assertEqual(result["confronto_g1"]["comparacoes_realizadas"], 0)
++        self.assertIs(result["autoridade_fiscal"], False)
++
++    def test_05_rs_parser_divergente_nao_inventa_pares(self):
++        f = self._fixture(
++            rs.TestEnterpriseG12XmlParserV41,
++            "test_06_divergencia_parser_real_vs_xml_falha_fechado",
++        )
++        real = g12.ler_xml_unico
++
++        def divergent(*, xml_bytes):
++            parsed = real(xml_bytes=xml_bytes)
++            parsed["itens"][0]["base_st"] = "281.00"
++            return parsed
++
++        with patch.object(g12, "ler_xml_unico", side_effect=divergent):
++            result = g12.confrontar_st_por_item_g12(db=f.db, xml_bytes=f.raw)
++        self.assertEqual(result["itens_simulados"], 0)
++        self.assertEqual(result["confronto_g1"]["comparacoes_realizadas"], 0)
++
++    def test_06_marcador_st_forjado_com_divergencia_continua_fechado(self):
++        f = self._fixture(
++            rs.TestEnterpriseG12XmlParserV41,
++            "test_06_divergencia_parser_real_vs_xml_falha_fechado",
++        )
++        real = g12.ler_xml_unico
++
++        def forged(*, xml_bytes):
++            parsed = real(xml_bytes=xml_bytes)
++            parsed["itens"][0]["valor_st"] = "99.99"
++            parsed["itens"][0]["st_observado_xml"] = True
++            return parsed
++
++        with patch.object(g12, "ler_xml_unico", side_effect=forged):
++            result = g12.confrontar_st_por_item_g12(db=f.db, xml_bytes=f.raw)
++        self.assertEqual(result["itens_simulados"], 0)
++        self.assertEqual(result["confronto_g1"]["comparacoes_realizadas"], 0)
++        self.assertIs(result["credito_confirmado"], False)
++
++
++if __name__ == "__main__":
++    import unittest
++    unittest.main()
+diff --git a/tests/test_enterprise_recovery_scope_v42_gate.py b/tests/test_enterprise_recovery_scope_v42_gate.py
+new file mode 100644
+index 00000000..9511678f
+--- /dev/null
++++ b/tests/test_enterprise_recovery_scope_v42_gate.py
+@@ -0,0 +1,75 @@
++"""Catraca V4.2: sucessao explicita, sem editar as provas predecessoras."""
++from __future__ import annotations
++
++import importlib.util
++import json
++from pathlib import Path
++import unittest
++from unittest.mock import patch
++
++ROOT = Path(__file__).resolve().parents[1]
++SPEC = importlib.util.spec_from_file_location(
++    "enterprise_recovery_v42_gate_under_test",
++    ROOT / "tools/enterprise_recovery_test_gate_v42.py",
++)
++assert SPEC and SPEC.loader
++gate = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(gate)
++
++
++class TestRecoveryGateV42(unittest.TestCase):
++    def setUp(self):
++        self.approved = json.loads((ROOT / gate.MANIFEST).read_text(encoding="utf-8"))
++
++    def test_01_v42_83_nodos_e_manifesto_sem_green(self):
++        gate._validate_manifest(ROOT, self.approved, require_commit=False)
++        self.assertEqual(len(gate._nodes(ROOT)), 83)
++        self.assertIs(self.approved["GLOBAL_GREEN"], False)
++        self.assertEqual(self.approved["modified_v411_paths"], sorted(gate.OVERRIDES))
++
++    def test_02_manifesto_forjado_ou_nao_ratifcado_reprovado(self):
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError,
++                                    "SCOPE_V42_UNRATIFIED_OR_EXPANDED"):
++            gate._validate_manifest(
++                ROOT, dict(self.approved, GLOBAL_GREEN=True), require_commit=False
++            )
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError,
++                                    "SCOPE_V42_MANIFEST_FINGERPRINT_DIVERGED"):
++            gate._validate_manifest(
++                ROOT, dict(self.approved, nova_autoridade=True), require_commit=False
++            )
++
++    def test_03_caminho_de_producao_nao_ratificado_bloqueia(self):
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError,
++                                    "SCOPE_V42_UNAPPROVED_PATH_CHANGED"):
++            gate.verify_sources(
++                repo=ROOT, v3_manifest={}, v4_manifest={},
++                v41_manifest={}, v411_manifest={}, v42_manifest=self.approved,
++                changed={"app/mei/nao_autorizado.py"}, observed={},
++            )
++
++    def test_04_um_novo_red_impede_o_gate_sem_falso_green(self):
++        def doc(path):
++            return json.loads((ROOT / path).read_text(encoding="utf-8"))
++
++        with patch.object(gate, "_validate_manifest"):
++            with patch.object(gate, "verify_sources"):
++                with patch.object(gate, "_nodes", return_value={"NOVO::RED"}):
++                    with self.assertRaisesRegex(
++                        gate.v2.RecoveryGateError, "SCOPE_V42_TESTS_RED"
++                    ):
++                        gate.evaluate_v42(
++                            repo=ROOT, baseline={},
++                            candidate={"NOVO::RED": ("failure", "", "")},
++                            approved_v2=doc("docs/B03_B04_BASELINE_ESCOPO_TRANSACIONAL_V2_20261118.json"),
++                            approved_v3=doc("docs/B03_B04_BASELINE_ESCOPO_G1_V3_20261118.json"),
++                            approved_v4=doc(gate.v4.MANIFEST),
++                            approved_v41=doc(gate.v41.MANIFEST),
++                            approved_v411=doc(gate.v411.MANIFEST),
++                            approved_v42=self.approved, changed=set(), observed={},
++                            harness={}, require_commit=False,
++                        )
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tools/enterprise_recovery_test_gate_v42.py b/tools/enterprise_recovery_test_gate_v42.py
+new file mode 100644
+index 00000000..c64123bc
+--- /dev/null
++++ b/tools/enterprise_recovery_test_gate_v42.py
+@@ -0,0 +1,274 @@
++"""Gate V4.2: G12 -> G1 privado, dois pares XML e fixture RS completa.
++
++V2/V3/V4/V4.1/V4.1.1 sao predecessores imutaveis: nao se reinterpreta a
++ratificacao anterior, nem se admite fonte partilhada/MEI ou GLOBAL_GREEN.
++"""
++from __future__ import annotations
++
++import argparse
++import importlib.util
++import json
++import platform
++import subprocess
++import sys
++from importlib.metadata import PackageNotFoundError, version
++from pathlib import Path
++
++_spec = importlib.util.spec_from_file_location(
++    "enterprise_recovery_v411_for_v42",
++    Path(__file__).with_name("enterprise_recovery_test_gate_v411.py"),
++)
++assert _spec and _spec.loader
++v411 = importlib.util.module_from_spec(_spec)
++_spec.loader.exec_module(v411)
++v41, v4, v3, v2 = v411.v41, v411.v4, v411.v3, v411.v2
++
++SCHEMA = "SOLVERIS_ENTERPRISE_RECOVERY_G12_SCOPE_V42"
++MANIFEST = "docs/B03_B04_BASELINE_ESCOPO_G12_V42_20261118.json"
++V411_MANIFEST_BLOB = "9e83c45623c168c292fb1d8136db0a003f7ed8f0"
++V411_GATE_BLOB = "0ea401f454626e551ebf3880cc46553db594a521"
++G12_V41_BLOB = "13ef36fe50ed55086092ca81b3c5f7f2c4ec07ae"
++G12_V42_BLOB = "8fb2559b093d2435f7395936cedb6f7ad4186ca3"
++RS_V41_BLOB = "4d2fcf95db9156bbf286dfe0ecce1ece7dca7e7c"
++RS_V42_BLOB = "70050471a5dddb25d4ac580fc4e79bacffa4fc3a"
++GUARD_V41_BLOB = "d4d04241bf34561951a4542fee9400f58cecc1f3"
++GUARD_V42_BLOB = "0790c450cc9426ac68ec764faae9bfb6cbaa2c42"
++MANIFEST_FINGERPRINT = "da63097b9c22adae7ee299cf7958df2127cdd20b05585eb8d94f90b3012c3d49"
++
++PRODUCT = "app/services/enterprise_g12_st_item_reconciliation.py"
++RS = "tests/test_enterprise_g12_xml_parser_v41_contract.py"
++GUARD = "tests/recovery_v3_snapshot_guard.py"
++OVERRIDES = frozenset({PRODUCT, RS, GUARD})
++EXTRA = frozenset({
++    "docs/B03_B04_STOP_V411_FUNCIONAIS_G12_20261118.md",
++    "docs/B03_B04_BASELINE_ESCOPO_G12_V42_20261118.json",
++    "docs/B03_B04_EXECUCAO_G12_V42_20261118.md",
++    "docs/B03_B04_PATCH_G12_V42_PRODUTO_20261118.patch",
++    "docs/B03_B04_PATCH_V42_GATE_TESTS_20261118.patch",
++    "docs/B03_B04_RESULTADO_GATE_V42_20261118.json",
++    "tests/test_enterprise_g12_g1_xml_observation_v42_contract.py",
++    "tests/test_enterprise_recovery_scope_v42_gate.py",
++    "tools/enterprise_recovery_test_gate_v42.py",
++})
++PINNED = frozenset(
++    set(v411.PINNED) | {
++        "tests/test_enterprise_g12_g1_xml_observation_v42_contract.py",
++        "tests/test_enterprise_recovery_scope_v42_gate.py",
++        "docs/B03_B04_PATCH_G12_V42_PRODUTO_20261118.patch",
++    }
++)
++EXTRA_TESTS = {
++    "tests.test_enterprise_g12_g1_xml_observation_v42_contract.TestEnterpriseG12G1XmlObservationV42": 6,
++    "tests.test_enterprise_recovery_scope_v42_gate.TestRecoveryGateV42": 4,
++}
++
++
++def _fingerprint(data: dict) -> str:
++    copy = dict(data)
++    copy.pop("gate_self_blob", None)
++    return v2._canonical_digest(copy)
++
++
++def _validate_manifest(repo: Path, data: dict, *, require_commit=True) -> None:
++    if (data.get("schema_version") != SCHEMA
++            or data.get("GLOBAL_GREEN") is not False
++            or data.get("parent_v411_manifest_blob") != V411_MANIFEST_BLOB
++            or data.get("parent_v411_gate_blob") != V411_GATE_BLOB
++            or data.get("preserved_v41_g12_blob") != G12_V41_BLOB
++            or data.get("candidate_g12_blob") != G12_V42_BLOB
++            or data.get("preserved_rs_fixture_blob") != RS_V41_BLOB
++            or data.get("candidate_rs_fixture_blob") != RS_V42_BLOB
++            or data.get("preserved_historical_guard_blob") != GUARD_V41_BLOB
++            or data.get("candidate_historical_guard_blob") != GUARD_V42_BLOB
++            or data.get("original_b01_test_blob") != v4.ORIGINAL_B01_BLOB
++            or data.get("extra_paths") != sorted(EXTRA)
++            or data.get("modified_v411_paths") != sorted(OVERRIDES)
++            or set(data.get("candidate_source_blobs", {})) != PINNED):
++        raise v2.RecoveryGateError("SCOPE_V42_UNRATIFIED_OR_EXPANDED")
++    if _fingerprint(data) != MANIFEST_FINGERPRINT:
++        raise v2.RecoveryGateError("SCOPE_V42_MANIFEST_FINGERPRINT_DIVERGED")
++    if require_commit and (v2._git(repo, "hash-object", MANIFEST)
++                           != v2._git(repo, "rev-parse", "HEAD:" + MANIFEST)):
++        raise v2.RecoveryGateError("SCOPE_V42_MANIFEST_UNCOMMITTED")
++
++
++def _nodes(repo: Path) -> set[str]:
++    nodes = v411._nodes(repo)
++    for prefix, count in EXTRA_TESTS.items():
++        module, classname = prefix.rsplit(".", 1)
++        names = v3._test_names(repo / (module.replace(".", "/") + ".py"),
++                               classname, "")
++        if len(names) != count:
++            raise v2.RecoveryGateError("SCOPE_V42_TEST_COUNT_DIVERGED")
++        nodes.update(prefix + "::" + name for name in names)
++    return nodes
++
++
++def verify_sources(*, repo: Path, v3_manifest: dict, v4_manifest: dict,
++                   v41_manifest: dict, v411_manifest: dict, v42_manifest: dict,
++                   changed: set[str], observed: dict[str, str]) -> None:
++    allowed = (v4.v2_manifest_paths(repo) | set(v3.V3_DELTA)
++               | set(v4.V4_DELTA) | set(v41.EXTRA) | set(v411.EXTRA)
++               | set(EXTRA))
++    if changed - allowed:
++        raise v2.RecoveryGateError("SCOPE_V42_UNAPPROVED_PATH_CHANGED")
++    required = (set(v3.V3_DELTA) | set(v4.V4_DELTA) | set(v41.EXTRA)
++                | set(v411.EXTRA) | set(EXTRA) | set(OVERRIDES))
++    if not required.issubset(changed):
++        raise v2.RecoveryGateError("SCOPE_V42_REQUIRED_PATH_MISSING")
++    if observed != v42_manifest["candidate_source_blobs"]:
++        raise v2.RecoveryGateError("SCOPE_V42_SOURCE_BLOB_DIVERGENCE")
++    expected = {
++        PRODUCT: G12_V42_BLOB, RS: RS_V42_BLOB, GUARD: GUARD_V42_BLOB,
++        "tests/test_solveris_b01_circuit.py": v4.ORIGINAL_B01_BLOB,
++        "app/services/tax_consistency/tax_consistency_engine.py": v3.SHARED_G1_BLOB,
++        "tools/enterprise_recovery_test_gate_v411.py": V411_GATE_BLOB,
++        "tools/enterprise_recovery_test_gate_v41.py": v411.V41_GATE_BLOB,
++        "tools/enterprise_recovery_test_gate_v4.py": v4_manifest["gate_self_blob"],
++        "tools/enterprise_recovery_test_gate_v42.py": v42_manifest["gate_self_blob"],
++    }
++    for path, blob in expected.items():
++        if v2._git(repo, "hash-object", path) != blob:
++            raise v2.RecoveryGateError("SCOPE_V42_PROTECTED_BLOB_DIVERGED:" + path)
++    for prior in (v3_manifest, v4_manifest, v41_manifest, v411_manifest):
++        for path, blob in prior["candidate_source_blobs"].items():
++            target = (G12_V42_BLOB if path == PRODUCT
++                      else RS_V42_BLOB if path == RS
++                      else GUARD_V42_BLOB if path == GUARD
++                      else v411.HISTORY_TEST_NEW_BLOB if path == v411.CORRECTED
++                      else blob)
++            if v2._git(repo, "hash-object", path) != target:
++                raise v2.RecoveryGateError("SCOPE_V42_HISTORICAL_PROVENANCE_CHANGED:" + path)
++    v3.verify_historical_source(repo)
++    origin = json.loads(
++        (repo / "docs/B03_B04_BLOB_PROVENIENCE_20261118.json")
++        .read_text(encoding="utf-8")
++    )
++    entries = origin.get("items", [])
++    if len(entries) != 36 or len({x.get("path") for x in entries if type(x) is dict}) != 36:
++        raise v2.RecoveryGateError("SCOPE_V42_PROVENANCE_COUNT_CHANGED")
++    for row in entries:
++        path = row["path"]
++        blob = (G12_V42_BLOB if path == PRODUCT
++                else v3_manifest["candidate_source_blobs"][path]
++                if path in v3.V3_OVERRIDES else row["git_blob"])
++        if v2._git(repo, "hash-object", path) != blob:
++            raise v2.RecoveryGateError("SCOPE_V42_PROVENANCE_CHANGED:" + path)
++    check = subprocess.run(
++        [sys.executable, str(repo / "tools/check_duplicacao.py"),
++         "--repo", str(repo), "--registro", "docs/REGISTRO_CANONICO.json"],
++        cwd=repo, capture_output=True, text=True, check=False,
++    )
++    if check.returncode:
++        raise v2.RecoveryGateError("SCOPE_V42_DUPLICATION_CHECK_FAILED")
++
++
++def evaluate_v42(*, repo: Path, baseline: dict, candidate: dict,
++                 approved_v2: dict, approved_v3: dict, approved_v4: dict,
++                 approved_v41: dict, approved_v411: dict, approved_v42: dict,
++                 changed: set[str], observed: dict[str, str], harness: dict,
++                 require_commit=True) -> dict:
++    _validate_manifest(repo, approved_v42, require_commit=require_commit)
++    parents = {
++        v411.MANIFEST: V411_MANIFEST_BLOB,
++        v41.MANIFEST: v411.V41_MANIFEST_BLOB,
++        v4.MANIFEST: v41.V4_MANIFEST_BLOB,
++        "docs/B03_B04_BASELINE_ESCOPO_G1_V3_20261118.json": v4.PARENT_V3_BLOB,
++        "docs/B03_B04_BASELINE_ESCOPO_TRANSACIONAL_V2_20261118.json": v3.V2_MANIFEST_BLOB,
++    }
++    for path, blob in parents.items():
++        if v2._git(repo, "hash-object", path) != blob:
++            raise v2.RecoveryGateError("SCOPE_V42_PARENT_CHANGED:" + path)
++    if (v411._fingerprint(approved_v411) != v411.MANIFEST_FINGERPRINT
++            or v41._fingerprint(approved_v41) != v41.MANIFEST_FINGERPRINT
++            or v4._ratified_fingerprint(approved_v4) != v4.RATIFIED_MANIFEST_FINGERPRINT
++            or v2._canonical_digest(approved_v3) != v3.MANIFEST_FINGERPRINT):
++        raise v2.RecoveryGateError("SCOPE_V42_PARENT_FINGERPRINT_DIVERGED")
++    verify_sources(
++        repo=repo, v3_manifest=approved_v3, v4_manifest=approved_v4,
++        v41_manifest=approved_v41, v411_manifest=approved_v411,
++        v42_manifest=approved_v42, changed=changed, observed=observed,
++    )
++    nodes = _nodes(repo)
++    if nodes - set(candidate):
++        raise v2.RecoveryGateError("SCOPE_V42_TESTS_MISSING")
++    if any(candidate[name][0] != "passed" for name in nodes):
++        raise v2.RecoveryGateError("SCOPE_V42_TESTS_RED")
++    result = v2.evaluate(
++        baseline=baseline, candidate=candidate, approved=approved_v2,
++        contract_hashes={p: v2._git(repo, "hash-object", p) for p in v2.PROTECTED},
++        changed_paths=(changed - set(v3.V3_DELTA) - set(v4.V4_DELTA)
++                       - set(v41.EXTRA) - set(v411.EXTRA) - set(EXTRA)),
++        harness_hashes=harness,
++    )
++    result.update({
++        "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_GATE_V42",
++        "scope_ratified": SCHEMA,
++        "historical_v411_preserved": V411_MANIFEST_BLOB,
++        "original_b01_tests_preserved": 25,
++        "g12_v42_xml_parser_g1_positive_and_negative": 6,
++        "GLOBAL_GREEN": False,
++    })
++    return result
++
++
++def run(args):
++    repo = args.repo.resolve()
++    if v2._git(repo, "branch", "--show-current") != v2.RECOVERY_BRANCH:
++        raise v2.RecoveryGateError("WRONG_RECOVERY_BRANCH")
++    if v2._git(repo, "rev-parse", v2.BASELINE_SHA) != v2.BASELINE_SHA:
++        raise v2.RecoveryGateError("BASELINE_COMMIT_UNAVAILABLE")
++    try:
++        env = {"python": platform.python_version(),
++               "fastapi": version("fastapi"), "pydantic": version("pydantic")}
++    except PackageNotFoundError as exc:
++        raise v2.RecoveryGateError("TEST_DEPENDENCIES_NOT_INSTALLED") from exc
++    approved_v2 = json.loads((repo / "docs/B03_B04_BASELINE_ESCOPO_TRANSACIONAL_V2_20261118.json").read_text())
++    approved_v3 = json.loads((repo / "docs/B03_B04_BASELINE_ESCOPO_G1_V3_20261118.json").read_text())
++    approved_v4 = json.loads((repo / v4.MANIFEST).read_text())
++    approved_v41 = json.loads((repo / v41.MANIFEST).read_text())
++    approved_v411 = json.loads((repo / v411.MANIFEST).read_text())
++    approved_v42 = json.loads(args.approved_manifest.read_text())
++    if approved_v2.get("environment") != env:
++        raise v2.RecoveryGateError("TEST_ENVIRONMENT_DRIFT")
++    v2._verify_junit_digest(args.baseline_junit, approved_v2["baseline_junit_sha256"])
++    changed = set(v2._git(repo, "diff", "--name-only", v2.BASELINE_SHA).splitlines())
++    changed.update(v2._git(repo, "ls-files", "--others", "--exclude-standard").splitlines())
++    observed = {path: v2._git(repo, "hash-object", path) for path in PINNED}
++    harness = {path: v2._git(repo, "hash-object", path) for path in v2.BASELINE_HARNESS_OVERLAY}
++    return evaluate_v42(
++        repo=repo, baseline=v2.parse_junit(args.baseline_junit),
++        candidate=v2.parse_junit(args.candidate_junit),
++        approved_v2=approved_v2, approved_v3=approved_v3,
++        approved_v4=approved_v4, approved_v41=approved_v41,
++        approved_v411=approved_v411, approved_v42=approved_v42,
++        changed=changed, observed=observed, harness=harness,
++    )
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--repo", type=Path, default=Path("."))
++    parser.add_argument("--baseline-junit", type=Path, required=True)
++    parser.add_argument("--candidate-junit", type=Path, required=True)
++    parser.add_argument("--approved-manifest", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args(argv)
++    try:
++        result = run(args)
++    except (v2.RecoveryGateError, OSError, json.JSONDecodeError, KeyError,
++            ValueError, TypeError) as exc:
++        result = {
++            "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_GATE_V42",
++            "GLOBAL_GREEN": False,
++            "ENTERPRISE_RECOVERY_STATUS": "BLOCKED",
++            "reason": str(exc).split(":", 1)[0],
++        }
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
++    print(result["ENTERPRISE_RECOVERY_STATUS"])
++    return 0 if result["ENTERPRISE_RECOVERY_STATUS"] == "PASS_WITH_BASELINE_RED" else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
