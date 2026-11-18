@@ -1,0 +1,41 @@
+diff --git a/app/services/registro_analise_service.py b/app/services/registro_analise_service.py
+index 4e889089..381cd150 100644
+--- a/app/services/registro_analise_service.py
++++ b/app/services/registro_analise_service.py
+@@ -244,21 +244,22 @@ def executar_e_registrar_analise_xml(
+                 }
+         raise
+ 
+-    if empresa_id and not enterprise_opt_in:
+-        try:
+-            from app.services.insights_engine import InsightEngine
++    if empresa_id:
++        if not enterprise_opt_in:
++            try:
++                from app.services.insights_engine import InsightEngine
+ 
+-            engine = InsightEngine(db)
+-            engine.gerar_insights_empresa(
+-                empresa_id=empresa_id,
+-                relatorio_analise_id=rel.id,
+-            )
+-        except Exception:
+-            logger.exception(
+-                "Falha ao gerar insights (InsightEngine): empresa_id=%s relatorio_analise_id=%s",
+-                empresa_id,
+-                rel.id,
+-            )
++                engine = InsightEngine(db)
++                engine.gerar_insights_empresa(
++                    empresa_id=empresa_id,
++                    relatorio_analise_id=rel.id,
++                )
++            except Exception:
++                logger.exception(
++                    "Falha ao gerar insights (InsightEngine): empresa_id=%s relatorio_analise_id=%s",
++                    empresa_id,
++                    rel.id,
++                )
+ 
+     score_resultante = None
+     if empresa_id:
