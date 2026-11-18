@@ -1,0 +1,752 @@
+diff --git a/tests/test_enterprise_recovery_scope_v2_gate.py b/tests/test_enterprise_recovery_scope_v2_gate.py
+new file mode 100644
+index 00000000..930bfde0
+--- /dev/null
++++ b/tests/test_enterprise_recovery_scope_v2_gate.py
+@@ -0,0 +1,88 @@
++"""Controles mecânicos adicionais da ampliação B03/B04 aprovada por Miguel.
++
++Preserva os 20 controles originais V1 e não executa código de produto.
++"""
++
++import importlib.util
++import json
++import unittest
++from pathlib import Path
++
++
++ROOT = Path(__file__).resolve().parents[1]
++SPEC = importlib.util.spec_from_file_location(
++    "enterprise_recovery_gate_scope_v2",
++    ROOT / "tools" / "enterprise_recovery_test_gate.py",
++)
++assert SPEC and SPEC.loader
++gate = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(gate)
++
++PASS = ("passed", "", "")
++FAIL = ("failure", "", "")
++SKIP = ("skipped", "", "")
++
++
++class TestRecoveryGateTransactionScopeV2(unittest.TestCase):
++    def setUp(self):
++        self.approved = json.loads(
++            (ROOT / "docs/B03_B04_BASELINE_ESCOPO_TRANSACIONAL_V2_20261118.json")
++            .read_text(encoding="utf-8")
++        )
++        self.baseline = {node: FAIL for node in gate.EXPECTED_FAILURE_NODES}
++        self.baseline.update({f"tests.test_mock::pass_{i}": PASS for i in range(4074)})
++        self.baseline.update({f"tests.test_mock::skip_{i}": SKIP for i in range(15)})
++        self.candidate = dict(self.baseline)
++        self.candidate.update({node: PASS for node in gate.REQUIRED_ENTERPRISE_NODES})
++        self.candidate.update({node: PASS for node in gate.SCOPE_V2_REQUIRED_ATOMIC_NODES})
++
++    def evaluate(self):
++        return gate.evaluate(
++            baseline=self.baseline,
++            candidate=self.candidate,
++            approved=self.approved,
++            contract_hashes=gate.PROTECTED,
++            harness_hashes=gate.BASELINE_HARNESS_OVERLAY,
++            changed_paths=set(self.approved["allowed_recovery_paths"]),
++        )
++
++    def test_v2_ratifcado_exige_25_mais_6_e_nao_declara_green_global(self):
++        result = self.evaluate()
++        self.assertIs(result["GLOBAL_GREEN"], False)
++        self.assertEqual(result["enterprise_wiring_tests_passed"], 25)
++        self.assertEqual(result["enterprise_atomic_tests_passed"], 6)
++        self.assertEqual(result["ENTERPRISE_RECOVERY_STATUS"], "PASS_WITH_BASELINE_RED")
++
++    def test_caso_atomico_ausente_bloqueia(self):
++        self.candidate.pop(next(iter(gate.SCOPE_V2_REQUIRED_ATOMIC_NODES)))
++        with self.assertRaisesRegex(gate.RecoveryGateError, "ATOMIC_TESTS_MISSING"):
++            self.evaluate()
++
++    def test_caso_atomico_falho_bloqueia(self):
++        self.candidate[next(iter(gate.SCOPE_V2_REQUIRED_ATOMIC_NODES))] = FAIL
++        with self.assertRaisesRegex(gate.RecoveryGateError, "ATOMIC_TEST_NOT_PASSED"):
++            self.evaluate()
++
++    def test_caminho_adicional_ilegitimo_bloqueia(self):
++        self.approved["allowed_recovery_paths"].append("app/services/memoria_estrategica_service.py")
++        with self.assertRaisesRegex(gate.RecoveryGateError, "SCOPE_V2_UNRATIFIED_OR_EXPANDED"):
++            self.evaluate()
++
++    def test_retirar_ficheiro_da_extensao_bloqueia(self):
++        self.approved["allowed_recovery_paths"].remove("app/xml_service.py")
++        with self.assertRaisesRegex(gate.RecoveryGateError, "SCOPE_V2_UNRATIFIED_OR_EXPANDED"):
++            self.evaluate()
++
++    def test_patch_nao_ratificado_bloqueia(self):
++        self.approved["candidate_patch_git_blob"] = "0" * 40
++        with self.assertRaisesRegex(gate.RecoveryGateError, "SCOPE_V2_UNRATIFIED_OR_EXPANDED"):
++            self.evaluate()
++
++    def test_schema_desconhecido_bloqueia(self):
++        self.approved["schema_version"] = "v3_inesperada"
++        with self.assertRaisesRegex(gate.RecoveryGateError, "UNKNOWN_RECOVERY_SCOPE_SCHEMA"):
++            self.evaluate()
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/test_enterprise_recovery_test_gate.py b/tests/test_enterprise_recovery_test_gate.py
+new file mode 100644
+index 00000000..6ff3c720
+--- /dev/null
++++ b/tests/test_enterprise_recovery_test_gate.py
+@@ -0,0 +1,235 @@
++"""Controlos negativos do gate diferencial estrito B03/B04."""
++
++from __future__ import annotations
++
++import hashlib
++import importlib.util
++import json
++import tempfile
++import unittest
++from collections import Counter
++from pathlib import Path
++
++
++ROOT = Path(__file__).resolve().parents[1]
++SPEC = importlib.util.spec_from_file_location(
++    "enterprise_recovery_test_gate",
++    ROOT / "tools" / "enterprise_recovery_test_gate.py",
++)
++assert SPEC and SPEC.loader
++gate = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(gate)
++
++TEST_MEI = (
++    "tests.test_mei_competencia_checkout_intent_http_contract_red"
++    "::test_http_mei_intent_route_authentication_and_schema_red"
++)
++TEST_PASS = "tests.test_enterprise_b03::test_gate"
++TEST_SKIP = "tests.test_other::test_skip"
++FAIL = ("failure", "AttributeError", "ModelField missing type_")
++PASSED = ("passed", "", "")
++SKIPPED = ("skipped", "", "reason")
++
++
++def _approved(baseline, *, paths=()):
++    recorded = gate._baseline_failures(baseline)
++    counts = Counter(outcome for outcome, _, _ in baseline.values())
++    environment = {
++        "python": "3.12.0", "fastapi": "0.135.1", "pydantic": "2.12.5",
++    }
++    return {
++        "baseline_sha": gate.BASELINE_SHA,
++        "baseline_exit_code": 1,
++        "scope": "ISOLATED_B03_B04_RECOVERY_ONLY",
++        "expected_baseline_tests": len(baseline),
++        "baseline_counts": {
++            "passed": counts["passed"], "failure": counts["failure"],
++            "error": counts["error"], "skipped": counts["skipped"],
++        },
++        "GLOBAL_GREEN": False,
++        "protected_contracts": gate.PROTECTED,
++        "test_harness_overlay": gate.BASELINE_HARNESS_OVERLAY,
++        "baseline_junit_sha256": "a" * 64,
++        "accepted_failure_ids": sorted(recorded),
++        "environment": environment,
++        "allowed_recovery_paths": list(paths),
++        "accepted_failure_fingerprint": gate._canonical_digest({
++            "baseline_sha": gate.BASELINE_SHA,
++            "baseline_junit_sha256": "a" * 64,
++            "accepted_failure_ids": sorted(recorded),
++            "protected_contracts": gate.PROTECTED,
++            "test_harness_overlay": gate.BASELINE_HARNESS_OVERLAY,
++            "environment": environment,
++        }),
++    }
++
++
++class RecoveryGateContractTests(unittest.TestCase):
++    def setUp(self):
++        self.baseline = {node: FAIL for node in gate.EXPECTED_FAILURE_NODES}
++        self.baseline.update({TEST_PASS: PASSED, TEST_SKIP: SKIPPED})
++        self.candidate = dict(self.baseline)
++        self.candidate.update({node: PASSED for node in gate.REQUIRED_ENTERPRISE_NODES})
++        self.approved = _approved(self.baseline, paths=("app/services/enterprise_b04.py",))
++
++    def _evaluate(self, *, changes=()):
++        return gate.evaluate(
++            baseline=self.baseline,
++            candidate=self.candidate,
++            approved=self.approved,
++            contract_hashes=gate.PROTECTED,
++            changed_paths=set(changes),
++        )
++
++    def test_pass_still_has_explicit_global_red(self):
++        self.candidate["tests.test_enterprise_b04::test_new"] = PASSED
++        result = self._evaluate(changes=("app/services/enterprise_b04.py",))
++        self.assertIs(result["GLOBAL_GREEN"], False)
++        self.assertEqual(result["ENTERPRISE_RECOVERY_STATUS"], "PASS_WITH_BASELINE_RED")
++        self.assertEqual(result["new_tests_passed"], len(gate.REQUIRED_ENTERPRISE_NODES) + 1)
++        self.assertEqual(result["enterprise_wiring_tests_passed"], 25)
++
++    def test_missing_b01_wiring_test_fails_closed(self):
++        node = next(n for n in gate.REQUIRED_ENTERPRISE_NODES if n.startswith("tests.test_solveris_b01_circuit."))
++        self.candidate.pop(node)
++        with self.assertRaisesRegex(gate.RecoveryGateError, "ENTERPRISE_WIRING_TESTS_MISSING"):
++            self._evaluate()
++
++    def test_b01_wiring_test_failed_blocks_recovery(self):
++        node = next(n for n in gate.REQUIRED_ENTERPRISE_NODES if n.startswith("tests.test_solveris_b01_circuit."))
++        self.candidate[node] = FAIL
++        with self.assertRaisesRegex(gate.RecoveryGateError, "ENTERPRISE_WIRING_TEST_NOT_PASSED"):
++            self._evaluate()
++
++    def test_missing_baseline_test_fails_closed(self):
++        self.candidate.pop(TEST_PASS)
++        with self.assertRaisesRegex(gate.RecoveryGateError, "BASELINE_TESTS_NOT_EXECUTED"):
++            self._evaluate()
++
++    def test_prior_pass_becomes_failure_fails_closed(self):
++        self.candidate[TEST_PASS] = FAIL
++        with self.assertRaisesRegex(gate.RecoveryGateError, "NEW_FAILURE_OR_WEAKENED_TEST"):
++            self._evaluate()
++
++    def test_new_skipped_test_fails_closed(self):
++        self.candidate["tests.test_enterprise_b04::new"] = SKIPPED
++        with self.assertRaisesRegex(gate.RecoveryGateError, "NEW_FAILURE_OR_WEAKENED_TEST"):
++            self._evaluate()
++
++    def test_baseline_red_becomes_skipped_fails_closed(self):
++        self.candidate[TEST_MEI] = SKIPPED
++        with self.assertRaisesRegex(gate.RecoveryGateError, "NEW_FAILURE_OR_WEAKENED_TEST"):
++            self._evaluate()
++
++    def test_baseline_red_changed_cause_fails_closed(self):
++        self.candidate[TEST_MEI] = ("failure", "AssertionError", "different")
++        with self.assertRaisesRegex(gate.RecoveryGateError, "NEW_FAILURE_OR_WEAKENED_TEST"):
++            self._evaluate()
++
++    def test_protected_hash_divergence_fails_closed(self):
++        with self.assertRaisesRegex(gate.RecoveryGateError, "PROTECTED_CONTRACT_HASH_DIVERGENCE"):
++            gate.evaluate(
++                baseline=self.baseline, candidate=self.candidate,
++                approved=self.approved, contract_hashes={}, changed_paths=set(),
++            )
++
++    def test_test_harness_hash_divergence_fails_closed(self):
++        with self.assertRaisesRegex(gate.RecoveryGateError, "TEST_HARNESS_OVERLAY_DIVERGED"):
++            gate.evaluate(
++                baseline=self.baseline, candidate=self.candidate,
++                approved=self.approved, contract_hashes=gate.PROTECTED,
++                harness_hashes={}, changed_paths=set(),
++            )
++
++    def test_unapproved_baseline_failure_fails_closed(self):
++        self.approved["accepted_failure_ids"] = []
++        with self.assertRaisesRegex(gate.RecoveryGateError, "BASELINE_FAILURES_NOT_EXACTLY_RATIFIED"):
++            self._evaluate()
++
++    def test_forged_global_green_fails_closed(self):
++        self.approved["GLOBAL_GREEN"] = True
++        with self.assertRaisesRegex(gate.RecoveryGateError, "GLOBAL_GREEN_FALSE_REQUIRED"):
++            self._evaluate()
++
++    def test_mei_changed_fails_closed(self):
++        self.approved["allowed_recovery_paths"].append("tests/test_mei_unrelated.py")
++        with self.assertRaisesRegex(gate.RecoveryGateError, "MEI_SOURCE_OR_TEST_CHANGED"):
++            self._evaluate(changes=("tests/test_mei_unrelated.py",))
++
++    def test_unratified_fourteenth_baseline_failure_fails_closed(self):
++        self.baseline[TEST_PASS] = FAIL
++        self.approved = _approved(self.baseline)
++        with self.assertRaisesRegex(gate.RecoveryGateError, "BASELINE_FAILURE_NODE_SET_DIVERGED"):
++            self._evaluate()
++
++    def test_missing_one_of_thirteen_fails_closed(self):
++        self.baseline[TEST_MEI] = PASSED
++        self.approved = _approved(self.baseline)
++        with self.assertRaisesRegex(gate.RecoveryGateError, "BASELINE_FAILURE_NODE_SET_DIVERGED"):
++            self._evaluate()
++
++    def test_unapproved_path_fails_closed(self):
++        with self.assertRaisesRegex(gate.RecoveryGateError, "UNAPPROVED_RECOVERY_FILE_CHANGED"):
++            self._evaluate(changes=("app/services/enterprise_unreviewed.py",))
++
++    def test_junit_counts_and_failure_signatures(self):
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory) / "junit.xml"
++            path.write_text(
++                '<testsuites><testsuite tests="2" failures="1" errors="0" skipped="0">'
++                '<testcase classname="tests.test_enterprise_b03" name="test_gate" />'
++                '<testcase classname="tests.test_mei_competencia_checkout_intent_http_contract_red" '
++                'name="test_http_mei_intent_route_authentication_and_schema_red">'
++                '<failure type="AttributeError" message="ModelField missing type_" />'
++                '</testcase></testsuite></testsuites>',
++                encoding="utf-8",
++            )
++            parsed = gate.parse_junit(path)
++            self.assertEqual(parsed[TEST_MEI], FAIL)
++            expected_digest = hashlib.sha256(FAIL[2].encode()).hexdigest()
++            self.assertEqual(
++                gate._baseline_failures(parsed)[TEST_MEI]["message_sha256"],
++                expected_digest,
++            )
++
++    def test_truncated_junit_fails_closed(self):
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory) / "truncated.xml"
++            path.write_text(
++                '<testsuites><testsuite tests="2"><testcase classname="x" name="a" />'
++                '</testsuite></testsuites>', encoding="utf-8",
++            )
++            with self.assertRaisesRegex(gate.RecoveryGateError, "JUNIT_INCOMPLETE"):
++                gate.parse_junit(path)
++
++    def test_baseline_junit_digest_is_immutable(self):
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory) / "report.xml"
++            path.write_text("<testsuites />", encoding="utf-8")
++            digest = hashlib.sha256(path.read_bytes()).hexdigest()
++            gate._verify_junit_digest(path, digest)
++            with self.assertRaisesRegex(gate.RecoveryGateError, "JUNIT_DIGEST_DIVERGENCE"):
++                gate._verify_junit_digest(path, "a" * 64)
++
++    def test_ratified_full_baseline_manifest_is_consistent(self):
++        manifest_path = ROOT / "docs/B03_B04_BASELINE_RATIFICADA_20261118.json"
++        approved = json.loads(manifest_path.read_text(encoding="utf-8"))
++        baseline = {node: ("failure", "", "") for node in gate.EXPECTED_FAILURE_NODES}
++        baseline.update({f"tests.test_dummy::passed_{i}": PASSED for i in range(4074)})
++        baseline.update({f"tests.test_dummy::skipped_{i}": SKIPPED for i in range(15)})
++        result = gate.evaluate(
++            baseline=baseline,
++            candidate={**baseline, **{node: PASSED for node in gate.REQUIRED_ENTERPRISE_NODES}},
++            approved=approved,
++            contract_hashes=gate.PROTECTED,
++            harness_hashes=gate.BASELINE_HARNESS_OVERLAY,
++            changed_paths=set(approved["allowed_recovery_paths"]),
++        )
++        self.assertIs(result["GLOBAL_GREEN"], False)
++        self.assertEqual(result["baseline_tests"], 4102)
++        self.assertEqual(result["enterprise_wiring_tests_passed"], 25)
++        self.assertEqual(result["remaining_baseline_failures"], sorted(gate.EXPECTED_FAILURE_NODES))
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tools/enterprise_recovery_test_gate.py b/tools/enterprise_recovery_test_gate.py
+new file mode 100644
+index 00000000..1954987b
+--- /dev/null
++++ b/tools/enterprise_recovery_test_gate.py
+@@ -0,0 +1,411 @@
++"""Gate diferencial B03/B04: nunca converter RED de baseline em GREEN global.
++
++Uso (somente no branch isolado, após ratificação do manifesto de baseline):
++    python tools/enterprise_recovery_test_gate.py \
++      --baseline-junit CAMINHO --candidate-junit CAMINHO \
++      --approved-manifest docs/B03_B04_BASELINE_APROVADA.json \
++      --output docs/B03_B04_RESULTADO_GATE.json
++
++O XML bruto dos testes fica fora da documentação versionada. Este programa
++emite exclusivamente estado e identidades sanitizadas; não muda bases ou Git.
++"""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import platform
++import re
++import subprocess
++import sys
++import xml.etree.ElementTree as ET
++from collections import Counter
++from importlib.metadata import PackageNotFoundError, version
++from pathlib import Path
++
++
++BASELINE_SHA = "a6a2da6cbf07c7b9922f8571bf2e6016376304d5"
++RECOVERY_BRANCH = "recovery/enterprise-b00-b04-20261117"
++PROTECTED = {
++    "tests/test_mei_competencia_checkout_intent_http_contract_red.py":
++        "f8ef579db5052c9b80924bb7de5a0606d70b9413",
++    "tests/test_payments_checkout_offer_one_time_router_contract_red.py":
++        "015ecd0eba8f07268707f162dbe77c120c6789b2",
++    "tests/test_payments_tax_report_acquisition_http_create_contract_red.py":
++        "1f94eb43b9e02c3f5c2b73ac59b4b16918a4e2db",
++    "tests/test_payments_tax_report_checkout_intent_wiring_contract_red.py":
++        "5b7bc772c85704da3f491e3f1b658388246ed064",
++}
++BASELINE_HARNESS_OVERLAY = {
++    "tests/test_adr020_activation_postgresql.py":
++        "b7e551df23c3f2ec60bcf95d1a1c3c9be9a68d50",
++    "tests/test_agent_contract_architecture.py":
++        "0d24fd62d66277d0107af182e035059523d72dae",
++}
++
++# Os 13 IDs vieram da execução integral de main@a6a2da6c, exit 1.
++# Nunca aceitar um RED adicional por configuração automática do candidato.
++EXPECTED_FAILURE_NODES = frozenset({
++    "tests.test_mei_competencia_checkout_intent_http_contract_red::test_http_mei_intent_route_authentication_and_schema_red",
++    "tests.test_mei_normative_census::test_real_repository_call_site_scan_is_complete_and_has_no_structural_findings",
++    "tests.test_ops12_f2_gerar_relatorio_contract::test_f2_gerar_relatorio_sem_empresa_retorna_200",
++    "tests.test_ops12_f2_gerar_relatorio_contract::test_f2_gerar_relatorio_com_empresa_retorna_200",
++    "tests.test_payments_checkout_offer_campaign_dispatch_toctou_contract_red::test_payments_checkout_offer_campaign_dispatch_toctou_contract_red",
++    "tests.test_payments_checkout_offer_campaign_preference_expiry_contract_red::test_payments_checkout_offer_campaign_preference_expiry_contract_red",
++    "tests.test_payments_checkout_offer_one_time_router_contract_red::test_payments_checkout_offer_one_time_router_contract_red",
++    "tests.test_payments_checkout_offer_second_legitimate_payment_reconciliation_contract_red::test_payments_checkout_offer_second_legitimate_payment_reconciliation_contract_red",
++    "tests.test_payments_mercado_pago_main_wiring_contract_red::test_payments_mercado_pago_main_wiring_contract_red",
++    "tests.test_payments_multi_vertical_one_time_dispatch_contract_red::test_payments_multi_vertical_one_time_dispatch_contract_red",
++    "tests.test_payments_tax_report_acquisition_http_create_contract_red::test_tax_report_acquisition_http_create_route_and_authority_contract_red",
++    "tests.test_payments_tax_report_checkout_intent_wiring_contract_red::test_http_intent_endpoint_exists_authenticated_and_has_exact_input_red",
++    "tests.test_pipeline_xml_canonico::test_processar_xml_job_delega_para_eixo_canonico",
++})
++
++# Prova de religação, não apenas de presença dos blobs. Estes 25 casos
++# constam dos três contratos de origem c9a17fd1 (B03, B04 e B01).
++# Sem o circuito real B01 não é lícito aprovar a recuperação B03/B04.
++REQUIRED_ENTERPRISE_NODES = frozenset({
++    "tests.test_enterprise_b03_item_reconciliation.TestConfrontarDocumentoB03::test_sem_divergencia_quando_valores_batem",
++    "tests.test_enterprise_b03_item_reconciliation.TestConfrontarDocumentoB03::test_divergencia_quando_valor_xml_diverge_do_calculado",
++    "tests.test_enterprise_b03_item_reconciliation.TestConfrontarDocumentoB03::test_nao_avaliado_quando_falta_autoridade_normativa",
++    "tests.test_enterprise_b03_item_reconciliation.TestConfrontarDocumentoB03::test_falha_fechada_quando_campos_essenciais_ausentes",
++    "tests.test_enterprise_b03_item_reconciliation.TestConfrontarDocumentoB03::test_valor_produto_ausente_bloqueia_item_sem_crash",
++    "tests.test_enterprise_b03_item_reconciliation.TestConfrontarXmlB03::test_ponta_a_ponta_sem_divergencia",
++    "tests.test_enterprise_b03_item_reconciliation.TestConfrontarXmlB03::test_erro_de_parse_xml_nao_propaga_excecao",
++    "tests.test_enterprise_b04_icms_st_integral_bridge.TestProjetarDiagnosticoIntegralIcmsSt::test_sucesso_atualiza_so_as_tres_capacidades_relevantes",
++    "tests.test_enterprise_b04_icms_st_integral_bridge.TestProjetarDiagnosticoIntegralIcmsSt::test_falha_g13_marca_falha_motor_sem_crash",
++    "tests.test_enterprise_b04_icms_st_integral_bridge.TestProjetarDiagnosticoIntegralIcmsSt::test_sem_simulacao_nenhuma_vira_nao_apurado_nao_informativo",
++    "tests.test_enterprise_b04_icms_st_integral_bridge.TestProjetarDiagnosticoIntegralIcmsSt::test_g13_precomputado_e_usado_sem_recalcular",
++    "tests.test_enterprise_b04_icms_st_integral_bridge.TestProjetarDiagnosticoIntegralIcmsSt::test_g13_precomputado_identidade_divergente_falha_fechado",
++    "tests.test_enterprise_b04_icms_st_integral_bridge.TestProjetarDiagnosticoIntegralIcmsSt::test_nunca_promove_autoridade_fiscal_mesmo_em_sucesso",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_01_circuito_real_writer_i2_g12_g14_adr020_c3_c7",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_02_identidade_divergente_rejeitada_antes_da_escrita",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_03_xml_estrutural_invalido_rejeitado_antes_da_escrita",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_04_regra_l2_ausente_abstencao_sem_credito",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_05_dependencia_c3_falha_fecha_circuito",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_06_sem_manifesto_normativo_abstencao_sem_inventar_c7",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_07_sqlite_em_disco_proibida",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_08_duplicado_nao_pode_virar_nova_prova",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_09_sem_injecao_de_autoridade_nao_autorizada",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_10_falha_dependencia_adr020_nao_cria_resultado_c7",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_11_cnpj_xml_estranho_rejeitado_antes_de_persistir",
++    "tests.test_solveris_b01_circuit.TestEnterpriseB01SyntheticIntegration::test_12_chave_invalida_rejeitada_antes_de_persistir",
++})
++
++# A extensão foi ratificada posteriormente: o manifesto original V1 mantém-se
++# intacto. O V2 não pode ampliar silenciosamente caminhos ou dispensar testes.
++SCOPE_V2_SCHEMA = "SOLVERIS_ENTERPRISE_RECOVERY_BASELINE_SCOPE_V2"
++SCOPE_V2_PARENT_BLOB = "494700e32c3f9717484c22c8179f696bd9abf4a1"
++SCOPE_V2_PATCH_BLOB = "1ffce9965c313b788fe00e84d1ac576ab6fbac49"
++SCOPE_V1_PATHS_DIGEST = "3309e6a5c1413f99275dce83a4545fbc1b38259dc09870fd687d1d0eca6237a9"
++SCOPE_V2_DELTA = frozenset({
++    "app/services/registro_analise_service.py",
++    "app/services/usage_service.py",
++    "app/services/insights_engine.py",
++    "app/xml_service.py",
++    "tests/test_enterprise_b01_atomic_rollback_contract.py",
++    "tests/test_enterprise_recovery_scope_v2_gate.py",
++    "docs/B03_B04_CUSTODIA_REMOTA_20261118.md",
++    "docs/B03_B04_STOP_FRONTEIRA_TRANSACIONAL_20261118.md",
++    "docs/B03_B04_PATCH_GATE_V2_20261118.patch",
++    "docs/B03_B04_PATCH_TX_CANDIDATO_20261118.patch",
++    "docs/B03_B04_BASELINE_ESCOPO_TRANSACIONAL_V2_20261118.json",
++    "docs/B03_B04_EXECUCAO_CANDIDATO_TX_20261118.md",
++})
++SCOPE_V2_REQUIRED_ATOMIC_NODES = frozenset(
++    "tests.test_enterprise_b01_atomic_rollback_contract.TestEnterpriseB01AtomicRollback::" + name
++    for name in (
++        "test_gate_g17_tardio_desfaz_documento_relatorio_e_uso",
++        "test_falha_contador_desfaz_documento_e_relatorio",
++        "test_falha_na_confirmacao_final_desfaz_todas_as_escritas",
++        "test_escritor_optin_avulso_nao_pode_contornar_transacao",
++        "test_sujeito_mei_nullable_recusado_antes_da_escrita",
++        "test_operacao_enterprise_sintetica_nao_invoca_insights_com_commit_interno",
++    )
++)
++
++
++class RecoveryGateError(ValueError):
++    pass
++
++
++def _git(repo: Path, *args: str) -> str:
++    result = subprocess.run(
++        ["git", "-C", str(repo), *args],
++        capture_output=True, text=True, check=False,
++    )
++    if result.returncode:
++        raise RecoveryGateError(f"GIT_QUERY_FAILED:{args[0]}")
++    return result.stdout.strip()
++
++
++def _identity(element: ET.Element) -> str:
++    classname, name = element.get("classname"), element.get("name")
++    if not classname or not name:
++        raise RecoveryGateError("JUNIT_MISSING_TEST_IDENTITY")
++    return f"{classname}::{name}"
++
++
++def parse_junit(path: Path) -> dict[str, tuple[str, str, str]]:
++    try:
++        root = ET.parse(path).getroot()
++    except (ET.ParseError, OSError) as exc:
++        raise RecoveryGateError("JUNIT_MISSING_OR_INVALID") from exc
++    suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
++    if not suites:
++        raise RecoveryGateError("JUNIT_NO_SUITES")
++    results: dict[str, tuple[str, str, str]] = {}
++    declared = 0
++    for suite in suites:
++        try:
++            declared += int(suite.attrib["tests"])
++        except (KeyError, ValueError) as exc:
++            raise RecoveryGateError("JUNIT_SUITE_COUNT_ABSENT") from exc
++        for case in suite.findall("testcase"):
++            node = _identity(case)
++            if node in results:
++                raise RecoveryGateError("JUNIT_DUPLICATED_TEST_IDENTITY")
++            outcome = [(kind, case.find(kind)) for kind in ("failure", "error", "skipped")]
++            observed = [(kind, element) for kind, element in outcome if element is not None]
++            if len(observed) > 1:
++                raise RecoveryGateError("JUNIT_MULTIPLE_OUTCOMES")
++            if observed:
++                kind, element = observed[0]
++                assert element is not None
++                results[node] = (kind, element.get("type", ""), element.get("message", ""))
++            else:
++                results[node] = ("passed", "", "")
++    if declared != len(results):
++        raise RecoveryGateError("JUNIT_INCOMPLETE_OR_DUPLICATED")
++    return results
++
++
++def _canonical_digest(value: object) -> str:
++    serialized = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
++    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
++
++
++def _verify_junit_digest(path: Path, approved_digest: object) -> None:
++    if not isinstance(approved_digest, str) or not re.fullmatch(r"[0-9a-f]{64}", approved_digest):
++        raise RecoveryGateError("BASELINE_JUNIT_DIGEST_NOT_RATIFIED")
++    try:
++        with path.open("rb") as stream:
++            actual = hashlib.file_digest(stream, "sha256").hexdigest()
++    except OSError as exc:
++        raise RecoveryGateError("BASELINE_JUNIT_MISSING") from exc
++    if actual != approved_digest:
++        raise RecoveryGateError("BASELINE_JUNIT_DIGEST_DIVERGENCE")
++
++
++def _baseline_failures(results: dict[str, tuple[str, str, str]]) -> dict[str, dict[str, str]]:
++    return {
++        node: {
++            "outcome": outcome, "type": kind,
++            "message_sha256": hashlib.sha256(message.encode("utf-8")).hexdigest(),
++        }
++        for node, (outcome, kind, message) in sorted(results.items())
++        if outcome in ("failure", "error")
++    }
++
++
++def _unsafe_mei_path(path: str) -> bool:
++    normalized = path.lower().replace("\\", "/")
++    components = normalized.split("/")
++    return any(
++        part == "mei" or part.startswith("mei_") or part.endswith("_mei")
++        or part.startswith("test_mei_")
++        for part in components
++    )
++
++
++def evaluate(
++    *, baseline: dict[str, tuple[str, str, str]],
++    candidate: dict[str, tuple[str, str, str]], approved: dict,
++    contract_hashes: dict[str, str], changed_paths: set[str],
++    harness_hashes: dict[str, str] | None = None,
++) -> dict:
++    if approved.get("baseline_sha") != BASELINE_SHA:
++        raise RecoveryGateError("BASELINE_SHA_NOT_RATIFIED")
++    if approved.get("baseline_exit_code") != 1:
++        raise RecoveryGateError("BASELINE_RED_EXIT_NOT_RECORDED")
++    if approved.get("scope") != "ISOLATED_B03_B04_RECOVERY_ONLY":
++        raise RecoveryGateError("RECOVERY_SCOPE_NOT_RATIFIED")
++    expected = approved.get("expected_baseline_tests")
++    if type(expected) is not int or expected < 1 or len(baseline) != expected:
++        raise RecoveryGateError("BASELINE_COLLECTION_INCOMPLETE")
++    baseline_counts = Counter(outcome for outcome, _, _ in baseline.values())
++    expected_counts = {
++        "passed": baseline_counts["passed"],
++        "failure": baseline_counts["failure"],
++        "error": baseline_counts["error"],
++        "skipped": baseline_counts["skipped"],
++    }
++    if approved.get("baseline_counts") != expected_counts:
++        raise RecoveryGateError("BASELINE_COUNTS_NOT_RATIFIED")
++    if approved.get("GLOBAL_GREEN") is not False:
++        raise RecoveryGateError("GLOBAL_GREEN_FALSE_REQUIRED")
++    if approved.get("protected_contracts") != PROTECTED or contract_hashes != PROTECTED:
++        raise RecoveryGateError("PROTECTED_CONTRACT_HASH_DIVERGENCE")
++    if approved.get("test_harness_overlay") != BASELINE_HARNESS_OVERLAY:
++        raise RecoveryGateError("TEST_HARNESS_NOT_RATIFIED")
++    if harness_hashes is not None and harness_hashes != BASELINE_HARNESS_OVERLAY:
++        raise RecoveryGateError("TEST_HARNESS_OVERLAY_DIVERGED")
++    environment = approved.get("environment")
++    if not isinstance(environment, dict) or not all(
++        isinstance(environment.get(key), str) and environment[key]
++        for key in ("python", "fastapi", "pydantic")
++    ):
++        raise RecoveryGateError("BASELINE_ENVIRONMENT_UNBOUND")
++    recorded = _baseline_failures(baseline)
++    if approved.get("accepted_failure_ids") != sorted(recorded):
++        raise RecoveryGateError("BASELINE_FAILURES_NOT_EXACTLY_RATIFIED")
++    if set(recorded) != EXPECTED_FAILURE_NODES:
++        raise RecoveryGateError("BASELINE_FAILURE_NODE_SET_DIVERGED")
++    if any(_unsafe_mei_path(path) for path in changed_paths):
++        raise RecoveryGateError("MEI_SOURCE_OR_TEST_CHANGED")
++    allowed_paths = approved.get("allowed_recovery_paths")
++    if not isinstance(allowed_paths, list) or any(type(path) is not str for path in allowed_paths):
++        raise RecoveryGateError("CHANGED_PATHS_NOT_RATIFIED")
++    scope_schema = approved.get("schema_version")
++    if scope_schema not in (None, "SOLVERIS_ENTERPRISE_RECOVERY_BASELINE_V1", SCOPE_V2_SCHEMA):
++        raise RecoveryGateError("UNKNOWN_RECOVERY_SCOPE_SCHEMA")
++    transactional_v2 = scope_schema == SCOPE_V2_SCHEMA
++    if transactional_v2:
++        allowed_set = set(allowed_paths)
++        if (
++            len(allowed_set) != len(allowed_paths)
++            or not SCOPE_V2_DELTA.issubset(allowed_set)
++            or _canonical_digest(sorted(allowed_set - SCOPE_V2_DELTA))
++                != SCOPE_V1_PATHS_DIGEST
++            or approved.get("parent_manifest_git_blob") != SCOPE_V2_PARENT_BLOB
++            or approved.get("candidate_patch_git_blob") != SCOPE_V2_PATCH_BLOB
++            or set(approved.get("required_atomic_nodes", ()))
++                != SCOPE_V2_REQUIRED_ATOMIC_NODES
++        ):
++            raise RecoveryGateError("SCOPE_V2_UNRATIFIED_OR_EXPANDED")
++    if changed_paths - set(allowed_paths):
++        raise RecoveryGateError("UNAPPROVED_RECOVERY_FILE_CHANGED")
++    missing = set(baseline) - set(candidate)
++    if missing:
++        raise RecoveryGateError("BASELINE_TESTS_NOT_EXECUTED")
++    missing_enterprise = REQUIRED_ENTERPRISE_NODES - set(candidate)
++    if missing_enterprise:
++        raise RecoveryGateError("ENTERPRISE_WIRING_TESTS_MISSING")
++    if any(candidate[node][0] != "passed" for node in REQUIRED_ENTERPRISE_NODES):
++        raise RecoveryGateError("ENTERPRISE_WIRING_TEST_NOT_PASSED")
++    if transactional_v2:
++        if SCOPE_V2_REQUIRED_ATOMIC_NODES - set(candidate):
++            raise RecoveryGateError("ENTERPRISE_ATOMIC_TESTS_MISSING")
++        if any(candidate[node][0] != "passed" for node in SCOPE_V2_REQUIRED_ATOMIC_NODES):
++            raise RecoveryGateError("ENTERPRISE_ATOMIC_TEST_NOT_PASSED")
++
++    violations = []
++    for node, prior in sorted(baseline.items()):
++        current = candidate[node]
++        if prior[0] == "passed" and current[0] != "passed":
++            violations.append(node)
++        elif prior[0] == "skipped" and current[0] not in ("skipped", "passed"):
++            violations.append(node)
++        elif prior[0] in ("failure", "error") and current[0] not in ("passed", "failure", "error"):
++            violations.append(node)
++        elif prior[0] in ("failure", "error") and current[0] != "passed" and current != prior:
++            violations.append(node)
++    for node in sorted(set(candidate) - set(baseline)):
++        if candidate[node][0] != "passed":
++            violations.append(node)
++    if violations:
++        raise RecoveryGateError("NEW_FAILURE_OR_WEAKENED_TEST:" + ",".join(violations[:8]))
++
++    fingerprint = _canonical_digest({
++        "baseline_sha": BASELINE_SHA,
++        "baseline_junit_sha256": approved.get("baseline_junit_sha256"),
++        "accepted_failure_ids": sorted(recorded),
++        "protected_contracts": PROTECTED,
++        "test_harness_overlay": BASELINE_HARNESS_OVERLAY,
++        "environment": environment,
++    })
++    if approved.get("accepted_failure_fingerprint") != fingerprint:
++        raise RecoveryGateError("BASELINE_FINGERPRINT_UNRATIFIED")
++
++    remaining_failures = _baseline_failures(candidate)
++    receipt = {
++        "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_GATE_V1",
++        "GLOBAL_GREEN": False,
++        "ENTERPRISE_RECOVERY_STATUS": "PASS_WITH_BASELINE_RED",
++        "MEI_BASELINE_FAILURE_ACCEPTED_FINGERPRINT": fingerprint,
++        "baseline_sha": BASELINE_SHA,
++        "baseline_tests": len(baseline),
++        "candidate_tests": len(candidate),
++        "new_tests_passed": len(candidate) - len(baseline),
++        "enterprise_wiring_tests_passed": len(REQUIRED_ENTERPRISE_NODES),
++        "remaining_baseline_failures": sorted(remaining_failures),
++        "protected_contracts": PROTECTED,
++        "scope": "isolated_recovery_only_no_main_merge_no_deploy",
++    }
++    if transactional_v2:
++        receipt["enterprise_atomic_tests_passed"] = len(SCOPE_V2_REQUIRED_ATOMIC_NODES)
++        receipt["scope_ratified"] = SCOPE_V2_SCHEMA
++    return receipt
++
++
++def run(args: argparse.Namespace) -> dict:
++    repo = args.repo.resolve()
++    if _git(repo, "branch", "--show-current") != RECOVERY_BRANCH:
++        raise RecoveryGateError("WRONG_RECOVERY_BRANCH")
++    if _git(repo, "rev-parse", BASELINE_SHA) != BASELINE_SHA:
++        raise RecoveryGateError("BASELINE_COMMIT_UNAVAILABLE")
++    with args.approved_manifest.open(encoding="utf-8") as handle:
++        approved = json.load(handle)
++    if not isinstance(approved, dict):
++        raise RecoveryGateError("APPROVED_MANIFEST_INVALID")
++    try:
++        actual_environment = {
++            "python": platform.python_version(),
++            "fastapi": version("fastapi"),
++            "pydantic": version("pydantic"),
++        }
++    except PackageNotFoundError as exc:
++        raise RecoveryGateError("TEST_DEPENDENCIES_NOT_INSTALLED") from exc
++    if approved.get("environment") != actual_environment:
++        raise RecoveryGateError("TEST_ENVIRONMENT_DRIFT")
++    _verify_junit_digest(args.baseline_junit, approved.get("baseline_junit_sha256"))
++    changed = set(_git(repo, "diff", "--name-only", BASELINE_SHA).splitlines())
++    changed.update(_git(repo, "ls-files", "--others", "--exclude-standard").splitlines())
++    hashes = {path: _git(repo, "hash-object", path) for path in PROTECTED}
++    harness_hashes = {
++        path: _git(repo, "hash-object", path) for path in BASELINE_HARNESS_OVERLAY
++    }
++    return evaluate(
++        baseline=parse_junit(args.baseline_junit),
++        candidate=parse_junit(args.candidate_junit),
++        approved=approved, contract_hashes=hashes, changed_paths=changed,
++        harness_hashes=harness_hashes,
++    )
++
++
++def main(argv: list[str] | None = None) -> int:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--repo", type=Path, default=Path("."))
++    parser.add_argument("--baseline-junit", type=Path, required=True)
++    parser.add_argument("--candidate-junit", type=Path, required=True)
++    parser.add_argument("--approved-manifest", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args(argv)
++    try:
++        result = run(args)
++    except (RecoveryGateError, OSError, json.JSONDecodeError) as exc:
++        result = {
++            "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_GATE_V1",
++            "GLOBAL_GREEN": False,
++            "ENTERPRISE_RECOVERY_STATUS": "BLOCKED",
++            "reason": str(exc).split(":", 1)[0],
++        }
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
++    print(result["ENTERPRISE_RECOVERY_STATUS"])
++    return 0 if result["ENTERPRISE_RECOVERY_STATUS"] == "PASS_WITH_BASELINE_RED" else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
