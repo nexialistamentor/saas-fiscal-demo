@@ -1,0 +1,50 @@
+{
+  "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_G1_SCOPE_V3",
+  "GLOBAL_GREEN": false,
+  "parent_v2_manifest_blob": "4eafb57b917a3910ef873d0b8ca30145a0940b09",
+  "origin_git_commit": "ee1007562836378e2addb50f9af0a09b609aef88",
+  "original_g1_blob": "543f19b4b777ecaaa107d699dd13c002b378e8a2",
+  "original_g1_test_blob": "45a2080a8adead467aa4b00275e3a33616b0966c",
+  "main_shared_g1_blob": "9f7a5ddf144293fe3591989c784c8ec6d875cd07",
+  "extra_paths": [
+    "app/services/enterprise_tax_consistency/__init__.py",
+    "app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py",
+    "docs/B03_B04_BASELINE_ESCOPO_G1_V3_20261118.json",
+    "docs/B03_B04_EXECUCAO_G1_PRIVADO_V3_20261118.md",
+    "docs/B03_B04_PATCH_G1_PRIVADO_V3_20261118.patch",
+    "docs/B03_B04_STOP_DEPENDENCIA_G1_20261118.md",
+    "docs/DEBITO_TECNICO_G1_RECONCILIACAO_20261118.md",
+    "docs/REGISTRO_CANONICO.json",
+    "tests/enterprise_g1_contract_origin.py",
+    "tests/test_enterprise_g1_coexistence_gate.py",
+    "tests/test_enterprise_g1_private_original_contract.py",
+    "tests/test_enterprise_recovery_scope_v3_gate.py",
+    "tools/check_duplicacao.py",
+    "tools/enterprise_recovery_test_gate_v3.py"
+  ],
+  "modified_v2_paths": [
+    "app/services/enterprise_b03_item_reconciliation.py",
+    "app/services/enterprise_g12_st_item_reconciliation.py",
+    "tests/test_enterprise_b01_atomic_rollback_contract.py"
+  ],
+  "candidate_source_blobs": {
+    "app/services/enterprise_b03_item_reconciliation.py": "c977a43e382d63f156a2a84e9cc8e590dde27c77",
+    "app/services/enterprise_g12_st_item_reconciliation.py": "7b70bd28af292dc8028d572336b80f22bac0a945",
+    "app/services/enterprise_tax_consistency/__init__.py": "2b386a0215ff72fc6ee89ea3aaab51b7b710ee38",
+    "app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py": "7a40ab189770ee5188c48c5895ab1e213927b335",
+    "docs/REGISTRO_CANONICO.json": "3daf8394733be3ac74bf1d198eb5fb8e5efdc0a1",
+    "tools/check_duplicacao.py": "0186e7a5c5d4f385ed5c7a8d0e9bb6c4a1922695",
+    "docs/DEBITO_TECNICO_G1_RECONCILIACAO_20261118.md": "c5dfae2255326916717da00458b65197e75dd1d8",
+    "tests/enterprise_g1_contract_origin.py": "45a2080a8adead467aa4b00275e3a33616b0966c",
+    "tests/test_enterprise_g1_private_original_contract.py": "6e54862a0ee9a65867a18a45837ab7f4c9c31e3f",
+    "tests/test_enterprise_g1_coexistence_gate.py": "7864e135ffcb4873d693b97ba94f35f2ffd06e4c",
+    "tests/test_enterprise_b01_atomic_rollback_contract.py": "0f926fdb8a7648b04f48b17fdb611fe2cd75cf62"
+  },
+  "ratification": "Miguel ratificou G1 privado, coexistencia no REGISTRO_CANONICO.json, divida rastreada e excecao estreita na catraca. Exclusivo ao branch isolado; MEI, motor compartilhado, migrations, main e producao intocados.",
+  "required_g1_original_tests": 22,
+  "required_g1_coexistence_controls": 8,
+  "required_b01_b03_b04_original": 25,
+  "required_v2_atomic": 6,
+  "original_g1_test_execution": "22 metodos imutaveis em tests/enterprise_g1_contract_origin.py, subclasse dirigida que troca somente E, sem adaptar assercoes.",
+  "status": "CANDIDATO_TESTE_PENDENTE_NAO_VERDE"
+}

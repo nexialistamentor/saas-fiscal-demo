@@ -1,0 +1,992 @@
+diff --git a/app/services/enterprise_b03_item_reconciliation.py b/app/services/enterprise_b03_item_reconciliation.py
+index b1b7b79..c977a43 100644
+--- a/app/services/enterprise_b03_item_reconciliation.py
++++ b/app/services/enterprise_b03_item_reconciliation.py
+@@ -58,7 +58,7 @@ from typing import Any
+ 
+ from app.services.fiscal_utils import resolver_aliquota_e_mva
+ from app.motor_fiscal import MotorFiscal
+-from app.services.tax_consistency.tax_consistency_engine import TaxConsistencyEngine
++from app.services.enterprise_tax_consistency.enterprise_tax_consistency_engine import EnterpriseTaxConsistencyEngine
+ from app.xml_service import ler_xml_unico, _parse_float, _parse_data_emissao
+ 
+ SCHEMA = "SOLVERIS_ENTERPRISE_B03_ITEM_RECONCILIATION_V2"
+@@ -114,7 +114,7 @@ def confrontar_documento_b03(
+     modulos_usados = [
+         "app.services.fiscal_utils.resolver_aliquota_e_mva",
+         "app.motor_fiscal.MotorFiscal",
+-        "app.services.tax_consistency.tax_consistency_engine.TaxConsistencyEngine",
++        "app.services.enterprise_tax_consistency.enterprise_tax_consistency_engine.EnterpriseTaxConsistencyEngine",
+     ]
+     hash_xml_entrada = hashlib.sha256(xml_bytes).hexdigest()
+ 
+@@ -216,7 +216,7 @@ def confrontar_documento_b03(
+     dados_motor = {"chave_nfe": chave_nfe, "itens_calculados": itens_calculados, "erro": None}
+ 
+     # --- comparar (ja existe, nao reimplementar) ---
+-    engine = TaxConsistencyEngine()
++    engine = EnterpriseTaxConsistencyEngine()
+     bruto = engine.verificar_consistencia(dados_xml, dados_motor)
+ 
+     if bruto["estado"] == "NAO_AVALIADO":
+diff --git a/app/services/enterprise_g12_st_item_reconciliation.py b/app/services/enterprise_g12_st_item_reconciliation.py
+index 29d9caf..7b70bd2 100644
+--- a/app/services/enterprise_g12_st_item_reconciliation.py
++++ b/app/services/enterprise_g12_st_item_reconciliation.py
+@@ -22,7 +22,7 @@ from defusedxml.common import DefusedXmlException
+ from app.motor_fiscal import MotorFiscal
+ from app.services.fiscal_utils import resolver_aliquota_e_mva
+ from app.services.tabela_normativa_service import buscar_mva, resolver_base_calculo_st
+-from app.services.tax_consistency.tax_consistency_engine import TaxConsistencyEngine
++from app.services.enterprise_tax_consistency.enterprise_tax_consistency_engine import EnterpriseTaxConsistencyEngine
+ from app.xml_service import ler_xml_unico
+ 
+ SCHEMA = 'SOLVERIS_ENTERPRISE_G12_ST_ITEM_READONLY_V1'
+@@ -300,7 +300,7 @@ def confrontar_st_por_item_g12(*, db, xml_bytes: bytes) -> dict:
+         except Exception:
+             info['motivo'] = 'G12_RESOLVEDOR_OU_MOTOR_INDISPONIVEL'
+             continue
+-    confronto = TaxConsistencyEngine().verificar_consistencia(
++    confronto = EnterpriseTaxConsistencyEngine().verificar_consistencia(
+         parsed, {'chave_nfe':chave, 'itens_calculados':computed})
+     simulated = sum(1 for i in detail_report if i['comparacao_condicional'])
+     state = 'G12_SIMULACAO_CONDICIONAL_SEM_AUTORIDADE' if simulated else 'G12_SEM_SIMULACAO'
+diff --git a/tests/test_enterprise_b01_atomic_rollback_contract.py b/tests/test_enterprise_b01_atomic_rollback_contract.py
+index 00000000..0f926fdb 100644
+--- a/tests/test_enterprise_b01_atomic_rollback_contract.py
++++ b/tests/test_enterprise_b01_atomic_rollback_contract.py
+@@ -9,12 +9,12 @@ from unittest.mock import patch
+ 
+ from app.models import Empresa, DocumentoFiscal, ItemFiscal, RelatorioAnalise, UsoPlataforma
+ from app.services import registro_analise_service as registro
+-from test_solveris_b01_circuit import TestEnterpriseB01SyntheticIntegration as _B01Fixture
++import test_solveris_b01_circuit as _b01_module
+ 
+ 
+ class TestEnterpriseB01AtomicRollback(TestCase):
+     def setUp(self):
+-        self.fixture = _B01Fixture(
++        self.fixture = _b01_module.TestEnterpriseB01SyntheticIntegration(
+             "test_01_circuito_real_writer_i2_g12_g14_adr020_c3_c7"
+         )
+         self.fixture.setUp()
+diff --git a/docs/REGISTRO_CANONICO.json b/docs/REGISTRO_CANONICO.json
+index 7a6caf32..3daf8394 100644
+--- a/docs/REGISTRO_CANONICO.json
++++ b/docs/REGISTRO_CANONICO.json
+@@ -1,6 +1,6 @@
+ {
+   "_schema_versao": 1,
+-  "_regra": "Nenhuma função nova em app/services/enterprise_* ou tools/enterprise_* entra em main sem passar por este registo. Entrada com status 'a_confirmar' significa: alegada por relatório estático (GPT), AINDA NAO lida diretamente neste repositório. Promover para 'confirmado' só depois de leitura real do ficheiro + assinatura conferida. 'substitui' lista caminhos de ficheiros/funções antigos que esta entrada torna obsoletos -- preencher sempre que uma nova versão nascer, nunca deixar os dois lado a lado sem essa declaração.",
++  "_regra": "Nenhuma função nova em app/services/enterprise_* ou tools/enterprise_* entra em main sem passar por este registo. Entrada com status 'a_confirmar' significa alegação não confirmada; promover para 'confirmado' só depois de leitura real e assinatura conferida. 'substitui' lista caminhos tornados obsoletos e nunca pode declarar a substituição de um consumidor ainda ativo. A única coexistência temporária autorizada em 18/11/2026 é comparador_consistencia_enterprise_g1 com comparador_consistencia; exige origem Git comprovada, dívida rastreada, campos de coexistência estritos e catraca fail-closed. Qualquer outra duplicação permanece proibida.",
+   "modulos": [
+     {
+       "id": "parser_xml_nfe",
+@@ -69,6 +69,21 @@
+       "fonte_alegacao": "relatorio_gpt_b03_indice_30",
+       "confirmado_em": null
+     },
++    {
++      "id": "comparador_consistencia_enterprise_g1",
++      "responsabilidade": "Confronto G1 por item, sem autoridade fiscal, privado aos produtores B03 e G12/G13; não afeta o comparador compartilhado",
++      "modulo_canonico": "app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py",
++      "funcao_principal": "EnterpriseTaxConsistencyEngine.verificar_consistencia",
++      "status": "confirmado",
++      "substitui": [],
++      "coexiste_com": ["comparador_consistencia"],
++      "origem_commit": "ee1007562836378e2addb50f9af0a09b609aef88",
++      "origem_git_blob": "543f19b4b777ecaaa107d699dd13c002b378e8a2",
++      "divida_tecnica": "docs/DEBITO_TECNICO_G1_RECONCILIACAO_20261118.md",
++      "ato_ratificacao": "docs/B03_B04_STOP_DEPENDENCIA_G1_20261118.md",
++      "consumidores_conhecidos": ["enterprise_b03_item_reconciliation", "enterprise_g12_st_item_reconciliation"],
++      "confirmado_em": "2026-11-18"
++    },
+     {
+       "id": "orquestracao_reconciliacao_item",
+       "responsabilidade": "Orquestração da confrontação ST por item (G12)",
+diff --git a/tools/check_duplicacao.py b/tools/check_duplicacao.py
+index b12692f3..0186e7a5 100644
+--- a/tools/check_duplicacao.py
++++ b/tools/check_duplicacao.py
+@@ -42,6 +42,58 @@ PREFIXOS_ENTERPRISE = ("enterprise_",)
+ 
+ LIMIAR_SIMILARIDADE = 0.82  # ajustavel; nomes acima disto sao "suspeitos"
+ 
++# EXCECAO NOMEADA: Miguel ratificou em 18/11/2026 a coexistencia temporaria
++# do comparador G1 Enterprise historico. Nenhuma outra dupla e dispensada.
++# Nao usar 'substitui' para encobrir dois consumidores ainda ativos.
++_G1_COEXISTENCIA = {
++    "id": "comparador_consistencia_enterprise_g1",
++    "modulo_canonico": "app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py",
++    "funcao_principal": "EnterpriseTaxConsistencyEngine.verificar_consistencia",
++    "status": "confirmado",
++    "substitui": [],
++    "coexiste_com": ["comparador_consistencia"],
++    "origem_commit": "ee1007562836378e2addb50f9af0a09b609aef88",
++    "origem_git_blob": "543f19b4b777ecaaa107d699dd13c002b378e8a2",
++    "divida_tecnica": "docs/DEBITO_TECNICO_G1_RECONCILIACAO_20261118.md",
++    "ato_ratificacao": "docs/B03_B04_STOP_DEPENDENCIA_G1_20261118.md",
++}
++
++
++def _coexistencia_g1_valida(registro: dict, repo_root: Path) -> bool:
++    """Prova documental estreita, nunca autorizacao generica de duplicacao."""
++    modules = registro.get("modulos", [])
++    if not isinstance(modules, list):
++        return False
++    peers = [m for m in modules if isinstance(m, dict)
++             and m.get("id") in ("comparador_consistencia", _G1_COEXISTENCIA["id"])]
++    if len(peers) != 2 or len({m.get("id") for m in peers}) != 2:
++        return False
++    private = next(m for m in peers if m["id"] == _G1_COEXISTENCIA["id"])
++    legacy = next(m for m in peers if m["id"] == "comparador_consistencia")
++    if any(private.get(field) != expected for field, expected in _G1_COEXISTENCIA.items()):
++        return False
++    if (legacy.get("modulo_canonico") != "app/services/tax_consistency/tax_consistency_engine.py"
++            or legacy.get("substitui") != []
++            or "coexiste_com" in legacy):
++        return False
++    return (repo_root / private["modulo_canonico"]).is_file() and all(
++        (repo_root / private[field]).is_file()
++        for field in ("divida_tecnica", "ato_ratificacao")
++    )
++
++
++def _dupla_g1_autorizada(caminho_relativo: str, mod_id: str, caminho_canonico: str,
++                        registro: dict, repo_root: Path) -> bool:
++    """A unica dupla permitida e o caminho LEGADO + caminho PRIVADO do G1."""
++    return (
++        mod_id in ("comparador_consistencia", _G1_COEXISTENCIA["id"])
++        and {caminho_relativo, caminho_canonico} == {
++            "app/services/tax_consistency/tax_consistency_engine.py",
++            _G1_COEXISTENCIA["modulo_canonico"],
++        }
++        and _coexistencia_g1_valida(registro, repo_root)
++    )
++
+ 
+ def carregar_registro(caminho_registro: Path) -> dict:
+     if not caminho_registro.is_file():
+@@ -138,6 +190,11 @@ def verificar(repo_root: Path, registro: dict, pastas: list):
+ 
+     problemas = []
+ 
++    declaracoes = [m for m in registro.get("modulos", []) if isinstance(m, dict)
++                   and ("coexiste_com" in m or m.get("id") == _G1_COEXISTENCIA["id"])]
++    if declaracoes and (len(declaracoes) != 1 or not _coexistencia_g1_valida(registro, repo_root)):
++        problemas.append("[COEXISTENCIA_INVALIDA] Excecao G1 incompleta, fora do par ratificado ou sem divida rastreada.")
++
+     ficheiros = listar_ficheiros_enterprise(repo_root, pastas)
+ 
+     for ficheiro in ficheiros:
+@@ -169,7 +226,8 @@ def verificar(repo_root: Path, registro: dict, pastas: list):
+                         if caminho_relativo in mod.get("substitui", []):
+                             declarado = True
+                             break
+-                    if not declarado:
++                    if not declarado and not _dupla_g1_autorizada(
++                            caminho_relativo, mod_id, caminho_canonico, registro, repo_root):
+                         problemas.append(
+                             f"[SUSPEITO] {caminho_relativo}:{lineno} funcao '{nome_funcao}' "
+                             f"e {ratio:.0%} similar a '{nome_canonico}' (registo id={mod_id}, "
+diff --git a/app/services/enterprise_tax_consistency/__init__.py b/app/services/enterprise_tax_consistency/__init__.py
+new file mode 100644
+index 00000000..2b386a02
+--- /dev/null
++++ b/app/services/enterprise_tax_consistency/__init__.py
+@@ -0,0 +1 @@
++"""Comparador G1 exclusivamente para a cadeia Enterprise."""
+diff --git a/app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py b/app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py
+new file mode 100644
+index 00000000..7a40ab18
+--- /dev/null
++++ b/app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py
+@@ -0,0 +1,171 @@
++"""G1 privado Enterprise; copia causal do commit ee100756 (blob 543f19b4).
++
++Coexistencia temporaria aprovada por Miguel em 18/11/2026. Sem importacao
++no comparador compartilhado, MEI ou motores de calculo.
++A unica adaptacao semantica e o nome da classe; contratos permanecem os 22
++originais de c9a17fd1, executados com a classe privada.
++
++Enterprise G1 — consistência numérica fiscal com origem por item (fail-closed).
++
++NAO atesta conformidade tributária, vigência normativa, recolhimento,
++revogação, crédito, restituição ou autorização comercial. O motor legado
++`analisar_xml()` espelha valores do XML: não constitui recálculo independente.
++
++Os relatórios documentais podem consumir este resultado informativo, mas
++`consistente` fica sempre None até existir um árbitro normativo independente
++com proveniência, competência e fontes oficiais verificadas.
++"""
++from __future__ import annotations
++
++from decimal import Decimal, InvalidOperation
++from typing import Any
++
++
++_VALORES = ("ICMS_ST", "BASE_ST")
++
++
++class EnterpriseTaxConsistencyEngine:
++    """Compara SOMENTE pares de itens com identidade e cálculo separados."""
++
++    @staticmethod
++    def _moeda(valor: object) -> Decimal | None:
++        if type(valor) not in (int, float, str, Decimal):
++            return None
++        if type(valor) is str and (not valor or valor.strip() != valor or "e" in valor.lower()):
++            return None
++        try:
++            n = Decimal(str(valor))
++        except (ValueError, InvalidOperation):
++            return None
++        if not n.is_finite() or n < 0 or n > Decimal("9999999999999.99"):
++            return None
++        if n.as_tuple().exponent < -2:
++            return None
++        return n.quantize(Decimal("0.01"))
++
++    @staticmethod
++    def _nao_avaliado(motivo: str) -> dict:
++        return {
++            "estado": "NAO_AVALIADO",
++            "motivo": motivo,
++            "consistente": None,
++            "coincidencia_numerica": None,
++            "divergencias": [],
++            "comparacoes_realizadas": 0,
++            "itens_comparados": 0,
++            "autoridade_fiscal": False,
++            "credito_confirmado": False,
++            "checkout_autorizado": False,
++        }
++
++    def verificar_consistencia(self, dados_xml: dict, dados_motor: dict) -> dict:
++        """Somente `itens_calculados` explícitos podem originar confronto numérico.
++
++        `dados_motor` sem itens independentes (como a saída real de
++        `motor_fiscal.analisar_xml`) é NAO_AVALIADO, nunca consistente=True.
++
++        Um chamador externo pode fabricar a entrada `itens_calculados`;
++        por isso mesmo um confronto totalmente coincidente é SEM AUTORIDADE.
++        """
++        if type(dados_xml) is not dict or type(dados_motor) is not dict:
++            return self._nao_avaliado("ENTRADA_AUSENTE_OU_MALFORMADA")
++        if dados_motor.get("erro") is not None:
++            return self._nao_avaliado("MOTOR_COM_ERRO")
++        calculados = dados_motor.get("itens_calculados")
++        if calculados is None:
++            return self._nao_avaliado("SEM_RECALCULO_POR_ITEM_INDEPENDENTE")
++        originais = dados_xml.get("itens")
++        if (type(originais) is not list or type(calculados) is not list
++                or not originais or len(originais) != len(calculados)
++                or len(originais) > 500):
++            return self._nao_avaliado("CARDINALIDADE_ITENS_NAO_CONCILIADA")
++        chave_xml = dados_xml.get("chave_nfe")
++        chave_motor = dados_motor.get("chave_nfe")
++        if (type(chave_xml) is not str or len(chave_xml) != 44
++                or not chave_xml.isascii() or not chave_xml.isdecimal()
++                or chave_motor != chave_xml):
++            return self._nao_avaliado("IDENTIDADE_DOCUMENTO_NAO_CONCILIADA")
++
++        calculados_por_indice: dict[int, dict] = {}
++        for item in calculados:
++            if type(item) is not dict:
++                return self._nao_avaliado("CALCULO_ITEM_MALFORMADO")
++            indice = item.get("indice_item")
++            if (type(indice) is not int or not 1 <= indice <= len(originais)
++                    or indice in calculados_por_indice):
++                return self._nao_avaliado("INDICE_CALCULO_DUPLICADO_OU_INVALIDO")
++            calculados_por_indice[indice] = item
++
++        comparacoes = []
++        divergencias = []
++        itens_comparados = 0
++        motivos_pendentes = []
++        for indice, xml_item in enumerate(originais, 1):
++            calculado = calculados_por_indice.get(indice)
++            if type(xml_item) is not dict or calculado is None:
++                return self._nao_avaliado("ITEM_XML_MALFORMADO_OU_AUSENTE")
++            # Compara identidade NCM/CFOP estritamente; evita misturar itens.
++            ncm, cfop = xml_item.get("ncm"), xml_item.get("cfop")
++            if (type(ncm) is not str or type(cfop) is not str
++                    or not ncm or not cfop
++                    or calculado.get("ncm") != ncm
++                    or calculado.get("cfop") != cfop):
++                return self._nao_avaliado("CLASSIFICACAO_ITEM_NAO_CONCILIADA")
++            if xml_item.get("st_observado_xml") is not True:
++                motivos_pendentes.append(f"ITEM_{indice}_ST_NAO_OBSERVADO_XML")
++                continue
++            pares = (("ICMS_ST", "valor_st", "valor_st_calculado"),
++                     ("BASE_ST", "base_st", "base_st_calculada"))
++            validos = []
++            for tipo, campo_xml, campo_motor in pares:
++                a = self._moeda(xml_item.get(campo_xml))
++                b = self._moeda(calculado.get(campo_motor))
++                if a is None or b is None:
++                    motivos_pendentes.append(f"ITEM_{indice}_{tipo}_VALORES_NAO_COMPROVADOS")
++                    continue
++                validos.append((tipo, a, b))
++            if len(validos) == 2:
++                itens_comparados += 1
++            for tipo, a, b in validos:
++                diferente = abs(a - b) > Decimal("0.01")
++                resultado = {
++                    "indice_item": indice,
++                    "tipo": tipo,
++                    "valor_xml": str(a),
++                    "valor_motor": str(b),
++                    "divergencia_numerica": diferente,
++                    "prova_normativa": False,
++                }
++                comparacoes.append(resultado)
++                if diferente:
++                    divergencias.append(resultado)
++        if not comparacoes:
++            return self._nao_avaliado("SEM_PARES_NUMERICOS_COMPARAVEIS")
++        total = 2 * len(originais)
++        completo = len(comparacoes) == total and itens_comparados == len(originais)
++        return {
++            "estado": "COMPARACAO_NUMERICA_SEM_AUTORIDADE" if completo else "PARCIAL_SEM_AUTORIDADE",
++            "motivo": "SEM_PROVA_NORMATIVA_E_RECOLHIMENTO" if completo else "ITENS_OU_CAMPOS_NAO_AVALIADOS",
++            "consistente": None,
++            "coincidencia_numerica": (not divergencias) if completo else None,
++            "divergencias": divergencias,
++            "comparacoes": comparacoes,
++            "comparacoes_realizadas": len(comparacoes),
++            "itens_comparados": itens_comparados,
++            "itens_total": len(originais),
++            "motivos_pendentes": motivos_pendentes,
++            "autoridade_fiscal": False,
++            "credito_confirmado": False,
++            "checkout_autorizado": False,
++        }
++
++    # Métodos históricos diretos: um escalar sem identidade do item e do
++    # cálculo não constitui uma comparação fiscal causal.
++    def verificar_icms_st(self, dados_xml: dict, dados_motor: dict) -> dict:
++        return self._nao_avaliado("SEM_IDENTIDADE_ITEM_E_FONTE_INDEPENDENTE_ICMS_ST")
++
++    def verificar_mva(self, dados_xml: dict, dados_motor: dict) -> dict:
++        return self._nao_avaliado("MVA_XML_NAO_OBSERVADA_POR_ITEM")
++
++    def verificar_base_st(self, dados_xml: dict, dados_motor: dict) -> dict:
++        return self._nao_avaliado("SEM_IDENTIDADE_ITEM_E_FONTE_INDEPENDENTE_BASE_ST")
+diff --git a/tests/enterprise_g1_contract_origin.py b/tests/enterprise_g1_contract_origin.py
+new file mode 100644
+index 00000000..45a2080a
+--- /dev/null
++++ b/tests/enterprise_g1_contract_origin.py
+@@ -0,0 +1,92 @@
++"""Contrato G1: XML sintético, nunca real; sem banco, SEFAZ ou rede."""
++import importlib.util
++import os
++from pathlib import Path
++import unittest
++
++module_path = Path(os.environ.get('SOLVERIS_G1_ENGINE_PATH', str(Path(__file__).resolve().parents[1]/'app/services/tax_consistency/tax_consistency_engine.py')))
++spec = importlib.util.spec_from_file_location('_g1_engine', module_path)
++module = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(module)
++E = module.TaxConsistencyEngine
++
++K = '1'*44
++
++def xml(*, count=1, st=True):
++    return {'chave_nfe':K, 'itens':[
++        {'ncm':'10019010', 'cfop':'1102', 'base_st':'140.00', 'valor_st':'7.20', 'st_observado_xml':st}
++        for _ in range(count)]}
++
++def motor(*, count=1, st='7.20', base='140.00'):
++    return {'chave_nfe':K, 'itens_calculados':[
++        {'indice_item':i, 'ncm':'10019010', 'cfop':'1102', 'base_st_calculada':base, 'valor_st_calculado':st}
++        for i in range(1,count+1)]}
++
++class TestG1(unittest.TestCase):
++    def setUp(self): self.e = E()
++    def test_01_empty_doesnt_claim_consistency(self):
++        self.assertIsNone(self.e.verificar_consistencia({}, {})['consistente'])
++    def test_02_real_motor_mirrors_xml_not_independent(self):
++        r=self.e.verificar_consistencia(xml(), {'chave_nfe':K,'icms_st':'7.20','base_st':'140.00'})
++        self.assertEqual(r['estado'],'NAO_AVALIADO'); self.assertIsNone(r['consistente'])
++    def test_03_motor_error(self):
++        self.assertEqual(self.e.verificar_consistencia(xml(),{'erro':'falso'})['estado'],'NAO_AVALIADO')
++    def test_04_equal_pairs_arithmetic_not_fiscal(self):
++        r=self.e.verificar_consistencia(xml(),motor())
++        self.assertEqual(r['comparacoes_realizadas'],2)
++        self.assertIs(r['coincidencia_numerica'],True)
++        self.assertIsNone(r['consistente'])
++        self.assertFalse(r['checkout_autorizado']);self.assertFalse(r['credito_confirmado'])
++    def test_05_difference_number_not_credit(self):
++        r=self.e.verificar_consistencia(xml(),motor(st='5.00'))
++        self.assertEqual(r['divergencias'][0]['tipo'],'ICMS_ST')
++        self.assertFalse(r['credito_confirmado']); self.assertIsNone(r['consistente'])
++    def test_06_no_xml_st_not_evaluable(self):
++        self.assertEqual(self.e.verificar_consistencia(xml(st=False),motor())['estado'],'NAO_AVALIADO')
++    def test_07_different_document(self):
++        m=motor();m['chave_nfe']='2'*44
++        self.assertEqual(self.e.verificar_consistencia(xml(),m)['estado'],'NAO_AVALIADO')
++    def test_08_extra_item_stop(self):
++        self.assertEqual(self.e.verificar_consistencia(xml(),motor(count=2))['estado'],'NAO_AVALIADO')
++    def test_09_duplicated_index_stop(self):
++        m=motor(count=2);m['itens_calculados'][1]['indice_item']=1
++        self.assertEqual(self.e.verificar_consistencia(xml(count=2),m)['estado'],'NAO_AVALIADO')
++    def test_10_item_swap_stop(self):
++        m=motor(count=2);m['itens_calculados'][0]['indice_item']=2;m['itens_calculados'][1]['indice_item']=1;m['itens_calculados'][0]['ncm']='99999999'
++        self.assertEqual(self.e.verificar_consistencia(xml(count=2),m)['estado'],'NAO_AVALIADO')
++    def test_11_invalid_numeric_nan(self):
++        self.assertEqual(self.e.verificar_consistencia(xml(),motor(st='NaN'))['estado'],'PARCIAL_SEM_AUTORIDADE')
++    def test_12_bool_rejected(self):
++        self.assertEqual(self.e.verificar_consistencia(xml(),motor(st=True))['estado'],'PARCIAL_SEM_AUTORIDADE')
++    def test_13_negative_rejected(self):
++        self.assertEqual(self.e.verificar_consistencia(xml(),motor(st='-1'))['estado'],'PARCIAL_SEM_AUTORIDADE')
++    def test_14_no_rounding(self):
++        self.assertEqual(self.e.verificar_consistencia(xml(),motor(st='7.2009'))['estado'],'PARCIAL_SEM_AUTORIDADE')
++    def test_15_ncm_mismatch_stop(self):
++        m=motor();m['itens_calculados'][0]['ncm']='00000000'
++        self.assertEqual(self.e.verificar_consistencia(xml(),m)['estado'],'NAO_AVALIADO')
++    def test_16_two_items_complete(self):
++        r=self.e.verificar_consistencia(xml(count=2),motor(count=2))
++        self.assertEqual(r['comparacoes_realizadas'],4);self.assertEqual(r['itens_comparados'],2)
++    def test_17_direct_fields_fail_closed(self):
++        for method in ('verificar_icms_st','verificar_mva','verificar_base_st'):
++            self.assertIsNone(getattr(self.e,method)({'valor_st':10},{'icms_st':10})['consistente'])
++    def test_18_forged_authority_cannot_promote(self):
++        m=motor();m['autoridade_fiscal']=True;m['credito_confirmado']=True;m['checkout_autorizado']=True
++        r=self.e.verificar_consistencia(xml(),m)
++        self.assertIs(r['autoridade_fiscal'],False);self.assertIs(r['checkout_autorizado'],False)
++    def test_19_partial_two_items(self):
++        x=xml(count=2); x['itens'][1]['st_observado_xml']=False
++        r=self.e.verificar_consistencia(x,motor(count=2))
++        self.assertEqual(r['estado'],'PARCIAL_SEM_AUTORIDADE');self.assertIsNone(r['coincidencia_numerica'])
++    def test_20_ones_cent_tolerance(self):
++        r=self.e.verificar_consistencia(xml(),motor(st='7.21'))
++        self.assertEqual(r['divergencias'],[])
++    def test_21_gt_cent_difference(self):
++        r=self.e.verificar_consistencia(xml(),motor(st='7.22'))
++        self.assertEqual(len(r['divergencias']),1)
++    def test_22_no_implicit_mva(self):
++        r=self.e.verificar_consistencia({'mva_xml':40,'valor_st':10},{'mva_utilizada':40,'icms_st':10})
++        self.assertEqual(r['estado'],'NAO_AVALIADO')
++
++if __name__=='__main__': unittest.main()
+diff --git a/tests/test_enterprise_g1_private_original_contract.py b/tests/test_enterprise_g1_private_original_contract.py
+new file mode 100644
+index 00000000..6e54862a
+--- /dev/null
++++ b/tests/test_enterprise_g1_private_original_contract.py
+@@ -0,0 +1,28 @@
++"""Executa os 22 testes G1 originais sem alterar o blob test-only de origem.
++
++Origem c9a17fd1:tests/test_enterprise_g1_consistencia_causal_item.py
++Git blob imutável: 45a2080a8adead467aa4b00275e3a33616b0966c.
++O arquivo histórico local não começa por test_ e não é recolhido em duplicado.
++"""
++from __future__ import annotations
++
++import importlib.util
++from pathlib import Path
++
++from app.services.enterprise_tax_consistency.enterprise_tax_consistency_engine import (
++    EnterpriseTaxConsistencyEngine,
++)
++
++_HISTORICAL = Path(__file__).with_name("enterprise_g1_contract_origin.py")
++_spec = importlib.util.spec_from_file_location("_enterprise_g1_original_contract", _HISTORICAL)
++assert _spec is not None and _spec.loader is not None
++_original = importlib.util.module_from_spec(_spec)
++_spec.loader.exec_module(_original)
++
++# Apenas a referência E do teste original muda. Métodos/asserções/fixtures
++# permanecem byte por byte no ficheiro original custodiado em Git.
++_original.E = EnterpriseTaxConsistencyEngine
++
++
++class TestEnterpriseG1PrivateOriginalContract(_original.TestG1):
++    """Os 22 contratos de G1, agora ligados exclusivamente ao comparador privado."""
+diff --git a/tests/test_enterprise_g1_coexistence_gate.py b/tests/test_enterprise_g1_coexistence_gate.py
+new file mode 100644
+index 00000000..7864e135
+--- /dev/null
++++ b/tests/test_enterprise_g1_coexistence_gate.py
+@@ -0,0 +1,91 @@
++"""Catraca de coexistência deliberada: não relaxar anti-duplicação do projeto."""
++from __future__ import annotations
++
++import copy
++import hashlib
++import importlib.util
++import json
++from pathlib import Path
++import unittest
++
++
++ROOT = Path(__file__).resolve().parents[1]
++REGISTRY = ROOT / "docs/REGISTRO_CANONICO.json"
++CHECKER = ROOT / "tools/check_duplicacao.py"
++SPEC = importlib.util.spec_from_file_location("enterprise_duplicate_checker", CHECKER)
++assert SPEC is not None and SPEC.loader is not None
++checker = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(checker)
++
++MODULES = ["app/services/tax_consistency", "app/services/enterprise_tax_consistency"]
++NEW_ID = "comparador_consistencia_enterprise_g1"
++ORIGINAL_G1_TEST_BLOB = "45a2080a8adead467aa4b00275e3a33616b0966c"
++
++
++class TestEnterpriseG1CoexistenceGate(unittest.TestCase):
++    def setUp(self):
++        self.registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
++
++    def private(self):
++        return next(entry for entry in self.registry["modulos"] if entry["id"] == NEW_ID)
++
++    def findings(self):
++        return checker.verificar(ROOT, self.registry, MODULES)
++
++    def test_coexistencia_ratificada_sem_substituir_legacy(self):
++        self.assertEqual(self.findings(), [])
++        self.assertEqual(self.private()["substitui"], [])
++        self.assertEqual(self.private()["coexiste_com"], ["comparador_consistencia"])
++
++    def test_sem_registo_explicito_bloqueia_duplicacao(self):
++        self.registry["modulos"].remove(self.private())
++        self.assertTrue(any("SUSPEITO" in item for item in self.findings()))
++
++    def test_falsa_coexistencia_bloqueia(self):
++        self.private()["coexiste_com"] = ["motor_calculo_numerico"]
++        self.assertTrue(any("COEXISTENCIA_INVALIDA" in item for item in self.findings()))
++
++    def test_proveniencia_adulterada_bloqueia(self):
++        self.private()["origem_git_blob"] = "0" * 40
++        self.assertTrue(any("COEXISTENCIA_INVALIDA" in item for item in self.findings()))
++
++    def test_substituicao_ficticia_de_legacy_bloqueia(self):
++        original = next(m for m in self.registry["modulos"] if m["id"] == "comparador_consistencia")
++        original["substitui"] = [self.private()["modulo_canonico"]]
++        self.assertTrue(any("COEXISTENCIA_INVALIDA" in item for item in self.findings()))
++
++    def test_terceira_coexistencia_generica_bloqueia(self):
++        intruso = copy.deepcopy(self.private())
++        intruso["id"] = "comparador_nao_ratificado"
++        intruso["modulo_canonico"] = "app/services/enterprise_fake/fake.py"
++        self.registry["modulos"].append(intruso)
++        self.assertTrue(any("COEXISTENCIA_INVALIDA" in item for item in self.findings()))
++
++    def test_22_testes_originais_preservados_bit_a_bit(self):
++        original = (ROOT / "tests/enterprise_g1_contract_origin.py").read_bytes()
++        blob = hashlib.sha1(b"blob " + str(len(original)).encode() + b"\0" + original).hexdigest()
++        self.assertEqual(blob, ORIGINAL_G1_TEST_BLOB)
++
++    def test_motor_partilhado_manteve_blob_main(self):
++        original = (ROOT / "app/services/tax_consistency/tax_consistency_engine.py").read_bytes()
++        blob = hashlib.sha1(b"blob " + str(len(original)).encode() + b"\0" + original).hexdigest()
++        self.assertEqual(blob, "9f7a5ddf144293fe3591989c784c8ec6d875cd07")
++        for path in (
++            "app/services/enterprise_b03_item_reconciliation.py",
++            "app/services/enterprise_g12_st_item_reconciliation.py",
++        ):
++            source = (ROOT / path).read_text(encoding="utf-8")
++            self.assertIn("EnterpriseTaxConsistencyEngine", source)
++            self.assertNotIn(
++                "from app.services.tax_consistency.tax_consistency_engine import TaxConsistencyEngine",
++                source,
++            )
++        b03 = (ROOT / "app/services/enterprise_b03_item_reconciliation.py").read_text(encoding="utf-8")
++        self.assertIn(
++            '"app.services.enterprise_tax_consistency.enterprise_tax_consistency_engine.EnterpriseTaxConsistencyEngine"',
++            b03,
++        )
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tools/enterprise_recovery_test_gate_v3.py b/tools/enterprise_recovery_test_gate_v3.py
+new file mode 100644
+index 00000000..9cd1a3f1
+--- /dev/null
++++ b/tools/enterprise_recovery_test_gate_v3.py
+@@ -0,0 +1,267 @@
++"""Gate V3: extensão G1 privada, mantendo integralmente o gate V2.
++
++Exige a mesma baseline, os mesmos 25+6 casos, os 22 casos G1 originais,
++os 8 controlos da duplicação, hashes de produto, contrato e proveniência.
++Não reinterpreta uma das 13 falhas de baseline como GREEN global.
++"""
++from __future__ import annotations
++
++import argparse
++import ast
++import hashlib
++import importlib.util
++import json
++import platform
++import re
++import subprocess
++import sys
++from importlib.metadata import PackageNotFoundError, version
++from pathlib import Path
++
++_spec_v2 = importlib.util.spec_from_file_location(
++    "enterprise_recovery_test_gate_v2_frozen", Path(__file__).with_name("enterprise_recovery_test_gate.py")
++)
++assert _spec_v2 is not None and _spec_v2.loader is not None
++v2 = importlib.util.module_from_spec(_spec_v2)
++_spec_v2.loader.exec_module(v2)
++
++
++SCHEMA = "SOLVERIS_ENTERPRISE_RECOVERY_G1_SCOPE_V3"
++V2_MANIFEST_BLOB = "4eafb57b917a3910ef873d0b8ca30145a0940b09"
++ORIGINAL_G1_BLOB = "543f19b4b777ecaaa107d699dd13c002b378e8a2"
++ORIGINAL_TEST_BLOB = "45a2080a8adead467aa4b00275e3a33616b0966c"
++SHARED_G1_BLOB = "9f7a5ddf144293fe3591989c784c8ec6d875cd07"
++MANIFEST_FINGERPRINT = "dc195d2418cdf3e8c355575a4dfff80021738f952673287e3c59f8fd7ffb0ff2"
++
++# Todos estes caminhos foram individualmente ratificados por Miguel apenas
++# para o branch de recuperação. O manifesto V2 fica byte a byte intacto.
++V3_DELTA = frozenset({
++    "app/services/enterprise_tax_consistency/__init__.py",
++    "app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py",
++    "docs/REGISTRO_CANONICO.json",
++    "tools/check_duplicacao.py",
++    "docs/DEBITO_TECNICO_G1_RECONCILIACAO_20261118.md",
++    "docs/B03_B04_STOP_DEPENDENCIA_G1_20261118.md",
++    "docs/B03_B04_BASELINE_ESCOPO_G1_V3_20261118.json",
++    "docs/B03_B04_PATCH_G1_PRIVADO_V3_20261118.patch",
++    "docs/B03_B04_EXECUCAO_G1_PRIVADO_V3_20261118.md",
++    "tests/enterprise_g1_contract_origin.py",
++    "tests/test_enterprise_g1_private_original_contract.py",
++    "tests/test_enterprise_g1_coexistence_gate.py",
++    "tools/enterprise_recovery_test_gate_v3.py",
++    "tests/test_enterprise_recovery_scope_v3_gate.py",
++})
++
++# Modificações a ficheiros V2 já autorizados, agora justificadas e pinadas
++# com novo hash. Nunca alterar os patches/documentos de V2 publicados.
++V3_OVERRIDES = frozenset({
++    "app/services/enterprise_b03_item_reconciliation.py",
++    "app/services/enterprise_g12_st_item_reconciliation.py",
++    "tests/test_enterprise_b01_atomic_rollback_contract.py",
++})
++PINNED = frozenset({
++    "app/services/enterprise_b03_item_reconciliation.py",
++    "app/services/enterprise_g12_st_item_reconciliation.py",
++    "app/services/enterprise_tax_consistency/__init__.py",
++    "app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py",
++    "docs/REGISTRO_CANONICO.json",
++    "tools/check_duplicacao.py",
++    "docs/DEBITO_TECNICO_G1_RECONCILIACAO_20261118.md",
++    "tests/enterprise_g1_contract_origin.py",
++    "tests/test_enterprise_g1_private_original_contract.py",
++    "tests/test_enterprise_g1_coexistence_gate.py",
++    "tests/test_enterprise_b01_atomic_rollback_contract.py",
++})
++
++
++def _test_names(path: Path, class_name: str, prefix: str) -> set[str]:
++    tree = ast.parse(path.read_text(encoding="utf-8-sig"))
++    classes = [node for node in tree.body if isinstance(node, ast.ClassDef)
++               and node.name == class_name]
++    if len(classes) != 1:
++        raise v2.RecoveryGateError("G1_REQUIRED_TEST_CLASS_MISSING")
++    return {prefix + node.name for node in classes[0].body
++            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
++            and node.name.startswith("test_")}
++
++
++def required_extra_nodes(repo: Path) -> set[str]:
++    original = _test_names(
++        repo / "tests/enterprise_g1_contract_origin.py", "TestG1", "",
++    )
++    coexistence = _test_names(
++        repo / "tests/test_enterprise_g1_coexistence_gate.py",
++        "TestEnterpriseG1CoexistenceGate", "",
++    )
++    if len(original) != 22 or len(coexistence) != 8:
++        raise v2.RecoveryGateError("G1_REQUIRED_TEST_COUNT_DIVERGENCE")
++    return {
++        "tests.test_enterprise_g1_private_original_contract."
++        "TestEnterpriseG1PrivateOriginalContract::" + name for name in original
++    } | {
++        "tests.test_enterprise_g1_coexistence_gate."
++        "TestEnterpriseG1CoexistenceGate::" + name for name in coexistence
++    }
++
++
++def verify_historical_source(repo: Path) -> None:
++    """Compara AST original e privado, ignorando SOMENTE docstring e nome da classe."""
++    command = ["git", "-C", str(repo), "show",
++               "ee100756:app/services/tax_consistency/tax_consistency_engine.py"]
++    result = subprocess.run(command, capture_output=True, text=True, check=False)
++    if result.returncode:
++        raise v2.RecoveryGateError("G1_HISTORICAL_SOURCE_UNAVAILABLE")
++    source = result.stdout
++    digest = hashlib.sha1(b"blob " + str(len(source.encode())).encode()
++                          + b"\0" + source.encode()).hexdigest()
++    if digest != ORIGINAL_G1_BLOB:
++        raise v2.RecoveryGateError("G1_HISTORICAL_BLOB_DIVERGED")
++    old = ast.parse(source)
++    new = ast.parse((repo / "app/services/enterprise_tax_consistency/"
++                     "enterprise_tax_consistency_engine.py").read_text(encoding="utf-8"))
++    for root in (old, new):
++        if not isinstance(root.body[0], ast.Expr) or not isinstance(root.body[0].value, ast.Constant):
++            raise v2.RecoveryGateError("G1_MODULE_DOCSTRING_MISSING")
++        root.body.pop(0)
++    original_classes = [n for n in old.body if isinstance(n, ast.ClassDef)]
++    private_classes = [n for n in new.body if isinstance(n, ast.ClassDef)]
++    if (len(original_classes) != 1 or len(private_classes) != 1
++            or original_classes[0].name != "TaxConsistencyEngine"
++            or private_classes[0].name != "EnterpriseTaxConsistencyEngine"):
++        raise v2.RecoveryGateError("G1_PRIVATE_CLASS_IDENTITY_DIVERGENCE")
++    private_classes[0].name = "TaxConsistencyEngine"
++    if ast.dump(old, include_attributes=False) != ast.dump(new, include_attributes=False):
++        raise v2.RecoveryGateError("G1_PRIVATE_IMPLEMENTATION_DIVERGED")
++
++
++def evaluate_v3(*, repo: Path, baseline: dict, candidate: dict, approved_v2: dict,
++                approved_v3: dict, changed_paths: set[str],
++                observed_blobs: dict[str, str], harness_hashes: dict[str, str]) -> dict:
++    if approved_v3.get("schema_version") != SCHEMA:
++        raise v2.RecoveryGateError("SCOPE_V3_SCHEMA_NOT_RATIFIED")
++    if (approved_v3.get("parent_v2_manifest_blob") != V2_MANIFEST_BLOB
++            or approved_v3.get("original_g1_blob") != ORIGINAL_G1_BLOB
++            or approved_v3.get("original_g1_test_blob") != ORIGINAL_TEST_BLOB
++            or approved_v3.get("main_shared_g1_blob") != SHARED_G1_BLOB
++            or approved_v3.get("GLOBAL_GREEN") is not False):
++        raise v2.RecoveryGateError("SCOPE_V3_ORIGIN_NOT_RATIFIED")
++    if (approved_v3.get("extra_paths") != sorted(V3_DELTA)
++            or approved_v3.get("modified_v2_paths") != sorted(V3_OVERRIDES)
++            or set(approved_v3.get("candidate_source_blobs", {})) != PINNED):
++        raise v2.RecoveryGateError("SCOPE_V3_UNRATIFIED_OR_EXPANDED")
++    if v2._canonical_digest(approved_v3) != MANIFEST_FINGERPRINT:
++        raise v2.RecoveryGateError("SCOPE_V3_MANIFEST_DIGEST_DIVERGED")
++    if changed_paths - (set(approved_v2["allowed_recovery_paths"]) | V3_DELTA):
++        raise v2.RecoveryGateError("SCOPE_V3_UNAPPROVED_PATH_CHANGED")
++    if not (V3_OVERRIDES | V3_DELTA).issubset(changed_paths):
++        raise v2.RecoveryGateError("SCOPE_V3_REQUIRED_PATH_MISSING")
++    if observed_blobs != approved_v3["candidate_source_blobs"]:
++        raise v2.RecoveryGateError("SCOPE_V3_SOURCE_BLOB_DIVERGENCE")
++    # A versão da main mantém-se fisicamente intocada.
++    if v2._git(repo, "hash-object", "app/services/tax_consistency/tax_consistency_engine.py") != SHARED_G1_BLOB:
++        raise v2.RecoveryGateError("SCOPE_V3_SHARED_G1_CHANGED")
++    verify_historical_source(repo)
++    if observed_blobs["tests/enterprise_g1_contract_origin.py"] != ORIGINAL_TEST_BLOB:
++        raise v2.RecoveryGateError("SCOPE_V3_ORIGINAL_22_TESTS_CHANGED")
++
++    # A proveniência dos 36 ficheiros é preservada; apenas os dois importadores
++    # G1 tiveram alteração explicitamente delimitada e versionada pela V3.
++    provenance = json.loads((repo / "docs/B03_B04_BLOB_PROVENIENCE_20261118.json").read_text(encoding="utf-8"))
++    entries = provenance.get("items", [])
++    if len(entries) != 36 or {e.get("path") for e in entries} != {
++            e.get("path") for e in entries if isinstance(e, dict)}:
++        raise v2.RecoveryGateError("SCOPE_V3_PROVENANCE_COUNT_INVALID")
++    for entry in entries:
++        path = entry["path"]
++        expected = (observed_blobs[path] if path in V3_OVERRIDES else entry["git_blob"])
++        if v2._git(repo, "hash-object", path) != expected:
++            raise v2.RecoveryGateError("SCOPE_V3_PROVENANCE_CHANGED:" + path)
++
++    checker = subprocess.run(
++        [sys.executable, str(repo / "tools/check_duplicacao.py"),
++         "--repo", str(repo), "--registro", "docs/REGISTRO_CANONICO.json"],
++        cwd=repo, capture_output=True, text=True, check=False,
++    )
++    if checker.returncode != 0:
++        raise v2.RecoveryGateError("SCOPE_V3_DUPLICATION_CHECK_FAILED")
++
++    extra = required_extra_nodes(repo)
++    if extra - set(candidate):
++        raise v2.RecoveryGateError("SCOPE_V3_G1_TESTS_MISSING")
++    if any(candidate[node][0] != "passed" for node in extra):
++        raise v2.RecoveryGateError("SCOPE_V3_G1_TESTS_RED")
++
++    # Passar apenas o delta adicional validado à exceção de caminhos V2 é
++    # equivalente a um filtro estrito, nunca a ignorar caminhos imprevistos:
++    # o conjunto integral foi verificado contra a allowlist V3 acima.
++    result = v2.evaluate(
++        baseline=baseline, candidate=candidate, approved=approved_v2,
++        contract_hashes=v2.PROTECTED,
++        changed_paths=changed_paths - V3_DELTA,
++        harness_hashes=harness_hashes,
++    )
++    result["schema_version"] = "SOLVERIS_ENTERPRISE_RECOVERY_GATE_V3"
++    result["scope_ratified"] = SCHEMA
++    result["enterprise_g1_original_tests_passed"] = 22
++    result["enterprise_g1_coexistence_tests_passed"] = 8
++    result["GLOBAL_GREEN"] = False
++    return result
++
++
++def run(args: argparse.Namespace) -> dict:
++    repo = args.repo.resolve()
++    if v2._git(repo, "branch", "--show-current") != v2.RECOVERY_BRANCH:
++        raise v2.RecoveryGateError("WRONG_RECOVERY_BRANCH")
++    if v2._git(repo, "rev-parse", v2.BASELINE_SHA) != v2.BASELINE_SHA:
++        raise v2.RecoveryGateError("BASELINE_COMMIT_UNAVAILABLE")
++    approved_v3 = json.loads(args.approved_manifest.read_text(encoding="utf-8"))
++    approved_v2_path = repo / "docs/B03_B04_BASELINE_ESCOPO_TRANSACIONAL_V2_20261118.json"
++    if v2._git(repo, "hash-object", str(approved_v2_path)) != V2_MANIFEST_BLOB:
++        raise v2.RecoveryGateError("SCOPE_V3_PARENT_V2_MANIFEST_CHANGED")
++    approved_v2 = json.loads(approved_v2_path.read_text(encoding="utf-8"))
++    try:
++        environment = {"python": platform.python_version(), "fastapi": version("fastapi"),
++                       "pydantic": version("pydantic")}
++    except PackageNotFoundError as exc:
++        raise v2.RecoveryGateError("TEST_DEPENDENCIES_NOT_INSTALLED") from exc
++    if approved_v2.get("environment") != environment:
++        raise v2.RecoveryGateError("TEST_ENVIRONMENT_DRIFT")
++    v2._verify_junit_digest(args.baseline_junit, approved_v2.get("baseline_junit_sha256"))
++    changed = set(v2._git(repo, "diff", "--name-only", v2.BASELINE_SHA).splitlines())
++    changed.update(v2._git(repo, "ls-files", "--others", "--exclude-standard").splitlines())
++    observed_blobs = {p: v2._git(repo, "hash-object", p) for p in PINNED}
++    harness = {p: v2._git(repo, "hash-object", p) for p in v2.BASELINE_HARNESS_OVERLAY}
++    return evaluate_v3(
++        repo=repo, baseline=v2.parse_junit(args.baseline_junit),
++        candidate=v2.parse_junit(args.candidate_junit),
++        approved_v2=approved_v2, approved_v3=approved_v3,
++        changed_paths=changed, observed_blobs=observed_blobs,
++        harness_hashes=harness,
++    )
++
++
++def main(argv=None) -> int:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--repo", type=Path, default=Path("."))
++    parser.add_argument("--baseline-junit", type=Path, required=True)
++    parser.add_argument("--candidate-junit", type=Path, required=True)
++    parser.add_argument("--approved-manifest", type=Path, required=True)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args(argv)
++    try:
++        receipt = run(args)
++    except (v2.RecoveryGateError, OSError, json.JSONDecodeError, ValueError) as exc:
++        receipt = {
++            "schema_version": "SOLVERIS_ENTERPRISE_RECOVERY_GATE_V3",
++            "GLOBAL_GREEN": False,
++            "ENTERPRISE_RECOVERY_STATUS": "BLOCKED",
++            "reason": str(exc).split(":", 1)[0],
++        }
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
++    print(receipt["ENTERPRISE_RECOVERY_STATUS"])
++    return 0 if receipt["ENTERPRISE_RECOVERY_STATUS"] == "PASS_WITH_BASELINE_RED" else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/tests/test_enterprise_recovery_scope_v3_gate.py b/tests/test_enterprise_recovery_scope_v3_gate.py
+new file mode 100644
+index 00000000..3c58d18b
+--- /dev/null
++++ b/tests/test_enterprise_recovery_scope_v3_gate.py
+@@ -0,0 +1,109 @@
++"""Controlos V3: G1 segregado, 22 contratos originais e anti-duplicação ativa."""
++from __future__ import annotations
++
++import copy
++import importlib.util
++import json
++from pathlib import Path
++import unittest
++from unittest.mock import patch
++
++
++ROOT = Path(__file__).resolve().parents[1]
++SPEC = importlib.util.spec_from_file_location(
++    "enterprise_recovery_gate_scope_v3",
++    ROOT / "tools/enterprise_recovery_test_gate_v3.py",
++)
++assert SPEC is not None and SPEC.loader is not None
++gate = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(gate)
++
++PASS = ("passed", "", "")
++FAIL = ("failure", "", "")
++SKIP = ("skipped", "", "")
++
++
++class TestRecoveryGatePrivateG1ScopeV3(unittest.TestCase):
++    def setUp(self):
++        self.approved_v2 = json.loads(
++            (ROOT / "docs/B03_B04_BASELINE_ESCOPO_TRANSACIONAL_V2_20261118.json")
++            .read_text(encoding="utf-8")
++        )
++        self.approved_v3 = json.loads(
++            (ROOT / "docs/B03_B04_BASELINE_ESCOPO_G1_V3_20261118.json")
++            .read_text(encoding="utf-8")
++        )
++        self.baseline = {node: FAIL for node in gate.v2.EXPECTED_FAILURE_NODES}
++        self.baseline.update({f"tests.test_mock::pass_{i}": PASS for i in range(4074)})
++        self.baseline.update({f"tests.test_mock::skip_{i}": SKIP for i in range(15)})
++        self.candidate = dict(self.baseline)
++        self.candidate.update({node: PASS for node in gate.v2.REQUIRED_ENTERPRISE_NODES})
++        self.candidate.update({node: PASS for node in gate.v2.SCOPE_V2_REQUIRED_ATOMIC_NODES})
++        self.candidate.update({node: PASS for node in gate.required_extra_nodes(ROOT)})
++        self.paths = (set(self.approved_v2["allowed_recovery_paths"])
++                      - {"app/services/insights_engine.py"}) | gate.V3_DELTA
++        self.hashes = copy.deepcopy(self.approved_v3["candidate_source_blobs"])
++
++    def check(self):
++        return gate.evaluate_v3(
++            repo=ROOT, baseline=self.baseline, candidate=self.candidate,
++            approved_v2=self.approved_v2, approved_v3=self.approved_v3,
++            changed_paths=self.paths, observed_blobs=self.hashes,
++            harness_hashes=gate.v2.BASELINE_HARNESS_OVERLAY,
++        )
++
++    def test_v3_exige_22_mais_8_e_preserva_25_mais_6(self):
++        receipt = self.check()
++        self.assertIs(receipt["GLOBAL_GREEN"], False)
++        self.assertEqual(receipt["enterprise_wiring_tests_passed"], 25)
++        self.assertEqual(receipt["enterprise_atomic_tests_passed"], 6)
++        self.assertEqual(receipt["enterprise_g1_original_tests_passed"], 22)
++        self.assertEqual(receipt["enterprise_g1_coexistence_tests_passed"], 8)
++
++    def test_v3_sem_22_testes_originais_bloqueia(self):
++        node = next(n for n in self.candidate if "PrivateOriginalContract" in n)
++        self.candidate.pop(node)
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError, "G1_TESTS_MISSING"):
++            self.check()
++
++    def test_v3_qualquer_contrato_g1_falho_bloqueia(self):
++        node = next(n for n in self.candidate if "PrivateOriginalContract" in n)
++        self.candidate[node] = FAIL
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError, "G1_TESTS_RED"):
++            self.check()
++
++    def test_v3_sem_controlo_coexistencia_bloqueia(self):
++        node = next(n for n in self.candidate if "CoexistenceGate" in n)
++        self.candidate.pop(node)
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError, "G1_TESTS_MISSING"):
++            self.check()
++
++    def test_v3_caminho_nao_ratificado_bloqueia(self):
++        self.paths.add("app/services/mei_publicacao.py")
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError, "UNAPPROVED_PATH"):
++            self.check()
++
++    def test_v3_hash_produto_alterado_bloqueia(self):
++        self.hashes["app/services/enterprise_tax_consistency/enterprise_tax_consistency_engine.py"] = "0" * 40
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError, "SOURCE_BLOB_DIVERGENCE"):
++            self.check()
++
++    def test_v3_manifesto_alterado_bloqueia(self):
++        self.approved_v3["original_g1_blob"] = "0" * 40
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError, "ORIGIN_NOT_RATIFIED"):
++            self.check()
++
++    def test_v3_g13_com_nova_falha_bloqueia_pelo_gate_v2(self):
++        node = next(n for n in gate.v2.REQUIRED_ENTERPRISE_NODES if "test_01_circuito_real" in n)
++        self.candidate[node] = FAIL
++        with self.assertRaisesRegex(gate.v2.RecoveryGateError, "ENTERPRISE_WIRING_TEST_NOT_PASSED"):
++            self.check()
++
++    def test_v3_prova_confronto_original_nao_pode_ser_ignorada(self):
++        with patch.object(gate, "verify_historical_source", side_effect=gate.v2.RecoveryGateError("G1_AST_TAMPERED")):
++            with self.assertRaisesRegex(gate.v2.RecoveryGateError, "G1_AST_TAMPERED"):
++                self.check()
++
++
++if __name__ == "__main__":
++    unittest.main()
