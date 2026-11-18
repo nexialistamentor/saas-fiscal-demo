@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Produto B01 | `B03_B04_PATCH_V43_B01_GUARDA_20261118.patch` | `cff561548a56d22cb4f95a03547343955ca94cb4` |
 | Test-only canónico | `B03_B04_PATCH_V43_TEST_ONLY_HASH_CANONICO_20261118.patch` | `58d8fc3a48a154dee16d559d7700ffd2bb1caa9e` |
-| Test-only hold Vercel | `B03_B04_PATCH_V43_TEST_ONLY_VERCEL_HOLD_20261118.patch` | Confirmar `git hash-object` no checkout |
+| Test-only hold Vercel | `B03_B04_PATCH_V43_TEST_ONLY_VERCEL_HOLD_20261118.patch` | `8909879e3c49136ca25ddabc63b6193d5ac3b7f2` |
 | Test-only sucessão histórica + 5 negativos | `B03_B04_PATCH_V43_TEST_ONLY_HISTORICO_NEGATIVOS_20261118.patch` | `9d16c32606cb88fc21652fffa32e08dfa0bce1b5` |
 
 O novo teste do hold verifica `main=false` e **todos** os outros valores explicitamente configurados como `false`; não remove o hold de branch nem abre rota MEI. Os 5 controlos V4.3 testam guarda positiva, guarda BoolOp negativa, reconstrução do G19, adulteração de hash/bytes e hold Vercel negativo.
