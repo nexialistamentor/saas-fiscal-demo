@@ -32,3 +32,18 @@ A certidão por JUnit deve permanecer a fonte final de classificação, mas a sa
 ## Decisão pendente
 
 Preparar escopo separado V4.3 com testes negativos sobre adaptação JUnit e a guarda B01, documentando expressamente os conflitos de hash-canónico e release hold. Proibido alterar os controles originais silenciosamente, editar MEI, falsificar contagens, promover `GLOBAL_GREEN` ou apagar os recibos/artefactos Windows.
+
+## Inventário real JUnit V4.3 confirmado por Miguel/Windows (18/11/2026)
+
+Ferramenta documental de leitura `docs/B03_B04_JUNIT_INVENTARIO_V43_20261118.py` (blob `93764e9de753f641573bc29c5dcee76387acb271`) passou o autoteste e cotejou ambos os XMLs existentes, sem executar novamente `pytest`.
+
+| Medida criptográfica | Baseline V2 | Candidato V4.2 |
+| --- | --- | --- |
+| SHA-256 JUnit | `798a14e3a2c6c517dd179559395a12e7fc370cdb49eb2fa3bd674b1599523692` | `a6fca42e30dcfce0266dfdfeb815f43c064c1ae3d10de1efddce3a93d778c40c` |
+| SHA-256 dos IDs ordenados | `cbe90815208fe583e305f2f409e53a75ee658e50def7d30378834bf528fcdea3` | `74df9a9d8cddb7aa5db88cec1493a2b2446a4a4dad72787910b1580b286378ca` |
+| SHA-256 dos IDs RED ordenados | `ccd8df42d4b24e30f789cba46695422fbd97e8678134449be0e0590aa7a5fd8d` | `f79bd83bc5d1cd6155ffab65f22f21f457e00fb2b5e00fe671eff080e8decf3c` |
+
+SHA-256 dos 71 IDs RED adicionais: `fff5f2073f20a082328f33eed8d0110ca4477361633604e131ddd98d5d79d9bd`.
+
+`baseline_ids_subconjunto=true`, `historic_red=13`, `new_red=71`, `testes_duplicados=0`, `status=DIAGNOSTIC_ONLY_NOT_GREEN`. Mantém-se `subtestes_nao_provados_pelo_xml=true`: igualdade aritmética 34/40 com a contagem da saída pytest não é prova autónoma de completude. A correção V4.3 e o parser derivado continuam subordinados aos gates específicos; **nenhum GLOBAL_GREEN**.
+
