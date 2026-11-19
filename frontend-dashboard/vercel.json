@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "main": false,
-      "recovery/enterprise-b00-b04-20261117": false
+      "recovery/enterprise-b00-b04-20261117": false,
+      "recovery/enterprise-v44-orm-test-only-20261119": false
     }
   },
   "ignoreCommand": "p=$VERCEL_GIT_PREVIOUS_SHA;c=$VERCEL_GIT_COMMIT_SHA;git cat-file -e \"$p^{commit}\" 2>/dev/null&&git cat-file -e \"$c^{commit}\" 2>/dev/null&&git diff --quiet \"$p\" \"$c\" -- .||exit 1"
