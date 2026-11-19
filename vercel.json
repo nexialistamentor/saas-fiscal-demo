@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
-      "recovery/enterprise-b00-b04-20261117": false
+      "recovery/enterprise-b00-b04-20261117": false,
+      "recovery/enterprise-v44-orm-test-only-20261119": false
     }
   }
 }
