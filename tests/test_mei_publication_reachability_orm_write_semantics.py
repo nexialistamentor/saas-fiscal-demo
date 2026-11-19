@@ -13,7 +13,7 @@ def test_real_create_analysis_classifies_only_write_relevant_orm_operations_red(
         function_id="app.services.registro_analise_service.criar_registro_analise",
     )
 
-    assert operations == ["add", "commit"]
+    assert operations == ["add", "commit", "flush"]
 
 
 def test_real_finalize_analysis_commit_is_persistence_red():
@@ -26,7 +26,7 @@ def test_real_finalize_analysis_commit_is_persistence_red():
         function_id="app.services.registro_analise_service.finalizar_registro_analise",
     )
 
-    assert operations == ["commit"]
+    assert operations == ["commit", "flush"]
 
 
 def test_real_stateless_formalizacao_has_no_orm_persistence_red():

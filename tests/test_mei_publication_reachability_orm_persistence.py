@@ -15,7 +15,7 @@ def test_real_registro_analise_create_exposes_orm_session_operations_red():
         ),
     )
 
-    assert operations == ["add", "commit", "refresh"]
+    assert operations == ["add", "commit", "flush", "refresh"]
 
 
 def test_real_stateless_formalizacao_has_no_orm_session_operations_red():

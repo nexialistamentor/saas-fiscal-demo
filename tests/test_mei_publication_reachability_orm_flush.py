@@ -13,7 +13,8 @@ def test_real_document_persistence_exposes_flush_and_rollback_session_ops_red():
         function_id="app.xml_service.persistir_documento_fiscal",
     )
 
-    assert operations == ["add", "flush", "rollback", "add", "commit"]
+    assert operations == ["add", "flush", "rollback", "add", "commit", "flush"]
+    assert operations.count("rollback") == 1
 
 
 def test_real_document_persistence_treats_flush_as_write_not_rollback_red():
@@ -26,4 +27,5 @@ def test_real_document_persistence_treats_flush_as_write_not_rollback_red():
         function_id="app.xml_service.persistir_documento_fiscal",
     )
 
-    assert operations == ["add", "flush", "add", "commit"]
+    assert operations == ["add", "flush", "add", "commit", "flush"]
+    assert "rollback" not in operations

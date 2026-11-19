@@ -19,6 +19,7 @@ def test_real_xml_processing_reaches_document_persistence_sink_red():
             "flush",
             "add",
             "commit",
+            "flush",
         ]
     }
     assert result["unresolved_app_callees"] == []
