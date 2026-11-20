@@ -1,8 +1,11 @@
 """Controles adicionais: a oferta visivel no MEI tambem fecha a catraca."""
 
 import json
+from unittest.mock import patch
+from urllib.request import Request
 
 from scripts.mei_campaign_gate import evaluate
+from scripts import mei_campaign_gate as gate
 
 
 LANDING = "https://solveris.ia.br/mei"
@@ -127,3 +130,39 @@ def test_diagnosis_catalog_price_change_blocks():
     assert receipt["resultado"] == "CAMPANHA_BLOQUEADA"
     assert receipt["testes"][-1]["motivo"] == "OFERTA_RELATORIO_NAO_DISPONIVEL"
     assert not any(url == REPORT_RECOVERY for url, _ in calls)
+
+
+def test_only_mercado_pago_checkout_get_can_follow_redirects():
+    checkout = "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=synthetic"
+    with patch.object(gate, "_send", return_value=(200, b"<html>checkout</html>")) as send:
+        assert gate._get(checkout) == (200, b"<html>checkout</html>")
+        opener = send.call_args.kwargs["opener"]
+        assert any(isinstance(handler, gate._TrustedCheckoutRedirect)
+                   for handler in opener.handlers)
+
+        gate._get(API + "/health")
+        assert "opener" not in send.call_args.kwargs
+
+        gate._get(checkout, "SYNTHETIC_TOKEN")
+        assert "opener" not in send.call_args.kwargs
+
+
+def test_checkout_redirect_restricted_to_https_mercado_pago_and_four_hops():
+    start = Request("https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=test")
+    allowed = "https://www.mercadopago.com.br/checkout/v1/payment?pref_id=test"
+    redirect = gate._TrustedCheckoutRedirect()
+    for _ in range(4):
+        next_request = redirect.redirect_request(start, None, 302, "Found", {}, allowed)
+        assert next_request is not None and next_request.full_url == allowed
+    assert redirect.redirect_request(start, None, 302, "Found", {}, allowed) is None
+
+    for blocked in (
+        "http://www.mercadopago.com.br/checkout",
+        "https://mercadopago.com.br.evil.example/checkout",
+        "https://www.mercadopago.com.br:8443/checkout",
+        "https://example.com/checkout",
+        "https://user@www.mercadopago.com.br/checkout",
+    ):
+        assert gate._TrustedCheckoutRedirect().redirect_request(
+            start, None, 302, "Found", {}, blocked
+        ) is None
