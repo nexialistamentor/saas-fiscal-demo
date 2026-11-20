@@ -16,7 +16,7 @@ def _data(obj):
     return json.dumps(obj).encode("utf-8")
 
 
-def _run(overrides=None):
+def _run(overrides=None, config_overrides=None, post_json=None):
     responses = {
         LANDING: (200, b'<title>SOLVERIS | MEI</title><div id="root"></div>'),
         API + "/health": (200, b'{"status":"ok"}'),
@@ -56,12 +56,17 @@ def _run(overrides=None):
         assert password == "TEST_PASSWORD"
         return 200, _data({"access_token": "SENSITIVE"})
 
-    receipt = evaluate({
+    config = {
         "landing": LANDING, "api": API, "email": "smoke@example.invalid",
         "password": "TEST_PASSWORD", "empresa_id": 76, "competencia": "202611",
         "exclusive_test_account": True, "phase": "during",
         "require_tax_report": True,
-    }, get=get, login=login)
+    }
+    config.update(config_overrides or {})
+    kwargs = {"get": get, "login": login}
+    if post_json is not None:
+        kwargs["post_json"] = post_json
+    receipt = evaluate(config, **kwargs)
     return receipt, calls
 
 
@@ -77,6 +82,19 @@ def test_das_and_diagnosis_both_pass_without_payment_or_write():
                for url, _ in calls)
     assert "SENSITIVE" not in repr(receipt)
     assert REPORT_URL not in repr(receipt)
+
+
+def test_preflight_read_only_reuses_both_pending_checkouts_without_post():
+    def forbidden_post(*_args):
+        raise AssertionError("Preflight read-only chamou POST")
+
+    receipt, calls = _run(
+        config_overrides={"phase": "preflight", "preflight_read_only": True},
+        post_json=forbidden_post,
+    )
+    assert receipt["resultado"] == "CAMPANHA_APTA"
+    assert len(receipt["testes"]) == 5
+    assert (REPORT_RECOVERY, True) in calls
 
 
 def test_missing_diagnosis_checkout_blocks_even_when_das_passes():

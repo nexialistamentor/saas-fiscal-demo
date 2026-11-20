@@ -194,7 +194,11 @@ def evaluate(config: dict, get=_get, login=_login, post_json=_post_json) -> dict
 
     phase = config.get("phase", "preflight")
     checkout_url_created = None
-    if phase == "preflight":
+    if phase == "preflight" and config.get("preflight_read_only") is True:
+        # A fixture foi preparada uma unica vez pela conta sintetica.
+        # Verificar a ordem existente nao cria preferencia nem cobra.
+        pass
+    elif phase == "preflight":
         key = config.get("synthetic_idempotency_key", "")
         if (not config.get("approved_test_write") or not isinstance(key, str)
                 or re.fullmatch(r"[\x21-\x7e]{1,255}", key) is None):
@@ -287,6 +291,7 @@ def main() -> int:
         "phase": os.getenv("SOLVERIS_GATE_PHASE", "preflight"),
         "approved_test_write": os.getenv("SOLVERIS_APPROVED_SYNTHETIC_CHECKOUT_WRITE") == "YES",
         "synthetic_idempotency_key": os.getenv("SOLVERIS_SYNTHETIC_IDEMPOTENCY_KEY", ""),
+        "preflight_read_only": os.getenv("SOLVERIS_PREFLIGHT_READ_ONLY", "YES") == "YES",
         # O runner real inclui obrigatoriamente o checkout do diagnostico,
         # que foi exercitado pela interface do MEI com XML sintetico.
         "require_tax_report": True,

@@ -20,9 +20,10 @@ jobs:
       SOLVERIS_SYNTHETIC_PASSWORD: ${{ secrets.SOLVERIS_MEI_SYNTHETIC_PASSWORD }}
       SOLVERIS_SYNTHETIC_EMPRESA_ID: ${{ vars.SOLVERIS_MEI_SYNTHETIC_EMPRESA_ID }}
       SOLVERIS_SYNTHETIC_COMPETENCIA: ${{ vars.SOLVERIS_MEI_SYNTHETIC_COMPETENCIA }}
-      SOLVERIS_SYNTHETIC_IDEMPOTENCY_KEY: ${{ secrets.SOLVERIS_MEI_SYNTHETIC_IDEMPOTENCY_KEY }}
       SOLVERIS_GATE_PHASE: ${{ github.event_name == 'schedule' && 'during' || 'preflight' }}
-      SOLVERIS_APPROVED_SYNTHETIC_CHECKOUT_WRITE: ${{ github.event_name == 'workflow_dispatch' && vars.SOLVERIS_MEI_TEST_WRITE_APPROVED || 'NO' }}
+      # A ordem de teste ja existe. Nunca gerar nova preferencia na automacao.
+      SOLVERIS_PREFLIGHT_READ_ONLY: 'YES'
+      SOLVERIS_APPROVED_SYNTHETIC_CHECKOUT_WRITE: 'NO'
     steps:
       - uses: actions/checkout@v4
       - name: Confirmar landing, backend, login e checkout MEI sem pagamento
