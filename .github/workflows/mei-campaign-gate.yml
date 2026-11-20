@@ -1,0 +1,30 @@
+name: SOLVERIS MEI - catraca comercial
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,37 * * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    # Nao executar periodicamente fora de campanha. Manual: preflight obrigatorio.
+    if: github.event_name == 'workflow_dispatch' || vars.SOLVERIS_MEI_CAMPANHA_ATIVA == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SOLVERIS_EXCLUSIVE_TEST_ACCOUNT: ${{ vars.SOLVERIS_MEI_TEST_ACCOUNT_EXCLUSIVE }}
+      SOLVERIS_SYNTHETIC_EMAIL: ${{ secrets.SOLVERIS_MEI_SYNTHETIC_EMAIL }}
+      SOLVERIS_SYNTHETIC_PASSWORD: ${{ secrets.SOLVERIS_MEI_SYNTHETIC_PASSWORD }}
+      SOLVERIS_SYNTHETIC_EMPRESA_ID: ${{ vars.SOLVERIS_MEI_SYNTHETIC_EMPRESA_ID }}
+      SOLVERIS_SYNTHETIC_COMPETENCIA: ${{ vars.SOLVERIS_MEI_SYNTHETIC_COMPETENCIA }}
+      SOLVERIS_GATE_PHASE: ${{ github.event_name == 'schedule' && 'during' || 'preflight' }}
+      # A ordem de teste ja existe. Nunca gerar nova preferencia na automacao.
+      SOLVERIS_PREFLIGHT_READ_ONLY: 'YES'
+      SOLVERIS_APPROVED_SYNTHETIC_CHECKOUT_WRITE: 'NO'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirmar landing, backend, login e checkout MEI sem pagamento
+        run: python3 scripts/mei_campaign_gate.py
