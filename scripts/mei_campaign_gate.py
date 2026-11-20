@@ -1,11 +1,12 @@
-"""Catraca comercial externa, read-only e fail-closed para o MEI.
+"""Catraca comercial externa e fail-closed para o MEI.
 
-Reutiliza o contrato HTTP dos smokes MEI; nunca faz cadastro, cria intencao,
-abre uma nova ordem, efetua pagamento ou chama endpoints fiscais.
+Reutiliza o contrato HTTP dos smokes MEI. Na fase preflight, so cria intencao
+e ordem sinteticas mediante autorizacao expressa e chave idempotente; nunca
+efetua pagamento nem chama endpoints fiscais. Na fase during, so faz leituras
+e login sintetico, sem alterar o estado comercial.
 
-Exige uma conta sintetica JA EXISTENTE, exclusiva e previamente autorizada.
-Para comprovar o checkout sem escrita, exige uma tentativa sintetica pendente
-preexistente e recuperavel. Ausencia de prova bloqueia a campanha.
+Exige conta de teste exclusiva e checkouts sinteticos pendentes recuperaveis.
+Ausencia de qualquer prova critica bloqueia a campanha.
 """
 
 from __future__ import annotations
@@ -96,6 +97,20 @@ def _valid_checkout_url(url: object) -> bool:
         return False
 
 
+def _valid_tax_report_pending(payload: object) -> bool:
+    return (
+        isinstance(payload, dict)
+        and payload.get("estado") == "pending"
+        and type(payload.get("relatorio_id")) is int
+        and payload["relatorio_id"] > 0
+        and isinstance(payload.get("checkout_idempotency_key"), str)
+        and bool(payload["checkout_idempotency_key"])
+        and isinstance(payload.get("request_fingerprint"), str)
+        and re.fullmatch(r"[0-9a-f]{64}", payload["request_fingerprint"]) is not None
+        and _valid_checkout_url(payload.get("checkout_url"))
+    )
+
+
 def _check(results: list, name: str, ok: bool, status: int | None = None,
            reason: str = "") -> None:
     item = {"teste": name, "resultado": "APROVADO" if ok else "BLOQUEADO"}
@@ -163,6 +178,7 @@ def evaluate(config: dict, get=_get, login=_login, post_json=_post_json) -> dict
         return _receipt(config, results)
 
     status, body = get(api + "/checkout/offers", token)
+    catalog_status = status
     offers = _json(body)
     matched = [o for o in offers if isinstance(o, dict)
                and o.get("offer_code") == "mei-das-one-time-company"] if isinstance(offers, list) else []
@@ -217,11 +233,34 @@ def evaluate(config: dict, get=_get, login=_login, post_json=_post_json) -> dict
         status, checkout_html = get(recovery["checkout_url"])
         checkout_ok = status == 200 and b"<html" in checkout_html.lower()
     _check(results, "checkout", checkout_ok, status, "CHECKOUT_PENDENTE_NAO_RECUPERAVEL")
+    if config.get("require_tax_report") is True:
+        diagnostic = [o for o in offers if isinstance(o, dict)
+                      and o.get("offer_code") == "tax-report-one-time-company"]
+        diagnostic_ok = (len(diagnostic) == 1
+                         and diagnostic[0].get("preco") == "39.90"
+                         and diagnostic[0].get("moeda") == "BRL"
+                         and diagnostic[0].get("commercial_model") == "one_time"
+                         and diagnostic[0].get("subject_type") == "company")
+        if not diagnostic_ok:
+            _check(results, "checkout_relatorio", False, catalog_status,
+                   "OFERTA_RELATORIO_NAO_DISPONIVEL")
+            return _receipt(config, results)
+
+        status, body = get(api + f"/relatorio/empresas/{empresa_id}/checkout-recovery", token)
+        recovered = _json(body)
+        diagnostic_ok = status == 200 and _valid_tax_report_pending(recovered)
+        if diagnostic_ok:
+            status, html = get(recovered["checkout_url"])
+            diagnostic_ok = status == 200 and b"<html" in html.lower()
+        _check(results, "checkout_relatorio", diagnostic_ok, status,
+               "CHECKOUT_RELATORIO_NAO_RECUPERAVEL")
     return _receipt(config, results)
 
 
 def _receipt(config: dict, results: list[dict]) -> dict:
-    apta = all(row["resultado"] == "APROVADO" for row in results) and len(results) == 4
+    required_count = 5 if config.get("require_tax_report") is True else 4
+    apta = (all(row["resultado"] == "APROVADO" for row in results)
+            and len(results) == required_count)
     verified = datetime.now(timezone.utc)
     return {
         "produto": "MEI", "verificado_em": verified.isoformat(),
@@ -248,6 +287,9 @@ def main() -> int:
         "phase": os.getenv("SOLVERIS_GATE_PHASE", "preflight"),
         "approved_test_write": os.getenv("SOLVERIS_APPROVED_SYNTHETIC_CHECKOUT_WRITE") == "YES",
         "synthetic_idempotency_key": os.getenv("SOLVERIS_SYNTHETIC_IDEMPOTENCY_KEY", ""),
+        # O runner real inclui obrigatoriamente o checkout do diagnostico,
+        # que foi exercitado pela interface do MEI com XML sintetico.
+        "require_tax_report": True,
     }
     receipt = evaluate(config)
     print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
