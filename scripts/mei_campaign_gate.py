@@ -26,6 +26,20 @@ class _NoRedirect(HTTPRedirectHandler):
         return None
 
 
+class _TrustedCheckoutRedirect(HTTPRedirectHandler):
+    """Segue poucos redirects HTTPS, apenas entre hosts Mercado Pago."""
+
+    def __init__(self):
+        super().__init__()
+        self.hops = 0
+
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        if self.hops >= 4 or not _trusted_checkout_url(newurl):
+            return None
+        self.hops += 1
+        return super().redirect_request(request, fp, code, msg, headers, newurl)
+
+
 _OPENER = build_opener(_NoRedirect)
 
 
@@ -33,7 +47,10 @@ def _get(url: str, token: str | None = None) -> tuple[int, bytes]:
     headers = {"User-Agent": "SOLVERIS-commercial-gate/1.0"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    return _send(Request(url, headers=headers))
+    request = Request(url, headers=headers)
+    if token is None and _trusted_checkout_url(url):
+        return _send(request, opener=build_opener(_TrustedCheckoutRedirect()))
+    return _send(request)
 
 
 def _login(url: str, email: str, password: str) -> tuple[int, bytes]:
@@ -51,9 +68,9 @@ def _post_json(url: str, token: str, key: str, payload: dict) -> tuple[int, byte
     }))
 
 
-def _send(request: Request) -> tuple[int, bytes]:
+def _send(request: Request, *, opener=None) -> tuple[int, bytes]:
     try:
-        with _OPENER.open(request, timeout=12) as response:
+        with (opener or _OPENER).open(request, timeout=12) as response:
             return response.status, response.read(262145)
     except HTTPError as exc:
         # Nunca imprimir corpo de erro, URL ou cabecalhos: podem conter segredos.
@@ -94,6 +111,22 @@ def _valid_checkout_url(url: object) -> bool:
             and not parts.fragment and (parts.port is None or parts.port > 0)
         )
     except ValueError:
+        return False
+
+
+def _trusted_checkout_url(url: object) -> bool:
+    """Mesmo limite de dominio do gateway comercial, com porta HTTPS padrao."""
+    if not _valid_checkout_url(url):
+        return False
+    try:
+        parts = urlsplit(url)
+        hostname = parts.hostname
+        return (
+            parts.port in (None, 443)
+            and (hostname == "mercadopago.com.br"
+                 or hostname.endswith(".mercadopago.com.br"))
+        )
+    except (AttributeError, ValueError):
         return False
 
 
