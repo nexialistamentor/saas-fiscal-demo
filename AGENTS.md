@@ -60,3 +60,11 @@ GREEN só pode ser declarado quando, cumulativamente:
 Qualquer incompatibilidade deve terminar como `CONTRACT_CONFLICT`, sem adaptar o teste.
 
 A contagem de testes `passed` não constitui prova suficiente de GREEN quando o diff modifica o contrato observado.
+
+## 4. Regra transversal SOLVERIS.MEI — ratificação expressa de 13/11/2026
+
+1. **Não criar agendamentos, horários, automações, watchers, verificações periódicas ou jobs automáticos sem consulta prévia e aprovação expressa de Miguel.** Esta regra aplica-se a GPT, Codex, Claude e quaisquer executores. Não reativar tarefas anteriores sem aprovação.
+2. **SOLVERIS.MEI (endereço comercial `https://solveris.ia.br/mei`) e Fisco Soberano não podem partilhar projeto/deployment Vercel, alias upstream, ambiente de backend Railway ou base de dados de produção.** Um rewrite institucional não é isolamento. Antes de publicação, inspecionar a cadeia completa domínio → rewrite → alias → deployment/SHA/projeto → API/backend → BD.
+3. **Publicação ou campanha dependem cumulativamente de separação de ambientes, igualdade do commit aprovado, smoke autenticado diretamente no domínio público com screenshot desktop e mobile, produção Vercel formalizada, conteúdo e avisos verificados.** Build/HTTP200/smoke isolado não dispensam essa prova. Evitar contornar gates por quota, proteção de preview ou migrações.
+4. Missão e evidência canônica da nova fronteira: `docs/MISSAO_SOLVERIS_MEI_CERTIFICACAO_PRE_CAMPANHA_001.md` na branch `governance/mei-certificacao-pre-campanha-001-20261113`. **Estado inicial: Gate 0/1 RED; campanha bloqueada.** A PR do site `nexialistamentor/solveris-institucional#7` está draft e não pode entrar no ar enquanto `solveris-mei` não tiver backend isolado e deployment GREEN.
+5. Bloco 2/LOA 2027 e DIVIDAATIVA24 permanecem em HOLD. **Nunca presumir disponibilidade de serviço ou ratificação por aprovação parcial.**
